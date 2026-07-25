@@ -1,11 +1,12 @@
 import json
 
 import numpy as np
+import pytest
 import soundfile as sf
 
 from fakes import FakeGenAI
 from scorer.config import load_product_config
-from scorer.delivery.judge import DeliveryJudgeDoc, judge_delivery
+from scorer.delivery.judge import DeliveryJudgeDoc, DeliveryJudgeError, judge_delivery
 from scorer.schemas import (
     BarsAnchor,
     DeliveryMetrics,
@@ -197,3 +198,33 @@ def test_out_of_range_observations_dropped(tmp_path):
     # Only the at_s == duration boundary case survives; -2.0 and 45.0 are out of range.
     assert [o.at_s for o in observations] == [30.0]
     assert observations[0].kind == "trailing-off"
+
+
+def test_missing_delivery_dimension_raises(tmp_path):
+    wav = tmp_path / "session.wav"
+    _write_wav(wav)
+    doc = _happy_doc()
+    doc["scores"] = doc["scores"][:1]  # composure is a delivery dim but absent
+    fake = FakeGenAI([json.dumps(doc)])
+
+    with pytest.raises(DeliveryJudgeError, match="composure"):
+        judge_delivery(wav, _metrics(), _delivery_dims(), fake)
+
+
+def test_non_delivery_dimension_scores_dropped(tmp_path):
+    wav = tmp_path / "session.wav"
+    _write_wav(wav)
+    doc = _happy_doc()
+    doc["scores"].append(
+        _delivery_score(
+            "structured-answers",
+            2.0,
+            ["[00:05] first answer opens without a frame"],
+            "Content-channel key that must not leak into delivery output.",
+        )
+    )
+    fake = FakeGenAI([json.dumps(doc)])
+
+    scores, _ = judge_delivery(wav, _metrics(), _delivery_dims(), fake)
+
+    assert {s.dimension_key for s in scores} == {"pacing-control", "composure"}

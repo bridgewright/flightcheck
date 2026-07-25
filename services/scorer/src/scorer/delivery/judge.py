@@ -4,7 +4,9 @@ One file-based Gemini call on the uploaded wav. The prompt carries the DSP
 metrics as measured ground truth and each delivery dimension's BARS anchors
 verbatim, so the audio-native judge adds character (hedging intonation,
 trailing off, what silences sound like) without re-measuring what DSP already
-measured. Post-validation in code arrives in later steps.
+measured. Post-validation in code: observations outside the audio duration are
+dropped (duration via soundfile.info), scores for non-delivery keys are
+dropped, and a missing delivery dimension raises.
 """
 from __future__ import annotations
 
@@ -132,5 +134,13 @@ def judge_delivery(
         },
     )
     doc = DeliveryJudgeDoc.model_validate_json(response.text)
+
     observations = [obs for obs in doc.observations if 0.0 <= obs.at_s <= duration_s]
-    return list(doc.scores), observations
+    delivery_keys = {d.key for d in delivery_dims}
+    scores = [s for s in doc.scores if s.dimension_key in delivery_keys]
+    missing = delivery_keys - {s.dimension_key for s in scores}
+    if missing:
+        raise DeliveryJudgeError(
+            f"delivery judge response missing dimensions: {sorted(missing)}"
+        )
+    return scores, observations
