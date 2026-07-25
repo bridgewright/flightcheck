@@ -1,0 +1,24 @@
+# flightcheck v0.1 product configuration (Plan 2, Task 1).
+# Models and thresholds are config, not hardcode; loaded by
+# scorer.config.load_product_config(). Vendor split is deliberate:
+# the golden-triplet generator (gpt-5.1) is a different vendor from the
+# judge (gemini-2.5-flash) to block self-preference in evals.
+
+[models]
+interviewer = "gpt-realtime"
+scorer = "gemini-2.5-flash"
+triplet_generator = "gpt-5.1"
+
+[session]
+budget_minutes = 20
+hard_cut_minutes = 25
+silence_duration_ms = 900
+
+[delivery]
+fillers = ["uh", "um", "erm", "hmm", "you know", "i mean", "sort of", "kind of", "like"]
+
+[report]
+ready_overall = 4.0
+ready_min_dimension = 3.0
+approaching_overall = 3.0
+forbidden_patterns = ["nervous", "anxious", "scared", "you felt", "you were afraid", "you were feeling", "panicked", "insecure"]
