@@ -13,6 +13,7 @@ dependencies = [
   "pyyaml>=6",
   "python-dotenv>=1",
   "httpx>=0.28",
+  "pydantic>=2.13.4",
 ]
 
 [dependency-groups]
@@ -27,6 +28,9 @@ line-length = 100
 # does need in probe read loops, so each one must be justified with a noqa
 # rather than silently allowed.
 select = ["E", "F", "I", "UP", "RUF", "BLE"]
+
+[tool.ruff.lint.isort]
+known-first-party = ["scorer", "fakes"]
 
 [tool.pytest.ini_options]
 asyncio_mode = "auto"
