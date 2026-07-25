@@ -1,4 +1,5 @@
-"""Package/session persistence: row models and the Database protocol.
+"""Package/session persistence: row models, the Database protocol, and the
+Supabase adapter.
 
 jsonb <-> pydantic mapping happens only at this edge: model_dump(mode="json")
 on write, model_validate on read. Missing rows raise KeyError in every
@@ -7,10 +8,13 @@ callers handle one exception type regardless of backend.
 """
 from __future__ import annotations
 
+import secrets
 from typing import Protocol, runtime_checkable
 
 from pydantic import BaseModel, ConfigDict
+from supabase import Client, create_client
 
+from scorer.env import load_env, require_key
 from scorer.schemas import CandidateProfile, Rubric, SessionPlan, SessionReport
 
 
@@ -72,3 +76,136 @@ class Database(Protocol):
 
     def save_report(self, session_id: str, report: SessionReport) -> None:
         ...
+
+
+def create_supabase_client() -> Client:
+    """Supabase client from services/scorer/.env (server-side service-role key).
+
+    Composition contract: Task 12's main() calls this exactly ONCE and passes
+    the same client to both SupabaseDatabase(client) and
+    SupabaseStorage(client). Never log these values.
+    """
+    load_env()
+    return create_client(require_key("SUPABASE_URL"),
+                         require_key("SUPABASE_SERVICE_ROLE_KEY"))
+
+
+def _to_package_row(data: dict) -> PackageRow:
+    """packages row dict (PostgREST) -> PackageRow; jsonb -> pydantic on read."""
+    return PackageRow(
+        id=data["id"],
+        access_token=data["access_token"],
+        status=data["status"],
+        jd_text=data["jd_text"] or "",
+        candidate_profile=(
+            CandidateProfile.model_validate(data["candidate_profile"])
+            if data.get("candidate_profile") is not None
+            else None
+        ),
+        rubric=(
+            Rubric.model_validate(data["rubric"])
+            if data.get("rubric") is not None
+            else None
+        ),
+    )
+
+
+def _to_session_row(data: dict) -> SessionRow:
+    """sessions row dict (PostgREST) -> SessionRow; jsonb -> pydantic on read."""
+    return SessionRow(
+        id=data["id"],
+        package_id=data["package_id"],
+        index=data["index"],
+        status=data["status"],
+        session_plan=(
+            SessionPlan.model_validate(data["session_plan"])
+            if data.get("session_plan") is not None
+            else None
+        ),
+        audio_path=data.get("audio_path"),
+        report=(
+            SessionReport.model_validate(data["report"])
+            if data.get("report") is not None
+            else None
+        ),
+    )
+
+
+class SupabaseDatabase:
+    """Database implementation over supabase-py (PostgREST under the hood)."""
+
+    def __init__(self, client: Client):
+        self._client = client
+
+    def create_package(self, jd_text: str, jd_url: str | None) -> PackageRow:
+        payload = {
+            "access_token": secrets.token_urlsafe(24),
+            "status": "compiling",
+            "jd_text": jd_text,
+            "jd_url": jd_url,
+        }
+        data = self._client.table("packages").insert(payload).execute().data
+        return _to_package_row(data[0])
+
+    def get_package(self, package_id: str) -> PackageRow:
+        data = (self._client.table("packages").select("*")
+                .eq("id", package_id).execute().data)
+        if not data:
+            raise KeyError(package_id)
+        return _to_package_row(data[0])
+
+    def get_package_by_token(self, access_token: str) -> PackageRow:
+        data = (self._client.table("packages").select("*")
+                .eq("access_token", access_token).execute().data)
+        if not data:
+            raise KeyError(access_token)
+        return _to_package_row(data[0])
+
+    def set_package_profile(self, package_id: str, profile: CandidateProfile) -> None:
+        (self._client.table("packages")
+         .update({"candidate_profile": profile.model_dump(mode="json")})
+         .eq("id", package_id).execute())
+
+    def set_package_rubric(self, package_id: str, rubric: Rubric | None,
+                           status: str) -> None:
+        # rubric=None marks a failed compile: status update only, no rubric
+        # write -- the failure handler must never overwrite stored data (and
+        # must never crash on None.model_dump).
+        payload: dict[str, object] = {"status": status}
+        if rubric is not None:
+            payload["rubric"] = rubric.model_dump(mode="json")
+        (self._client.table("packages").update(payload)
+         .eq("id", package_id).execute())
+
+    def create_session(self, package_id: str, index: int,
+                       plan: SessionPlan) -> SessionRow:
+        payload = {
+            "package_id": package_id,
+            "index": index,
+            "status": "planned",
+            "session_plan": plan.model_dump(mode="json"),
+        }
+        data = self._client.table("sessions").insert(payload).execute().data
+        return _to_session_row(data[0])
+
+    def get_session(self, session_id: str) -> SessionRow:
+        data = (self._client.table("sessions").select("*")
+                .eq("id", session_id).execute().data)
+        if not data:
+            raise KeyError(session_id)
+        return _to_session_row(data[0])
+
+    def set_session_status(self, session_id: str, status: str,
+                           audio_path: str | None = None) -> None:
+        payload: dict[str, str] = {"status": status}
+        if audio_path is not None:
+            payload["audio_path"] = audio_path
+        (self._client.table("sessions").update(payload)
+         .eq("id", session_id).execute())
+
+    def save_report(self, session_id: str, report: SessionReport) -> None:
+        # Report + status land in ONE update so "report present" and
+        # status=="scored" can never be observed apart.
+        (self._client.table("sessions")
+         .update({"report": report.model_dump(mode="json"), "status": "scored"})
+         .eq("id", session_id).execute())

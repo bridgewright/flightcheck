@@ -1,8 +1,16 @@
 """Tests for scorer.api.db -- row models, database protocol, and the fake."""
+from types import SimpleNamespace
+
 import pytest
 
 from fakes import FakeDatabase
-from scorer.api.db import Database, PackageRow, SessionRow
+from scorer.api.db import (
+    Database,
+    PackageRow,
+    SessionRow,
+    SupabaseDatabase,
+    create_supabase_client,
+)
 from scorer.schemas import (
     CandidateProfile,
     DeliveryMetrics,
@@ -208,3 +216,170 @@ def test_save_report_stores_report_and_marks_scored():
     updated = db.get_session(session.id)
     assert updated.report == report
     assert updated.status == "scored"
+
+
+class StubTable:
+    """Chainable PostgREST-style recorder replaying canned result rows."""
+
+    def __init__(self, call: dict, results: list, log: list):
+        self._call = call
+        self._results = results
+        self._log = log
+
+    def insert(self, payload):
+        self._call["insert"] = payload
+        return self
+
+    def update(self, payload):
+        self._call["update"] = payload
+        return self
+
+    def select(self, columns):
+        self._call["select"] = columns
+        return self
+
+    def eq(self, column, value):
+        self._call.setdefault("eq", []).append((column, value))
+        return self
+
+    def execute(self):
+        self._log.append(self._call)
+        return SimpleNamespace(data=self._results.pop(0))
+
+
+class StubSupabase:
+    """Just enough of supabase-py's client for row-mapping tests (no network)."""
+
+    def __init__(self, results: list):
+        self.results = list(results)
+        self.log: list[dict] = []
+
+    def table(self, name: str) -> StubTable:
+        return StubTable({"table": name}, self.results, self.log)
+
+
+def _package_data(**overrides) -> dict:
+    data = {
+        "id": "11111111-1111-1111-1111-111111111111",
+        "created_at": "2026-07-26T00:00:00+00:00",
+        "access_token": "tok_abc",
+        "status": "compiling",
+        "jd_text": "jd text",
+        "jd_url": None,
+        "candidate_profile": None,
+        "rubric": None,
+    }
+    data.update(overrides)
+    return data
+
+
+def test_create_supabase_client_reads_env_credentials(monkeypatch):
+    calls = {}
+    monkeypatch.setattr("scorer.api.db.load_env",
+                        lambda: calls.setdefault("loaded", True))
+    monkeypatch.setenv("SUPABASE_URL", "https://example.supabase.co")
+    monkeypatch.setenv("SUPABASE_SERVICE_ROLE_KEY", "service-role-key-fake")
+    monkeypatch.setattr("scorer.api.db.create_client",
+                        lambda url, key: SimpleNamespace(url=url, key=key))
+    client = create_supabase_client()
+    assert calls == {"loaded": True}
+    assert (client.url, client.key) == ("https://example.supabase.co",
+                                        "service-role-key-fake")
+
+
+def test_supabase_create_package_inserts_and_maps():
+    stub = StubSupabase([[_package_data()]])
+    row = SupabaseDatabase(stub).create_package(
+        "jd text", "https://jobs.example.com/a")
+    call = stub.log[0]
+    assert call["table"] == "packages"
+    payload = call["insert"]
+    assert payload["status"] == "compiling"
+    assert payload["jd_text"] == "jd text"
+    assert payload["jd_url"] == "https://jobs.example.com/a"
+    assert len(payload["access_token"]) >= 32
+    assert row.id == "11111111-1111-1111-1111-111111111111"
+    assert row.status == "compiling"
+
+
+def test_supabase_get_package_maps_jsonb_to_models():
+    data = _package_data(
+        status="ready",
+        candidate_profile=_profile().model_dump(mode="json"),
+        rubric=_rubric().model_dump(mode="json"),
+    )
+    stub = StubSupabase([[data]])
+    row = SupabaseDatabase(stub).get_package(data["id"])
+    assert isinstance(row.candidate_profile, CandidateProfile)
+    assert isinstance(row.rubric, Rubric)
+    assert row.rubric.dimensions[1].channel == "delivery"
+    assert stub.log[0]["select"] == "*"
+    assert stub.log[0]["eq"] == [("id", data["id"])]
+
+
+def test_supabase_get_package_by_token_filters_on_token():
+    stub = StubSupabase([[_package_data()]])
+    SupabaseDatabase(stub).get_package_by_token("tok_abc")
+    assert stub.log[0]["eq"] == [("access_token", "tok_abc")]
+
+
+def test_supabase_missing_package_raises_keyerror():
+    stub = StubSupabase([[]])
+    with pytest.raises(KeyError):
+        SupabaseDatabase(stub).get_package("missing-id")
+
+
+def test_supabase_set_package_rubric_updates_jsonb_and_status():
+    stub = StubSupabase([[_package_data()]])
+    SupabaseDatabase(stub).set_package_rubric("pkg-1", _rubric(), "ready")
+    call = stub.log[0]
+    assert call["table"] == "packages"
+    assert call["update"]["status"] == "ready"
+    assert call["update"]["rubric"] == _rubric().model_dump(mode="json")
+    assert call["eq"] == [("id", "pkg-1")]
+
+
+def test_supabase_set_package_rubric_none_updates_status_only():
+    # The failed-compile path: the update payload must not contain a
+    # "rubric" key at all -- a failure handler never overwrites stored data.
+    stub = StubSupabase([[]])
+    SupabaseDatabase(stub).set_package_rubric("pkg-1", None, "failed")
+    call = stub.log[0]
+    assert call["table"] == "packages"
+    assert call["update"] == {"status": "failed"}
+    assert call["eq"] == [("id", "pkg-1")]
+
+
+def test_supabase_set_session_status_omits_audio_path_when_none():
+    stub = StubSupabase([[]])
+    SupabaseDatabase(stub).set_session_status("sess-1", "scoring")
+    assert stub.log[0]["table"] == "sessions"
+    assert stub.log[0]["update"] == {"status": "scoring"}
+    assert stub.log[0]["eq"] == [("id", "sess-1")]
+
+
+def test_supabase_session_round_trip_and_report_marks_scored():
+    session_data = {
+        "id": "22222222-2222-2222-2222-222222222222",
+        "package_id": "11111111-1111-1111-1111-111111111111",
+        "index": 1,
+        "status": "planned",
+        "session_plan": _plan().model_dump(mode="json"),
+        "audio_path": None,
+        "report": None,
+        "created_at": "2026-07-26T00:00:00+00:00",
+    }
+    stub = StubSupabase([[session_data], [session_data]])
+    db = SupabaseDatabase(stub)
+    row = db.create_session(session_data["package_id"], 1, _plan())
+    insert = stub.log[0]["insert"]
+    assert stub.log[0]["table"] == "sessions"
+    assert insert["status"] == "planned"
+    assert insert["index"] == 1
+    assert insert["session_plan"] == _plan().model_dump(mode="json")
+    assert row.session_plan.focus == "baseline"
+    db.save_report(row.id, _report(row.id))
+    save = stub.log[1]
+    assert save["update"]["status"] == "scored"
+    assert save["update"]["report"]["verdict"] == "ready"
+    assert save["eq"] == [("id", row.id)]
