@@ -24,11 +24,15 @@ from fastapi import (
 from pydantic import BaseModel, ConfigDict
 
 from scorer.api.db import Database, PackageRow
-from scorer.api.pipeline import compile_package
+from scorer.api.pipeline import compile_package, score_session
 from scorer.api.storage import Storage
 from scorer.intake.jd import fetch_jd
 from scorer.intake.profile import extract_pdf_text
-from scorer.schemas import GenAIClientLike
+from scorer.schemas import CandidateProfile, GenAIClientLike
+from scorer.sessionplan.planner import (
+    build_interviewer_instructions,
+    plan_baseline_session,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -44,11 +48,42 @@ class CreatePackageRequest(BaseModel):
     linkedin_pdf_b64: str | None = None
 
 
+class CreateSessionRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    package_id: str
+
+
+class CompleteSessionRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    audio_path: str
+
+
+def _empty_profile() -> CandidateProfile:
+    """Fallback when the package has no stored candidate profile."""
+    return CandidateProfile(
+        name=None, headline=None, years_experience=None,
+        roles=[], skills=[], achievements=[],
+    )
+
+
 def _require_worker_token(authorization: Annotated[str, Header()] = "") -> None:
     """Bearer auth against WORKER_API_TOKEN. Never log or echo either value."""
     expected = os.environ.get("WORKER_API_TOKEN", "")
     if not expected or authorization != f"Bearer {expected}":
         raise HTTPException(status_code=401, detail="invalid or missing bearer token")
+
+
+def _score_session_job(
+    session_id: str, db: Database, storage: Storage, client: GenAIClientLike
+) -> None:
+    """Background wrapper: score_session records "failed" itself and re-raises;
+    the app swallows here so a broken scoring job can never crash the worker."""
+    try:
+        score_session(session_id, db, storage, client)
+    except Exception:
+        logger.exception("background scoring failed: session_id=%s", session_id)
 
 
 def create_app(db: Database, storage: Storage, client: GenAIClientLike) -> FastAPI:
@@ -93,6 +128,67 @@ def create_app(db: Database, storage: Storage, client: GenAIClientLike) -> FastA
             return db.get_package_by_token(access_token)
         except KeyError as exc:
             raise HTTPException(status_code=404, detail="package not found") from exc
+
+    @api.post("/sessions")
+    def create_session(body: CreateSessionRequest):
+        try:
+            package = db.get_package(body.package_id)
+        except KeyError as exc:
+            raise HTTPException(status_code=404, detail="package not found") from exc
+        if package.status != "ready" or package.rubric is None:
+            raise HTTPException(
+                status_code=409,
+                detail=f"package status is {package.status!r}; sessions need 'ready'",
+            )
+        plan = plan_baseline_session(package.rubric)
+        row = db.create_session(body.package_id, 1, plan)
+        profile = package.candidate_profile
+        if profile is None:
+            profile = _empty_profile()
+        instructions = build_interviewer_instructions(plan, package.rubric, profile)
+        return {
+            "session_id": row.id,
+            "session_plan": plan.model_dump(mode="json"),
+            "interviewer_instructions": instructions,
+        }
+
+    @api.post("/sessions/{session_id}/complete", status_code=202)
+    def complete_session(
+        session_id: str, body: CompleteSessionRequest, background_tasks: BackgroundTasks
+    ):
+        try:
+            db.get_session(session_id)
+        except KeyError as exc:
+            raise HTTPException(status_code=404, detail="session not found") from exc
+        db.set_session_status(session_id, "scoring", audio_path=body.audio_path)
+        background_tasks.add_task(_score_session_job, session_id, db, storage, client)
+        return {"session_id": session_id, "status": "scoring"}
+
+    @api.get("/sessions/{session_id}")
+    def get_session(session_id: str) -> dict:
+        """SessionRow fields + interviewer_instructions rebuilt on every read.
+
+        The instructions are deterministic (plan + rubric + profile are all
+        stored), so they are never persisted on the session row; only
+        server-side callers -- the Next.js secret-minting route -- ever see
+        them, and the browser has no other path to them.
+        """
+        try:
+            row = db.get_session(session_id)
+        except KeyError as exc:
+            raise HTTPException(status_code=404, detail="session not found") from exc
+        package = db.get_package(row.package_id)
+        instructions = ""
+        if row.session_plan is not None and package.rubric is not None:
+            profile = package.candidate_profile
+            if profile is None:
+                profile = _empty_profile()
+            instructions = build_interviewer_instructions(
+                row.session_plan, package.rubric, profile
+            )
+        payload = row.model_dump(mode="json")
+        payload["interviewer_instructions"] = instructions
+        return payload
 
     app.include_router(api)
     return app
