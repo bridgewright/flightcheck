@@ -2,7 +2,14 @@ import numpy as np
 import pytest
 import soundfile as sf
 
-from scorer.evals_l3.delivery_check import find_triplets
+from fakes import FakeGenAI
+from scorer.evals_l3 import delivery_check
+from scorer.evals_l3.delivery_check import (
+    EVAL_DELIVERY_DIMENSION,
+    find_triplets,
+    run_delivery_discrimination,
+)
+from scorer.schemas import DeliveryMetrics, DimensionScore, SilenceEvent
 
 
 def _write_clip(path):
@@ -30,3 +37,90 @@ def test_triplets_discovered_sorted_by_question(tmp_path):
     q1_clips = dict(triplets)["q1"]
     assert sorted(q1_clips) == ["filler", "fluent", "hesitant"]
     assert q1_clips["hesitant"].name == "q1-hesitant.wav"
+
+
+def _make_clips_dir(tmp_path):
+    clips_dir = tmp_path / "clips"
+    clips_dir.mkdir()
+    for variant in ("fluent", "filler", "hesitant"):
+        _write_clip(clips_dir / f"q1-{variant}.wav")
+    return clips_dir
+
+
+def _metrics_with_silences(count: int) -> DeliveryMetrics:
+    return DeliveryMetrics(
+        wpm_overall=0.0,
+        wpm_timeline=[],
+        silence_events=[
+            SilenceEvent(start_s=float(i), duration_s=1.5) for i in range(count)
+        ],
+        filler_count=0,
+        filler_rate_per_min=0.0,
+        f0_variance=None,
+        avg_response_latency_s=None,
+    )
+
+
+def _variant_of(path) -> str:
+    return path.name.rsplit("-", 1)[1].removesuffix(".wav")
+
+
+def _install_fakes(monkeypatch, silences_by_variant, judge_score_by_variant):
+    def fake_metrics(audio_path, segments):
+        # The runner fabricates exactly one whole-clip candidate segment.
+        assert len(segments) == 1
+        assert segments[0].speaker == "candidate"
+        return _metrics_with_silences(silences_by_variant[_variant_of(audio_path)])
+
+    def fake_judge(audio_path, metrics, delivery_dims, client):
+        assert delivery_dims == [EVAL_DELIVERY_DIMENSION]
+        score = judge_score_by_variant[_variant_of(audio_path)]
+        return (
+            [
+                DimensionScore(
+                    dimension_key="delivery-fluency",
+                    score=score,
+                    evidence_quotes=[],
+                    rationale="Synthetic eval score.",
+                )
+            ],
+            [],
+        )
+
+    monkeypatch.setattr(delivery_check, "compute_delivery_metrics", fake_metrics)
+    monkeypatch.setattr(delivery_check, "judge_delivery", fake_judge)
+
+
+def test_dsp_and_judge_ordering_pass(tmp_path, monkeypatch):
+    clips_dir = _make_clips_dir(tmp_path)
+    _install_fakes(
+        monkeypatch,
+        silences_by_variant={"fluent": 0, "filler": 1, "hesitant": 3},
+        judge_score_by_variant={"fluent": 4.5, "filler": 3.0, "hesitant": 2.0},
+    )
+
+    result = run_delivery_discrimination(clips_dir, FakeGenAI([]))
+
+    assert result == {"triplets": 1, "dsp_pass": 1, "judge_pass": 1, "failures": []}
+
+
+def test_dsp_and_judge_ordering_failures_are_recorded(tmp_path, monkeypatch):
+    clips_dir = _make_clips_dir(tmp_path)
+    _install_fakes(
+        monkeypatch,
+        # DSP fail: fluent does not have strictly fewer silences than hesitant.
+        silences_by_variant={"fluent": 2, "filler": 1, "hesitant": 2},
+        # Judge fail: fluent ties filler (strict ordering required).
+        judge_score_by_variant={"fluent": 3.0, "filler": 3.0, "hesitant": 2.0},
+    )
+
+    result = run_delivery_discrimination(clips_dir, FakeGenAI([]))
+
+    assert result["triplets"] == 1
+    assert result["dsp_pass"] == 0
+    assert result["judge_pass"] == 0
+    assert sorted(f["check"] for f in result["failures"]) == ["dsp", "judge"]
+    dsp_failure = next(f for f in result["failures"] if f["check"] == "dsp")
+    assert dsp_failure["silence_events"] == {"fluent": 2, "filler": 1, "hesitant": 2}
+    judge_failure = next(f for f in result["failures"] if f["check"] == "judge")
+    assert judge_failure["scores"] == {"fluent": 3.0, "filler": 3.0, "hesitant": 2.0}
