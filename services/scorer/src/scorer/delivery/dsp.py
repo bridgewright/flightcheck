@@ -1,4 +1,4 @@
-"""Deterministic DSP delivery metrics (this cycle: pacing and latency).
+"""Deterministic DSP delivery metrics (this cycle adds filler counting).
 
 No LLM touches this channel: every number is reproducible from the audio
 samples and the transcript segmentation alone. The delivery judge (Task
@@ -9,12 +9,17 @@ truth.
 from __future__ import annotations
 
 import math
+import re
+from collections.abc import Sequence
 from pathlib import Path
 
 import numpy as np
 import soundfile as sf
 
+from scorer.config import load_product_config
 from scorer.schemas import DeliveryMetrics, TranscriptSegment
+
+FILLER_LEXICON: tuple[str, ...] = tuple(load_product_config().delivery.fillers)
 
 _BUCKET_S = 60.0
 
@@ -59,6 +64,20 @@ def _wpm_timeline(
     return timeline
 
 
+def count_filler_matches(text: str, lexicon: Sequence[str]) -> int:
+    """Word-boundary filler matches over lowercased text.
+
+    Whitespace is normalized first so multi-word fillers ("you know")
+    match as whole phrases even across line breaks in the transcript.
+    """
+    normalized = " ".join(text.lower().split())
+    total = 0
+    for filler in lexicon:
+        pattern = r"\b" + re.escape(filler.lower()) + r"\b"
+        total += len(re.findall(pattern, normalized))
+    return total
+
+
 def _avg_response_latency(segments: list[TranscriptSegment]) -> float | None:
     """Mean interviewer-end -> candidate-start gap over direct transitions."""
     ordered = sorted(segments, key=lambda seg: seg.start_s)
@@ -81,12 +100,16 @@ def compute_delivery_metrics(
     candidate_segments = [s for s in segments if s.speaker == "candidate"]
     speaking_min = sum(s.end_s - s.start_s for s in candidate_segments) / 60.0
     total_words = sum(len(s.text.split()) for s in candidate_segments)
+    candidate_text = " ".join(s.text for s in candidate_segments)
+    filler_count = count_filler_matches(candidate_text, FILLER_LEXICON)
     return DeliveryMetrics(
         wpm_overall=total_words / speaking_min if speaking_min > 0 else 0.0,
         wpm_timeline=_wpm_timeline(candidate_segments, duration_s),
         silence_events=[],  # grown in a later cycle of this task
-        filler_count=0,  # grown in a later cycle of this task
-        filler_rate_per_min=0.0,  # grown in a later cycle of this task
+        filler_count=filler_count,
+        filler_rate_per_min=(
+            filler_count / speaking_min if speaking_min > 0 else 0.0
+        ),
         f0_variance=None,  # grown in a later cycle of this task
         avg_response_latency_s=_avg_response_latency(segments),
     )

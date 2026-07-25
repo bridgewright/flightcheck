@@ -3,7 +3,13 @@ import numpy as np
 import pytest
 import soundfile as sf
 
-from scorer.delivery.dsp import compute_delivery_metrics
+from scorer.config import load_product_config
+from scorer.delivery import dsp
+from scorer.delivery.dsp import (
+    FILLER_LEXICON,
+    compute_delivery_metrics,
+    count_filler_matches,
+)
 from scorer.schemas import TranscriptSegment
 
 SR = 16000
@@ -81,3 +87,43 @@ def test_no_candidate_speech_yields_zero_metrics(tmp_path):
     assert metrics.silence_events == []
     assert metrics.f0_variance is None
     assert metrics.avg_response_latency_s is None
+
+
+def test_filler_lexicon_comes_from_product_config():
+    delivery = load_product_config().delivery
+    assert FILLER_LEXICON == tuple(delivery.fillers)
+    assert "um" in FILLER_LEXICON
+    assert "uh" in FILLER_LEXICON
+    assert "you know" in FILLER_LEXICON
+
+
+def test_count_filler_matches_word_boundaries_and_phrases():
+    text = (
+        "Um, I think, um, we shipped it and, uh, you know, it worked. "
+        "Umbrella sales grew, unlike our, you know, forecast."
+    )
+    # um x2 + uh x1 + "you know" x2 = 5.
+    assert count_filler_matches(text, ("um", "uh", "you know")) == 5
+    assert count_filler_matches(text, ()) == 0
+    # "Umbrella" must not count as "um": matches are word-bounded.
+    assert count_filler_matches("Umbrella umpire umami", ("um",)) == 0
+
+
+def test_filler_metrics_use_module_lexicon(tmp_path, monkeypatch):
+    monkeypatch.setattr(dsp, "FILLER_LEXICON", ("um", "uh", "you know"))
+    wav = tmp_path / "session.wav"
+    _write_silence_wav(wav, 30.0)
+    segments = [
+        _seg(
+            0.0,
+            30.0,
+            "candidate",
+            "Um, so we, uh, shipped the beta and, you know, it worked, um.",
+        )
+    ]
+
+    metrics = compute_delivery_metrics(wav, segments)
+
+    # um x2 + uh x1 + "you know" x1 = 4 fillers over 0.5 min of speech.
+    assert metrics.filler_count == 4
+    assert metrics.filler_rate_per_min == pytest.approx(8.0)
