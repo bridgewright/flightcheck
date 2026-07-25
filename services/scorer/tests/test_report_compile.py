@@ -1,7 +1,7 @@
 """Tests for scorer.report.compile -- verdict thresholds, report copy, language lint."""
 import pytest
 
-from scorer.report.compile import ReportCompileError, compile_report
+from scorer.report.compile import ReportCompileError, ReportLanguageError, compile_report
 from scorer.schemas import (
     BarsAnchor,
     DeliveryMetrics,
@@ -175,3 +175,31 @@ def test_strengths_gaps_and_drills_reference_dimensions():
     assert "Pacing control" in report.next_drills[0]
     assert "Pacing control: named specifics" in report.next_drills[0]
     assert "Structured answers" in report.next_drills[1]
+
+
+def test_lint_rejects_inner_state_assertion_in_rationale():
+    scores = _scores([4.0, 4.5, 3.5, 4.0, 4.0])
+    scores[2] = DimensionScore(
+        dimension_key="role-knowledge",
+        score=3.5,
+        evidence_quotes=["verbatim quote for role-knowledge"],
+        rationale="The candidate seemed Nervous when asked about metrics.",
+    )
+    with pytest.raises(ReportLanguageError) as err:
+        compile_report("sess-1", _make_rubric(), scores, _metrics(), _obs())
+    # names the pattern (matched case-insensitively) and the field it was found in
+    assert "nervous" in str(err.value)
+    assert "role-knowledge" in str(err.value)
+
+
+def test_lint_rejects_inner_state_assertion_in_observation_note():
+    with pytest.raises(ReportLanguageError) as err:
+        compile_report(
+            "sess-1",
+            _make_rubric(),
+            _scores([4.0, 4.5, 3.5, 4.0, 4.0]),
+            _metrics(),
+            _obs(note="You were afraid of the follow-up question."),
+        )
+    assert "you were afraid" in str(err.value)
+    assert "delivery_observations[0].note" in str(err.value)

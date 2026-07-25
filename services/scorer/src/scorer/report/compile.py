@@ -70,6 +70,17 @@ def _drill_line(dim: RubricDimension) -> str:
     )
 
 
+def _lint_field(field: str, text: str, patterns: list[str]) -> None:
+    """Report language rule: state observed signals, never inner states."""
+    lowered = text.lower()
+    for pattern in patterns:
+        if pattern.lower() in lowered:
+            raise ReportLanguageError(
+                f"forbidden pattern {pattern!r} in report field {field}: "
+                "state observed signals, never inner states"
+            )
+
+
 def _verdict(overall: float, scores: list[DimensionScore], cfg) -> str:
     ready = overall >= cfg.ready_overall and all(
         s.score >= cfg.ready_min_dimension for s in scores
@@ -111,6 +122,25 @@ def compile_report(
         if s.score < _GAP_THRESHOLD
     ]
     next_drills = [_drill_line(dims_by_key[s.dimension_key]) for s in weakest_first[:2]]
+
+    # Language lint over every free-text field the product writes. Evidence
+    # quotes are exempt: they are the candidate's verbatim speech, not the
+    # product asserting an inner state.
+    for score in ordered:
+        _lint_field(
+            f"dimension_scores[{score.dimension_key}].rationale",
+            score.rationale,
+            cfg.forbidden_patterns,
+        )
+    for i, obs in enumerate(observations):
+        _lint_field(f"delivery_observations[{i}].note", obs.note, cfg.forbidden_patterns)
+    for name, lines in (
+        ("strengths", strengths),
+        ("gaps", gaps),
+        ("next_drills", next_drills),
+    ):
+        for i, line in enumerate(lines):
+            _lint_field(f"{name}[{i}]", line, cfg.forbidden_patterns)
 
     return SessionReport(
         session_id=session_id,
