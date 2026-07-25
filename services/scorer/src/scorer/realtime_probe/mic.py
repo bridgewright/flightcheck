@@ -1,7 +1,14 @@
 from __future__ import annotations
-import argparse, asyncio, json, queue
+
+import argparse
+import asyncio
+import json
+import queue
 from pathlib import Path
+
 import sounddevice as sd
+
+from ..env import load_env, require_key
 from .base import RealtimeProbe
 
 OUT_DIR = Path(__file__).resolve().parents[4].parent / "evals" / "suites" / "bakeoff" / "out"
@@ -13,6 +20,46 @@ def frames_to_chunks(frames: list[bytes], chunk_bytes: int) -> tuple[list[bytes]
     return chunks, buf[len(chunks) * chunk_bytes:]
 
 
+class OutputRing:
+    """Byte-level buffer between provider audio deltas and the audio callback.
+
+    Provider deltas have no relationship to the device's block size: a 0.3 s
+    delta @24 kHz is 14400 bytes against a 9600-byte block. Writing one delta
+    per callback either overflowed the buffer (ValueError, stream dead) or
+    padded silence after every short delta. Bytes in, exact block out.
+    """
+
+    def __init__(self) -> None:
+        self._buf = bytearray()
+
+    def write(self, pcm16: bytes) -> None:
+        self._buf += pcm16
+
+    def read(self, n: int) -> bytes:
+        chunk = bytes(self._buf[:n])
+        del self._buf[:n]
+        return chunk + b"\x00" * (n - len(chunk))   # zero-fill only on true underrun
+
+
+def make_output_callback(out_q: queue.Queue[bytes], ring: OutputRing | None = None):
+    """sounddevice output callback: drain queued deltas into the ring, play a block.
+
+    The ring is only ever touched on the audio thread; `out_q` does the
+    cross-thread handoff.
+    """
+    ring = ring or OutputRing()
+
+    def on_out(outdata, frames, t, status):
+        while True:
+            try:
+                ring.write(out_q.get_nowait())
+            except queue.Empty:
+                break
+        outdata[:] = ring.read(len(outdata))
+
+    return on_out
+
+
 async def run_mic(probe: RealtimeProbe, instructions: str, log_path: Path) -> None:
     await probe.connect(instructions)
     in_q: queue.Queue[bytes] = queue.Queue()
@@ -21,13 +68,7 @@ async def run_mic(probe: RealtimeProbe, instructions: str, log_path: Path) -> No
     def on_in(indata, frames, t, status):
         in_q.put(bytes(indata))
 
-    def on_out(outdata, frames, t, status):
-        try:
-            data = out_q.get_nowait()
-            outdata[:len(data)] = data
-            outdata[len(data):] = b"\x00" * (len(outdata) - len(data))
-        except queue.Empty:
-            outdata[:] = b"\x00" * len(outdata)
+    on_out = make_output_callback(out_q)
 
     async def pump_mic():
         buf: list[bytes] = []
@@ -60,10 +101,13 @@ def main() -> None:
     ap = argparse.ArgumentParser()
     ap.add_argument("--provider", choices=["openai", "gemini"], required=True)
     args = ap.parse_args()
+    load_env()
     if args.provider == "openai":
+        require_key("OPENAI_API_KEY")
         from .openai_probe import OpenAIProbe
         probe: RealtimeProbe = OpenAIProbe(vad=True)
     else:
+        require_key("GEMINI_API_KEY")
         from .gemini_probe import GeminiProbe
         probe = GeminiProbe(vad=True)
     prompt = (OUT_DIR.parent / "interviewer_prompt.md").read_text()

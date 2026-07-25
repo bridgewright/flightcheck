@@ -4,13 +4,19 @@ This layer exists so the bake-off measures *providers*, not our glue code.
 Production transport (browser WebRTC) is separate; see DECISIONS.md #002.
 """
 from __future__ import annotations
+
+from collections.abc import AsyncIterator
 from dataclasses import dataclass, field
-from typing import AsyncIterator, Protocol
+from typing import Protocol
 
 # Canonical event kinds (adapters map provider wire events onto these):
-# session.open | session.close | session.error | turn.commit
+# session.open | session.close | session.error | session.resumed | turn.commit
 # audio.delta | audio.done | input.speech_started | input.speech_stopped
 # text.delta | resumption.update
+#
+# session.close = the connection ended cleanly; session.error = it failed;
+# resumption.update = the server issued a resumption handle; session.resumed =
+# the adapter reconnected with one and the stream continues.
 
 
 @dataclass
@@ -58,3 +64,13 @@ def collect_turn_metrics(events: list[SessionEvent]) -> list[TurnMetrics]:
             ))
             pending = None
     return out
+
+
+def count_attempted_turns(events: list[SessionEvent]) -> int:
+    """Turns we asked for, answered or not.
+
+    `collect_turn_metrics` can only see turns that produced audio, so a provider
+    that silently drops a turn looks identical to one that was never asked.
+    Attempted-vs-answered is the difference.
+    """
+    return sum(1 for e in events if e.kind == "turn.commit")

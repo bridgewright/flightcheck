@@ -1,10 +1,21 @@
 from __future__ import annotations
-import asyncio, os, time
-from typing import AsyncIterator
+
+import asyncio
+import os
+import time
+from collections.abc import AsyncIterator
+from typing import ClassVar
+
 from google import genai
 from google.genai import types
+
 from .base import SessionEvent
 from .openai_probe import load_bakeoff_config
+
+# Websocket close codes that mean "the protocol ended this connection", not
+# "something broke": normal closure and going-away (the go_away path Gemini
+# uses when a live session reaches its cap).
+CLEAN_CLOSE_CODES = frozenset({1000, 1001})
 
 
 class GeminiProbe:
@@ -15,13 +26,20 @@ class GeminiProbe:
     2026-07-25. `LiveConnectConfig` field names (response_modalities,
     system_instruction, session_resumption, realtime_input_config.
     automatic_activity_detection.disabled) and the 16kHz-in/24kHz-out sample
-    rates match the brief with no drift. Two real drifts were found and fixed
-    below (see comments at each site) rather than in `_live_config`/`_classify`,
-    which are unit-tested as pure functions and are unchanged from the brief.
+    rates match the brief with no drift. Three real drifts were found and fixed
+    below (see comments at each site).
+
+    The session also resumes itself: Gemini live audio sessions are capped
+    (~15 min; the websocket is sent away around 10 min), so the probe stores the
+    handles the server issues and reconnects with the newest one, on a single
+    continuous event stream, whenever a session drops (`_resume`).
     """
     name = "gemini"
     input_sample_rate = 16000
     output_sample_rate = 24000
+    # A resumption loop that never converges would spin forever; a 22-minute
+    # run needs ~2 resumptions, so this only ever bites on a broken server.
+    MAX_RESUMPTIONS: ClassVar[int] = 20
 
     def __init__(self, model: str | None = None, vad: bool = True, api_key: str | None = None):
         cfg = load_bakeoff_config()
@@ -31,17 +49,29 @@ class GeminiProbe:
         self._q: asyncio.Queue[SessionEvent | None] = asyncio.Queue()
         self._t0 = 0.0
         self._turn = 0
+        self._instructions = ""
+        self._handle: str | None = None
+        self._resumptions = 0
+        self._closing = False
 
     # -- pure helpers (unit-tested) --
-    def _live_config(self, instructions: str) -> dict:
+    def _live_config(self, instructions: str, handle: str | None = None) -> dict:
         cfg: dict = {
             "response_modalities": ["AUDIO"],
             "system_instruction": instructions,
-            "session_resumption": {},          # ask server to issue resumption handles
+            # empty dict = ask the server to issue resumption handles;
+            # {"handle": h} = resume the session that handle points at.
+            "session_resumption": {"handle": handle} if handle else {},
         }
         if not self.vad:
             cfg["realtime_input_config"] = {"automatic_activity_detection": {"disabled": True}}
         return cfg
+
+    @staticmethod
+    def _close_kind(exc: BaseException) -> str:
+        """Clean protocol close vs error close (the SDK reports both as APIError)."""
+        return ("session.close" if getattr(exc, "code", None) in CLEAN_CLOSE_CODES
+                else "session.error")
 
     @staticmethod
     def _classify(msg: dict) -> str | None:
@@ -60,48 +90,97 @@ class GeminiProbe:
 
     # -- transport --
     async def connect(self, instructions: str) -> None:
+        self._instructions = instructions
         self._client = genai.Client(api_key=self.api_key)
-        self._cm = self._client.aio.live.connect(model=self.model, config=self._live_config(instructions))
-        self._session = await self._cm.__aenter__()
+        await self._open_session()
         self._t0 = time.monotonic()
         await self._q.put(SessionEvent(0.0, "session.open", {"model": self.model}))
         self._reader = asyncio.create_task(self._read_loop())
 
+    async def _open_session(self, handle: str | None = None) -> None:
+        self._cm = self._client.aio.live.connect(
+            model=self.model, config=self._live_config(self._instructions, handle))
+        self._session = await self._cm.__aenter__()
+
+    async def _close_session(self) -> None:
+        """Best-effort teardown — the socket we are closing is usually already dead."""
+        try:
+            await self._cm.__aexit__(None, None, None)
+        except Exception:  # noqa: BLE001 — teardown of a broken socket must never mask the drop
+            pass
+
+    async def _resume(self) -> bool:
+        """Reconnect with the stored handle, keeping one continuous event stream.
+
+        Gemini live audio sessions are capped (~15 min; the websocket goes away
+        near 10 min), so a 22-minute stability run *must* resume or it measures
+        the protocol's cap instead of the provider's stability. `self._t0` is
+        deliberately not reset: latency timestamps stay on one timeline.
+        """
+        if self._resumptions >= self.MAX_RESUMPTIONS:
+            return False
+        handle = self._handle
+        await self._close_session()
+        try:
+            await self._open_session(handle)
+        except Exception as exc:  # noqa: BLE001 — any resume failure ends the run, not the process
+            await self._q.put(SessionEvent(self._now_ms(), "session.error",
+                                           {"error": repr(exc), "phase": "resume"}))
+            return False
+        self._resumptions += 1
+        await self._q.put(SessionEvent(self._now_ms(), "session.resumed", {"handle": handle}))
+        return True
+
     async def _read_loop(self) -> None:
         try:
-            # Drift fix #1: `AsyncSession.receive()` is a single-turn generator —
-            # it yields and then breaks as soon as server_content.turn_complete
-            # arrives (google/genai/live.py `receive()`). A bare `async for`
-            # over one `receive()` call would silently stop after the first
-            # turn, even though `commit_and_respond()` expects multiple turns
-            # per session. Re-enter `receive()` until the connection actually
-            # closes/errors so every turn is observed.
             while True:
-                async for msg in self._session.receive():
-                    d = msg.model_dump(exclude_none=True) if hasattr(msg, "model_dump") else dict(msg)
-                    # Drift fix #2: `LiveServerMessage.data` is a computed
-                    # property (concatenated inline-audio bytes), not a
-                    # pydantic field — it never appears in `model_dump()`
-                    # output. Without this, `_classify`'s `msg.get("data")`
-                    # check would never match a real audio delta, and
-                    # audio.delta (the event this whole probe measures
-                    # latency against) would never fire.
-                    data = getattr(msg, "data", None)
-                    if data is not None:
-                        d["data"] = data
-                    kind = self._classify(d)
-                    if kind:
-                        if kind == "resumption.update":
-                            payload = {"handle": d["session_resumption_update"].get("new_handle")}
-                        elif kind == "audio.delta":
-                            payload = {"pcm": data}
-                        else:
-                            payload = {}
-                        await self._q.put(SessionEvent(self._now_ms(), kind, payload))
-        except Exception as exc:  # connection drop is a *measurement*, not a crash
-            await self._q.put(SessionEvent(self._now_ms(), "session.close", {"error": repr(exc)}))
+                try:
+                    # Drift fix #1: `AsyncSession.receive()` is a single-turn
+                    # generator — it yields and then breaks as soon as
+                    # server_content.turn_complete arrives (google/genai/live.py
+                    # `receive()`). A bare `async for` over one `receive()` call
+                    # would silently stop after the first turn, even though
+                    # `commit_and_respond()` expects multiple turns per session.
+                    # Re-enter `receive()` until the connection actually
+                    # closes/errors so every turn is observed.
+                    while True:
+                        async for msg in self._session.receive():
+                            await self._emit(msg)
+                except Exception as exc:  # noqa: BLE001 — a drop is a *measurement*, not a crash
+                    # The SDK raises APIError carrying the websocket close code
+                    # for every disconnect, so clean and failed closes are only
+                    # distinguishable here, by code.
+                    await self._q.put(SessionEvent(self._now_ms(), self._close_kind(exc),
+                                                   {"error": repr(exc)}))
+                    if self._closing or not self._handle or not await self._resume():
+                        return
         finally:
             await self._q.put(None)
+
+    async def _emit(self, msg) -> None:
+        d = msg.model_dump(exclude_none=True) if hasattr(msg, "model_dump") else dict(msg)
+        # Drift fix #2: `LiveServerMessage.data` is a computed property
+        # (concatenated inline-audio bytes), not a pydantic field — it never
+        # appears in `model_dump()` output. Without this, `_classify`'s
+        # `msg.get("data")` check would never match a real audio delta, and
+        # audio.delta (the event this whole probe measures latency against)
+        # would never fire.
+        data = getattr(msg, "data", None)
+        if data is not None:
+            d["data"] = data
+        kind = self._classify(d)
+        if not kind:
+            return
+        if kind == "resumption.update":
+            handle = d["session_resumption_update"].get("new_handle")
+            if handle:  # empty new_handle means "not resumable right now"
+                self._handle = handle
+            payload = {"handle": handle}
+        elif kind == "audio.delta":
+            payload = {"pcm": data}
+        else:
+            payload = {}
+        await self._q.put(SessionEvent(self._now_ms(), kind, payload))
 
     async def send_audio(self, pcm16: bytes) -> None:
         await self._session.send_realtime_input(
@@ -133,5 +212,6 @@ class GeminiProbe:
             yield e
 
     async def close(self) -> None:
+        self._closing = True          # an intentional close must not trigger a resume
         self._reader.cancel()
-        await self._cm.__aexit__(None, None, None)
+        await self._close_session()

@@ -1,8 +1,17 @@
 from __future__ import annotations
-import asyncio, base64, json, os, time, tomllib
+
+import asyncio
+import base64
+import json
+import os
+import time
+import tomllib
+from collections.abc import AsyncIterator
 from pathlib import Path
-from typing import AsyncIterator
+from typing import ClassVar
+
 import websockets
+
 from .base import SessionEvent
 
 CONFIG = Path(__file__).resolve().parents[3] / "config" / "bakeoff.toml"
@@ -18,8 +27,10 @@ class OpenAIProbe:
     input_sample_rate = 24000
     output_sample_rate = 24000
 
-    # Wire names isolated here — verify against docs before first live run (Task 4 Step 1).
-    WIRE = {
+    # Wire names isolated here (providers drift). Verified against
+    # developers.openai.com Realtime docs — client-events reference,
+    # realtime-conversations, realtime-websocket — on 2026-07-25.
+    WIRE: ClassVar[dict[str, str]] = {
         "audio_delta": "response.output_audio.delta",
         "response_done": "response.done",
         "speech_started": "input_audio_buffer.speech_started",
@@ -32,7 +43,9 @@ class OpenAIProbe:
         cfg = load_bakeoff_config()
         self.model = model or cfg["openai"]["realtime_model"]
         self.vad = vad
-        self.api_key = api_key or os.environ["OPENAI_API_KEY"]
+        # Missing-key handling lives in the CLI entrypoints (`scorer.env.require_key`)
+        # so every runner fails the same way, at startup, with one clear message.
+        self.api_key = api_key or os.environ.get("OPENAI_API_KEY", "")
         self._q: asyncio.Queue[SessionEvent | None] = asyncio.Queue()
         self._t0 = 0.0
         self._turn = 0
@@ -59,14 +72,32 @@ class OpenAIProbe:
         return SessionEvent(self._now_ms(), kind, payload)
 
     def _session_update(self, instructions: str) -> str:
-        session: dict = {"instructions": instructions, "modalities": ["audio", "text"]}
-        if not self.vad:
-            session["turn_detection"] = None
+        """GA `session.update` payload (verified 2026-07-25).
+
+        The pre-GA flat shape (`modalities`, top-level `turn_detection`) is
+        ignored by the current endpoint: `turn_detection` would stay at its
+        server default, server VAD would keep auto-creating responses, and the
+        latency this probe measures would be timed against the wrong response.
+        GA shape: `session.type="realtime"`, `output_modalities`, and
+        `turn_detection` under `session.audio.input`. `output_modalities` takes
+        exactly one value — docs: "It is not possible to request both text and
+        audio at the same time"; `["audio"]` yields audio plus a transcript.
+        """
+        session: dict = {
+            "type": "realtime",
+            "instructions": instructions,
+            "output_modalities": ["audio"],
+            "audio": {"input": {
+                "turn_detection": {"type": "server_vad"} if self.vad else None,
+            }},
+        }
         return json.dumps({"type": "session.update", "session": session})
 
     @staticmethod
     def _turn_detection_off(msg: dict) -> bool:
-        return msg["session"].get("turn_detection") is None
+        """True only when VAD is *explicitly* disabled at the GA location."""
+        inp = msg.get("session", {}).get("audio", {}).get("input", {})
+        return "turn_detection" in inp and inp["turn_detection"] is None
 
     # -- transport --
     async def connect(self, instructions: str) -> None:

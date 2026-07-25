@@ -6,6 +6,9 @@ During each session, elicit all four pressure probes (talk long once; give one v
 answer; pause after an answer; say one Korean sentence). Immediately after, copy
 `manual/sheet-template.yaml` to `manual/{provider}-{n}.yaml` and rate 1–5 per criterion.
 Order: alternate providers (O, G, O, G) to neutralize warm-up effects.
+Gemini live sessions are capped by the protocol (the websocket goes away around
+10 min); the probe reconnects with the server's resumption handle, so a session
+may run past that — `session.resumed` lines in the run's jsonl log mark it.
 
 ## B. Turn clips (Tasks 6 scenario input)
 Record 4 clips of yourself answering interview questions in English, 20–40 s each,
