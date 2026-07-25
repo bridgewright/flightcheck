@@ -17,7 +17,7 @@ from pathlib import Path
 import soundfile as sf
 
 from scorer.delivery.dsp import compute_delivery_metrics
-from scorer.delivery.judge import judge_delivery
+from scorer.delivery.judge import DeliveryJudgeError, judge_delivery
 from scorer.schemas import (
     BarsAnchor,
     DeliveryMetrics,
@@ -87,12 +87,20 @@ def find_triplets(clips_dir: Path) -> list[tuple[str, dict[str, Path]]]:
 
 
 def _whole_clip_segment(path: Path) -> list[TranscriptSegment]:
-    # Eval clips have no transcript. One fabricated candidate segment spanning
-    # the whole clip gives the DSP a candidate window for silence detection; the
-    # WPM and filler numbers derived from its empty text are meaningless and
+    # Eval clips have no transcript. dsp.compute_delivery_metrics only opens a
+    # silence-detection window BETWEEN two interviewer segments (see
+    # delivery.dsp._candidate_windows) -- with zero interviewer segments there
+    # are zero windows, so silence_events would always come back empty
+    # regardless of the audio. A zero-length interviewer segment at t=0.0
+    # opens exactly one window spanning the whole clip, so the candidate
+    # segment that follows can register real silence. The candidate segment's
+    # own WPM/filler numbers (from its empty text) are still meaningless and
     # unused by this suite.
     duration = float(sf.info(str(path)).duration)
-    return [TranscriptSegment(start_s=0.0, end_s=duration, speaker="candidate", text="")]
+    return [
+        TranscriptSegment(start_s=0.0, end_s=0.0, speaker="interviewer", text="(question)"),
+        TranscriptSegment(start_s=0.0, end_s=duration, speaker="candidate", text=""),
+    ]
 
 
 def run_delivery_discrimination(clips_dir: Path, client: GenAIClientLike) -> dict:
@@ -121,24 +129,27 @@ def run_delivery_discrimination(clips_dir: Path, client: GenAIClientLike) -> dic
         judge_scores: dict[str, float] = {}
         judge_failure: dict | None = None
         for variant in _VARIANTS:
-            scores, _observations = judge_delivery(
-                clips[variant], metrics[variant], [EVAL_DELIVERY_DIMENSION], client
-            )
-            matched = next(
-                (s for s in scores if s.dimension_key == EVAL_DELIVERY_DIMENSION.key), None
-            )
-            if matched is None:
+            try:
+                scores, _observations = judge_delivery(
+                    clips[variant], metrics[variant], [EVAL_DELIVERY_DIMENSION], client
+                )
+            except DeliveryJudgeError as exc:
+                # One unusable judge reply is a data point, not the end of the
+                # run (mirrors evals_l1.golden's ContentJudgeError discipline):
+                # record it and move on to the next triplet. judge_delivery
+                # itself raises DeliveryJudgeError whenever a requested
+                # delivery dimension is missing from the response, so there is
+                # no separate "matched is None" case to defend against here.
                 judge_failure = {
                     "question": question,
                     "check": "judge",
                     "scores": dict(judge_scores),
-                    "reason": (
-                        f"dimension {EVAL_DELIVERY_DIMENSION.key!r} missing from "
-                        f"judge output for the {variant} clip"
-                    ),
+                    "reason": f"{type(exc).__name__}: {str(exc)[:120]}",
                 }
                 break
-            judge_scores[variant] = matched.score
+            judge_scores[variant] = next(
+                s.score for s in scores if s.dimension_key == EVAL_DELIVERY_DIMENSION.key
+            )
         if judge_failure is not None:
             failures.append(judge_failure)
         elif (

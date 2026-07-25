@@ -95,20 +95,45 @@ def main(argv: list[str] | None = None) -> int:
 
     l1_result: dict | None = None
     l3_result: dict | None = None
-    if has_triplets or has_clips:
-        from google import genai  # deferred import: the skip path needs no key
+    l1_failure: dict | None = None
+    client = None
 
-        client = genai.Client(api_key=require_key("GEMINI_API_KEY"))
+    def _client():
+        # Deferred import + lazy construction: a broken rubric with no clips
+        # present must never require a GEMINI_API_KEY it will never use.
+        nonlocal client
+        if client is None:
+            from google import genai
+
+            client = genai.Client(api_key=require_key("GEMINI_API_KEY"))
+        return client
+
     if has_triplets:
         rubric_path = args.rubric or l1_suite / "rubric.json"
-        rubric = Rubric.model_validate_json(rubric_path.read_text())
-        l1_result = judge_discrimination(triplets_dir, rubric, client)
-        (out_dir / "rubric_discrimination.json").write_text(json.dumps(l1_result, indent=2))
+        try:
+            rubric = Rubric.model_validate_json(rubric_path.read_text())
+        except (OSError, ValueError) as exc:
+            # A present-but-broken rubric (missing file, bad JSON, or a failed
+            # schema/integrity check -- pydantic's ValidationError is a
+            # ValueError subclass) is a visible FAILURE, never a crash that
+            # skips writing regression.json or running the layer-3 suite.
+            l1_failure = {
+                "status": "FAIL",
+                "reason": f"rubric missing/unparseable: {type(exc).__name__}: {exc}",
+                "baseline": baselines["rubric_discrimination_min"],
+            }
+        else:
+            l1_result = judge_discrimination(triplets_dir, rubric, _client())
+            (out_dir / "rubric_discrimination.json").write_text(json.dumps(l1_result, indent=2))
     if has_clips:
-        l3_result = run_delivery_discrimination(clips_dir, client)
+        l3_result = run_delivery_discrimination(clips_dir, _client())
         (out_dir / "delivery_discrimination.json").write_text(json.dumps(l3_result, indent=2))
 
     doc, exit_code = evaluate(l1_result, l3_result, baselines)
+    if l1_failure is not None:
+        doc["suites"]["rubric_discrimination"] = l1_failure
+        doc["exit_code"] = 1
+        exit_code = 1
     (out_dir / "regression.json").write_text(json.dumps(doc, indent=2))
     print(json.dumps(doc, indent=2))
     return exit_code

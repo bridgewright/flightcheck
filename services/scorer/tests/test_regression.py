@@ -69,3 +69,25 @@ def test_main_reports_skips_and_exits_zero_without_inputs(tmp_path, capsys):
     assert written["suites"]["delivery_discrimination"]["status"] == "SKIPPED"
     printed = capsys.readouterr().out
     assert "SKIPPED" in printed
+
+
+def test_main_missing_rubric_with_triplets_present_is_a_visible_failure(tmp_path):
+    # A present-but-broken rubric must never crash main() before a verdict is
+    # written -- it is a structured FAIL, not a silent skip and not a raw
+    # traceback. No clips are present, so this must also never require a
+    # GEMINI_API_KEY (hermetic, no network).
+    (tmp_path / "baselines.json").write_text(json.dumps(BASELINES))
+    triplets_dir = tmp_path / "suites" / "rubric_discrimination" / "triplets"
+    triplets_dir.mkdir(parents=True)
+    (triplets_dir / "some-dimension-1.json").write_text("{}")
+    # suites/rubric_discrimination/rubric.json is intentionally absent.
+
+    exit_code = main(["--evals-root", str(tmp_path)])
+
+    assert exit_code == 1
+    written = json.loads((tmp_path / "out" / "regression.json").read_text())
+    assert written["exit_code"] == 1
+    rubric_suite = written["suites"]["rubric_discrimination"]
+    assert rubric_suite["status"] == "FAIL"
+    assert "rubric" in rubric_suite["reason"]
+    assert written["suites"]["delivery_discrimination"]["status"] == "SKIPPED"
