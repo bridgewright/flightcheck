@@ -133,31 +133,31 @@ def compile_report(
     next_drills = [_drill_line(dims_by_key[s.dimension_key]) for s in weakest_first[:2]]
 
     # Language lint over every free-text field the product writes. Evidence
-    # quotes are exempt: they are the candidate's verbatim speech, not the
-    # product asserting an inner state. Any embedded quote is stripped out
-    # of a field's text before that field is scanned, so a forbidden word
-    # inside a candidate's own quote never trips the lint, no matter which
-    # field (strengths, gaps, drills, rationale, observation note) it
-    # appears in.
-    exempt_quotes = [q for s in dimension_scores for q in s.evidence_quotes]
+    # quotes are exempt from the field they are actually embedded in -- and
+    # only that field -- because they are the candidate's own verbatim
+    # speech there, not the product asserting an inner state. The exemption
+    # must stay scoped per-field: a short quote in one dimension (e.g.
+    # "nervous") must never exempt an unrelated dimension's product-
+    # authored prose that happens to contain the same word. Gaps, drills,
+    # and observation notes never embed a candidate quote by construction,
+    # so they get no exemption at all.
     for score in ordered:
         _lint_field(
             f"dimension_scores[{score.dimension_key}].rationale",
             score.rationale,
             cfg.forbidden_patterns,
-            exempt_quotes,
+            score.evidence_quotes,
         )
     for i, obs in enumerate(observations):
+        _lint_field(f"delivery_observations[{i}].note", obs.note, cfg.forbidden_patterns, [])
+    for i, score in enumerate(ranked[:2]):
         _lint_field(
-            f"delivery_observations[{i}].note", obs.note, cfg.forbidden_patterns, exempt_quotes
+            f"strengths[{i}]", strengths[i], cfg.forbidden_patterns, score.evidence_quotes
         )
-    for name, lines in (
-        ("strengths", strengths),
-        ("gaps", gaps),
-        ("next_drills", next_drills),
-    ):
-        for i, line in enumerate(lines):
-            _lint_field(f"{name}[{i}]", line, cfg.forbidden_patterns, exempt_quotes)
+    for i, line in enumerate(gaps):
+        _lint_field(f"gaps[{i}]", line, cfg.forbidden_patterns, [])
+    for i, line in enumerate(next_drills):
+        _lint_field(f"next_drills[{i}]", line, cfg.forbidden_patterns, [])
 
     return SessionReport(
         session_id=session_id,

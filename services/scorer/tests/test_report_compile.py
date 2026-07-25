@@ -255,3 +255,28 @@ def test_lint_rejects_forbidden_word_outside_quote_even_when_a_clean_quote_is_pr
         compile_report("sess-1", _make_rubric(), scores, _metrics(), _obs())
     assert "nervous" in str(err.value)
     assert "role-knowledge" in str(err.value)
+
+
+def test_lint_rejects_cross_dimension_word_collision_with_another_dimensions_quote():
+    # quantified-impact's own evidence quote happens to be the bare word
+    # "nervous" -- that must exempt ONLY quantified-impact's fields (e.g.
+    # its strengths line, since it's embedded verbatim there), never
+    # role-knowledge's unrelated, product-authored rationale that asserts
+    # the same word as a genuine inner-state claim.
+    scores = _scores([4.0, 4.5, 3.5, 4.0, 4.0])
+    scores[1] = DimensionScore(
+        dimension_key="quantified-impact",
+        score=4.5,
+        evidence_quotes=["nervous"],
+        rationale="Matches the anchor language for quantified-impact at this level.",
+    )
+    scores[2] = DimensionScore(
+        dimension_key="role-knowledge",
+        score=3.5,
+        evidence_quotes=["verbatim quote for role-knowledge"],
+        rationale="The candidate seemed nervous when asked about metrics.",
+    )
+    with pytest.raises(ReportLanguageError) as err:
+        compile_report("sess-1", _make_rubric(), scores, _metrics(), _obs())
+    assert "nervous" in str(err.value)
+    assert "role-knowledge" in str(err.value)
