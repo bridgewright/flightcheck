@@ -57,10 +57,11 @@ def compile_report(out_dir: Path, manual_dir: Path) -> str:
     else:
         # trial count is per model and comes from the data: the protocol is
         # 2 questions x 6 permutations, minus whatever failed to parse.
-        lines += ["| model | trials | ranking accuracy | parse failures |",
-                  "| --- | --- | --- | --- |"]
+        lines += ["| model | trials | ranking accuracy | api failures | parse failures |",
+                  "| --- | --- | --- | --- | --- |"]
         lines += [f"| {m} | {len(v.get('trials', []))} | {v['accuracy']:.2f} | "
-                  f"{v.get('parse_failures', '')} |" for m, v in disc.items()]
+                  f"{v.get('api_failures', '')} | {v.get('parse_failures', '')} |"
+                  for m, v in disc.items()]
     lines += ["", "## Decision", "",
               "_Filled by hand on 2026-08-02 and mirrored to DECISIONS.md #002:_",
               "- Live interviewer provider: ",

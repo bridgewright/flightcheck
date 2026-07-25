@@ -33,7 +33,8 @@ def test_report_renders_all_sections(tmp_path):
          "disconnects": 1, "errors": 3, "resumptions": 2, "send_failures": 1,
          "total_minutes": 22.0}))
     (out / "discrimination.json").write_text(json.dumps(
-        {"openai/gpt-audio": {"accuracy": 0.83, "parse_failures": 1, "trials": _trials(11)}}))
+        {"openai/gpt-audio": {"accuracy": 0.83, "api_failures": 0, "parse_failures": 1,
+                              "trials": _trials(11)}}))
     (manual / "openai-1.yaml").write_text(yaml.safe_dump(MANUAL_SHEET))
     md = compile_report(out, manual)
     assert "| openai |" in md and "620" in md and "0.83" in md
@@ -62,11 +63,12 @@ def test_discrimination_trial_count_comes_from_the_data(tmp_path):
     manual = tmp_path / "manual"
     manual.mkdir()
     (out / "discrimination.json").write_text(json.dumps(
-        {"openai/gpt-audio": {"accuracy": 0.83, "parse_failures": 1, "trials": _trials(11)}}))
+        {"openai/gpt-audio": {"accuracy": 0.83, "api_failures": 2, "parse_failures": 1,
+                              "trials": _trials(11)}}))
     md = compile_report(out, manual)
-    # protocol is 2 questions x 6 permutations = 12 per model, and a run with a
-    # parse failure has fewer — a hardcoded "36 trials" was simply wrong
-    assert "| openai/gpt-audio | 11 | 0.83 | 1 |" in md
+    # protocol is 2 questions x 6 permutations = 12 per model, and a run with
+    # failures has fewer — a hardcoded "36 trials" was simply wrong
+    assert "| openai/gpt-audio | 11 | 0.83 | 2 | 1 |" in md
     assert "36 trials" not in md
 
 
