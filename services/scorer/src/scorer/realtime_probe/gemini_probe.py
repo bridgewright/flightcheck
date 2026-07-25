@@ -107,7 +107,19 @@ class GeminiProbe:
     async def commit_and_respond(self) -> None:
         self._turn += 1
         await self._q.put(SessionEvent(self._now_ms(), "turn.commit", {"turn": self._turn}))
-        await self._session.send_realtime_input(audio_stream_end=True)
+        # Drift fix #3: audio_stream_end and ActivityEnd are not interchangeable.
+        # The SDK's own docstring says audio_stream_end "should only be sent
+        # when automatic activity detection is enabled (which is the
+        # default)", while ActivityEnd "can only be sent if automatic ...
+        # activity detection is disabled" (google/genai/types.py). `_live_config`
+        # sets `automatic_activity_detection.disabled=True` when `self.vad` is
+        # False, so that branch must send the matching manual-mode signal —
+        # otherwise the server never receives a turn-end signal it accepts in
+        # manual mode, and no response is ever generated for that turn.
+        if self.vad:
+            await self._session.send_realtime_input(audio_stream_end=True)
+        else:
+            await self._session.send_realtime_input(activity_end=types.ActivityEnd())
 
     async def events(self) -> AsyncIterator[SessionEvent]:
         while True:
