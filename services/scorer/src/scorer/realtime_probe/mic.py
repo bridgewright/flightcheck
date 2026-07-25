@@ -13,7 +13,9 @@ from .base import RealtimeProbe
 
 OUT_DIR = Path(__file__).resolve().parents[4].parent / "evals" / "suites" / "bakeoff" / "out"
 
-MAX_BACKLOG_S = 2.0     # how much undelivered interviewer audio may sit in the ring
+MAX_BACKLOG_S = 30.0    # runaway guard: cap above the longest expected interviewer utterance.
+# NOT an in-turn editor — realtime APIs stream faster than playback, so in-turn
+# backlog of several seconds is normal; barge-in flush handles interruptions.
 
 
 class _Flush:

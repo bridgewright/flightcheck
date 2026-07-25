@@ -84,8 +84,8 @@ def test_output_ring_drops_oldest_audio_beyond_the_backlog_cap():
     assert ring.read(2) == b"\x00" * 2                  # nothing else was kept
 
 
-def test_backlog_cap_is_two_seconds_of_output_audio():
-    assert backlog_cap_bytes(24000) == 24000 * 2 * 2    # 2 s of 24 kHz pcm16
+def test_backlog_cap_is_thirty_seconds_of_output_audio():
+    assert backlog_cap_bytes(24000) == 24000 * 2 * 30   # 30 s of 24 kHz pcm16
 
 
 def test_queued_flush_drops_audio_buffered_before_it_and_keeps_what_follows():
