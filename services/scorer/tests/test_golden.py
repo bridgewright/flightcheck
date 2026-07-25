@@ -4,12 +4,14 @@ import httpx
 import pytest
 import yaml
 
+from fakes import FakeGenAI
 from scorer.config import load_product_config
 from scorer.evals_l1.golden import (
     TripletDoc,
     TripletGenerationError,
     generate_goldens,
     generate_triplet,
+    judge_discrimination,
 )
 from scorer.schemas import (
     BarsAnchor,
@@ -196,3 +198,69 @@ def test_blind_sheet_shuffle_is_deterministic(tmp_path, monkeypatch):
     assert (tmp_path / "run-a" / "manual" / "keys" / name).read_text() == (
         tmp_path / "run-b" / "manual" / "keys" / name
     ).read_text()
+
+
+def _judge_reply(target_score: float) -> str:
+    scores = [
+        {
+            "dimension_key": "structured-answers",
+            "score": target_score,
+            "evidence_quotes": [],
+            "rationale": "Matches the anchor language for this level.",
+        },
+        {
+            "dimension_key": "quantified-impact",
+            "score": 3.0,
+            "evidence_quotes": [],
+            "rationale": "One example, thin detail.",
+        },
+        {
+            "dimension_key": "role-knowledge",
+            "score": 3.0,
+            "evidence_quotes": [],
+            "rationale": "One example, thin detail.",
+        },
+    ]
+    return json.dumps({"scores": scores})
+
+
+def _write_triplet(triplets_dir) -> TripletDoc:
+    doc = TripletDoc(
+        dimension_key="structured-answers",
+        question="Walk me through a project you led end to end.",
+        strong="Strong answer with a crisp arc and a quantified outcome.",
+        borderline="Borderline answer with one example and thin detail.",
+        weak="Weak answer with vague claims and no example.",
+    )
+    triplets_dir.mkdir(parents=True, exist_ok=True)
+    (triplets_dir / "structured-answers-1.json").write_text(doc.model_dump_json(indent=2))
+    return doc
+
+
+def test_judge_discrimination_counts_strict_ordering(tmp_path):
+    doc = _write_triplet(tmp_path / "triplets")
+    fake = FakeGenAI([_judge_reply(4.5), _judge_reply(3.0), _judge_reply(1.5)])
+
+    result = judge_discrimination(tmp_path / "triplets", _make_rubric(), fake)
+
+    assert result == {"trials": 1, "correct": 1, "accuracy": 1.0, "failures": []}
+    # Answers are judged in the documented strong -> borderline -> weak order.
+    assert len(fake.calls) == 3
+    assert doc.strong in fake.calls[0]["contents"]
+    assert doc.borderline in fake.calls[1]["contents"]
+    assert doc.weak in fake.calls[2]["contents"]
+
+
+def test_judge_discrimination_records_ordering_failures(tmp_path):
+    _write_triplet(tmp_path / "triplets")
+    fake = FakeGenAI([_judge_reply(4.0), _judge_reply(4.0), _judge_reply(1.5)])
+
+    result = judge_discrimination(tmp_path / "triplets", _make_rubric(), fake)
+
+    assert result["trials"] == 1
+    assert result["correct"] == 0
+    assert result["accuracy"] == 0.0
+    (failure,) = result["failures"]
+    assert failure["triplet"] == "structured-answers-1"
+    assert failure["scores"] == {"strong": 4.0, "borderline": 4.0, "weak": 1.5}
+    assert "strictly" in failure["reason"]

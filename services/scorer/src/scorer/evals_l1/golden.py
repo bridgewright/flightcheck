@@ -11,6 +11,7 @@ checks the strict ordering strong > borderline > weak per triplet.
 """
 from __future__ import annotations
 
+import argparse
 import json
 import os
 import random
@@ -21,11 +22,17 @@ import yaml
 from pydantic import BaseModel, ConfigDict
 
 from scorer.config import load_product_config
-from scorer.schemas import Rubric, RubricDimension
+from scorer.content.judge import ContentJudgeError, score_content
+from scorer.env import load_env, require_key
+from scorer.schemas import GenAIClientLike, Rubric, RubricDimension, TranscriptSegment
 
 # Generator vendor (OpenAI) != judge vendor (Gemini): an LLM judge tends to prefer
 # its own vendor's text (self-preference), which would inflate measured accuracy.
 
+# src/scorer/evals_l1/golden.py -> repo root (same arithmetic as scorer.bakeoff).
+REPO_ROOT = Path(__file__).resolve().parents[4].parent
+SUITE_DIR = REPO_ROOT / "evals" / "suites" / "rubric_discrimination"
+OUT_PATH = REPO_ROOT / "evals" / "out" / "rubric_discrimination.json"
 _OPENAI_CHAT_URL = "https://api.openai.com/v1/chat/completions"
 _VARIANTS = ("strong", "borderline", "weak")
 _LETTERS = ("A", "B", "C")
@@ -163,3 +170,96 @@ def generate_goldens(
         if owns_client:
             client.close()
     return written
+
+
+def _answer_segments(question: str, answer: str) -> list[TranscriptSegment]:
+    # Exactly one fabricated candidate segment carries the written answer; the
+    # interviewer segment provides question context. Timestamps are nominal --
+    # the content judge reads text, not timing.
+    return [
+        TranscriptSegment(start_s=0.0, end_s=5.0, speaker="interviewer", text=question),
+        TranscriptSegment(start_s=5.5, end_s=90.0, speaker="candidate", text=answer),
+    ]
+
+
+def judge_discrimination(
+    triplets_dir: Path, rubric: Rubric, client: GenAIClientLike
+) -> dict:
+    triplet_paths = sorted(Path(triplets_dir).glob("*.json"))
+    trials = 0
+    correct = 0
+    failures: list[dict] = []
+    for path in triplet_paths:
+        doc = TripletDoc.model_validate_json(path.read_text())
+        trials += 1
+        scores: dict[str, float] = {}
+        error: str | None = None
+        for variant in _VARIANTS:  # documented order: strong, borderline, weak
+            segments = _answer_segments(doc.question, getattr(doc, variant))
+            try:
+                dimension_scores = score_content(rubric, segments, client)
+            except ContentJudgeError as exc:
+                # One unusable judge reply is a data point, not the end of the
+                # run (bake-off house rule); the cause is recorded, not hidden.
+                error = f"{type(exc).__name__}: {str(exc)[:120]}"
+                break
+            matched = next(
+                (s for s in dimension_scores if s.dimension_key == doc.dimension_key), None
+            )
+            if matched is None:
+                error = f"dimension {doc.dimension_key!r} missing from judge output"
+                break
+            scores[variant] = matched.score
+        if error is not None:
+            failures.append({"triplet": path.stem, "scores": scores, "reason": error})
+            continue
+        if scores["strong"] > scores["borderline"] > scores["weak"]:
+            correct += 1
+        else:
+            failures.append({
+                "triplet": path.stem,
+                "scores": scores,
+                "reason": "scores not strictly ordered strong > borderline > weak",
+            })
+    accuracy = correct / trials if trials else 0.0
+    return {"trials": trials, "correct": correct, "accuracy": accuracy, "failures": failures}
+
+
+def main() -> None:
+    parser = argparse.ArgumentParser(
+        prog="scorer-evals-l1",
+        description="Generate golden triplets / judge rubric discrimination (evals layer 1).",
+    )
+    sub = parser.add_subparsers(dest="command", required=True)
+    gen = sub.add_parser("generate", help="generate triplets and blind-rank sheets")
+    gen.add_argument("--rubric", type=Path, required=True, help="path to a Rubric JSON file")
+    gen.add_argument("--out-dir", type=Path, default=SUITE_DIR)
+    gen.add_argument("--top-n-dims", type=int, default=3)
+    gen.add_argument("--sets-per-dim", type=int, default=1)
+    judge = sub.add_parser("judge", help="score triplets with the content judge")
+    judge.add_argument("--rubric", type=Path, required=True, help="path to a Rubric JSON file")
+    judge.add_argument("--triplets-dir", type=Path, default=SUITE_DIR / "triplets")
+    judge.add_argument("--out", type=Path, default=OUT_PATH)
+    args = parser.parse_args()
+
+    load_env()
+    if args.command == "generate":
+        require_key("OPENAI_API_KEY")
+        written = generate_goldens(
+            args.rubric, args.out_dir, args.top_n_dims, args.sets_per_dim
+        )
+        print(f"wrote {len(written)} triplet(s) under {args.out_dir}")
+        return
+    from google import genai  # deferred import: only the judge path needs a client
+
+    client = genai.Client(api_key=require_key("GEMINI_API_KEY"))
+    rubric = Rubric.model_validate_json(args.rubric.read_text())
+    result = judge_discrimination(args.triplets_dir, rubric, client)
+    args.out.parent.mkdir(parents=True, exist_ok=True)
+    args.out.write_text(json.dumps(result, indent=2))
+    summary = {k: result[k] for k in ("trials", "correct", "accuracy")}
+    print(json.dumps(summary, indent=2))
+
+
+if __name__ == "__main__":
+    main()
