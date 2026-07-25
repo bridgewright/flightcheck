@@ -47,6 +47,10 @@ def _fmt_ts(seconds: float) -> str:
     return f"[{total // 60:02d}:{total % 60:02d}]"
 
 
+def _normalize_ws(text: str) -> str:
+    return " ".join(text.split())
+
+
 def _transcript_block(segments: list[TranscriptSegment]) -> str:
     return "\n".join(
         f"{_fmt_ts(seg.start_s)} {seg.speaker.upper()}: {seg.text}" for seg in segments
@@ -95,4 +99,26 @@ def score_content(
         },
     )
     doc = ContentScoreDoc.model_validate_json(response.text)
-    return list(doc.scores)
+
+    candidate_text = _normalize_ws(
+        " ".join(seg.text for seg in segments if seg.speaker == "candidate")
+    )
+    kept: list[DimensionScore] = []
+    for score in doc.scores:
+        verified = [
+            quote
+            for quote in score.evidence_quotes
+            if _normalize_ws(quote) and _normalize_ws(quote) in candidate_text
+        ]
+        if verified:
+            kept.append(score.model_copy(update={"evidence_quotes": verified}))
+        else:
+            kept.append(
+                score.model_copy(
+                    update={
+                        "evidence_quotes": [],
+                        "rationale": "[no verifiable quote] " + score.rationale,
+                    }
+                )
+            )
+    return kept

@@ -156,3 +156,56 @@ def test_happy_path_scores_content_dimensions_with_bars_prompt():
             assert signal in prompt
         for anchor in dim.anchors:
             assert anchor.behavior in prompt
+
+
+def test_fabricated_quotes_dropped_and_flagged():
+    rubric = _make_rubric()
+    segments = _make_segments()
+    fabricated = "I scaled the platform to ten million users"
+    fake = FakeGenAI(
+        [
+            json.dumps(
+                {
+                    "scores": [
+                        _content_score(
+                            "structured-answers",
+                            4.0,
+                            [
+                                "I owned the metrics definition and ran weekly reviews "
+                                "with the sales team.",
+                                fabricated,
+                            ],
+                            "Clear ownership story.",
+                        ),
+                        _content_score(
+                            "quantified-impact",
+                            4.5,
+                            [fabricated],
+                            "Strong quantified outcome.",
+                        ),
+                        _content_score(
+                            "role-knowledge",
+                            3.0,
+                            ["I led   the churn\ndashboard rollout"],
+                            "One concrete example.",
+                        ),
+                    ]
+                }
+            )
+        ]
+    )
+
+    by_key = {s.dimension_key: s for s in score_content(rubric, segments, fake)}
+
+    assert by_key["structured-answers"].evidence_quotes == [
+        "I owned the metrics definition and ran weekly reviews with the sales team."
+    ]
+    assert by_key["quantified-impact"].evidence_quotes == []
+    assert by_key["quantified-impact"].rationale == (
+        "[no verifiable quote] Strong quantified outcome."
+    )
+    assert by_key["quantified-impact"].score == 4.5
+    # Whitespace differences alone must not disqualify a real quote (comparison is
+    # whitespace-normalized), and the quote is kept exactly as the judge returned it.
+    assert by_key["role-knowledge"].evidence_quotes == ["I led   the churn\ndashboard rollout"]
+    assert not by_key["role-knowledge"].rationale.startswith("[no verifiable quote] ")
