@@ -1,5 +1,8 @@
-import numpy as np, soundfile as sf
-from scorer.realtime_probe.audio_io import load_pcm16, chunked
+import numpy as np
+import soundfile as sf
+
+from scorer.realtime_probe.audio_io import chunked, load_pcm16
+
 
 def test_load_pcm16_resamples_and_mono(tmp_path):
     sr = 48000

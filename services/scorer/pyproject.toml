@@ -18,6 +18,16 @@ dependencies = [
 [dependency-groups]
 dev = ["pytest>=8", "pytest-asyncio>=1", "ruff>=0.8"]
 
+[tool.ruff]
+line-length = 100
+
+[tool.ruff.lint]
+# Explicit and small: correctness (E/F), one import order (I), no legacy syntax
+# (UP), ruff's own footguns (RUF), and blanket excepts (BLE) — which this repo
+# does need in probe read loops, so each one must be justified with a noqa
+# rather than silently allowed.
+select = ["E", "F", "I", "UP", "RUF", "BLE"]
+
 [tool.pytest.ini_options]
 asyncio_mode = "auto"
 testpaths = ["tests"]
