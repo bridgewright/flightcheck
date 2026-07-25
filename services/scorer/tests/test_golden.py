@@ -2,11 +2,13 @@ import json
 
 import httpx
 import pytest
+import yaml
 
 from scorer.config import load_product_config
 from scorer.evals_l1.golden import (
     TripletDoc,
     TripletGenerationError,
+    generate_goldens,
     generate_triplet,
 )
 from scorer.schemas import (
@@ -133,3 +135,64 @@ def test_generate_triplet_requires_question_in_bank(monkeypatch):
     client, _seen = _canned_openai_client({"strong": "s", "borderline": "b", "weak": "w"})
     with pytest.raises(TripletGenerationError, match="pacing-control"):
         generate_triplet(rubric, delivery_dim, client)
+
+
+def test_generate_goldens_writes_triplets_sheets_and_keys(tmp_path, monkeypatch):
+    monkeypatch.setenv("OPENAI_API_KEY", "test-key")
+    rubric_path = tmp_path / "rubric.json"
+    rubric_path.write_text(_make_rubric().model_dump_json())
+    out_dir = tmp_path / "suite"
+    client, seen = _canned_openai_client(
+        {
+            "strong": "Strong answer with a quantified outcome.",
+            "borderline": "Borderline answer with one thin example.",
+            "weak": "Weak answer with vague claims.",
+        }
+    )
+
+    written = generate_goldens(
+        rubric_path, out_dir, top_n_dims=2, sets_per_dim=1, client_openai=client
+    )
+
+    # Top-2 content dimensions by weight; delivery dimensions are never selected.
+    assert [p.name for p in written] == [
+        "structured-answers-1.json",
+        "quantified-impact-1.json",
+    ]
+    assert len(seen) == 2
+
+    doc = TripletDoc.model_validate_json(
+        (out_dir / "triplets" / "structured-answers-1.json").read_text()
+    )
+    sheet = yaml.safe_load((out_dir / "manual" / "structured-answers-1.yaml").read_text())
+    key = yaml.safe_load((out_dir / "manual" / "keys" / "structured-answers-1.yaml").read_text())
+
+    assert sheet["dimension"] == "structured-answers"
+    assert sheet["question"] == doc.question
+    assert sheet["ranking"] == []
+    assert sheet["notes"] == ""
+    assert sorted(sheet["answers"]) == ["A", "B", "C"]
+    assert sorted(key["key"].values()) == ["borderline", "strong", "weak"]
+    # The key decodes the blind sheet exactly: label -> variant -> original answer text.
+    decoded = {label: getattr(doc, variant) for label, variant in key["key"].items()}
+    assert decoded == sheet["answers"]
+
+
+def test_blind_sheet_shuffle_is_deterministic(tmp_path, monkeypatch):
+    monkeypatch.setenv("OPENAI_API_KEY", "test-key")
+    rubric_path = tmp_path / "rubric.json"
+    rubric_path.write_text(_make_rubric().model_dump_json())
+    payload = {"strong": "Strong.", "borderline": "Borderline.", "weak": "Weak."}
+    client_a, _ = _canned_openai_client(payload)
+    client_b, _ = _canned_openai_client(payload)
+
+    generate_goldens(rubric_path, tmp_path / "run-a", top_n_dims=1, client_openai=client_a)
+    generate_goldens(rubric_path, tmp_path / "run-b", top_n_dims=1, client_openai=client_b)
+
+    name = "structured-answers-1.yaml"
+    assert (tmp_path / "run-a" / "manual" / name).read_text() == (
+        tmp_path / "run-b" / "manual" / name
+    ).read_text()
+    assert (tmp_path / "run-a" / "manual" / "keys" / name).read_text() == (
+        tmp_path / "run-b" / "manual" / "keys" / name
+    ).read_text()

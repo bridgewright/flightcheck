@@ -13,8 +13,11 @@ from __future__ import annotations
 
 import json
 import os
+import random
+from pathlib import Path
 
 import httpx
+import yaml
 from pydantic import BaseModel, ConfigDict
 
 from scorer.config import load_product_config
@@ -97,3 +100,66 @@ def generate_triplet(
         )
     except (KeyError, TypeError, ValueError) as exc:
         raise TripletGenerationError(f"unusable generator reply: {exc}") from exc
+
+
+def _write_sheet_and_key(doc: TripletDoc, n: int, manual_dir: Path) -> None:
+    # Seeded by sheet identity: re-running the generator never silently reshuffles
+    # a sheet a human may already have ranked.
+    rng = random.Random(f"{doc.dimension_key}-{n}")
+    order = list(_VARIANTS)
+    rng.shuffle(order)
+    sheet = {
+        "dimension": doc.dimension_key,
+        "question": doc.question,
+        "answers": {
+            letter: getattr(doc, variant)
+            for letter, variant in zip(_LETTERS, order, strict=True)
+        },
+        "ranking": [],
+        "notes": "",
+    }
+    key = {
+        "dimension": doc.dimension_key,
+        "key": dict(zip(_LETTERS, order, strict=True)),
+    }
+    keys_dir = manual_dir / "keys"
+    keys_dir.mkdir(parents=True, exist_ok=True)
+    sheet_path = manual_dir / f"{doc.dimension_key}-{n}.yaml"
+    sheet_path.write_text(yaml.safe_dump(sheet, sort_keys=False, allow_unicode=True))
+    key_path = keys_dir / f"{doc.dimension_key}-{n}.yaml"
+    key_path.write_text(yaml.safe_dump(key, sort_keys=False, allow_unicode=True))
+
+
+def generate_goldens(
+    rubric_path: Path,
+    out_dir: Path,
+    top_n_dims: int = 3,
+    sets_per_dim: int = 1,
+    client_openai: httpx.Client | None = None,
+) -> list[Path]:
+    rubric = Rubric.model_validate_json(Path(rubric_path).read_text())
+    # Stable sort: equal weights keep rubric order. Content channel only —
+    # delivery dimensions are exercised by evals layer 3, not by text triplets.
+    content_dims = sorted(
+        (d for d in rubric.dimensions if d.channel == "content"),
+        key=lambda d: d.weight,
+        reverse=True,
+    )[:top_n_dims]
+    owns_client = client_openai is None
+    client = httpx.Client() if owns_client else client_openai
+    triplets_dir = Path(out_dir) / "triplets"
+    triplets_dir.mkdir(parents=True, exist_ok=True)
+    manual_dir = Path(out_dir) / "manual"
+    written: list[Path] = []
+    try:
+        for dimension in content_dims:
+            for n in range(1, sets_per_dim + 1):
+                doc = generate_triplet(rubric, dimension, client)
+                triplet_path = triplets_dir / f"{dimension.key}-{n}.json"
+                triplet_path.write_text(doc.model_dump_json(indent=2))
+                _write_sheet_and_key(doc, n, manual_dir)
+                written.append(triplet_path)
+    finally:
+        if owns_client:
+            client.close()
+    return written
