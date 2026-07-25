@@ -35,7 +35,7 @@ def compile_report(out_dir: Path, manual_dir: Path) -> str:
     lines += ["", "## Manual session ratings (1–5)", "",
               "| provider | session | " + " | ".join(MANUAL_KEYS) + " | notes |",
               "| --- | --- | " + " | ".join("---" for _ in MANUAL_KEYS) + " | --- |"]
-    sheets = sorted(manual_dir.glob("*.yaml"))
+    sheets = sorted(f for f in manual_dir.glob("*.yaml") if f.name != "sheet-template.yaml")
     if not sheets:
         lines.append("| MISSING | | " + " | ".join("" for _ in MANUAL_KEYS) + " | |")
     for f in sheets:
