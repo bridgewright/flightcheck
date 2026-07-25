@@ -51,7 +51,12 @@ class OpenAIProbe:
             self.WIRE["error"]: "session.error",
         }
         kind = table.get(t)
-        return SessionEvent(self._now_ms(), kind, {"raw_type": t}) if kind else None
+        if kind is None:
+            return None
+        payload = {"raw_type": t}
+        if kind == "audio.delta" and msg.get("delta"):
+            payload["pcm"] = base64.b64decode(msg["delta"])
+        return SessionEvent(self._now_ms(), kind, payload)
 
     def _session_update(self, instructions: str) -> str:
         session: dict = {"instructions": instructions, "modalities": ["audio", "text"]}

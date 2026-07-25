@@ -91,8 +91,12 @@ class GeminiProbe:
                         d["data"] = data
                     kind = self._classify(d)
                     if kind:
-                        payload = {"handle": d["session_resumption_update"].get("new_handle")} \
-                            if kind == "resumption.update" else {}
+                        if kind == "resumption.update":
+                            payload = {"handle": d["session_resumption_update"].get("new_handle")}
+                        elif kind == "audio.delta":
+                            payload = {"pcm": data}
+                        else:
+                            payload = {}
                         await self._q.put(SessionEvent(self._now_ms(), kind, payload))
         except Exception as exc:  # connection drop is a *measurement*, not a crash
             await self._q.put(SessionEvent(self._now_ms(), "session.close", {"error": repr(exc)}))
