@@ -139,6 +139,19 @@ def test_generate_triplet_requires_question_in_bank(monkeypatch):
         generate_triplet(rubric, delivery_dim, client)
 
 
+def test_generate_triplet_wraps_http_errors(monkeypatch):
+    monkeypatch.setenv("OPENAI_API_KEY", "test-key")
+    rubric = _make_rubric()
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        return httpx.Response(500, json={"error": "rate limited"})
+
+    client = httpx.Client(transport=httpx.MockTransport(handler))
+
+    with pytest.raises(TripletGenerationError, match="OpenAI request failed"):
+        generate_triplet(rubric, rubric.dimensions[0], client)
+
+
 def test_generate_goldens_writes_triplets_sheets_and_keys(tmp_path, monkeypatch):
     monkeypatch.setenv("OPENAI_API_KEY", "test-key")
     rubric_path = tmp_path / "rubric.json"
@@ -264,3 +277,91 @@ def test_judge_discrimination_records_ordering_failures(tmp_path):
     assert failure["triplet"] == "structured-answers-1"
     assert failure["scores"] == {"strong": 4.0, "borderline": 4.0, "weak": 1.5}
     assert "strictly" in failure["reason"]
+
+
+def _judge_reply_missing_dimension() -> str:
+    # Omits "role-knowledge" -- score_content raises ContentJudgeError for a
+    # content dimension present in the rubric but absent from the reply.
+    scores = [
+        {
+            "dimension_key": "structured-answers",
+            "score": 4.5,
+            "evidence_quotes": [],
+            "rationale": "Matches the anchor language for this level.",
+        },
+        {
+            "dimension_key": "quantified-impact",
+            "score": 3.0,
+            "evidence_quotes": [],
+            "rationale": "One example, thin detail.",
+        },
+    ]
+    return json.dumps({"scores": scores})
+
+
+def test_judge_discrimination_records_content_judge_error_with_partial_scores(tmp_path):
+    _write_triplet(tmp_path / "triplets")
+    # "strong" scores cleanly; "borderline" triggers ContentJudgeError -- the
+    # judge is never called for "weak", so scores stays partial (strong only).
+    fake = FakeGenAI([_judge_reply(4.5), _judge_reply_missing_dimension()])
+
+    result = judge_discrimination(tmp_path / "triplets", _make_rubric(), fake)
+
+    assert result["trials"] == 1
+    assert result["correct"] == 0
+    assert result["accuracy"] == 0.0
+    assert len(fake.calls) == 2
+    (failure,) = result["failures"]
+    assert failure["triplet"] == "structured-answers-1"
+    assert failure["scores"] == {"strong": 4.5}
+    assert "ContentJudgeError" in failure["reason"]
+
+
+def _make_rubric_with_dimension_channel(key: str, channel: str) -> Rubric:
+    rubric = _make_rubric()
+    dims = [
+        d.model_copy(update={"channel": channel}) if d.key == key else d
+        for d in rubric.dimensions
+    ]
+    return Rubric(
+        role_title=rubric.role_title,
+        company=rubric.company,
+        dimensions=dims,
+        question_bank=rubric.question_bank,
+        research_summary=rubric.research_summary,
+    )
+
+
+def test_judge_discrimination_records_missing_target_dimension(tmp_path):
+    _write_triplet(tmp_path / "triplets")  # triplet targets "structured-answers"
+    # Relabel the triplet's target dimension as delivery-channel: score_content
+    # never scores it, so the judge output can never contain it.
+    rubric = _make_rubric_with_dimension_channel("structured-answers", "delivery")
+    reply = json.dumps({
+        "scores": [
+            {
+                "dimension_key": "quantified-impact",
+                "score": 3.0,
+                "evidence_quotes": [],
+                "rationale": "One example, thin detail.",
+            },
+            {
+                "dimension_key": "role-knowledge",
+                "score": 3.0,
+                "evidence_quotes": [],
+                "rationale": "One example, thin detail.",
+            },
+        ]
+    })
+    fake = FakeGenAI([reply])
+
+    result = judge_discrimination(tmp_path / "triplets", rubric, fake)
+
+    assert result["trials"] == 1
+    assert result["correct"] == 0
+    assert len(fake.calls) == 1
+    (failure,) = result["failures"]
+    assert failure["triplet"] == "structured-answers-1"
+    assert failure["scores"] == {}
+    assert "structured-answers" in failure["reason"]
+    assert "missing from judge output" in failure["reason"]

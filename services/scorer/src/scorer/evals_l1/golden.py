@@ -85,17 +85,26 @@ def generate_triplet(
     if not api_key:
         raise TripletGenerationError("OPENAI_API_KEY not set")
     question = _question_for(rubric, dimension)
-    response = client_openai.post(
-        _OPENAI_CHAT_URL,
-        headers={"Authorization": f"Bearer {api_key}"},
-        json={
-            "model": load_product_config().models.triplet_generator,
-            "messages": [{"role": "user", "content": _generation_prompt(question, dimension)}],
-            "response_format": {"type": "json_object"},
-        },
-        timeout=120.0,
-    )
-    response.raise_for_status()
+    try:
+        response = client_openai.post(
+            _OPENAI_CHAT_URL,
+            headers={"Authorization": f"Bearer {api_key}"},
+            json={
+                "model": load_product_config().models.triplet_generator,
+                "messages": [
+                    {"role": "user", "content": _generation_prompt(question, dimension)}
+                ],
+                "response_format": {"type": "json_object"},
+            },
+            timeout=120.0,
+        )
+        response.raise_for_status()
+    except httpx.HTTPError as exc:
+        # Covers both transport failures (timeout, connection refused, ...) and
+        # raise_for_status()'s HTTPStatusError -- same taxonomy discipline as
+        # scorer/bakeoff/discrimination.py's OpenAIRanker.rank: the caller
+        # always sees TripletGenerationError, never a raw httpx exception.
+        raise TripletGenerationError(f"OpenAI request failed: {exc}") from exc
     try:
         payload = json.loads(response.json()["choices"][0]["message"]["content"])
         return TripletDoc(
