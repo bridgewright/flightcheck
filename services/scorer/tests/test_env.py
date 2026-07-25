@@ -23,3 +23,13 @@ def test_load_env_reads_the_dotenv_file(monkeypatch, tmp_path):
     load_env(env_file)
     assert require_key("PROBE_TEST_KEY") == "from-dotenv"
     monkeypatch.delenv("PROBE_TEST_KEY", raising=False)   # load_dotenv writes os.environ
+
+
+def test_load_env_overrides_stale_shell_exports(monkeypatch, tmp_path):
+    """Verify .env is authoritative — overrides stale shell exports."""
+    monkeypatch.setenv("PROBE_TEST_KEY", "from-shell-export")
+    env_file = tmp_path / ".env"
+    env_file.write_text("PROBE_TEST_KEY=from-dotenv\n")
+    load_env(env_file)
+    assert require_key("PROBE_TEST_KEY") == "from-dotenv"
+    monkeypatch.delenv("PROBE_TEST_KEY", raising=False)

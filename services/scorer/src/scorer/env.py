@@ -15,8 +15,9 @@ ENV_PATH = Path(__file__).resolve().parents[2] / ".env"   # services/scorer/.env
 
 
 def load_env(path: Path | None = None) -> None:
-    """Load `services/scorer/.env` if present. Real environment wins."""
-    load_dotenv(path or ENV_PATH)
+    """Load `services/scorer/.env` if present. .env is authoritative — override
+    stale shell exports so the harness's explicit config wins, not inherited env vars."""
+    load_dotenv(path or ENV_PATH, override=True)
 
 
 def require_key(name: str) -> str:
