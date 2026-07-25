@@ -3,8 +3,9 @@
 One file-based Gemini call. The prompt carries the candidate-labeled transcript
 (with timestamps) and, for each content dimension, its BARS anchors verbatim, so
 scores anchor to observable behavior. Returned evidence quotes are then verified
-in code against the actual candidate speech (see later steps) — fabricated
-quotes are dropped rather than trusted.
+in code against the actual candidate speech — fabricated quotes are dropped, a
+score left with no verifiable quote is flagged in its rationale (score kept),
+non-content dimension keys are dropped, and a missing content dimension raises.
 """
 from __future__ import annotations
 
@@ -103,8 +104,11 @@ def score_content(
     candidate_text = _normalize_ws(
         " ".join(seg.text for seg in segments if seg.speaker == "candidate")
     )
+    content_keys = {d.key for d in content_dims}
     kept: list[DimensionScore] = []
     for score in doc.scores:
+        if score.dimension_key not in content_keys:
+            continue
         verified = [
             quote
             for quote in score.evidence_quotes
@@ -121,4 +125,9 @@ def score_content(
                     }
                 )
             )
+    missing = content_keys - {s.dimension_key for s in kept}
+    if missing:
+        raise ContentJudgeError(
+            f"content judge response missing dimensions: {sorted(missing)}"
+        )
     return kept

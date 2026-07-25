@@ -1,8 +1,10 @@
 import json
 
+import pytest
+
 from fakes import FakeGenAI
 from scorer.config import load_product_config
-from scorer.content.judge import ContentScoreDoc, score_content
+from scorer.content.judge import ContentJudgeError, ContentScoreDoc, score_content
 from scorer.schemas import (
     BarsAnchor,
     QuestionSpec,
@@ -209,3 +211,47 @@ def test_fabricated_quotes_dropped_and_flagged():
     # whitespace-normalized), and the quote is kept exactly as the judge returned it.
     assert by_key["role-knowledge"].evidence_quotes == ["I led   the churn\ndashboard rollout"]
     assert not by_key["role-knowledge"].rationale.startswith("[no verifiable quote] ")
+
+
+def test_missing_content_dimension_raises():
+    # role-knowledge is a content dimension but absent from the response
+    fake = FakeGenAI([json.dumps({"scores": _happy_scores()[:2]})])
+    with pytest.raises(ContentJudgeError, match="role-knowledge"):
+        score_content(_make_rubric(), _make_segments(), fake)
+
+
+def test_delivery_dimensions_stay_out_of_prompt_and_output():
+    rubric = _make_rubric()
+    fake = FakeGenAI(
+        [
+            json.dumps(
+                {
+                    "scores": [
+                        *_happy_scores(),
+                        _content_score(
+                            "pacing-control",
+                            2.0,
+                            ["I led the churn dashboard rollout"],
+                            "Rushed pacing throughout.",
+                        ),
+                    ]
+                }
+            )
+        ]
+    )
+
+    scores = score_content(rubric, _make_segments(), fake)
+
+    assert {s.dimension_key for s in scores} == {
+        "structured-answers",
+        "quantified-impact",
+        "role-knowledge",
+    }
+    prompt = fake.calls[0]["contents"]
+    assert "pacing-control" not in prompt
+    assert "Pacing control" not in prompt
+    for dim in rubric.dimensions:
+        if dim.channel != "delivery":
+            continue
+        for anchor in dim.anchors:
+            assert anchor.behavior not in prompt
