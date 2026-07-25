@@ -38,6 +38,62 @@ def test_go_away_is_classified_so_the_probe_can_reconnect_before_the_socket_dies
     assert p._classify({"go_away": {}}) == "session.going_away"
 
 
+def test_send_audio_emits_activity_start_once_per_turn_when_vad_disabled():
+    # Drift fix #4: `automatic_activity_detection.disabled=True` means "the
+    # client must send activity signals" (google/genai/types.py, field
+    # docstring on `AutomaticActivityDetection.disabled`). Without an explicit
+    # `activity_start` before the first audio chunk of a turn, the server has
+    # no signal that user activity has begun and never processes the audio —
+    # the manual-mode turn silently produces zero responses. `_live_config`
+    # already disables auto-detection for vad=False; `send_audio` must open
+    # the turn with `activity_start` exactly once, lazily, before the first
+    # audio blob of each turn. Because `send_realtime_input` only accepts one
+    # argument per call (google/genai/live.py: "Only one argument can be set"),
+    # activity_start must be its own call, not bundled with the audio.
+    p = GeminiProbe(vad=False)
+    p._session = AsyncMock()
+
+    asyncio.run(p.send_audio(b"pcm1"))
+    calls = p._session.send_realtime_input.call_args_list
+    assert len(calls) == 2
+    assert calls[0].kwargs == {"activity_start": types.ActivityStart()}
+    assert isinstance(calls[1].kwargs.get("audio"), types.Blob)
+
+    # second chunk of the same (still-open) turn must not repeat activity_start
+    p._session.send_realtime_input.reset_mock()
+    asyncio.run(p.send_audio(b"pcm2"))
+    calls = p._session.send_realtime_input.call_args_list
+    assert len(calls) == 1
+    assert isinstance(calls[0].kwargs.get("audio"), types.Blob)
+
+    # commit_and_respond closes the turn (activity_end) — the next send_audio
+    # must open a fresh turn with activity_start again
+    asyncio.run(p.commit_and_respond())
+    p._session.send_realtime_input.reset_mock()
+    asyncio.run(p.send_audio(b"pcm3"))
+    calls = p._session.send_realtime_input.call_args_list
+    assert len(calls) == 2
+    assert calls[0].kwargs == {"activity_start": types.ActivityStart()}
+    assert isinstance(calls[1].kwargs.get("audio"), types.Blob)
+
+
+def test_send_audio_never_emits_activity_start_when_vad_enabled():
+    # Automatic (server-side) activity detection is on for vad=True, and the
+    # SDK docstring says activity_start/activity_end "can only be sent if
+    # automatic ... activity detection is disabled" — sending them here would
+    # be rejected by the server, so this path must never emit them.
+    p = GeminiProbe(vad=True)
+    p._session = AsyncMock()
+
+    asyncio.run(p.send_audio(b"pcm1"))
+    asyncio.run(p.commit_and_respond())
+    asyncio.run(p.send_audio(b"pcm2"))
+
+    calls = p._session.send_realtime_input.call_args_list
+    assert all("activity_start" not in c.kwargs for c in calls)
+    assert all("activity_end" not in c.kwargs for c in calls)
+
+
 def test_commit_and_respond_sends_audio_stream_end_when_vad_enabled():
     # automatic_activity_detection is on (default) in this mode, so the SDK's
     # own docstring says audio_stream_end is the correct turn-end signal.

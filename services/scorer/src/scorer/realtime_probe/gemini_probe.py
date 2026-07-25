@@ -35,6 +35,14 @@ class GeminiProbe:
     continuous event stream, whenever a session drops (`_resume`) — and, when
     the server announces the close first (`go_away`), at the next turn boundary
     *before* it drops, so sends never meet a dead session.
+
+    Drift fix #4: with `automatic_activity_detection.disabled=True` (vad=False),
+    `AutomaticActivityDetection.disabled`'s own docstring says "the client must
+    send activity signals" — `activity_end` alone (drift fix #3) closes a turn
+    but never opens one, so the server never counts the audio as user activity
+    and produces zero responses. `send_audio` now lazily sends `activity_start`
+    once per turn, before the first audio blob; `commit_and_respond` closes the
+    turn with `activity_end` and resets the state so the next turn reopens it.
     """
     name = "gemini"
     input_sample_rate = 16000
@@ -57,6 +65,10 @@ class GeminiProbe:
         self._resumptions = 0
         self._closing = False
         self._go_away = False
+        # vad=False only: True once `activity_start` has been sent for the
+        # turn currently open; reset in `commit_and_respond` after
+        # `activity_end` closes it, so the next turn opens a fresh one.
+        self._turn_open = False
 
     # -- pure helpers (unit-tested) --
     def _live_config(self, instructions: str, handle: str | None = None) -> dict:
@@ -210,6 +222,12 @@ class GeminiProbe:
         await self._q.put(SessionEvent(self._now_ms(), kind, payload))
 
     async def send_audio(self, pcm16: bytes) -> None:
+        if not self.vad and not self._turn_open:
+            # Manual-activity mode: the server only counts audio as user
+            # activity once `activity_start` opens the turn. It must be its
+            # own call — `send_realtime_input` accepts exactly one argument.
+            await self._session.send_realtime_input(activity_start=types.ActivityStart())
+            self._turn_open = True
         await self._session.send_realtime_input(
             audio=types.Blob(data=pcm16, mime_type=f"audio/pcm;rate={self.input_sample_rate}")
         )
@@ -230,6 +248,7 @@ class GeminiProbe:
             await self._session.send_realtime_input(audio_stream_end=True)
         else:
             await self._session.send_realtime_input(activity_end=types.ActivityEnd())
+            self._turn_open = False
 
     async def events(self) -> AsyncIterator[SessionEvent]:
         while True:
