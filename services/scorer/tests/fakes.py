@@ -7,6 +7,7 @@ Defined once here and reused by every task's tests (imported as
 """
 from __future__ import annotations
 
+from pathlib import Path
 from typing import Any
 
 from google.genai import types
@@ -187,3 +188,35 @@ class FakeDatabase:
         row = self.sessions[session_id]
         self.sessions[session_id] = row.model_copy(
             update={"report": report, "status": "scored"})
+
+
+class FakeStorage:
+    """In-memory Storage: canned recording bytes and corpus texts (pinned).
+
+    recordings maps storage_path -> raw audio bytes written out on download;
+    corpus maps a bucket-relative path -> file text written out on
+    sync_corpus (nested paths like "fewshot/example.json" land in
+    subdirectories, mirroring SupabaseStorage's fewshot/ pass).
+    """
+
+    def __init__(self, recordings: dict[str, bytes] | None = None,
+                 corpus: dict[str, str] | None = None):
+        self.recordings: dict[str, bytes] = dict(recordings or {})
+        self.corpus: dict[str, str] = dict(corpus or {})
+
+    def download_recording(self, storage_path: str, dest_dir: Path) -> Path:
+        data = self.recordings[storage_path]  # KeyError when absent (pinned)
+        dest_dir = Path(dest_dir)
+        dest_dir.mkdir(parents=True, exist_ok=True)
+        dest = dest_dir / Path(storage_path).name
+        dest.write_bytes(data)
+        return dest
+
+    def sync_corpus(self, dest_dir: Path) -> Path:
+        dest_dir = Path(dest_dir)
+        dest_dir.mkdir(parents=True, exist_ok=True)
+        for name, text in self.corpus.items():
+            target = dest_dir / name
+            target.parent.mkdir(parents=True, exist_ok=True)
+            target.write_text(text)
+        return dest_dir
