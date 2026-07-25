@@ -23,7 +23,12 @@ dependencies = [
 ]
 
 [dependency-groups]
-dev = ["pytest>=8", "pytest-asyncio>=1", "ruff>=0.8"]
+dev = [
+    "httpx2>=2.9.1",
+    "pytest>=8",
+    "pytest-asyncio>=1",
+    "ruff>=0.8",
+]
 
 [tool.ruff]
 line-length = 100
