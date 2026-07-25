@@ -17,6 +17,7 @@ dependencies = [
   "supabase>=2.31.0",
   "beautifulsoup4>=4.15.0",
   "pypdf>=6.14.2",
+  "librosa>=0.11.0",
 ]
 
 [dependency-groups]
