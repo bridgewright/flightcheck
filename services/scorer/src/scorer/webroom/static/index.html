@@ -1,0 +1,353 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>flightcheck — bake-off session room</title>
+<style>
+  :root { color-scheme: light dark; }
+  body { font: 15px/1.5 system-ui, sans-serif; max-width: 46rem; margin: 3rem auto; padding: 0 1.5rem; }
+  h1 { font-size: 1.3rem; margin: 0 0 .25rem; }
+  .sub { color: #777; margin: 0 0 2rem; }
+  .row { display: flex; gap: .75rem; flex-wrap: wrap; margin-bottom: 1.5rem; }
+  button { font: inherit; padding: 1rem 1.25rem; border: 1px solid currentColor;
+           border-radius: .5rem; background: transparent; cursor: pointer; }
+  button:disabled { opacity: .35; cursor: default; }
+  #end { margin-left: auto; }
+  .panel { display: flex; align-items: baseline; gap: 1rem; border: 1px solid #8884;
+           border-radius: .5rem; padding: 1rem 1.25rem; }
+  #badge { font-weight: 600; }
+  #badge[data-state="speaking"] { color: #b45309; }
+  #badge[data-state="listening"], #badge[data-state="you"] { color: #15803d; }
+  #badge[data-state="error"] { color: #b91c1c; }
+  #timer { margin-left: auto; font-variant-numeric: tabular-nums; font-size: 1.4rem; }
+  #status { color: #777; margin: .75rem 0 0; min-height: 1.5em; }
+  #log { font-size: 12px; color: #888; max-height: 14rem; overflow: auto;
+         white-space: pre-wrap; margin-top: 1.5rem; }
+</style>
+
+<h1>Bake-off session room</h1>
+<p class="sub">
+  Local harness for the manual persona sessions (criteria&nbsp;③&nbsp;④). Browser echo
+  cancellation is on and the VAD tail is widened server-side, so thinking pauses do not
+  end your turn. Headphones recommended.
+</p>
+
+<div class="row">
+  <button id="start-openai">Interview with OpenAI</button>
+  <button id="start-gemini">Interview with Gemini</button>
+  <button id="end" disabled>End</button>
+</div>
+
+<div class="panel">
+  <span id="badge" data-state="idle">idle</span>
+  <span id="provider"></span>
+  <span id="timer">00:00</span>
+</div>
+<p id="status">Pick a provider to begin.</p>
+
+<audio id="remote" autoplay></audio>
+<pre id="log"></pre>
+
+<script type="module">
+// The GA WebRTC handshake: the model is carried by the minted session, NOT by a
+// `?model=` query string (developers.openai.com realtime-webrtc guide, 2026-07-25).
+const OPENAI_CALLS_URL = "https://api.openai.com/v1/realtime/calls";
+// Pinned to the major: 2.13 is the version whose browser build was checked here.
+// Unpinned, a breaking SDK release would silently kill this page mid-bake-off.
+const GENAI_ESM = "https://esm.sh/@google/genai@2";
+
+const $ = (id) => document.getElementById(id);
+const els = {
+  openai: $("start-openai"), gemini: $("start-gemini"), end: $("end"),
+  badge: $("badge"), provider: $("provider"), timer: $("timer"),
+  status: $("status"), remote: $("remote"), log: $("log"),
+};
+
+const STATES = { connecting: "connecting", listening: "Listening",
+                 you: "You are speaking", speaking: "Interviewer speaking",
+                 idle: "idle", ended: "ended", error: "error" };
+
+let active = null;          // { provider, stop() } for the session in progress
+let ticker = null;
+let startedAt = 0;
+
+function log(line) {
+  els.log.textContent += `${(elapsed() / 1000).toFixed(1).padStart(6)}s  ${line}\n`;
+  els.log.scrollTop = els.log.scrollHeight;
+}
+function elapsed() { return startedAt ? Date.now() - startedAt : 0; }
+function setState(state, note) {
+  els.badge.dataset.state = state;
+  els.badge.textContent = STATES[state] ?? state;
+  if (note !== undefined) els.status.textContent = note;
+}
+function tick() {
+  const s = Math.floor(elapsed() / 1000);
+  els.timer.textContent =
+    `${String(Math.floor(s / 60)).padStart(2, "0")}:${String(s % 60).padStart(2, "0")}`;
+}
+
+function running(provider) {
+  els.openai.disabled = els.gemini.disabled = true;
+  els.end.disabled = false;
+  els.provider.textContent = provider;
+  startedAt = Date.now();
+  ticker = setInterval(tick, 250);
+  tick();
+}
+function stopped(state, note) {
+  clearInterval(ticker);
+  els.openai.disabled = els.gemini.disabled = false;
+  els.end.disabled = true;
+  setState(state, note);
+}
+
+// Echo cancellation is the reason this harness exists: without it the
+// interviewer's own voice re-enters the mic and trips server VAD mid-answer.
+const micStream = () => navigator.mediaDevices.getUserMedia({
+  audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true },
+});
+
+async function mintToken(path) {
+  const res = await fetch(path, { method: "POST" });
+  const body = await res.json();
+  if (!res.ok) throw new Error(body.error ?? `${path} -> ${res.status}`);
+  return body;
+}
+
+const cfg = await (await fetch("/config")).json();
+const prompt = await (await fetch("/prompt")).text();
+
+// ---------- OpenAI: WebRTC ----------
+async function startOpenAI() {
+  setState("connecting", "Minting an ephemeral key…");
+  const tok = await mintToken("/token/openai");
+  log(`openai token: ${tok.auth}, model ${tok.model}`);
+
+  const stream = await micStream();
+  const pc = new RTCPeerConnection();
+  pc.ontrack = (e) => { els.remote.srcObject = e.streams[0]; };
+  for (const track of stream.getAudioTracks()) pc.addTrack(track, stream);
+
+  const dc = pc.createDataChannel("oai-events");
+  dc.addEventListener("message", (e) => onOpenAIEvent(JSON.parse(e.data)));
+
+  const offer = await pc.createOffer();
+  await pc.setLocalDescription(offer);
+  setState("connecting", "Exchanging SDP with OpenAI…");
+  const sdp = await fetch(OPENAI_CALLS_URL, {
+    method: "POST",
+    body: offer.sdp,
+    headers: { Authorization: `Bearer ${tok.value}`, "Content-Type": "application/sdp" },
+  });
+  if (!sdp.ok) throw new Error(`SDP exchange failed (${sdp.status}): ${await sdp.text()}`);
+  await pc.setRemoteDescription({ type: "answer", sdp: await sdp.text() });
+
+  active = {
+    provider: "openai",
+    stop() { pc.close(); stream.getTracks().forEach((t) => t.stop()); },
+  };
+  running("openai");
+  setState("listening", `Connected (VAD tail ${cfg.silence_duration_ms} ms). Say hello.`);
+}
+
+function onOpenAIEvent(ev) {
+  switch (ev.type) {
+    // WebRTC-only events: they track the audio actually leaving the peer
+    // connection, which is what "the interviewer is talking" really means.
+    case "output_audio_buffer.started": setState("speaking"); break;
+    case "output_audio_buffer.stopped":
+    case "output_audio_buffer.cleared":
+    case "response.done": setState("listening"); break;
+    case "input_audio_buffer.speech_started": setState("you"); break;
+    case "input_audio_buffer.speech_stopped": setState("listening", "Thinking…"); break;
+    case "session.created": log(`session.created (${ev.session?.id ?? "?"})`); break;
+    case "error": setState("error", ev.error?.message ?? "error"); log(JSON.stringify(ev)); break;
+  }
+}
+
+// ---------- Gemini: Live API over websocket ----------
+// The SDK does not touch the mic, so this path builds the audio plumbing by hand:
+// 16 kHz PCM16 up, 24 kHz PCM16 down.
+const WORKLET_SRC = `
+class PCMCapture extends AudioWorkletProcessor {
+  process(inputs) {
+    const ch = inputs[0] && inputs[0][0];
+    if (ch) this.port.postMessage(new Float32Array(ch));
+    return true;
+  }
+}
+registerProcessor("pcm-capture", PCMCapture);
+`;
+
+function pcm16(floats) {
+  const out = new Int16Array(floats.length);
+  for (let i = 0; i < floats.length; i++) {
+    const s = Math.max(-1, Math.min(1, floats[i]));
+    out[i] = s < 0 ? s * 0x8000 : s * 0x7fff;
+  }
+  return out;
+}
+function toBase64(bytes) {
+  let s = "";
+  for (let i = 0; i < bytes.length; i++) s += String.fromCharCode(bytes[i]);
+  return btoa(s);
+}
+function fromBase64(b64) {
+  const bin = atob(b64);
+  const out = new Uint8Array(bin.length);
+  for (let i = 0; i < bin.length; i++) out[i] = bin.charCodeAt(i);
+  return out;
+}
+
+async function startGemini() {
+  setState("connecting", "Loading the Gemini SDK…");
+  const { GoogleGenAI, Modality } = await import(GENAI_ESM);
+  const tok = await mintToken("/token/gemini");
+  log(`gemini token: ${tok.auth}, model ${tok.model}`);
+  if (tok.auth !== "ephemeral") log(`WARNING: raw key in the page — ${tok.note ?? ""}`);
+
+  const ai = new GoogleGenAI({
+    apiKey: tok.value,
+    httpOptions: { apiVersion: tok.api_version ?? "v1alpha" },
+  });
+
+  const stream = await micStream();
+  // Asking for the rate up front lets the browser resample the mic for us; the
+  // Live API wants exactly 16 kHz in and emits exactly 24 kHz out.
+  const inCtx = new AudioContext({ sampleRate: 16000 });
+  const outCtx = new AudioContext({ sampleRate: 24000 });
+  let playHead = 0;
+  const playing = new Set();
+  let resumeHandle = null;
+  let session = null;
+
+  function flushPlayback() {
+    // Barge-in: buffered interviewer audio must *stop*, not merely stop growing —
+    // interruption naturalness is one of the criteria being scored.
+    for (const node of playing) { try { node.stop(); } catch { /* already ended */ } }
+    playing.clear();
+    playHead = 0;
+  }
+
+  function playChunk(bytes) {
+    const samples = new Int16Array(bytes.buffer, bytes.byteOffset, bytes.byteLength >> 1);
+    const buf = outCtx.createBuffer(1, samples.length, outCtx.sampleRate);
+    const ch = buf.getChannelData(0);
+    for (let i = 0; i < samples.length; i++) ch[i] = samples[i] / 32768;
+    const node = outCtx.createBufferSource();
+    node.buffer = buf;
+    node.connect(outCtx.destination);
+    const at = Math.max(outCtx.currentTime + 0.06, playHead);
+    node.start(at);
+    playHead = at + buf.duration;
+    playing.add(node);
+    node.onended = () => playing.delete(node);
+  }
+
+  function onMessage(msg) {
+    // `msg.data` is the SDK's convenience accessor for concatenated inline audio;
+    // the explicit part path is the fallback if that accessor ever moves.
+    const audio = msg.data ?? msg.serverContent?.modelTurn?.parts
+      ?.find((p) => p.inlineData?.data)?.inlineData?.data;
+    if (audio) { setState("speaking"); playChunk(fromBase64(audio)); }
+    // Server-side VAD reports the candidate's speech boundaries here; it is not
+    // emitted by every model, so it upgrades the status line rather than driving it.
+    if (msg.voiceActivity?.voiceActivityType?.includes("START")) setState("you");
+    const sc = msg.serverContent;
+    // On an interruption the server sends `interrupted` and then `turnComplete`
+    // in the same breath — chained, so the barge-in state is not immediately
+    // overwritten by the turn that the barge-in just ended.
+    if (sc?.interrupted) { flushPlayback(); setState("you", "Barge-in — interviewer stopped."); }
+    else if (sc?.turnComplete) setState("listening", "Your turn.");
+    const handle = msg.sessionResumptionUpdate?.newHandle;
+    if (handle) { resumeHandle = handle; log("resumption handle updated"); }
+    if (msg.goAway) log(`server go_away (time left ${msg.goAway.timeLeft ?? "?"})`);
+  }
+
+  session = await ai.live.connect({
+    model: tok.model,
+    callbacks: {
+      onopen: () => log("live session open"),
+      onmessage: onMessage,
+      onerror: (e) => { setState("error", e?.message ?? "live error"); log(`error: ${e?.message}`); },
+      onclose: (e) => log(`live session closed: ${e?.reason ?? ""}`),
+    },
+    config: {
+      responseModalities: [Modality.AUDIO],
+      systemInstruction: prompt,
+      sessionResumption: resumeHandle ? { handle: resumeHandle } : {},
+      // Same 900 ms tail as the OpenAI session. The minted token locks this
+      // server-side too, so these values are belt-and-braces, not the only guard.
+      realtimeInputConfig: {
+        automaticActivityDetection: {
+          silenceDurationMs: cfg.silence_duration_ms,
+          prefixPaddingMs: cfg.prefix_padding_ms,
+        },
+      },
+    },
+  });
+
+  await inCtx.audioWorklet.addModule(
+    URL.createObjectURL(new Blob([WORKLET_SRC], { type: "application/javascript" })));
+  const source = inCtx.createMediaStreamSource(stream);
+  const capture = new AudioWorkletNode(inCtx, "pcm-capture");
+  // A worklet is only pulled if it reaches the destination; the gain is muted so
+  // the candidate does not hear themselves.
+  const mute = inCtx.createGain();
+  mute.gain.value = 0;
+  source.connect(capture);
+  capture.connect(mute).connect(inCtx.destination);
+
+  // The worklet hands over 128-frame blocks (8 ms). Batching to ~100 ms keeps the
+  // websocket at ~10 messages/s instead of 125.
+  const BATCH = 1600;
+  let pending = [];
+  let pendingLen = 0;
+  capture.port.onmessage = (e) => {
+    pending.push(e.data);
+    pendingLen += e.data.length;
+    if (pendingLen < BATCH) return;
+    const merged = new Float32Array(pendingLen);
+    let at = 0;
+    for (const block of pending) { merged.set(block, at); at += block.length; }
+    pending = []; pendingLen = 0;
+    const bytes = new Uint8Array(pcm16(merged).buffer);
+    session.sendRealtimeInput({
+      audio: { data: toBase64(bytes), mimeType: `audio/pcm;rate=${inCtx.sampleRate}` },
+    });
+  };
+
+  active = {
+    provider: "gemini",
+    stop() {
+      flushPlayback();
+      try { session.close(); } catch { /* already closed */ }
+      stream.getTracks().forEach((t) => t.stop());
+      inCtx.close(); outCtx.close();
+    },
+  };
+  running("gemini");
+  setState("listening", `Connected (VAD tail ${cfg.silence_duration_ms} ms). Say hello.`);
+}
+
+// ---------- wiring ----------
+async function start(fn) {
+  els.log.textContent = "";   // cleared here, not in running(): the token and
+  try {                       // connect lines are logged before the timer starts
+    await fn();
+  } catch (err) {
+    if (active) { active.stop(); active = null; }
+    stopped("error", String(err));
+    log(String(err));
+  }
+}
+els.openai.addEventListener("click", () => start(startOpenAI));
+els.gemini.addEventListener("click", () => start(startGemini));
+els.end.addEventListener("click", () => {
+  const mins = (elapsed() / 60000).toFixed(1);
+  if (active) { active.stop(); active = null; }
+  stopped("ended", `Session ended after ${mins} min — now fill in manual/{provider}-{n}.yaml.`);
+});
+
+els.status.textContent =
+  `Ready. openai=${cfg.openai_model}, gemini=${cfg.gemini_model}, VAD tail ${cfg.silence_duration_ms} ms.`;
+</script>

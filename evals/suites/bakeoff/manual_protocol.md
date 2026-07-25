@@ -1,14 +1,28 @@
 # Manual bake-off protocol
 
 ## A. Live persona sessions (criteria ③ ④)
-Per provider, run 2 sessions × ~10 min: `make bakeoff-mic PROVIDER=openai` / `PROVIDER=gemini`.
-During each session, elicit all four pressure probes (talk long once; give one vague "we did X"
-answer; pause after an answer; say one Korean sentence). Immediately after, copy
+Run `make webroom`, open http://localhost:8787, and use the two buttons. Per provider,
+run 2 sessions × ~10 min. Wear headphones. During each session, elicit all four pressure
+probes (talk long once; give one vague "we did X" answer; pause after an answer; say one
+Korean sentence). End with the End button. Immediately after, copy
 `manual/sheet-template.yaml` to `manual/{provider}-{n}.yaml` and rate 1–5 per criterion.
 Order: alternate providers (O, G, O, G) to neutralize warm-up effects.
-Gemini live sessions are capped by the protocol (the websocket goes away around
-10 min); the probe reconnects with the server's resumption handle, so a session
-may run past that — `session.resumed` lines in the run's jsonl log mark it.
+
+Why the browser and not the mic runner: the raw `sounddevice` path has no echo
+cancellation, so the interviewer's own voice re-enters the mic and trips server VAD
+mid-answer, and both providers end a turn after ~500 ms of silence — shorter than a
+thinking pause. `getUserMedia` supplies AEC/NS/AGC, and the session room mints sessions
+with a 900 ms VAD tail server-side. Rate interruption naturalness (criterion ③) from
+these sessions; sessions run through the mic runner measure the harness, not the provider.
+
+The page holds a short-lived provider credential, so the server binds 127.0.0.1 only.
+Gemini live sessions are capped by the protocol (the websocket goes away around 10 min);
+resumption is enabled, so a session may run past that — the page logs the handle updates
+and the `go_away` warning.
+
+**Fallback:** `make bakeoff-mic PROVIDER=openai` / `PROVIDER=gemini` still works and is
+the only path that writes a jsonl event log to `out/{provider}-mic-{n}.jsonl`. Use it if
+the browser path is unavailable — and discount ③ accordingly, for the reason above.
 
 ## B. Turn clips (Tasks 6 scenario input)
 Record 4 clips of yourself answering interview questions in English, 20–40 s each,

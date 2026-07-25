@@ -7,6 +7,8 @@ bakeoff-latency:
 	cd $(SCORER) && uv run python -m scorer.realtime_probe.scenario --provider $(PROVIDER) --mode latency
 bakeoff-stability:
 	cd $(SCORER) && uv run python -m scorer.realtime_probe.scenario --provider $(PROVIDER) --mode stability --minutes 22
+webroom:
+	cd $(SCORER) && uv run python -m scorer.webroom.server
 bakeoff-mic:
 	cd $(SCORER) && uv run python -m scorer.realtime_probe.mic --provider $(PROVIDER)
 bakeoff-discrimination:
