@@ -17,12 +17,18 @@ from pydantic import BaseModel, ConfigDict
 
 from scorer.api.db import Database
 from scorer.api.storage import Storage
+from scorer.audio_utils import ensure_wav
 from scorer.config import load_product_config
+from scorer.content.judge import score_content
+from scorer.content.transcribe import transcribe_verbatim
+from scorer.delivery.dsp import compute_delivery_metrics
+from scorer.delivery.judge import judge_delivery
 from scorer.intake.profile import build_profile
+from scorer.report.compile import compile_report
 from scorer.research.sweep import run_sweep
 from scorer.rubric.compiler import compile_rubric
 from scorer.rubric.corpus import load_corpus, load_fewshots
-from scorer.schemas import CandidateProfile, GenAIClientLike
+from scorer.schemas import CandidateProfile, GenAIClientLike, SessionReport
 
 logger = logging.getLogger(__name__)
 
@@ -112,3 +118,53 @@ def compile_package(
         # Worker boundary: record the failure, never crash the background job.
         logger.exception("package compile failed: package_id=%s", package_id)
         db.set_package_rubric(package_id, None, status="failed")
+
+
+def score_session(
+    session_id: str,
+    db: Database,
+    storage: Storage,
+    client: GenAIClientLike,
+) -> SessionReport:
+    """Download -> wav -> transcript -> DSP -> both judges -> compiled report.
+
+    Ends with session status "scored" (report saved) or "failed". On failure
+    the exception is re-raised after recording status: the registry return
+    type is SessionReport, so this function cannot swallow-and-return; the
+    API layer wraps it in a swallow-and-log background job (_score_session_job).
+    """
+    try:
+        db.set_session_status(session_id, "scoring")
+        row = db.get_session(session_id)
+        package = db.get_package(row.package_id)
+        rubric = package.rubric
+        if row.audio_path is None or rubric is None:
+            raise ValueError(
+                f"session {session_id} is not scorable: audio_path="
+                f"{row.audio_path!r}, rubric_present={rubric is not None}"
+            )
+        with tempfile.TemporaryDirectory(prefix="flightcheck-session-") as tmp:
+            local = storage.download_recording(row.audio_path, Path(tmp))
+            wav = ensure_wav(local)
+            segments = transcribe_verbatim(wav, client)
+            metrics = compute_delivery_metrics(wav, segments)
+            content_scores = score_content(rubric, segments, client)
+            delivery_dims = [d for d in rubric.dimensions if d.channel == "delivery"]
+            delivery_scores, observations = judge_delivery(
+                wav, metrics, delivery_dims, client
+            )
+        report = compile_report(
+            session_id,
+            rubric,
+            content_scores + delivery_scores,
+            metrics,
+            observations,
+        )
+        db.save_report(session_id, report)
+        db.set_session_status(session_id, "scored")
+        return report
+    except Exception:
+        # Worker boundary: record the failure, then let the caller decide.
+        logger.exception("session scoring failed: session_id=%s", session_id)
+        db.set_session_status(session_id, "failed")
+        raise
