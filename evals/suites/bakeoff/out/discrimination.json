@@ -1,0 +1,354 @@
+{
+  "openai/gpt-audio": {
+    "accuracy": 0.5,
+    "api_failures": 0,
+    "parse_failures": 0,
+    "failure_details": [],
+    "trials": [
+      {
+        "model": "openai/gpt-audio",
+        "permutation": [
+          "fluent",
+          "filler",
+          "hesitant"
+        ],
+        "predicted": [
+          "A",
+          "B",
+          "C"
+        ],
+        "correct": true
+      },
+      {
+        "model": "openai/gpt-audio",
+        "permutation": [
+          "fluent",
+          "hesitant",
+          "filler"
+        ],
+        "predicted": [
+          "A",
+          "B",
+          "C"
+        ],
+        "correct": false
+      },
+      {
+        "model": "openai/gpt-audio",
+        "permutation": [
+          "filler",
+          "fluent",
+          "hesitant"
+        ],
+        "predicted": [
+          "B",
+          "A",
+          "C"
+        ],
+        "correct": true
+      },
+      {
+        "model": "openai/gpt-audio",
+        "permutation": [
+          "filler",
+          "hesitant",
+          "fluent"
+        ],
+        "predicted": [
+          "C",
+          "A",
+          "B"
+        ],
+        "correct": true
+      },
+      {
+        "model": "openai/gpt-audio",
+        "permutation": [
+          "hesitant",
+          "fluent",
+          "filler"
+        ],
+        "predicted": [
+          "B",
+          "A",
+          "C"
+        ],
+        "correct": false
+      },
+      {
+        "model": "openai/gpt-audio",
+        "permutation": [
+          "hesitant",
+          "filler",
+          "fluent"
+        ],
+        "predicted": [
+          "C",
+          "A",
+          "B"
+        ],
+        "correct": false
+      },
+      {
+        "model": "openai/gpt-audio",
+        "permutation": [
+          "fluent",
+          "filler",
+          "hesitant"
+        ],
+        "predicted": [
+          "A",
+          "C",
+          "B"
+        ],
+        "correct": false
+      },
+      {
+        "model": "openai/gpt-audio",
+        "permutation": [
+          "fluent",
+          "hesitant",
+          "filler"
+        ],
+        "predicted": [
+          "A",
+          "C",
+          "B"
+        ],
+        "correct": true
+      },
+      {
+        "model": "openai/gpt-audio",
+        "permutation": [
+          "filler",
+          "fluent",
+          "hesitant"
+        ],
+        "predicted": [
+          "B",
+          "A",
+          "C"
+        ],
+        "correct": true
+      },
+      {
+        "model": "openai/gpt-audio",
+        "permutation": [
+          "filler",
+          "hesitant",
+          "fluent"
+        ],
+        "predicted": [
+          "C",
+          "A",
+          "B"
+        ],
+        "correct": true
+      },
+      {
+        "model": "openai/gpt-audio",
+        "permutation": [
+          "hesitant",
+          "fluent",
+          "filler"
+        ],
+        "predicted": [
+          "B",
+          "A",
+          "C"
+        ],
+        "correct": false
+      },
+      {
+        "model": "openai/gpt-audio",
+        "permutation": [
+          "hesitant",
+          "filler",
+          "fluent"
+        ],
+        "predicted": [
+          "C",
+          "A",
+          "B"
+        ],
+        "correct": false
+      }
+    ]
+  },
+  "gemini/gemini-2.5-flash": {
+    "accuracy": 0.9166666666666666,
+    "api_failures": 0,
+    "parse_failures": 0,
+    "failure_details": [],
+    "trials": [
+      {
+        "model": "gemini/gemini-2.5-flash",
+        "permutation": [
+          "fluent",
+          "filler",
+          "hesitant"
+        ],
+        "predicted": [
+          "A",
+          "B",
+          "C"
+        ],
+        "correct": true
+      },
+      {
+        "model": "gemini/gemini-2.5-flash",
+        "permutation": [
+          "fluent",
+          "hesitant",
+          "filler"
+        ],
+        "predicted": [
+          "A",
+          "C",
+          "B"
+        ],
+        "correct": true
+      },
+      {
+        "model": "gemini/gemini-2.5-flash",
+        "permutation": [
+          "filler",
+          "fluent",
+          "hesitant"
+        ],
+        "predicted": [
+          "B",
+          "A",
+          "C"
+        ],
+        "correct": true
+      },
+      {
+        "model": "gemini/gemini-2.5-flash",
+        "permutation": [
+          "filler",
+          "hesitant",
+          "fluent"
+        ],
+        "predicted": [
+          "C",
+          "A",
+          "B"
+        ],
+        "correct": true
+      },
+      {
+        "model": "gemini/gemini-2.5-flash",
+        "permutation": [
+          "hesitant",
+          "fluent",
+          "filler"
+        ],
+        "predicted": [
+          "B",
+          "A",
+          "C"
+        ],
+        "correct": false
+      },
+      {
+        "model": "gemini/gemini-2.5-flash",
+        "permutation": [
+          "hesitant",
+          "filler",
+          "fluent"
+        ],
+        "predicted": [
+          "C",
+          "B",
+          "A"
+        ],
+        "correct": true
+      },
+      {
+        "model": "gemini/gemini-2.5-flash",
+        "permutation": [
+          "fluent",
+          "filler",
+          "hesitant"
+        ],
+        "predicted": [
+          "A",
+          "B",
+          "C"
+        ],
+        "correct": true
+      },
+      {
+        "model": "gemini/gemini-2.5-flash",
+        "permutation": [
+          "fluent",
+          "hesitant",
+          "filler"
+        ],
+        "predicted": [
+          "A",
+          "C",
+          "B"
+        ],
+        "correct": true
+      },
+      {
+        "model": "gemini/gemini-2.5-flash",
+        "permutation": [
+          "filler",
+          "fluent",
+          "hesitant"
+        ],
+        "predicted": [
+          "B",
+          "A",
+          "C"
+        ],
+        "correct": true
+      },
+      {
+        "model": "gemini/gemini-2.5-flash",
+        "permutation": [
+          "filler",
+          "hesitant",
+          "fluent"
+        ],
+        "predicted": [
+          "C",
+          "A",
+          "B"
+        ],
+        "correct": true
+      },
+      {
+        "model": "gemini/gemini-2.5-flash",
+        "permutation": [
+          "hesitant",
+          "fluent",
+          "filler"
+        ],
+        "predicted": [
+          "B",
+          "C",
+          "A"
+        ],
+        "correct": true
+      },
+      {
+        "model": "gemini/gemini-2.5-flash",
+        "permutation": [
+          "hesitant",
+          "filler",
+          "fluent"
+        ],
+        "predicted": [
+          "C",
+          "B",
+          "A"
+        ],
+        "correct": true
+      }
+    ]
+  }
+}

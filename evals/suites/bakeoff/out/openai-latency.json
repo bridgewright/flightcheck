@@ -1,0 +1,13 @@
+{
+  "provider": "openai",
+  "mode": "latency",
+  "turns": 4,
+  "turns_attempted": 4,
+  "latency_p50_ms": 751.24204151507,
+  "latency_p95_ms": 897.0397814919124,
+  "disconnects": 0,
+  "errors": 0,
+  "resumptions": 0,
+  "send_failures": 0,
+  "total_minutes": 2.87
+}

@@ -1,0 +1,13 @@
+{
+  "provider": "gemini",
+  "mode": "latency",
+  "turns": 4,
+  "turns_attempted": 4,
+  "latency_p50_ms": 1856.4546874986263,
+  "latency_p95_ms": 3200.3663125433377,
+  "disconnects": 0,
+  "errors": 0,
+  "resumptions": 0,
+  "send_failures": 0,
+  "total_minutes": 2.79
+}
