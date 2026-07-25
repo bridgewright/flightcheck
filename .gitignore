@@ -1,0 +1,9 @@
+.env
+.venv/
+__pycache__/
+*.pyc
+node_modules/
+.DS_Store
+# personal voice recordings never enter the public repo (DECISIONS #005)
+evals/suites/bakeoff/clips/
+evals/suites/bakeoff/manual/*.yaml
