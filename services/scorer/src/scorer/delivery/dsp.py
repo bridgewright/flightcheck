@@ -1,10 +1,9 @@
-"""Deterministic DSP delivery metrics (this cycle adds filler counting).
+"""Deterministic DSP delivery metrics: no LLM in this channel.
 
-No LLM touches this channel: every number is reproducible from the audio
-samples and the transcript segmentation alone. The delivery judge (Task
-10) layers interpretation on top of these numbers and is flagged whenever
-it contradicts them, so this module is the delivery channel's ground
-truth.
+Every number here is reproducible from the audio samples and the
+transcript segmentation alone. The delivery judge (Task 10) layers
+interpretation on top of these numbers and is flagged whenever it
+contradicts them, so this module is the delivery channel's ground truth.
 """
 from __future__ import annotations
 
@@ -13,15 +12,23 @@ import re
 from collections.abc import Sequence
 from pathlib import Path
 
+import librosa
 import numpy as np
 import soundfile as sf
 
 from scorer.config import load_product_config
-from scorer.schemas import DeliveryMetrics, TranscriptSegment
+from scorer.schemas import DeliveryMetrics, SilenceEvent, TranscriptSegment
 
 FILLER_LEXICON: tuple[str, ...] = tuple(load_product_config().delivery.fillers)
 
 _BUCKET_S = 60.0
+_RMS_FRAME_LENGTH = 2048
+_RMS_HOP_LENGTH = 512
+_SILENCE_RMS_RATIO = 0.02
+_MIN_SILENCE_S = 1.0
+_PYIN_FMIN_HZ = 65.0
+_PYIN_FMAX_HZ = 400.0
+_VOICED_ABS_FLOOR = 1e-6
 
 
 def _load_mono(audio_path: Path) -> tuple[np.ndarray, int]:
@@ -64,6 +71,67 @@ def _wpm_timeline(
     return timeline
 
 
+def _candidate_windows(
+    segments: list[TranscriptSegment], duration_s: float
+) -> list[tuple[float, float]]:
+    """Spans from an interviewer segment end to the next interviewer start.
+
+    Silence inside these windows belongs to the candidate (thinking
+    pauses, trailing hesitation). Silence anywhere else -- before the
+    first question, or while the interviewer holds the floor -- is not
+    the candidate's and never becomes a SilenceEvent.
+    """
+    interviewer = sorted(
+        (s for s in segments if s.speaker == "interviewer"),
+        key=lambda s: s.start_s,
+    )
+    windows: list[tuple[float, float]] = []
+    for i, seg in enumerate(interviewer):
+        if i + 1 < len(interviewer):
+            window_end = interviewer[i + 1].start_s
+        else:
+            window_end = duration_s
+        if window_end > seg.end_s:
+            windows.append((seg.end_s, window_end))
+    return windows
+
+
+def _silence_events(
+    mono: np.ndarray,
+    sr: int,
+    segments: list[TranscriptSegment],
+    duration_s: float,
+) -> list[SilenceEvent]:
+    """Contiguous low-RMS runs >= 1.0 s inside candidate answer windows."""
+    windows = _candidate_windows(segments, duration_s)
+    if not windows:
+        return []
+    rms = librosa.feature.rms(
+        y=mono, frame_length=_RMS_FRAME_LENGTH, hop_length=_RMS_HOP_LENGTH
+    )[0]
+    peak = float(rms.max())
+    if peak <= 0.0:
+        return []  # dead recording: no reference level, no events
+    silent = rms < _SILENCE_RMS_RATIO * peak
+    frame_s = _RMS_HOP_LENGTH / sr
+    events: list[SilenceEvent] = []
+    run_start: int | None = None
+    # The appended False sentinel closes a run that reaches the last frame.
+    for index, is_silent in enumerate([*silent, False]):
+        if is_silent and run_start is None:
+            run_start = index
+        elif not is_silent and run_start is not None:
+            run_lo = run_start * frame_s
+            run_hi = index * frame_s
+            for window_lo, window_hi in windows:
+                lo = max(run_lo, window_lo)
+                hi = min(run_hi, window_hi)
+                if hi - lo >= _MIN_SILENCE_S:
+                    events.append(SilenceEvent(start_s=lo, duration_s=hi - lo))
+            run_start = None
+    return sorted(events, key=lambda event: event.start_s)
+
+
 def count_filler_matches(text: str, lexicon: Sequence[str]) -> int:
     """Word-boundary filler matches over lowercased text.
 
@@ -76,6 +144,32 @@ def count_filler_matches(text: str, lexicon: Sequence[str]) -> int:
         pattern = r"\b" + re.escape(filler.lower()) + r"\b"
         total += len(re.findall(pattern, normalized))
     return total
+
+
+def _f0_variance(
+    mono: np.ndarray, sr: int, candidate_segments: list[TranscriptSegment]
+) -> float | None:
+    """Variance of voiced pyin f0 over candidate spans; None if unvoiced."""
+    spans: list[np.ndarray] = []
+    for seg in candidate_segments:
+        lo = max(0, int(seg.start_s * sr))
+        hi = min(len(mono), int(seg.end_s * sr))
+        if hi > lo:
+            spans.append(mono[lo:hi])
+    if not spans:
+        return None
+    candidate_audio = np.concatenate(spans)
+    if candidate_audio.size < _RMS_FRAME_LENGTH:
+        return None
+    if not np.any(np.abs(candidate_audio) > _VOICED_ABS_FLOOR):
+        return None  # digital silence: nothing is voiced, skip pyin
+    f0, _voiced_flag, _voiced_probs = librosa.pyin(
+        candidate_audio, fmin=_PYIN_FMIN_HZ, fmax=_PYIN_FMAX_HZ, sr=sr
+    )
+    voiced = f0[~np.isnan(f0)]
+    if voiced.size == 0:
+        return None
+    return float(np.var(voiced))
 
 
 def _avg_response_latency(segments: list[TranscriptSegment]) -> float | None:
@@ -105,11 +199,11 @@ def compute_delivery_metrics(
     return DeliveryMetrics(
         wpm_overall=total_words / speaking_min if speaking_min > 0 else 0.0,
         wpm_timeline=_wpm_timeline(candidate_segments, duration_s),
-        silence_events=[],  # grown in a later cycle of this task
+        silence_events=_silence_events(mono, sr, segments, duration_s),
         filler_count=filler_count,
         filler_rate_per_min=(
             filler_count / speaking_min if speaking_min > 0 else 0.0
         ),
-        f0_variance=None,  # grown in a later cycle of this task
+        f0_variance=_f0_variance(mono, sr, candidate_segments),
         avg_response_latency_s=_avg_response_latency(segments),
     )

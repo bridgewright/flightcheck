@@ -127,3 +127,85 @@ def test_filler_metrics_use_module_lexicon(tmp_path, monkeypatch):
     # um x2 + uh x1 + "you know" x1 = 4 fillers over 0.5 min of speech.
     assert metrics.filler_count == 4
     assert metrics.filler_rate_per_min == pytest.approx(8.0)
+
+
+TONE_SPANS = [
+    (0.0, 2.0),    # interviewer speaking
+    (3.5, 5.0),    # interviewer speaking (after a 1.5 s mid-question pause)
+    (7.0, 9.0),    # candidate speaking
+    (9.5, 11.0),   # candidate speaking (after a 0.5 s mid-answer pause)
+    (14.0, 17.0),  # interviewer speaking
+    (18.5, 20.0),  # candidate speaking
+]
+
+SESSION_SEGMENTS = [
+    _seg(0.0, 5.0, "interviewer", "Walk me through a launch you led."),
+    _seg(7.0, 11.0, "candidate", "I led the beta launch of our tool."),
+    _seg(14.0, 17.0, "interviewer", "What went wrong along the way?"),
+    _seg(18.5, 20.0, "candidate", "We slipped one week on rollout."),
+]
+
+
+def _write_tone_wav(path, duration_s: float, tone_spans) -> None:
+    """16 kHz mono wav: 220 Hz sine bursts over digital silence."""
+    n_samples = int(duration_s * SR)
+    samples = np.zeros(n_samples, dtype=np.float32)
+    t = np.arange(n_samples) / SR
+    for span_start, span_end in tone_spans:
+        lo = int(span_start * SR)
+        hi = int(span_end * SR)
+        burst = 0.5 * np.sin(2.0 * np.pi * 220.0 * t[lo:hi])
+        samples[lo:hi] = burst.astype(np.float32)
+    sf.write(path, samples, SR)
+
+
+def test_silence_events_only_inside_candidate_answer_windows(tmp_path):
+    wav = tmp_path / "session.wav"
+    _write_tone_wav(wav, 20.0, TONE_SPANS)
+
+    metrics = compute_delivery_metrics(wav, SESSION_SEGMENTS)
+    events = metrics.silence_events
+
+    # Expected events: (5.0, 2.0) thinking pause before the first answer,
+    # (11.0, 3.0) gap after the answer until the next question, (17.0,
+    # 1.5) thinking pause before the last answer. Excluded: the
+    # interviewer's own 1.5 s pause at 2.0 s (outside every answer
+    # window) and the candidate's 0.5 s mid-answer pause at 9.0 s (under
+    # the 1.0 s floor). Centered RMS frames smear tone edges by ~0.064 s
+    # per side, hence the tolerances.
+    assert len(events) == 3
+    starts = [event.start_s for event in events]
+    durations = [event.duration_s for event in events]
+    assert starts == pytest.approx([5.0, 11.0, 17.0], abs=0.15)
+    assert durations == pytest.approx([2.0, 3.0, 1.5], abs=0.3)
+    assert all(event.duration_s >= 1.0 for event in events)
+    assert all(event.start_s > 4.0 for event in events)
+
+
+def test_f0_variance_present_for_voiced_candidate_audio(tmp_path):
+    wav = tmp_path / "session.wav"
+    _write_tone_wav(wav, 20.0, TONE_SPANS)
+
+    metrics = compute_delivery_metrics(wav, SESSION_SEGMENTS)
+
+    # Candidate spans carry a 220 Hz tone (inside pyin's 65-400 Hz
+    # range): pyin must find voiced frames, and a near-constant pitch
+    # keeps the variance small but defined.
+    assert metrics.f0_variance is not None
+    assert metrics.f0_variance >= 0.0
+
+
+def test_f0_variance_none_for_pure_silence(tmp_path):
+    wav = tmp_path / "session.wav"
+    _write_silence_wav(wav, 15.0)
+    segments = [
+        _seg(0.0, 1.5, "interviewer", "Anything you want to add?"),
+        _seg(2.0, 8.0, "candidate", "Nothing that made a sound."),
+    ]
+
+    metrics = compute_delivery_metrics(wav, segments)
+
+    assert metrics.f0_variance is None
+    # Zero peak energy means no silence reference level either
+    # (a dead recording is an upload problem, not a delivery signal).
+    assert metrics.silence_events == []
