@@ -1,6 +1,8 @@
 from __future__ import annotations
+
 import json
 from pathlib import Path
+
 import yaml
 
 PROVIDERS = ["openai", "gemini"]
@@ -20,19 +22,25 @@ def _load(out_dir: Path, name: str) -> dict | None:
 
 
 def compile_report(out_dir: Path, manual_dir: Path) -> str:
+    # turns = answered, attempted = committed: their gap is silently-dropped
+    # turns. errors = session.error events, which no earlier table counted.
+    cols = ["provider", "mode", "turns", "attempted", "p50 ms", "p95 ms",
+            "disconnects", "errors", "resumptions", "minutes"]
     lines = [HEADER, "## Automated metrics", "",
-             "| provider | mode | turns | p50 ms | p95 ms | disconnects | resumptions | minutes |",
-             "| --- | --- | --- | --- | --- | --- | --- | --- |"]
+             "| " + " | ".join(cols) + " |",
+             "| " + " | ".join("---" for _ in cols) + " |"]
     for prov in PROVIDERS:
         for mode in ("latency", "stability"):
             s = _load(out_dir, f"{prov}-{mode}.json")
             if s is None:
-                lines.append(f"| {prov} | {mode} | MISSING | | | | | |")
+                lines.append(f"| {prov} | {mode} | MISSING |" + " |" * (len(cols) - 3))
             else:
-                lines.append(f"| {prov} | {mode} | {s['turns']} | {s['latency_p50_ms']} | "
+                lines.append(f"| {prov} | {mode} | {s['turns']} | "
+                             f"{s.get('turns_attempted', '')} | {s['latency_p50_ms']} | "
                              f"{s['latency_p95_ms']} | {s['disconnects']} | "
+                             f"{s.get('errors', '')} | "
                              f"{s['resumptions']} | {s['total_minutes']} |")
-    lines += ["", "## Manual session ratings (1–5)", "",
+    lines += ["", "## Manual session ratings (1–5)", "",  # noqa: RUF001 — en dash is prose, not code
               "| provider | session | " + " | ".join(MANUAL_KEYS) + " | notes |",
               "| --- | --- | " + " | ".join("---" for _ in MANUAL_KEYS) + " | --- |"]
     sheets = sorted(f for f in manual_dir.glob("*.yaml") if f.name != "sheet-template.yaml")
@@ -47,8 +55,12 @@ def compile_report(out_dir: Path, manual_dir: Path) -> str:
     if disc is None:
         lines.append("MISSING — run `make bakeoff-discrimination`.")
     else:
-        lines += ["| model | ranking accuracy (36 trials) |", "| --- | --- |"]
-        lines += [f"| {m} | {v['accuracy']:.2f} |" for m, v in disc.items()]
+        # trial count is per model and comes from the data: the protocol is
+        # 2 questions x 6 permutations, minus whatever failed to parse.
+        lines += ["| model | trials | ranking accuracy | parse failures |",
+                  "| --- | --- | --- | --- |"]
+        lines += [f"| {m} | {len(v.get('trials', []))} | {v['accuracy']:.2f} | "
+                  f"{v.get('parse_failures', '')} |" for m, v in disc.items()]
     lines += ["", "## Decision", "",
               "_Filled by hand on 2026-08-02 and mirrored to DECISIONS.md #002:_",
               "- Live interviewer provider: ",

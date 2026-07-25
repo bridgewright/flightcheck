@@ -1,5 +1,9 @@
 from __future__ import annotations
-import base64, itertools, json, os
+
+import base64
+import itertools
+import json
+import os
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Protocol
@@ -37,7 +41,35 @@ def rank_clips(ranker: AudioRanker, clips: dict[str, Path],
 
 
 def accuracy(trials: list[Trial]) -> float:
-    return sum(t.correct for t in trials) / len(trials)
+    """Share of parsed trials ranked exactly right. Parse failures are counted
+    separately (`run_trials`) and stay out of this denominator."""
+    return sum(t.correct for t in trials) / len(trials) if trials else 0.0
+
+
+def find_question_dirs(base: Path) -> list[Path]:
+    """Question dirs (`clips/q*`), or a friendly exit — never an empty run."""
+    qdirs = sorted(p for p in (base / "clips").glob("q*") if p.is_dir())
+    if not qdirs:
+        raise SystemExit(f"no question dirs in {base / 'clips'} — see manual_protocol.md")
+    return qdirs
+
+
+def run_trials(ranker: AudioRanker, qdirs: list[Path]) -> tuple[list[Trial], int]:
+    """All permutations for every question. One unusable reply is a data point,
+    not the end of the run — it is counted and the sweep continues."""
+    trials: list[Trial] = []
+    parse_failures = 0
+    for qdir in qdirs:
+        clips = {k: qdir / f"{k}.wav" for k in TRUTH}
+        if not all(p.exists() for p in clips.values()):
+            raise SystemExit(f"missing clips in {qdir} — see manual_protocol.md")
+        for perm in itertools.permutations(TRUTH):
+            try:
+                trials.append(rank_clips(ranker, clips, perm))
+            except Exception as exc:  # noqa: BLE001 — any bad reply is one trial lost, no more
+                parse_failures += 1
+                print(f"  parse failure [{ranker.name} {qdir.name} {'/'.join(perm)}]: {exc!r}")
+    return trials, parse_failures
 
 
 class OpenAIRanker:
@@ -54,7 +86,8 @@ class OpenAIRanker:
             content.append({"type": "input_audio", "input_audio": {
                 "data": base64.b64encode(Path(path).read_bytes()).decode(), "format": "wav"}})
         r = self.client.chat.completions.create(
-            model=self.model, messages=[{"role": "user", "content": content}])
+            model=self.model, messages=[{"role": "user", "content": content}],
+            response_format={"type": "json_object"})   # Gemini side asks via response_mime_type
         return json.loads(r.choices[0].message.content)["ranking"]
 
 
@@ -78,27 +111,28 @@ class GeminiRanker:
 
 
 def main() -> None:
+    from ..env import load_env, require_key
     from ..realtime_probe.openai_probe import load_bakeoff_config
-    cfg = load_bakeoff_config()
+    load_env()
     base = Path(__file__).resolve().parents[4].parent / "evals" / "suites" / "bakeoff"
+    qdirs = find_question_dirs(base)          # before any key or client work
+    require_key("OPENAI_API_KEY")
+    require_key("GEMINI_API_KEY")
+    cfg = load_bakeoff_config()
     out: dict = {}
     rankers: list[AudioRanker] = [
         OpenAIRanker(cfg["openai"]["scoring_audio_model"]),
         GeminiRanker(cfg["gemini"]["scoring_audio_model"]),
     ]
     for ranker in rankers:
-        trials: list[Trial] = []
-        for qdir in sorted((base / "clips").glob("q*")):
-            clips = {k: qdir / f"{k}.wav" for k in TRUTH}
-            if not all(p.exists() for p in clips.values()):
-                raise SystemExit(f"missing clips in {qdir} — see manual_protocol.md")
-            for perm in itertools.permutations(TRUTH):
-                trials.append(rank_clips(ranker, clips, perm))
-        out[ranker.name] = {"accuracy": accuracy(trials),
+        trials, parse_failures = run_trials(ranker, qdirs)
+        out[ranker.name] = {"accuracy": accuracy(trials), "parse_failures": parse_failures,
                             "trials": [t.__dict__ for t in trials]}
-    (base / "out").mkdir(exist_ok=True)
+    (base / "out").mkdir(parents=True, exist_ok=True)
     (base / "out" / "discrimination.json").write_text(json.dumps(out, indent=2, default=str))
-    print(json.dumps({k: v["accuracy"] for k, v in out.items()}, indent=2))
+    print(json.dumps({k: {"accuracy": v["accuracy"], "trials": len(v["trials"]),
+                          "parse_failures": v["parse_failures"]} for k, v in out.items()},
+                     indent=2))
 
 
 if __name__ == "__main__":
