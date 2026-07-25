@@ -1,4 +1,6 @@
-from scorer.evals_l3.regression import evaluate
+import json
+
+from scorer.evals_l3.regression import evaluate, main
 
 BASELINES = {"rubric_discrimination_min": 0.8, "delivery_judge_min": 0.8}
 
@@ -54,3 +56,16 @@ def test_judge_below_baseline_fails_even_if_dsp_is_perfect():
     assert exit_code == 1
     assert doc["suites"]["delivery_discrimination"]["status"] == "FAIL"
     assert doc["suites"]["rubric_discrimination"]["status"] == "SKIPPED"
+
+
+def test_main_reports_skips_and_exits_zero_without_inputs(tmp_path, capsys):
+    (tmp_path / "baselines.json").write_text(json.dumps(BASELINES))
+
+    exit_code = main(["--evals-root", str(tmp_path)])
+
+    assert exit_code == 0
+    written = json.loads((tmp_path / "out" / "regression.json").read_text())
+    assert written["suites"]["rubric_discrimination"]["status"] == "SKIPPED"
+    assert written["suites"]["delivery_discrimination"]["status"] == "SKIPPED"
+    printed = capsys.readouterr().out
+    assert "SKIPPED" in printed
