@@ -132,4 +132,5 @@ def judge_delivery(
         },
     )
     doc = DeliveryJudgeDoc.model_validate_json(response.text)
-    return list(doc.scores), list(doc.observations)
+    observations = [obs for obs in doc.observations if 0.0 <= obs.at_s <= duration_s]
+    return list(doc.scores), observations

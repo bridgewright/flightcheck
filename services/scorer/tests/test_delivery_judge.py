@@ -167,3 +167,33 @@ def test_happy_path_scores_delivery_dims_and_uploads_audio(tmp_path):
     assert "set conflicts_with_dsp=true" in prompt
     assert '"[04:12]"' in prompt
     assert '"nervous"' in prompt
+
+
+def test_out_of_range_observations_dropped(tmp_path):
+    wav = tmp_path / "session.wav"
+    _write_wav(wav)  # duration is exactly 30.0 s
+    doc = _happy_doc()
+    doc["observations"] = [
+        _observation(
+            -2.0,
+            "hedging-intonation",
+            "rising terminal intonation claimed before the audio starts",
+        ),
+        _observation(
+            30.0,
+            "trailing-off",
+            "final words fade under the exhale at the very end",
+        ),
+        _observation(
+            45.0,
+            "hedging-intonation",
+            "rising terminal intonation on the closing claim",
+        ),
+    ]
+    fake = FakeGenAI([json.dumps(doc)])
+
+    _, observations = judge_delivery(wav, _metrics(), _delivery_dims(), fake)
+
+    # Only the at_s == duration boundary case survives; -2.0 and 45.0 are out of range.
+    assert [o.at_s for o in observations] == [30.0]
+    assert observations[0].kind == "trailing-off"
