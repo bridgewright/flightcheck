@@ -162,9 +162,11 @@ class SupabaseDatabase:
         return _to_package_row(data[0])
 
     def set_package_profile(self, package_id: str, profile: CandidateProfile) -> None:
-        (self._client.table("packages")
-         .update({"candidate_profile": profile.model_dump(mode="json")})
-         .eq("id", package_id).execute())
+        data = (self._client.table("packages")
+                .update({"candidate_profile": profile.model_dump(mode="json")})
+                .eq("id", package_id).execute().data)
+        if not data:
+            raise KeyError(package_id)
 
     def set_package_rubric(self, package_id: str, rubric: Rubric | None,
                            status: str) -> None:
@@ -174,8 +176,10 @@ class SupabaseDatabase:
         payload: dict[str, object] = {"status": status}
         if rubric is not None:
             payload["rubric"] = rubric.model_dump(mode="json")
-        (self._client.table("packages").update(payload)
-         .eq("id", package_id).execute())
+        data = (self._client.table("packages").update(payload)
+                .eq("id", package_id).execute().data)
+        if not data:
+            raise KeyError(package_id)
 
     def create_session(self, package_id: str, index: int,
                        plan: SessionPlan) -> SessionRow:
@@ -200,12 +204,16 @@ class SupabaseDatabase:
         payload: dict[str, str] = {"status": status}
         if audio_path is not None:
             payload["audio_path"] = audio_path
-        (self._client.table("sessions").update(payload)
-         .eq("id", session_id).execute())
+        data = (self._client.table("sessions").update(payload)
+                .eq("id", session_id).execute().data)
+        if not data:
+            raise KeyError(session_id)
 
     def save_report(self, session_id: str, report: SessionReport) -> None:
         # Report + status land in ONE update so "report present" and
         # status=="scored" can never be observed apart.
-        (self._client.table("sessions")
-         .update({"report": report.model_dump(mode="json"), "status": "scored"})
-         .eq("id", session_id).execute())
+        data = (self._client.table("sessions")
+                .update({"report": report.model_dump(mode="json"), "status": "scored"})
+                .eq("id", session_id).execute().data)
+        if not data:
+            raise KeyError(session_id)

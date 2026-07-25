@@ -342,7 +342,10 @@ def test_supabase_set_package_rubric_updates_jsonb_and_status():
 def test_supabase_set_package_rubric_none_updates_status_only():
     # The failed-compile path: the update payload must not contain a
     # "rubric" key at all -- a failure handler never overwrites stored data.
-    stub = StubSupabase([[]])
+    # The stub returns one matched row (non-empty data) so this exercises
+    # the no-exception path; the zero-row -> KeyError path is covered
+    # separately below.
+    stub = StubSupabase([[_package_data(status="failed")]])
     SupabaseDatabase(stub).set_package_rubric("pkg-1", None, "failed")
     call = stub.log[0]
     assert call["table"] == "packages"
@@ -351,11 +354,27 @@ def test_supabase_set_package_rubric_none_updates_status_only():
 
 
 def test_supabase_set_session_status_omits_audio_path_when_none():
-    stub = StubSupabase([[]])
+    stub = StubSupabase([[{"id": "sess-1"}]])
     SupabaseDatabase(stub).set_session_status("sess-1", "scoring")
     assert stub.log[0]["table"] == "sessions"
     assert stub.log[0]["update"] == {"status": "scoring"}
     assert stub.log[0]["eq"] == [("id", "sess-1")]
+
+
+@pytest.mark.parametrize("call", [
+    lambda db: db.set_package_profile("missing-pkg", _profile()),
+    lambda db: db.set_package_rubric("missing-pkg", _rubric(), "ready"),
+    lambda db: db.set_package_rubric("missing-pkg", None, "failed"),
+    lambda db: db.set_session_status("missing-sess", "scoring"),
+    lambda db: db.save_report("missing-sess", _report("missing-sess")),
+])
+def test_supabase_mutators_raise_keyerror_when_update_matches_no_rows(call):
+    # Registry-pinned: missing ids raise KeyError in EVERY Database
+    # implementation, mutators included -- an update matching zero rows
+    # must not be a silent no-op (must match FakeDatabase's semantics).
+    stub = StubSupabase([[]])
+    with pytest.raises(KeyError):
+        call(SupabaseDatabase(stub))
 
 
 def test_supabase_session_round_trip_and_report_marks_scored():
