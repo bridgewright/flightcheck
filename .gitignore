@@ -7,4 +7,5 @@ node_modules/
 # personal voice recordings never enter the public repo (DECISIONS #005)
 evals/suites/bakeoff/clips/
 evals/suites/bakeoff/manual/*.yaml
+!evals/suites/bakeoff/manual/sheet-template.yaml
 .superpowers/

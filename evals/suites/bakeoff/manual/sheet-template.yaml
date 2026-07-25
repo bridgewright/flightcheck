@@ -1,0 +1,7 @@
+provider: ""        # openai | gemini
+session: 0
+persona_adherence: 0        # 1-5: stayed Morgan, no instruction leakage
+pressure_persistence: 0     # 1-5: executed all four probes, kept digging
+interruption_naturalness: 0 # 1-5: barge-in felt human, no long dead air
+english_only_discipline: 0  # 1-5: handled the Korean sentence per rules
+notes: ""
