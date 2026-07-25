@@ -1,0 +1,8 @@
+# Model IDs drift; this file is the single place they live. Verified: 2026-07-25.
+[openai]
+realtime_model = "gpt-realtime"
+scoring_audio_model = "gpt-audio"
+
+[gemini]
+realtime_model = "gemini-2.5-flash-native-audio-preview-09-2025"
+scoring_audio_model = "gemini-2.5-flash"
