@@ -10,6 +10,7 @@ from __future__ import annotations
 import math
 import re
 from collections.abc import Sequence
+from itertools import pairwise
 from pathlib import Path
 
 import librosa
@@ -177,7 +178,7 @@ def _avg_response_latency(segments: list[TranscriptSegment]) -> float | None:
     ordered = sorted(segments, key=lambda seg: seg.start_s)
     latencies = [
         following.start_s - prior.end_s
-        for prior, following in zip(ordered, ordered[1:])  # noqa: RUF007 — pairwise adds a dep for one zip
+        for prior, following in pairwise(ordered)
         if prior.speaker == "interviewer" and following.speaker == "candidate"
     ]
     if not latencies:
