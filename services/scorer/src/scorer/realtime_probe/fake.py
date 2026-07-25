@@ -10,6 +10,7 @@ class FakeProbe:
     name = "fake"
     input_sample_rate = 16000
     output_sample_rate = 24000
+    resumable = False       # subclasses that script session.resumed flip this
 
     def __init__(self, script: list[SessionEvent]):
         self._script = script

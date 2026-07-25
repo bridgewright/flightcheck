@@ -26,6 +26,9 @@ class OpenAIProbe:
     name = "openai"
     input_sample_rate = 24000
     output_sample_rate = 24000
+    # No session resumption in the Realtime API: the session cap is 60 min, past
+    # the 22-min stability run, so a drop here is the end of the run.
+    resumable = False
 
     # Wire names isolated here (providers drift). Verified against
     # developers.openai.com Realtime docs — client-events reference,

@@ -30,6 +30,14 @@ def test_server_message_mapping():
     assert p._classify({"setup_complete": {}}) is None
 
 
+def test_go_away_is_classified_so_the_probe_can_reconnect_before_the_socket_dies():
+    # `LiveServerGoAway.time_left` may be None, so the *presence* of the field —
+    # not its truthiness — is the signal (model_dump leaves an empty dict).
+    p = GeminiProbe()
+    assert p._classify({"go_away": {"time_left": "10s"}}) == "session.going_away"
+    assert p._classify({"go_away": {}}) == "session.going_away"
+
+
 def test_commit_and_respond_sends_audio_stream_end_when_vad_enabled():
     # automatic_activity_detection is on (default) in this mode, so the SDK's
     # own docstring says audio_stream_end is the correct turn-end signal.
@@ -70,6 +78,10 @@ def _audio_msg(pcm: bytes = b"\x00\x01") -> types.LiveServerMessage:
     return types.LiveServerMessage(server_content=types.LiveServerContent(
         model_turn=types.Content(parts=[
             types.Part(inline_data=types.Blob(data=pcm, mime_type="audio/pcm"))])))
+
+
+def _go_away_msg(time_left: str = "10s") -> types.LiveServerMessage:
+    return types.LiveServerMessage(go_away=types.LiveServerGoAway(time_left=time_left))
 
 
 def _handle_msg(handle: str) -> types.LiveServerMessage:
@@ -146,6 +158,45 @@ async def test_read_loop_reconnects_with_stored_handle_after_drop(monkeypatch):
     assert [e.payload.get("handle") for e in events if e.kind == "session.resumed"] == ["h1"]
     # one continuous timeline: the clock is not restarted by the reconnect
     assert [e.t_ms for e in events] == sorted(e.t_ms for e in events)
+
+
+async def test_go_away_reconnects_at_the_turn_boundary_before_the_socket_dies(monkeypatch):
+    # The server announces the close (go_away with time_left) before it happens.
+    # Reconnecting there — at a turn boundary, on a socket that is still alive —
+    # shrinks the window in which sends hit a dead session to ~zero, and the run
+    # never records a disconnect it did not actually suffer.
+    first = _FakeSession([[_handle_msg("h1"), _audio_msg(), _go_away_msg()]],
+                         errors.APIError(1000, {}))
+    second = _FakeSession([[_audio_msg()]], errors.APIError(1000, {}))
+    client, live = _fake_client([first, second])
+    monkeypatch.setattr(gemini_probe.genai, "Client", lambda api_key=None: client)
+
+    p = GeminiProbe(vad=False, api_key="k")
+    p.MAX_RESUMPTIONS = 1
+    await p.connect("x")
+    events = await _drain(p)
+
+    assert [e.kind for e in events] == [
+        "session.open", "resumption.update", "audio.delta", "session.going_away",
+        "session.resumed", "audio.delta", "session.close",
+    ]
+    assert live.configs[1]["session_resumption"] == {"handle": "h1"}
+
+
+async def test_go_away_without_a_handle_does_not_open_a_context_free_session(monkeypatch):
+    # Reconnecting without a handle would silently restart the interview with an
+    # empty conversation; better to ride the socket down and report the drop.
+    only = _FakeSession([[_audio_msg(), _go_away_msg()]], errors.APIError(1000, {}))
+    client, live = _fake_client([only])
+    monkeypatch.setattr(gemini_probe.genai, "Client", lambda api_key=None: client)
+
+    p = GeminiProbe(vad=False, api_key="k")
+    await p.connect("x")
+    events = await _drain(p)
+
+    assert [e.kind for e in events] == [
+        "session.open", "audio.delta", "session.going_away", "session.close"]
+    assert len(live.configs) == 1
 
 
 async def test_read_loop_does_not_reconnect_without_a_handle(monkeypatch):

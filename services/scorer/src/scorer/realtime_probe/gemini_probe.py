@@ -32,11 +32,14 @@ class GeminiProbe:
     The session also resumes itself: Gemini live audio sessions are capped
     (~15 min; the websocket is sent away around 10 min), so the probe stores the
     handles the server issues and reconnects with the newest one, on a single
-    continuous event stream, whenever a session drops (`_resume`).
+    continuous event stream, whenever a session drops (`_resume`) — and, when
+    the server announces the close first (`go_away`), at the next turn boundary
+    *before* it drops, so sends never meet a dead session.
     """
     name = "gemini"
     input_sample_rate = 16000
     output_sample_rate = 24000
+    resumable = True        # `_resume` reconnects and emits session.resumed
     # A resumption loop that never converges would spin forever; a 22-minute
     # run needs ~2 resumptions, so this only ever bites on a broken server.
     MAX_RESUMPTIONS: ClassVar[int] = 20
@@ -53,6 +56,7 @@ class GeminiProbe:
         self._handle: str | None = None
         self._resumptions = 0
         self._closing = False
+        self._go_away = False
 
     # -- pure helpers (unit-tested) --
     def _live_config(self, instructions: str, handle: str | None = None) -> dict:
@@ -81,6 +85,10 @@ class GeminiProbe:
             return "audio.done"
         if "session_resumption_update" in msg:
             return "resumption.update"
+        # `LiveServerGoAway.time_left` is Optional, so an announced close can
+        # dump as an empty dict — presence of the key is the signal, not truth.
+        if "go_away" in msg:
+            return "session.going_away"
         if msg.get("server_content", {}).get("interrupted"):
             return "input.speech_started"
         return None
@@ -146,6 +154,19 @@ class GeminiProbe:
                     while True:
                         async for msg in self._session.receive():
                             await self._emit(msg)
+                        if self._go_away:
+                            # The server announces the close (go_away, carrying
+                            # time_left) before it happens. Reconnecting here —
+                            # at a turn boundary, while the socket is still
+                            # alive — keeps the window in which a send hits a
+                            # dead session down to ~nothing, instead of the
+                            # seconds it takes to notice a socket that already
+                            # died. Without a handle there is nothing to resume
+                            # into (a fresh session would silently drop the
+                            # interview's context), so ride the socket down.
+                            self._go_away = False
+                            if self._handle and not await self._resume():
+                                return
                 except Exception as exc:  # noqa: BLE001 — a drop is a *measurement*, not a crash
                     # The SDK raises APIError carrying the websocket close code
                     # for every disconnect, so clean and failed closes are only
@@ -178,6 +199,12 @@ class GeminiProbe:
             payload = {"handle": handle}
         elif kind == "audio.delta":
             payload = {"pcm": data}
+        elif kind == "session.going_away":
+            # Acted on in `_read_loop`, not here: `_emit` runs inside the
+            # `receive()` generator, and reconnecting under it would tear down
+            # the socket being iterated.
+            self._go_away = True
+            payload = {"time_left": str(d["go_away"].get("time_left"))}
         else:
             payload = {}
         await self._q.put(SessionEvent(self._now_ms(), kind, payload))

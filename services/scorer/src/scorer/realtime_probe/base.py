@@ -12,11 +12,13 @@ from typing import Protocol
 # Canonical event kinds (adapters map provider wire events onto these):
 # session.open | session.close | session.error | session.resumed | turn.commit
 # audio.delta | audio.done | input.speech_started | input.speech_stopped
-# text.delta | resumption.update
+# text.delta | resumption.update | session.going_away
 #
 # session.close = the connection ended cleanly; session.error = it failed;
 # resumption.update = the server issued a resumption handle; session.resumed =
-# the adapter reconnected with one and the stream continues.
+# the adapter reconnected with one and the stream continues; session.going_away
+# = the server announced an upcoming close, so the adapter can reconnect before
+# the socket dies rather than after.
 
 
 @dataclass
@@ -30,6 +32,10 @@ class RealtimeProbe(Protocol):
     name: str
     input_sample_rate: int
     output_sample_rate: int
+    # True when the adapter reconnects a dropped session by itself and emits
+    # `session.resumed`. Runners use it to decide whether a failed send is worth
+    # waiting out (Gemini) or is simply the end of the run (OpenAI).
+    resumable: bool
 
     async def connect(self, instructions: str) -> None: ...
     async def send_audio(self, pcm16: bytes) -> None: ...

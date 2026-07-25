@@ -26,6 +26,8 @@ INTERVIEWER_PROMPT = (Path(__file__).resolve().parents[4].parent
 PACING_S = 0.2          # send a 200 ms chunk every 200 ms — real-time pacing
 ANSWER_WINDOW_S = 6.0   # let the model answer before the next turn
 DRAIN_TIMEOUT_S = 10.0  # cap on waiting for the event stream to finish
+RESUME_WAIT_S = 15.0    # how long a send failure may be a reconnect in progress
+RESUME_POLL_S = 0.05    # how often that window is re-checked
 
 
 @dataclass
@@ -91,15 +93,27 @@ async def run_scenario(probe: RealtimeProbe, clips: list[Path], minutes: float |
                 await asyncio.sleep(PACING_S)
             await probe.commit_and_respond()
         except Exception as exc:  # noqa: BLE001 — any transport failure, not just one library's
-            # A dead transport must not destroy the run's output: the run that
-            # disconnects is the one whose numbers we most need. Stop sending,
-            # record it, and let the consumer drain whatever the session
-            # produced. (Adapters that reconnect emit session.resumed; a send
-            # landing inside that window fails here and ends the run.)
-            res.send_failures += 1
-            print(f"send failed on turn {i + 1} — {exc!r}; draining the session")
-            break
-        await asyncio.sleep(ANSWER_WINDOW_S)
+            # A send can fail for two very different reasons. On an adapter that
+            # reconnects (Gemini), it is usually a reconnect in progress: the
+            # session object is dead for a moment and comes back seconds later,
+            # and ending the run there is what made a 22-minute stability run
+            # stop at the first go_away. So wait the window out first.
+            # Otherwise the transport is simply gone: a dead transport must not
+            # destroy the run's output either — the run that disconnects is the
+            # one whose numbers we most need — so stop sending, record it, and
+            # let the consumer drain whatever the session produced.
+            if not (probe.resumable and await _await_resume(events, len(events))):
+                res.send_failures += 1
+                print(f"send failed on turn {i + 1} — {exc!r}; draining the session")
+                break
+            # Resumed. The turn is dropped rather than resent: a resumed session
+            # restores conversation context, but the state of the half-sent
+            # realtime input is undefined, so resending risks feeding the
+            # interviewer a duplicated half-utterance. The cost is one latency
+            # sample per reconnect (~2 in a 22-minute run).
+            print(f"send failed on turn {i + 1} — {exc!r}; session resumed, turn dropped")
+        else:
+            await asyncio.sleep(ANSWER_WINDOW_S)
         i += 1
         if minutes is None and i >= len(clips):
             break
@@ -112,6 +126,28 @@ async def run_scenario(probe: RealtimeProbe, clips: list[Path], minutes: float |
     res.turns_attempted = count_attempted_turns(events)
     res.total_minutes = (time.monotonic() - t_start) / 60
     return res
+
+
+async def _await_resume(events: list[SessionEvent], seen: int) -> bool:
+    """Bounded wait for the adapter to reconnect after a send hit a dead session.
+
+    `seen` is the length of `events` at the moment the send failed, so only
+    what happens *after* the failure counts — an earlier reconnect must not be
+    mistaken for this one. Returns True on `session.resumed`, False as soon as
+    the resume itself fails (`session.error` with `phase="resume"` — final, no
+    point sitting out the window) or when the window closes.
+    """
+    deadline = time.monotonic() + RESUME_WAIT_S
+    while True:
+        for e in events[seen:]:
+            if e.kind == "session.resumed":
+                return True
+            if e.kind == "session.error" and e.payload.get("phase") == "resume":
+                return False
+        seen = len(events)
+        if time.monotonic() >= deadline:
+            return False
+        await asyncio.sleep(RESUME_POLL_S)
 
 
 async def _drain(consumer: asyncio.Task) -> None:
