@@ -11,6 +11,9 @@ from typing import Any
 
 from google.genai import types
 
+from scorer.api.db import PackageRow, SessionRow
+from scorer.schemas import CandidateProfile, Rubric, SessionPlan, SessionReport
+
 
 class _FakeCandidate:
     def __init__(self, grounding_metadata: Any = None):
@@ -96,3 +99,91 @@ class FakeGenAI:
         self.calls: list[dict[str, Any]] = []
         self.models = _FakeModels(self)
         self.files = _FakeFiles()
+
+
+class FakeDatabase:
+    """In-memory Database implementation mirroring SupabaseDatabase semantics.
+
+    Ids are deterministic -- pkg-N with matching tok-N, and sess-N -- so
+    downstream tests (Task 12) can predict them (pinned surface). Rows are
+    stored as the pydantic row models themselves; missing ids raise KeyError
+    exactly like the Supabase adapter. PackageRow drops jd_url (per the
+    interface registry), so it is kept in .jd_urls for assertions.
+    """
+
+    def __init__(self):
+        self.packages: dict[str, PackageRow] = {}
+        self.sessions: dict[str, SessionRow] = {}
+        self.jd_urls: dict[str, str | None] = {}
+        self._package_seq = 0
+        self._session_seq = 0
+
+    def create_package(self, jd_text: str, jd_url: str | None) -> PackageRow:
+        self._package_seq += 1
+        row = PackageRow(
+            id=f"pkg-{self._package_seq}",
+            access_token=f"tok-{self._package_seq}",
+            status="compiling",
+            jd_text=jd_text,
+            candidate_profile=None,
+            rubric=None,
+        )
+        self.packages[row.id] = row
+        self.jd_urls[row.id] = jd_url
+        return row
+
+    def get_package(self, package_id: str) -> PackageRow:
+        return self.packages[package_id]
+
+    def get_package_by_token(self, access_token: str) -> PackageRow:
+        for row in self.packages.values():
+            if row.access_token == access_token:
+                return row
+        raise KeyError(access_token)
+
+    def set_package_profile(self, package_id: str, profile: CandidateProfile) -> None:
+        row = self.packages[package_id]
+        self.packages[package_id] = row.model_copy(
+            update={"candidate_profile": profile})
+
+    def set_package_rubric(self, package_id: str, rubric: Rubric | None,
+                           status: str) -> None:
+        # rubric=None = failed compile: status update only, no rubric write.
+        row = self.packages[package_id]
+        update: dict[str, object] = {"status": status}
+        if rubric is not None:
+            update["rubric"] = rubric
+        self.packages[package_id] = row.model_copy(update=update)
+
+    def create_session(self, package_id: str, index: int,
+                       plan: SessionPlan) -> SessionRow:
+        if package_id not in self.packages:
+            raise KeyError(package_id)  # mirrors the FK constraint
+        self._session_seq += 1
+        row = SessionRow(
+            id=f"sess-{self._session_seq}",
+            package_id=package_id,
+            index=index,
+            status="planned",
+            session_plan=plan,
+            audio_path=None,
+            report=None,
+        )
+        self.sessions[row.id] = row
+        return row
+
+    def get_session(self, session_id: str) -> SessionRow:
+        return self.sessions[session_id]
+
+    def set_session_status(self, session_id: str, status: str,
+                           audio_path: str | None = None) -> None:
+        row = self.sessions[session_id]
+        update: dict[str, object] = {"status": status}
+        if audio_path is not None:
+            update["audio_path"] = audio_path
+        self.sessions[session_id] = row.model_copy(update=update)
+
+    def save_report(self, session_id: str, report: SessionReport) -> None:
+        row = self.sessions[session_id]
+        self.sessions[session_id] = row.model_copy(
+            update={"report": report, "status": "scored"})
