@@ -203,3 +203,55 @@ def test_lint_rejects_inner_state_assertion_in_observation_note():
         )
     assert "you were afraid" in str(err.value)
     assert "delivery_observations[0].note" in str(err.value)
+
+
+def test_lint_does_not_flag_forbidden_word_inside_candidate_quote():
+    # The candidate's own verbatim speech says "nervous" -- that's the
+    # candidate's word, not the product asserting an inner state, so it
+    # must not trip the lint even though it lands inside the strengths
+    # copy (which embeds evidence_quotes[0] verbatim).
+    scores = _scores([4.0, 4.5, 3.5, 4.0, 4.0])
+    scores[1] = DimensionScore(
+        dimension_key="quantified-impact",
+        score=4.5,
+        evidence_quotes=[
+            "I was really nervous before the launch, but we cut latency by 40%."
+        ],
+        rationale="Matches the anchor language for quantified-impact at this level.",
+    )
+    report = compile_report("sess-1", _make_rubric(), scores, _metrics(), _obs())
+    assert "nervous" in report.strengths[0].lower()
+
+
+def test_lint_still_rejects_forbidden_word_outside_any_quote_in_rationale():
+    scores = _scores([4.0, 4.5, 3.5, 4.0, 4.0])
+    scores[2] = DimensionScore(
+        dimension_key="role-knowledge",
+        score=3.5,
+        evidence_quotes=["verbatim quote for role-knowledge"],
+        rationale="The candidate seemed Nervous when asked about metrics.",
+    )
+    with pytest.raises(ReportLanguageError) as err:
+        compile_report("sess-1", _make_rubric(), scores, _metrics(), _obs())
+    assert "nervous" in str(err.value)
+    assert "role-knowledge" in str(err.value)
+
+
+def test_lint_rejects_forbidden_word_outside_quote_even_when_a_clean_quote_is_present():
+    # A field can carry both an exempt quote and product-authored prose;
+    # only the quote is stripped, so a forbidden word elsewhere in the same
+    # field still raises.
+    scores = _scores([4.0, 4.5, 3.5, 4.0, 4.0])
+    scores[2] = DimensionScore(
+        dimension_key="role-knowledge",
+        score=3.5,
+        evidence_quotes=["I shipped the migration a week early."],
+        rationale=(
+            'The candidate said "I shipped the migration a week early" but '
+            "still seemed Nervous about the follow-up question."
+        ),
+    )
+    with pytest.raises(ReportLanguageError) as err:
+        compile_report("sess-1", _make_rubric(), scores, _metrics(), _obs())
+    assert "nervous" in str(err.value)
+    assert "role-knowledge" in str(err.value)
