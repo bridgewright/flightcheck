@@ -1,9 +1,11 @@
 """Tests for scorer.rubric.compiler -- structured rubric compilation (no network)."""
 import json
 
+import pytest
+
 from fakes import FakeGenAI
 from scorer.config import load_product_config
-from scorer.rubric.compiler import compile_rubric
+from scorer.rubric.compiler import RubricCompileError, compile_rubric
 from scorer.rubric.corpus import CorpusDoc
 from scorer.schemas import CandidateProfile, ResearchFindings, Rubric, SourceCitation
 
@@ -159,3 +161,40 @@ def test_prompt_states_the_strict_rules():
     assert '"corpus://<doc_id>"' in prompt
     assert "question-independent" in prompt
     assert "research-sweep" in prompt
+
+
+def _citationless_rubric_dict() -> dict:
+    doc = _rubric_dict()
+    doc["dimensions"][0]["citations"] = []
+    return doc
+
+
+def test_invalid_first_response_retries_once_with_error_text():
+    fake = FakeGenAI([json.dumps(_citationless_rubric_dict()), json.dumps(_rubric_dict())])
+    rubric = _compile(fake)
+    assert isinstance(rubric, Rubric)
+    assert len(fake.calls) == 2
+    first_prompt = fake.calls[0]["contents"]
+    retry_prompt = fake.calls[1]["contents"]
+    assert retry_prompt.startswith(first_prompt)
+    appended = retry_prompt[len(first_prompt):]
+    assert "PREVIOUS ATTEMPT FAILED VALIDATION" in appended
+    assert "validation error" in appended  # the pydantic ValidationError text is embedded
+    assert fake.calls[1]["config"].response_schema is Rubric
+
+
+def test_malformed_json_first_response_also_retries():
+    fake = FakeGenAI(["this is not json", json.dumps(_rubric_dict())])
+    rubric = _compile(fake)
+    assert isinstance(rubric, Rubric)
+    assert len(fake.calls) == 2
+
+
+def test_two_invalid_responses_raise_rubric_compile_error():
+    fake = FakeGenAI([
+        json.dumps(_citationless_rubric_dict()),
+        json.dumps(_citationless_rubric_dict()),
+    ])
+    with pytest.raises(RubricCompileError):
+        _compile(fake)
+    assert len(fake.calls) == 2

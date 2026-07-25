@@ -6,11 +6,14 @@ cite), private corpus excerpts (citable as corpus://<doc_id>), and up to two
 few-shot example rubrics. One generate_content call structures the response
 as a Rubric; pydantic validation on the Rubric model is the gate of record
 (citation-less dimensions, bad weights, and broken anchor triples are all
-rejected there).
+rejected there). On a ValidationError the compiler retries exactly once,
+appending the validation error text so the model can repair its output; a
+second failure raises RubricCompileError.
 """
 from __future__ import annotations
 
 from google.genai import types
+from pydantic import ValidationError
 
 from scorer.config import load_product_config
 from scorer.rubric.corpus import CorpusDoc
@@ -44,6 +47,12 @@ _RULES = (
     "- Write research_summary as 3-6 sentences on what the research says this interview\n"
     "  rewards and penalizes.\n"
     "Return only JSON matching the response schema."
+)
+
+_RETRY_HEADER = (
+    "## PREVIOUS ATTEMPT FAILED VALIDATION\n"
+    "Your previous rubric was rejected by schema validation with the errors below.\n"
+    "Fix every error and return the full corrected rubric JSON.\n"
 )
 
 
@@ -117,14 +126,24 @@ def _build_prompt(jd_text: str, profile: CandidateProfile, findings: ResearchFin
 def compile_rubric(jd_text: str, profile: CandidateProfile, findings: ResearchFindings,
                    corpus: list[CorpusDoc], fewshots: list[Rubric],
                    client: GenAIClientLike) -> Rubric:
-    """One structured call -> validated Rubric (repair retry arrives next cycle)."""
+    """One structured call -> validated Rubric; one repair retry on ValidationError."""
     product = load_product_config()
-    response = client.models.generate_content(
-        model=product.models.scorer,
-        contents=_build_prompt(jd_text, profile, findings, corpus, fewshots),
-        config=types.GenerateContentConfig(
-            response_mime_type="application/json",
-            response_schema=Rubric,
-        ),
+    config = types.GenerateContentConfig(
+        response_mime_type="application/json",
+        response_schema=Rubric,
     )
-    return Rubric.model_validate_json(response.text or "")
+    prompt = _build_prompt(jd_text, profile, findings, corpus, fewshots)
+    response = client.models.generate_content(
+        model=product.models.scorer, contents=prompt, config=config)
+    try:
+        return Rubric.model_validate_json(response.text or "")
+    except ValidationError as first_error:
+        retry_prompt = f"{prompt}\n\n{_RETRY_HEADER}{first_error}"
+        retry_response = client.models.generate_content(
+            model=product.models.scorer, contents=retry_prompt, config=config)
+        try:
+            return Rubric.model_validate_json(retry_response.text or "")
+        except ValidationError as second_error:
+            raise RubricCompileError(
+                f"rubric failed validation after one retry: {second_error}"
+            ) from second_error
