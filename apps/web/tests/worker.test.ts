@@ -1,6 +1,8 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import {
+  authorizePackage,
+  authorizeSession,
   completeSession,
   createPackage,
   createSession,
@@ -16,6 +18,9 @@ interface RecordedCall {
 
 const calls: RecordedCall[] = [];
 let nextResponse: Response;
+// FIFO for helpers that make more than one worker call (authorizeSession);
+// when empty, the stub falls back to nextResponse.
+let queuedResponses: Response[] = [];
 
 function jsonResponse(body: unknown, status = 200): Response {
   return new Response(JSON.stringify(body), {
@@ -31,11 +36,12 @@ function sentHeaders(): Headers {
 beforeEach(() => {
   calls.length = 0;
   nextResponse = jsonResponse({});
+  queuedResponses = [];
   vi.stubEnv("WORKER_URL", "https://worker.example.test");
   vi.stubEnv("WORKER_API_TOKEN", "test-worker-token");
   vi.stubGlobal("fetch", async (url: string | URL | Request, init?: RequestInit) => {
     calls.push({ url: String(url), init });
-    return nextResponse;
+    return queuedResponses.shift() ?? nextResponse;
   });
 });
 
@@ -138,5 +144,89 @@ describe("getSession", () => {
     const row = await getSession("sess-1");
     expect(calls[0].url).toBe("https://worker.example.test/api/sessions/sess-1");
     expect(row.status).toBe("scoring");
+  });
+});
+
+describe("authorizePackage", () => {
+  it("returns the package when the token resolves", async () => {
+    nextResponse = jsonResponse({ id: "pkg-1", access_token: "tok-1", status: "ready" });
+    const result = await authorizePackage("tok-1");
+    expect(calls[0].url).toBe("https://worker.example.test/api/packages/by-token/tok-1");
+    expect(result.ok).toBe(true);
+    if (result.ok) {
+      expect(result.value.id).toBe("pkg-1");
+    }
+  });
+
+  it("url-encodes the token in the worker path", async () => {
+    nextResponse = jsonResponse({ id: "pkg-1" });
+    await authorizePackage("tok/1");
+    expect(calls[0].url).toBe("https://worker.example.test/api/packages/by-token/tok%2F1");
+  });
+
+  it("maps an unknown token (404) to a 403 denial", async () => {
+    nextResponse = jsonResponse({ detail: "not found" }, 404);
+    expect(await authorizePackage("nope")).toEqual({ ok: false, status: 403 });
+  });
+
+  it("maps a worker failure (500) to 502, not a denial", async () => {
+    nextResponse = jsonResponse({ detail: "boom" }, 500);
+    expect(await authorizePackage("tok-1")).toEqual({ ok: false, status: 502 });
+  });
+});
+
+describe("authorizeSession", () => {
+  const pkg = { id: "pkg-1", access_token: "tok-1", status: "ready" };
+
+  it("authorizes when the session belongs to the token's package", async () => {
+    queuedResponses = [
+      jsonResponse(pkg),
+      jsonResponse({
+        id: "sess-1",
+        package_id: "pkg-1",
+        index: 1,
+        status: "planned",
+        interviewer_instructions: "You are Morgan.",
+      }),
+    ];
+    const result = await authorizeSession("tok-1", "sess-1");
+    expect(result.ok).toBe(true);
+    if (result.ok) {
+      expect(result.value.pkg.id).toBe("pkg-1");
+      expect(result.value.session.interviewer_instructions).toBe("You are Morgan.");
+    }
+  });
+
+  it("url-encodes the session id in the worker path", async () => {
+    queuedResponses = [
+      jsonResponse(pkg),
+      jsonResponse({ id: "sess/1", package_id: "pkg-1" }),
+    ];
+    await authorizeSession("tok-1", "sess/1");
+    expect(calls[1].url).toBe("https://worker.example.test/api/sessions/sess%2F1");
+  });
+
+  it("denies without fetching the session when the token is unknown", async () => {
+    nextResponse = jsonResponse({ detail: "not found" }, 404);
+    expect(await authorizeSession("nope", "sess-1")).toEqual({ ok: false, status: 403 });
+    expect(calls).toHaveLength(1);
+  });
+
+  it("denies when the session belongs to a different package", async () => {
+    queuedResponses = [
+      jsonResponse(pkg),
+      jsonResponse({ id: "sess-1", package_id: "pkg-other" }),
+    ];
+    expect(await authorizeSession("tok-1", "sess-1")).toEqual({ ok: false, status: 403 });
+  });
+
+  it("denies when the session does not exist", async () => {
+    queuedResponses = [jsonResponse(pkg), jsonResponse({ detail: "nope" }, 404)];
+    expect(await authorizeSession("tok-1", "sess-9")).toEqual({ ok: false, status: 403 });
+  });
+
+  it("maps a session-lookup worker failure to 502", async () => {
+    queuedResponses = [jsonResponse(pkg), jsonResponse({ detail: "boom" }, 500)];
+    expect(await authorizeSession("tok-1", "sess-1")).toEqual({ ok: false, status: 502 });
   });
 });

@@ -45,3 +45,32 @@ export function recordingStoragePath(
 ): string {
   return `packages/${packageId}/session-${sessionIndex}.webm`;
 }
+
+/**
+ * Upload cap for one session recording. 25 minutes of opus at MediaRecorder
+ * defaults is well under 25 MB; 50 MB is a generous ceiling that still stops
+ * a hostile client from streaming gigabytes through the service-role upload
+ * path.
+ */
+export const MAX_RECORDING_BYTES = 50 * 1024 * 1024;
+
+// packages.id is a Postgres gen_random_uuid() column
+// (docs/supabase/migrations/001_init.sql), so anything that is not a
+// canonical UUID is hostile input. Validating BEFORE storage-key
+// interpolation keeps path traversal out of the recordings bucket.
+const UUID_RE =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+/** True when the value is a canonical UUID (the worker's package id shape). */
+export function isValidPackageId(value: string): boolean {
+  return UUID_RE.test(value);
+}
+
+/**
+ * True for a plausible session index: a small positive integer. v0.1
+ * packages hold a handful of sessions; 99 is a generous ceiling that keeps
+ * the storage key bounded.
+ */
+export function isValidSessionIndex(value: number): boolean {
+  return Number.isInteger(value) && value >= 1 && value <= 99;
+}

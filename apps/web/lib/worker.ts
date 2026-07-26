@@ -72,3 +72,57 @@ export async function getSession(id: string): Promise<SessionRow> {
   const path = `/api/sessions/${encodeURIComponent(id)}`;
   return workerJson(`GET ${path}`, await workerFetch(path));
 }
+
+// --- Token capability checks -------------------------------------------
+//
+// The package access token IS the v0.1 security model: the privileged web
+// routes (secret mint, recording upload, session complete) must prove the
+// caller holds the token for the package that owns the session BEFORE doing
+// anything expensive or secret. Unknown tokens/sessions map to 403 without
+// revealing which part failed; worker outages map to 502 so an unreachable
+// worker is never misreported as an access denial.
+
+export type Authorized<T> =
+  | { ok: true; value: T }
+  | { ok: false; status: 403 | 502 };
+
+// The worker's GET /api/sessions/{id} returns the SessionRow fields plus
+// interviewer_instructions (rebuilt deterministically server-side). The
+// field exists only here, server-side — it must never be forwarded to the
+// browser.
+export type SessionWithInstructions = SessionRow & {
+  interviewer_instructions?: string;
+};
+
+export async function authorizePackage(
+  token: string,
+): Promise<Authorized<PackageRow>> {
+  const res = await workerFetch(
+    `/api/packages/by-token/${encodeURIComponent(token)}`,
+  );
+  if (!res.ok) {
+    return { ok: false, status: res.status === 404 ? 403 : 502 };
+  }
+  return { ok: true, value: (await res.json()) as PackageRow };
+}
+
+export async function authorizeSession(
+  token: string,
+  sessionId: string,
+): Promise<Authorized<{ pkg: PackageRow; session: SessionWithInstructions }>> {
+  const pkg = await authorizePackage(token);
+  if (!pkg.ok) {
+    return pkg;
+  }
+  const res = await workerFetch(
+    `/api/sessions/${encodeURIComponent(sessionId)}`,
+  );
+  if (!res.ok) {
+    return { ok: false, status: res.status === 404 ? 403 : 502 };
+  }
+  const session = (await res.json()) as SessionWithInstructions;
+  if (session.package_id !== pkg.value.id) {
+    return { ok: false, status: 403 };
+  }
+  return { ok: true, value: { pkg: pkg.value, session } };
+}
