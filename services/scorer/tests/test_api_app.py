@@ -129,6 +129,15 @@ def test_api_routes_reject_missing_or_wrong_token():
     assert client.post("/api/packages", json={"jd_text": JD_TEXT}).status_code == 401
 
 
+def test_non_ascii_authorization_header_is_401_not_500():
+    # secrets.compare_digest raises TypeError on non-ASCII str input, which
+    # used to surface as a 500; the byte comparison keeps it a clean 401.
+    client, _ = _client(FakeGenAI([]))
+    non_ascii = [(b"authorization", b"Bearer t\xf6ken")]
+    response = client.get("/api/packages/by-token/tok-1", headers=non_ascii)
+    assert response.status_code == 401
+
+
 def test_post_packages_requires_jd_text_or_url():
     client, _ = _client(FakeGenAI([]))
     response = client.post("/api/packages", json={}, headers=AUTH)
