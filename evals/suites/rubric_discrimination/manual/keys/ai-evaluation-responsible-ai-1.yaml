@@ -1,0 +1,5 @@
+dimension: ai-evaluation-responsible-ai
+key:
+  A: borderline
+  B: strong
+  C: weak
