@@ -1,5 +1,7 @@
 import { NextResponse } from "next/server";
 
+import { authorizeSession } from "@/lib/worker";
+
 import { clientSecretRequestBody } from "../../../lib/realtime";
 
 const OPENAI_CLIENT_SECRETS_URL =
@@ -12,7 +14,7 @@ const OPENAI_CLIENT_SECRETS_URL =
 // re-fetched from the worker here — never accepted from the client — so the
 // browser can neither read nor tamper with them.
 export async function POST(request: Request) {
-  let body: { sessionId?: unknown };
+  let body: { sessionId?: unknown; token?: unknown };
   try {
     body = await request.json();
   } catch {
@@ -24,23 +26,23 @@ export async function POST(request: Request) {
       { status: 400 },
     );
   }
-  const sessionRes = await fetch(
-    `${process.env.WORKER_URL}/api/sessions/${body.sessionId}`,
-    {
-      headers: { Authorization: `Bearer ${process.env.WORKER_API_TOKEN}` },
-      cache: "no-store",
-    },
-  );
-  if (!sessionRes.ok) {
+  if (typeof body.token !== "string" || body.token === "") {
+    return NextResponse.json({ error: "token is required" }, { status: 400 });
+  }
+  // Capability check BEFORE any OpenAI call: the package access token is the
+  // v0.1 security model, so the caller must hold the token of the package
+  // that owns this session. authorizeSession also url-encodes the ids on the
+  // worker paths and returns the session payload, instructions included.
+  const access = await authorizeSession(body.token, body.sessionId);
+  if (!access.ok) {
     return NextResponse.json(
-      { error: `worker session lookup failed (${sessionRes.status})` },
-      { status: 502 },
+      access.status === 403
+        ? { error: "access denied" }
+        : { error: "worker session lookup failed" },
+      { status: access.status },
     );
   }
-  const session = (await sessionRes.json()) as {
-    interviewer_instructions?: unknown;
-  };
-  const instructions = session.interviewer_instructions;
+  const instructions = access.value.session.interviewer_instructions;
   if (typeof instructions !== "string" || instructions === "") {
     return NextResponse.json(
       { error: "session has no interviewer instructions" },

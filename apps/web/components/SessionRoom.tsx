@@ -24,6 +24,8 @@ interface SessionRoomProps {
   sessionId: string;
   packageId: string;
   sessionIndex: number;
+  /** Package access token — the v0.1 credential every privileged call carries. */
+  token: string;
   reportHref: string;
 }
 
@@ -31,6 +33,7 @@ export default function SessionRoom({
   sessionId,
   packageId,
   sessionIndex,
+  token,
   reportHref,
 }: SessionRoomProps) {
   const router = useRouter();
@@ -54,6 +57,7 @@ export default function SessionRoom({
   const hearingTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const meterRafRef = useRef(0);
   const endingRef = useRef(false);
+  const connectingRef = useRef(false); // re-entry guard for start()
 
   // --- Ready screen: mic check ------------------------------------------
   const enableMic = useCallback(async () => {
@@ -124,6 +128,7 @@ export default function SessionRoom({
         form.append("file", blob, "recording.webm");
         form.append("packageId", packageId);
         form.append("sessionIndex", String(sessionIndex));
+        form.append("token", token);
         const upRes = await fetch("/api/recordings", {
           method: "POST",
           body: form,
@@ -145,6 +150,7 @@ export default function SessionRoom({
           body: JSON.stringify({
             action: "complete",
             audio_path: storagePath,
+            token,
           }),
         });
         if (!completeRes.ok) {
@@ -165,7 +171,7 @@ export default function SessionRoom({
         });
       }
     },
-    [packageId, reportHref, router, sessionId, sessionIndex],
+    [packageId, reportHref, router, sessionId, sessionIndex, token],
   );
 
   const endSession = useCallback(async () => {
@@ -182,16 +188,23 @@ export default function SessionRoom({
 
   // --- Start: mint secret, connect WebRTC, wire the recording mix -------
   const start = useCallback(async () => {
+    // Re-entry guard (mirrors endingRef): a concurrent second start() would
+    // double-mint the secret and corrupt chunksRef mid-recording.
+    if (connectingRef.current) return;
+    connectingRef.current = true;
     const micStream = micStreamRef.current;
     const audioCtx = audioCtxRef.current;
-    if (!micStream || !audioCtx) return;
+    if (!micStream || !audioCtx) {
+      connectingRef.current = false;
+      return;
+    }
     setError(null);
     setPhase("connecting");
     try {
       const secretRes = await fetch("/api/realtime-secret", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ sessionId }),
+        body: JSON.stringify({ sessionId, token }),
       });
       if (!secretRes.ok) {
         const secretBody = (await secretRes.json().catch(() => ({}))) as {
@@ -228,6 +241,13 @@ export default function SessionRoom({
 
       const dc = pc.createDataChannel("oai-events");
       dc.addEventListener("open", () => {
+        // The mic-check level meter is gone from the UI once the room is
+        // live: stop its rAF loop instead of re-rendering ~60fps for the
+        // whole interview (it would also outlive the mic tracks).
+        if (meterRafRef.current) {
+          cancelAnimationFrame(meterRafRef.current);
+          meterRafRef.current = 0;
+        }
         // Recorder starts at data-channel open — session start — so the
         // file timeline matches the interview timeline and scoring
         // timestamps (transcript start_s, observations at_s) line up.
@@ -280,13 +300,14 @@ export default function SessionRoom({
     } catch (err) {
       pcRef.current?.close();
       pcRef.current = null;
+      connectingRef.current = false; // allow "Try again"
       setPhase("ready");
       setError({
         kind: "connect",
         message: err instanceof Error ? err.message : String(err),
       });
     }
-  }, [sessionId]);
+  }, [sessionId, token]);
 
   // --- Timer + 25:00 hard cut -------------------------------------------
   useEffect(() => {
