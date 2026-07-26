@@ -11,6 +11,7 @@ from __future__ import annotations
 import base64
 import logging
 import os
+import secrets
 from typing import Annotated
 
 from fastapi import (
@@ -69,9 +70,15 @@ def _empty_profile() -> CandidateProfile:
 
 
 def _require_worker_token(authorization: Annotated[str, Header()] = "") -> None:
-    """Bearer auth against WORKER_API_TOKEN. Never log or echo either value."""
+    """Bearer auth against WORKER_API_TOKEN. Never log or echo either value.
+
+    compare_digest keeps the comparison constant-time so response timing
+    cannot leak how much of a guessed token matched.
+    """
     expected = os.environ.get("WORKER_API_TOKEN", "")
-    if not expected or authorization != f"Bearer {expected}":
+    if not expected or not secrets.compare_digest(
+        authorization, f"Bearer {expected}"
+    ):
         raise HTTPException(status_code=401, detail="invalid or missing bearer token")
 
 
