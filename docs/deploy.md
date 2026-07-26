@@ -60,7 +60,13 @@ platform's secret store and are never written into the repo, logs, or docs.
    - `SUPABASE_SERVICE_ROLE_KEY`
    - `WORKER_API_TOKEN` — generate once with `openssl rand -hex 32`; the same
      value goes to Vercel below
-   - optional: `SCORER_CORPUS_DIR` (corpus cache dir), `SSL_CERT_FILE`
+   - optional: `SSL_CERT_FILE`
+   - **`SCORER_CORPUS_DIR` — do NOT set in production.** It is a local-dev
+     bypass, not a cache: when set, the worker skips the `corpus` bucket sync
+     entirely and reads that directory instead. On Railway it would silently
+     compile every rubric with zero corpus grounding and zero few-shots
+     (an empty or wrong directory produces "(no corpus documents provided)"
+     rubrics with no error and no log line).
 4. Settings > Networking > Generate Domain. Note the public URL — it becomes
    `WORKER_URL` for the web app.
 
@@ -73,7 +79,10 @@ platform's secret store and are never written into the repo, logs, or docs.
    - `WORKER_URL` (the Railway domain, with `https://`)
    - `WORKER_API_TOKEN` (same value as on Railway)
    - `SUPABASE_URL`
-   - `SUPABASE_SERVICE_ROLE_KEY` (used by the recordings upload route)
+   - `SUPABASE_SERVICE_ROLE_KEY` (used by the recordings route to mint
+     signed upload URLs for the private `recordings` bucket — the browser
+     then PUTs the recording straight to Supabase Storage, so multi-megabyte
+     audio never passes through a Vercel function body limit)
 3. Deploy. Note the production URL.
 
 ## 4. Smoke checklist (release-blocking)
@@ -84,14 +93,24 @@ platform's secret store and are never written into the repo, logs, or docs.
       returns `401` or `403` — bearer auth is enforced.
 - [ ] Full loop on a representative **public** JD (never one from the private
       application-target list), from the Vercel production URL: intake → rubric
-      preview shows 5–8 dimensions, every one with at least one citation link →
-      full voice session with recorded audio → report reaches `scored` with a
-      verdict, delivery metrics, and timestamped observations.
+      preview shows 5–8 dimensions, every one with at least one citation →
+      **full-length voice session** (run the real ~20 minutes, not a short
+      probe: the recording upload is a direct-to-Supabase signed-URL PUT and
+      must be verified at a real recording size, well past any function body
+      limit) → report reaches `scored` with a verdict, delivery metrics, and
+      timestamped observations.
 - [ ] Evals gate: from `repo/services/scorer/`, `uv run scorer-evals; echo "exit=$?"`
       prints `exit=0`.
 - [ ] Secrets audit: in browser devtools on the production site, search all
       network responses for the `WORKER_API_TOKEN` value — zero hits; the browser
-      talks only to the Vercel origin and OpenAI's Realtime endpoints.
+      talks only to the Vercel origin, OpenAI's Realtime endpoints, and the
+      Supabase Storage host (the signed-URL recording PUT — the signed URL is
+      single-purpose and short-lived, not a stored secret).
+- [ ] **Kill switch noted** (cost/abuse incident on the public URL): pause the
+      Railway worker service, or rotate `WORKER_API_TOKEN` on Railway only —
+      either immediately stops all compile/scoring spend while the static
+      pages stay up. v0.1 has no per-user rate limiting; this is the
+      operator's containment lever.
 
 ## 5. Post-deploy release steps (operator, release-blocking)
 
@@ -101,9 +120,12 @@ and the Vercel production URL for `README.md`.
 
 ### 5.1 Swap the sample report for the real anonymized session
 
-The sample page's banner says "Sample report from a real practice session
-(anonymized)". Until this swap, `apps/web/public/sample-report.json` holds a
-compiler-shaped fixture, so the claim is **not yet true — this step blocks the
+As committed, `apps/web/public/sample-report.json` holds a compiler-shaped
+synthetic fixture and the sample page's banner honestly labels it:
+"Illustrative sample report — synthetic data in the exact format the product
+produces. A real anonymized session replaces this at launch." This step
+performs that promised replacement — fixture **and** banner together, so the
+page is never mislabeled in either direction. **This step blocks the
 release.**
 
 1. Fetch the smoke session's report and rubric metadata from the production
@@ -186,19 +208,37 @@ release.**
    PY
    ```
 
-5. Confirm the web app still builds with the new fixture (from `repo/apps/web/`):
-   `npm run typecheck` and `npx next build`, both exit 0.
-6. Commit (from `repo/`):
+5. **Restore the "real session" banner wording.** In
+   `apps/web/app/sample-report/page.tsx`, replace the synthetic-data banner
+   text ("Illustrative sample report — synthetic data ... replaces this at
+   launch.") with:
+
+   > Sample report from a real practice session (anonymized).
+
+   This wording is only true after steps 1–4 above succeeded — never commit
+   it over the synthetic fixture.
+6. Confirm the web app still builds with the new fixture and banner (from
+   `repo/apps/web/`): `npm run typecheck` and `npx next build`, both exit 0.
+7. Commit (from `repo/`):
 
    ```bash
-   git add apps/web/public/sample-report.json
+   git add apps/web/public/sample-report.json apps/web/app/sample-report/page.tsx
    git commit -m "feat(web): swap sample report for real anonymized session" -m "Co-Authored-By: Claude Fable 5 <noreply@anthropic.com>"
    ```
 
-7. Update `README.md`: replace every `PENDING-DEPLOY-URL` placeholder in the
-   "v0.1 — live" section with the Vercel production URL, delete the operator
-   TODO note, verify `grep -n PENDING-DEPLOY-URL README.md` prints nothing,
-   and commit.
+8. Update `README.md`: replace every `PENDING-DEPLOY-URL` placeholder in the
+   "v0.1 — live" section with the Vercel production URL, link the demo GIF
+   from section 5.1a, delete the operator TODO note, verify
+   `grep -n PENDING-DEPLOY-URL README.md` prints nothing, and commit.
+
+### 5.1a Record the demo GIF (README landing material)
+
+The smoke session **is** the demo material — capture it while running
+section 4's full loop (screen-record intake → rubric preview → a session-room
+moment → the report verdict; keep it under ~30 s, no audio needed for the
+GIF). Check the same anonymization boxes as 5.1.2 for anything visible
+on-screen, commit the GIF (or a `docs/` asset + link), and reference it from
+`README.md`'s "v0.1 — live" section (step 8 above).
 
 ### 5.2 Tag and publish
 
