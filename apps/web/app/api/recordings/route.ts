@@ -4,49 +4,39 @@ import { NextResponse } from "next/server";
 import { authorizePackage } from "@/lib/worker";
 
 import {
-  MAX_RECORDING_BYTES,
   isValidPackageId,
   isValidSessionIndex,
   recordingStoragePath,
 } from "../../../lib/realtime";
 
-// Uploads the finished interview recording to the private Supabase Storage
-// bucket "recordings" using the service-role key (server-only). The worker
-// downloads the same path when scoring (Storage.download_recording), so the
-// path shape is a registry contract, not a convention.
+// Mints a Supabase Storage SIGNED UPLOAD URL for one session recording in
+// the private "recordings" bucket, using the service-role key (server-only).
+// The browser then PUTs the blob straight to Supabase with that URL, so the
+// multi-megabyte recording never passes through a Vercel function — whose
+// ~4.5 MB request-body limit a real 20-minute opus recording (~1 MB/min)
+// would exceed. It also means this route never buffers a hostile body.
+//
+// The storage path is derived server-side (recordingStoragePath) after the
+// token capability check; the worker downloads the same path when scoring
+// (Storage.download_recording), so the path shape is a registry contract,
+// not a convention.
 export async function POST(request: Request) {
-  // Cheap rejection before buffering: a client announcing an oversized body
-  // is turned away from the Content-Length header alone.
-  const declaredLength = Number(request.headers.get("content-length"));
-  if (Number.isFinite(declaredLength) && declaredLength > MAX_RECORDING_BYTES) {
-    return NextResponse.json(
-      { error: "recording exceeds the 50 MB upload limit" },
-      { status: 413 },
-    );
-  }
-  let form: FormData;
+  let body: { packageId?: unknown; sessionIndex?: unknown; token?: unknown };
   try {
-    form = await request.formData();
+    body = await request.json();
   } catch {
-    return NextResponse.json(
-      { error: "expected multipart form data" },
-      { status: 400 },
-    );
+    return NextResponse.json({ error: "invalid JSON body" }, { status: 400 });
   }
-  const file = form.get("file");
-  const packageId = form.get("packageId");
-  const sessionIndex = form.get("sessionIndex");
-  const token = form.get("token");
+  const { packageId, sessionIndex, token } = body;
   if (
-    !(file instanceof Blob) ||
     typeof packageId !== "string" ||
     packageId === "" ||
-    typeof sessionIndex !== "string" ||
+    (typeof sessionIndex !== "string" && typeof sessionIndex !== "number") ||
     typeof token !== "string" ||
     token === ""
   ) {
     return NextResponse.json(
-      { error: "file, packageId, sessionIndex, and token are required" },
+      { error: "packageId, sessionIndex, and token are required" },
       { status: 400 },
     );
   }
@@ -66,16 +56,11 @@ export async function POST(request: Request) {
       { status: 400 },
     );
   }
-  if (file.size > MAX_RECORDING_BYTES) {
-    return NextResponse.json(
-      { error: "recording exceeds the 50 MB upload limit" },
-      { status: 413 },
-    );
-  }
-  // Capability check: the uploaded packageId must be the package this access
+  // Capability check: the requested packageId must be the package this access
   // token unlocks (the token IS the v0.1 credential).
   const access = await authorizePackage(token);
   if (!access.ok) {
+    console.error(`recordings: authorizePackage failed (status ${access.status})`);
     return NextResponse.json(
       access.status === 403
         ? { error: "access denied" }
@@ -84,6 +69,7 @@ export async function POST(request: Request) {
     );
   }
   if (access.value.id !== packageId) {
+    console.error("recordings: token does not unlock the requested package");
     return NextResponse.json({ error: "access denied" }, { status: 403 });
   }
   const storagePath = recordingStoragePath(packageId, index);
@@ -91,20 +77,19 @@ export async function POST(request: Request) {
     process.env.SUPABASE_URL as string,
     process.env.SUPABASE_SERVICE_ROLE_KEY as string,
   );
-  const bytes = Buffer.from(await file.arrayBuffer());
-  const { error } = await supabase.storage
+  // upsert: a failed complete call is retried from the browser with the same
+  // blob; the re-upload must overwrite, not 409.
+  const { data, error } = await supabase.storage
     .from("recordings")
-    .upload(storagePath, bytes, {
-      contentType: "audio/webm",
-      // A failed complete call is retried from the browser with the same
-      // blob; the re-upload must overwrite, not 409.
-      upsert: true,
-    });
-  if (error) {
+    .createSignedUploadUrl(storagePath, { upsert: true });
+  if (error || !data) {
+    // Log the storage detail server-side only; the client gets a generic
+    // message (internal storage errors are not for the browser).
+    console.error("recordings: createSignedUploadUrl failed", error);
     return NextResponse.json(
-      { error: `storage upload failed: ${error.message}` },
+      { error: "could not prepare the upload — try again" },
       { status: 502 },
     );
   }
-  return NextResponse.json({ storagePath });
+  return NextResponse.json({ signedUrl: data.signedUrl });
 }

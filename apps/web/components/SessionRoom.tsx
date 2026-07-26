@@ -3,6 +3,7 @@
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
 
+import { MAX_RECORDING_BYTES } from "../lib/realtime";
 import {
   HARD_CUT_S,
   SESSION_BUDGET_S,
@@ -124,22 +125,42 @@ export default function SessionRoom({
       setPhase("uploading");
       setError(null);
       try {
-        const form = new FormData();
-        form.append("file", blob, "recording.webm");
-        form.append("packageId", packageId);
-        form.append("sessionIndex", String(sessionIndex));
-        form.append("token", token);
-        const upRes = await fetch("/api/recordings", {
+        // Size gate stays client-side: the blob no longer passes through a
+        // web route (see below), so this is where the 50 MB cap lives.
+        if (blob.size > MAX_RECORDING_BYTES) {
+          throw new Error("recording exceeds the 50 MB upload limit");
+        }
+        // Step 1: the token-authorized route mints a signed upload URL for
+        // the server-derived storage path.
+        const signRes = await fetch("/api/recordings", {
           method: "POST",
-          body: form,
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ packageId, sessionIndex, token }),
         });
-        if (!upRes.ok) {
-          const upBody = (await upRes.json().catch(() => ({}))) as {
+        if (!signRes.ok) {
+          const signBody = (await signRes.json().catch(() => ({}))) as {
             error?: string;
           };
           throw new Error(
-            upBody.error ?? `recording upload failed (${upRes.status})`,
+            signBody.error ?? `upload authorization failed (${signRes.status})`,
           );
+        }
+        const { signedUrl } = (await signRes.json()) as { signedUrl: string };
+        // Step 2: PUT the blob straight to Supabase Storage (the
+        // supabase-js uploadToSignedUrl contract: PUT to the signed URL,
+        // x-upsert matching the minted-with-upsert token). The recording
+        // never transits a Vercel function, whose ~4.5 MB body limit a real
+        // 20-minute recording exceeds.
+        const upRes = await fetch(signedUrl, {
+          method: "PUT",
+          headers: {
+            "Content-Type": "audio/webm",
+            "x-upsert": "true",
+          },
+          body: blob,
+        });
+        if (!upRes.ok) {
+          throw new Error(`recording upload failed (${upRes.status})`);
         }
         // No audio_path in the body: the server derives the storage path
         // from the authorized session row, so the client cannot point the
