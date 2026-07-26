@@ -1,0 +1,225 @@
+# Deploy runbook — flightcheck v0.1
+
+Three deploy units: `apps/web` on Vercel, `services/scorer` on Railway, Supabase for
+Postgres + Storage. This file lists **env var names only** — values live in each
+platform's secret store and are never written into the repo, logs, or docs.
+
+## 0. Pre-deploy checklist
+
+- [ ] **npm audit status (documented, not blocking).** As of 2026-07-26,
+      `npm audit` in `apps/web` reports 12 high advisories, all transitive:
+      `next@16.2.12`'s bundled `postcss`/`sharp` copies (build-time CSS
+      processing and image optimization), plus a dev-only `eslint` chain via
+      `brace-expansion`/`minimatch` that never ships to production. The only
+      "fix" npm offers is a breaking downgrade to `next@9` — rejected.
+      Decision: track and bump `next` as soon as a patched release lands;
+      re-run `npm audit` before every release and update this entry.
+- [ ] **ffmpeg on PATH (Railway).** The scoring pipeline shells out to ffmpeg
+      (`scorer.audio_utils.ensure_wav`); `services/scorer/nixpacks.toml` appends
+      `ffmpeg` to the Python provider's nix packages. After the first deploy,
+      verify from the Railway service shell (or a one-off `railway run`):
+      `ffmpeg -version` prints a version banner. If it does not, the build did
+      not pick up `nixpacks.toml` — check that Root Directory is
+      `services/scorer`.
+- [ ] **WORKER_API_TOKEN generated correctly.** Long random value, generated
+      once (`openssl rand -hex 32`, 64 hex chars) and set in both Railway and
+      Vercel — never committed, never logged. The worker compares it with
+      `secrets.compare_digest` (constant-time), so token strength is the only
+      thing the operator controls: do not shorten it, do not reuse it across
+      environments.
+- [ ] Gates green locally before deploying: from `repo/services/scorer/`,
+      `uv run pytest`, `uv run ruff check .`, and `uv run scorer-evals`
+      (exit 0); from `repo/apps/web/`, `npm run lint`, `npm run typecheck`,
+      `npm run test`, `npx next build`.
+
+## 1. Supabase
+
+1. Create a project at supabase.com (pick a region close to the Railway worker).
+   Note the project URL and the service-role key from Project Settings > API.
+2. SQL Editor: paste the full contents of `docs/supabase/migrations/001_init.sql`
+   and run it. Expected: `Success. No rows returned`. This creates the `packages`
+   and `sessions` tables.
+3. Storage: create two buckets, `recordings` and `corpus`. Both **must be private**
+   (public access off) — recordings are user audio, the corpus is confidential.
+4. Upload the private rubric corpus: every local corpus `*.md` doc into the
+   `corpus` bucket root. The corpus is never committed to this repo (workspace
+   confidentiality rule) — only `services/scorer/corpus/README.md` and the neutral
+   example doc live in git.
+
+## 2. Railway (scoring worker)
+
+1. New Project > Deploy from GitHub repo > select this repo, then set
+   **Root Directory** to `services/scorer`.
+2. Build and start come from `services/scorer/nixpacks.toml` (nixpacks adds
+   `ffmpeg` to the default Python toolchain; start command
+   `uv run python -m scorer.api.app`, which serves on `$PORT`).
+3. Variables (names only — set values in the Railway dashboard):
+   - `OPENAI_API_KEY`
+   - `GEMINI_API_KEY`
+   - `SUPABASE_URL`
+   - `SUPABASE_SERVICE_ROLE_KEY`
+   - `WORKER_API_TOKEN` — generate once with `openssl rand -hex 32`; the same
+     value goes to Vercel below
+   - optional: `SCORER_CORPUS_DIR` (corpus cache dir), `SSL_CERT_FILE`
+4. Settings > Networking > Generate Domain. Note the public URL — it becomes
+   `WORKER_URL` for the web app.
+
+## 3. Vercel (web)
+
+1. New Project > import this repo > set **Root Directory** to `apps/web`
+   (framework preset: Next.js).
+2. Environment variables (names only):
+   - `OPENAI_API_KEY` (mints OpenAI Realtime ephemeral client secrets)
+   - `WORKER_URL` (the Railway domain, with `https://`)
+   - `WORKER_API_TOKEN` (same value as on Railway)
+   - `SUPABASE_URL`
+   - `SUPABASE_SERVICE_ROLE_KEY` (used by the recordings upload route)
+3. Deploy. Note the production URL.
+
+## 4. Smoke checklist (release-blocking)
+
+- [ ] `curl -s https://<railway-domain>/healthz` returns `{"ok":true}`
+      (unauthenticated).
+- [ ] `curl -s -o /dev/null -w "%{http_code}\n" -X POST https://<railway-domain>/api/packages`
+      returns `401` or `403` — bearer auth is enforced.
+- [ ] Full loop on a representative **public** JD (never one from the private
+      application-target list), from the Vercel production URL: intake → rubric
+      preview shows 5–8 dimensions, every one with at least one citation link →
+      full voice session with recorded audio → report reaches `scored` with a
+      verdict, delivery metrics, and timestamped observations.
+- [ ] Evals gate: from `repo/services/scorer/`, `uv run scorer-evals; echo "exit=$?"`
+      prints `exit=0`.
+- [ ] Secrets audit: in browser devtools on the production site, search all
+      network responses for the `WORKER_API_TOKEN` value — zero hits; the browser
+      talks only to the Vercel origin and OpenAI's Realtime endpoints.
+
+## 5. Post-deploy release steps (operator, release-blocking)
+
+The smoke session from section 4 doubles as the source of the public sample
+report. Note its `access_token`, `package_id`, and `session_id` from the URLs,
+and the Vercel production URL for `README.md`.
+
+### 5.1 Swap the sample report for the real anonymized session
+
+The sample page's banner says "Sample report from a real practice session
+(anonymized)". Until this swap, `apps/web/public/sample-report.json` holds a
+compiler-shaped fixture, so the claim is **not yet true — this step blocks the
+release.**
+
+1. Fetch the smoke session's report and rubric metadata from the production
+   worker and write the fixture shape (run from `repo/services/scorer/`, which
+   has httpx and the repo's `.env` with `WORKER_API_TOKEN`):
+
+   ```bash
+   WORKER_URL="https://<railway-domain>" SESSION_ID="<session_id>" PACKAGE_TOKEN="<access_token>" \
+   uv run python - <<'PY'
+   import json
+   import os
+
+   import httpx
+
+   from scorer.env import load_env
+
+   load_env()
+   base = os.environ["WORKER_URL"].rstrip("/")
+   headers = {"Authorization": f"Bearer {os.environ['WORKER_API_TOKEN']}"}
+   session = httpx.get(
+       f"{base}/api/sessions/{os.environ['SESSION_ID']}", headers=headers, timeout=30.0
+   ).raise_for_status().json()
+   package = httpx.get(
+       f"{base}/api/packages/by-token/{os.environ['PACKAGE_TOKEN']}", headers=headers, timeout=30.0
+   ).raise_for_status().json()
+   assert session["status"] == "scored", session["status"]
+   doc = {
+       "report": session["report"],
+       "dimensions": [
+           {"key": d["key"], "name": d["name"], "channel": d["channel"]}
+           for d in package["rubric"]["dimensions"]
+       ],
+   }
+   out = "../../apps/web/public/sample-report.json"
+   with open(out, "w") as f:
+       json.dump(doc, f, indent=2)
+       f.write("\n")
+   print("wrote", out, "verdict:", doc["report"]["verdict"])
+   PY
+   ```
+
+2. **Anonymization checklist (by hand — release-blocking).** Open
+   `apps/web/public/sample-report.json` and edit:
+   - [ ] Your **name** in any form (evidence quotes often contain "I'm ...") —
+         remove or replace with a neutral phrasing; delete the quote if the
+         sentence stops being verbatim-true.
+   - [ ] **Employer names**, current and past — replace with neutral
+         descriptors ("my current employer", "a prior team") only where the
+         sentence stays truthful; otherwise drop the quote.
+   - [ ] **Any client references** (workspace rule: client names never appear
+         in the public repo) — remove entirely, including indirect identifiers
+         (industry + engagement detail combinations).
+   - [ ] The **target company** — the smoke session ran on a representative
+         public JD, so the JD company may stay; if any private
+         application-target detail leaked into an answer, remove it.
+   - [ ] Set `report.session_id` to `"sample-anon-001"`.
+3. Verify the scrub with greps for your real name, current employer, and every
+   client name (expected: **no output** from each), for example:
+
+   ```bash
+   grep -in "<your-name>" apps/web/public/sample-report.json
+   ```
+
+4. Re-validate against the schema of record (from `repo/services/scorer/`):
+
+   ```bash
+   uv run python - <<'PY'
+   import json
+   from pathlib import Path
+
+   from scorer.schemas import SessionReport
+
+   doc = json.loads(Path("../../apps/web/public/sample-report.json").read_text())
+   report = SessionReport.model_validate(doc["report"])
+   meta_keys = [d["key"] for d in doc["dimensions"]]
+   scored_keys = [s.dimension_key for s in report.dimension_scores]
+   assert meta_keys == scored_keys, (meta_keys, scored_keys)
+   assert report.session_id == "sample-anon-001"
+   print("sample-report.json OK:", report.verdict, report.overall_score)
+   PY
+   ```
+
+5. Confirm the web app still builds with the new fixture (from `repo/apps/web/`):
+   `npm run typecheck` and `npx next build`, both exit 0.
+6. Commit (from `repo/`):
+
+   ```bash
+   git add apps/web/public/sample-report.json
+   git commit -m "feat(web): swap sample report for real anonymized session" -m "Co-Authored-By: Claude Fable 5 <noreply@anthropic.com>"
+   ```
+
+7. Update `README.md`: replace every `PENDING-DEPLOY-URL` placeholder in the
+   "v0.1 — live" section with the Vercel production URL, delete the operator
+   TODO note, verify `grep -n PENDING-DEPLOY-URL README.md` prints nothing,
+   and commit.
+
+### 5.2 Tag and publish
+
+1. Re-run every gate in the pre-deploy checklist (a tag never goes on a tree
+   that was not just verified), then tag from `repo/`:
+
+   ```bash
+   git tag -a v0.1.0 -m "flightcheck v0.1.0 — full loop live: JD intake to honest session report"
+   git tag -l v0.1.0
+   ```
+
+2. Run the full 12-rule impression audit against the repo as it would appear
+   publicly (landing copy, sample report, README, docs, changelog). This is a
+   **hard gate**: any failing rule blocks the release — fix, re-run the gates,
+   re-tag if commits moved (`git tag -d v0.1.0`, tag again), audit again.
+3. Only after all 12 rules pass, push:
+
+   ```bash
+   git push origin main
+   git push origin v0.1.0
+   ```
+
+   Railway and Vercel auto-redeploy from `main`. Re-run the two `curl` items
+   from the smoke checklist against production as a final sanity check.
