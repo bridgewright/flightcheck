@@ -59,7 +59,7 @@ export async function POST(
     if (result === "already-scored") {
       // Nothing new was started: the paid pipeline already ran (or is
       // running). 409 lets the client navigate on to the report.
-      console.error(`session complete: worker refused a re-score (409) for a session`);
+      console.error("session complete: worker refused a re-score (409)");
       return NextResponse.json(
         { error: "session is already scoring or scored" },
         { status: 409 },

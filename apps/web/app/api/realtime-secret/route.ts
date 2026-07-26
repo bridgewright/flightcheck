@@ -35,6 +35,7 @@ export async function POST(request: Request) {
   // worker paths and returns the session payload, instructions included.
   const access = await authorizeSession(body.token, body.sessionId);
   if (!access.ok) {
+    console.error(`realtime-secret: authorizeSession failed (status ${access.status})`);
     return NextResponse.json(
       access.status === 403
         ? { error: "access denied" }
@@ -44,6 +45,7 @@ export async function POST(request: Request) {
   }
   const instructions = access.value.session.interviewer_instructions;
   if (typeof instructions !== "string" || instructions === "") {
+    console.error("realtime-secret: worker session payload has no interviewer instructions");
     return NextResponse.json(
       { error: "session has no interviewer instructions" },
       { status: 502 },
@@ -58,6 +60,8 @@ export async function POST(request: Request) {
     body: JSON.stringify(clientSecretRequestBody(instructions)),
   });
   if (!mintRes.ok) {
+    // Status only — the OpenAI error body could quote request contents.
+    console.error(`realtime-secret: OpenAI client_secrets mint failed (status ${mintRes.status})`);
     return NextResponse.json(
       { error: `secret mint failed (${mintRes.status})` },
       { status: 502 },
