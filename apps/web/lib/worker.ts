@@ -57,15 +57,29 @@ export async function createSession(packageId: string): Promise<CreateSessionRes
   return workerJson("POST /api/sessions", response);
 }
 
-export async function completeSession(id: string, audioPath: string): Promise<void> {
+// Outcome of POST /api/sessions/{id}/complete. The worker guards the paid
+// scoring trigger: 202 enqueues a run ("accepted"); 409 means the session is
+// already "scoring" or "scored" and nothing new was started
+// ("already-scored") — for callers that is an already-in-progress success
+// (the report exists or is on its way), not a failure.
+export type CompleteSessionResult = "accepted" | "already-scored";
+
+export async function completeSession(
+  id: string,
+  audioPath: string,
+): Promise<CompleteSessionResult> {
   const path = `/api/sessions/${encodeURIComponent(id)}/complete`;
   const response = await workerFetch(path, {
     method: "POST",
     body: JSON.stringify({ audio_path: audioPath }),
   });
+  if (response.status === 409) {
+    return "already-scored";
+  }
   if (!response.ok) {
     throw new Error(`worker POST ${path} failed: ${response.status}`);
   }
+  return "accepted";
 }
 
 export async function getSession(id: string): Promise<SessionRow> {

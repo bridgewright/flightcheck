@@ -141,19 +141,18 @@ export default function SessionRoom({
             upBody.error ?? `recording upload failed (${upRes.status})`,
           );
         }
-        const { storagePath } = (await upRes.json()) as {
-          storagePath: string;
-        };
+        // No audio_path in the body: the server derives the storage path
+        // from the authorized session row, so the client cannot point the
+        // scorer at another package's recording.
         const completeRes = await fetch(`/api/sessions/${sessionId}`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            action: "complete",
-            audio_path: storagePath,
-            token,
-          }),
+          body: JSON.stringify({ action: "complete", token }),
         });
-        if (!completeRes.ok) {
+        // 409 = the worker already has this session scoring (or scored) —
+        // e.g. a retry after a lost response. The run we wanted exists, the
+        // recording is uploaded: proceed to the report, do not error.
+        if (!completeRes.ok && completeRes.status !== 409) {
           const completeBody = (await completeRes
             .json()
             .catch(() => ({}))) as { error?: string };

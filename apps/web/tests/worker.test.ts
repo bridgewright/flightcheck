@@ -121,16 +121,26 @@ describe("createSession", () => {
 });
 
 describe("completeSession", () => {
-  it("posts audio_path to the complete endpoint", async () => {
-    nextResponse = jsonResponse({ ok: true }, 202);
-    await completeSession("sess-1", "packages/pkg-1/session-1.webm");
+  it("posts audio_path to the complete endpoint and reports acceptance", async () => {
+    nextResponse = jsonResponse({ session_id: "sess-1", status: "scoring" }, 202);
+    const result = await completeSession("sess-1", "packages/pkg-1/session-1.webm");
     expect(calls[0].url).toBe("https://worker.example.test/api/sessions/sess-1/complete");
     expect(JSON.parse(String(calls[0].init?.body))).toEqual({
       audio_path: "packages/pkg-1/session-1.webm",
     });
+    expect(result).toBe("accepted");
   });
 
-  it("throws with the status code on a non-2xx reply", async () => {
+  it("maps the worker's 409 re-score guard to already-scored, not an error", async () => {
+    // The worker's 409 body uses the "error" key (not FastAPI's "detail").
+    nextResponse = jsonResponse(
+      { error: "session is already scored; it cannot be re-scored" },
+      409,
+    );
+    expect(await completeSession("sess-1", "x.webm")).toBe("already-scored");
+  });
+
+  it("throws with the status code on other non-2xx replies", async () => {
     nextResponse = jsonResponse({ detail: "not found" }, 404);
     await expect(completeSession("sess-9", "x.webm")).rejects.toThrow(
       "worker POST /api/sessions/sess-9/complete failed: 404",
