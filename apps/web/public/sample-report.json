@@ -1,0 +1,122 @@
+{
+  "report": {
+    "session_id": "sample-0001",
+    "verdict": "approaching",
+    "overall_score": 3.28,
+    "dimension_scores": [
+      {
+        "dimension_key": "structured-communication",
+        "score": 3.5,
+        "evidence_quotes": [
+          "My recommendation was to sunset the legacy dashboard and move reporting to the new pipeline.",
+          "So the three things that mattered were coverage, latency, and cost - in that order."
+        ],
+        "rationale": "Leads with a conclusion in most answers; two answers open with context and reach the point only after prompting."
+      },
+      {
+        "dimension_key": "analytical-rigor",
+        "score": 3.0,
+        "evidence_quotes": [
+          "We saw a lift of, I think, around twelve percent, though I'd have to check the exact number."
+        ],
+        "rationale": "Quantifies outcomes when probed but hedges baseline figures; one causal claim is stated without the comparison group it needs."
+      },
+      {
+        "dimension_key": "business-impact",
+        "score": 4.0,
+        "evidence_quotes": [
+          "That saved the team roughly forty hours a month, which is why finance sponsored the rollout."
+        ],
+        "rationale": "Consistently ties analysis to a business owner and a number; the strongest channel in this session."
+      },
+      {
+        "dimension_key": "stakeholder-collaboration",
+        "score": 3.5,
+        "evidence_quotes": [
+          "I brought the sales ops lead in early because the definition of an active account was theirs, not ours."
+        ],
+        "rationale": "Names counterparts and their stakes concretely; conflict-resolution examples stay at the summary level."
+      },
+      {
+        "dimension_key": "role-motivation",
+        "score": 2.5,
+        "evidence_quotes": [
+          "I want to work somewhere my analysis actually ships."
+        ],
+        "rationale": "Motivation stays generic; no answer connects to this company's product, market, or the JD's stated priorities."
+      },
+      {
+        "dimension_key": "delivery-composure",
+        "score": 3.0,
+        "evidence_quotes": [
+          "04:12-04:31",
+          "11:05-11:48"
+        ],
+        "rationale": "Pace holds steady through the pressure probe; volume drops and sentences shorten in the two flagged windows before recovering."
+      }
+    ],
+    "delivery_metrics": {
+      "wpm_overall": 132.6,
+      "wpm_timeline": [118.2, 127.9, 135.4, 141.0, 129.8, 138.6, 133.1, 126.4, 130.9, 144.2, 137.5, 128.8, 131.7, 136.2, 125.3, 133.9, 140.1, 129.5],
+      "silence_events": [
+        {"start_s": 252.4, "duration_s": 2.8},
+        {"start_s": 431.0, "duration_s": 1.6},
+        {"start_s": 665.2, "duration_s": 3.4},
+        {"start_s": 918.7, "duration_s": 1.2},
+        {"start_s": 1104.5, "duration_s": 2.1}
+      ],
+      "filler_count": 34,
+      "filler_rate_per_min": 2.6,
+      "f0_variance": 385.2,
+      "avg_response_latency_s": 1.8
+    },
+    "delivery_observations": [
+      {
+        "at_s": 252.4,
+        "kind": "trailing-off",
+        "note": "Volume drops and the clause is left unfinished after the follow-up on metric choice.",
+        "conflicts_with_dsp": false
+      },
+      {
+        "at_s": 431.0,
+        "kind": "hedging-intonation",
+        "note": "Rising intonation on factual statements - signals associated with uncertainty observed while restating the baseline number.",
+        "conflicts_with_dsp": false
+      },
+      {
+        "at_s": 665.2,
+        "kind": "recovery-under-pressure",
+        "note": "After a 3.4s silence, the answer restarts with a clear structure and steady pace.",
+        "conflicts_with_dsp": false
+      },
+      {
+        "at_s": 1104.5,
+        "kind": "trailing-off",
+        "note": "Sentence endings soften audibly here, while measured pace and volume stay within the session's normal range.",
+        "conflicts_with_dsp": true
+      }
+    ],
+    "strengths": [
+      "Business impact framing (4.0/5): consistently ties analysis to a business owner and a quantified outcome.",
+      "Structured communication (3.5/5): leads with the recommendation before the supporting evidence in most answers."
+    ],
+    "gaps": [
+      "Role and company motivation (2.5/5): the score-5 anchor expects motivation grounded in this company's product and the JD's priorities; answers stayed generic.",
+      "Analytical rigor (3.0/5): the score-5 anchor expects exact baselines and a stated comparison group; key figures were hedged.",
+      "Composure and delivery under pressure (3.0/5): the score-5 anchor expects steady sentence endings through challenges; two windows showed trailing-off."
+    ],
+    "next_drills": [
+      "Role and company motivation: write and rehearse a 60-second answer linking one JD priority to one of your shipped analyses; the signal to hit is a company-specific reason, not a generic one.",
+      "Analytical rigor: for your three headline projects, memorize baseline, delta, and comparison group as exact numbers; the signal to hit is an unhedged baseline figure."
+    ],
+    "limits_note": "This verdict reflects alignment with rubric anchors and an experienced-interviewer scoring protocol; it is not a prediction of any specific company's decision."
+  },
+  "dimensions": [
+    {"key": "structured-communication", "name": "Structured communication", "channel": "content"},
+    {"key": "analytical-rigor", "name": "Analytical rigor", "channel": "content"},
+    {"key": "business-impact", "name": "Business impact framing", "channel": "content"},
+    {"key": "stakeholder-collaboration", "name": "Stakeholder collaboration", "channel": "content"},
+    {"key": "role-motivation", "name": "Role and company motivation", "channel": "content"},
+    {"key": "delivery-composure", "name": "Composure and delivery under pressure", "channel": "delivery"}
+  ]
+}
