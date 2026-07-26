@@ -259,9 +259,10 @@ def main() -> None:
         )
         print(f"wrote {len(written)} triplet(s) under {args.out_dir}")
         return
-    from google import genai  # deferred import: only the judge path needs a client
+    # Deferred import: only the judge path needs a client.
+    from scorer.genai_compat import make_client
 
-    client = genai.Client(api_key=require_key("GEMINI_API_KEY"))
+    client = make_client(require_key("GEMINI_API_KEY"))
     rubric = Rubric.model_validate_json(args.rubric.read_text())
     result = judge_discrimination(args.triplets_dir, rubric, client)
     args.out.parent.mkdir(parents=True, exist_ok=True)

@@ -103,9 +103,9 @@ def main(argv: list[str] | None = None) -> int:
         # present must never require a GEMINI_API_KEY it will never use.
         nonlocal client
         if client is None:
-            from google import genai
+            from scorer.genai_compat import make_client
 
-            client = genai.Client(api_key=require_key("GEMINI_API_KEY"))
+            client = make_client(require_key("GEMINI_API_KEY"))
         return client
 
     if has_triplets:

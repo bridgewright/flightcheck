@@ -205,11 +205,11 @@ def main() -> None:
     composition contract).
     """
     import uvicorn
-    from google import genai
 
     from scorer.api.db import SupabaseDatabase, create_supabase_client
     from scorer.api.storage import SupabaseStorage
     from scorer.env import load_env, require_key
+    from scorer.genai_compat import make_client
 
     load_env()
     require_key("WORKER_API_TOKEN")
@@ -218,7 +218,7 @@ def main() -> None:
     app = create_app(
         db=SupabaseDatabase(supabase),
         storage=SupabaseStorage(supabase),
-        client=genai.Client(api_key=gemini_key),
+        client=make_client(gemini_key),
     )
     uvicorn.run(app, host="0.0.0.0", port=int(os.environ.get("PORT", "8080")))
 
