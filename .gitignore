@@ -11,5 +11,6 @@ evals/suites/bakeoff/manual/*.yaml
 .superpowers/
 # controlled delivery-eval clips are voice recordings (DECISIONS #005)
 evals/suites/delivery_discrimination/clips/*.wav
-# generated eval outputs (the numbers of record go to docs/releases + CHANGELOG)
+# generated eval outputs (the numbers of record are committed verbatim as an
+# evals/reports/ snapshot per release, cited by docs/releases + CHANGELOG)
 evals/out/

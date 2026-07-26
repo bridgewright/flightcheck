@@ -20,6 +20,10 @@ private application-target list (workspace rule R3).
 - `manual/keys/<dimension_key>-<n>.yaml` — answer key (label -> variant). Kept in
   a separate file so the human ranker never sees the truth while ranking.
 
+**Ranker warning:** rank from the `manual/` sheets only — both
+`triplets/*.json` and `manual/keys/` contain the labeled ground truth, so
+opening either before submitting your ranking voids the blind protocol.
+
 ## Commands (from `services/scorer/`)
 
 - Generate: `uv run python -m scorer.evals_l1.golden generate --rubric <rubric.json>`
