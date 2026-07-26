@@ -135,6 +135,37 @@ def test_post_packages_requires_jd_text_or_url():
     assert response.status_code == 422
 
 
+def test_post_packages_with_unsafe_jd_url_is_422():
+    # Real fetch_jd validation, no network: loopback is rejected pre-fetch.
+    client, _ = _client(FakeGenAI([]))
+    response = client.post(
+        "/api/packages", json={"jd_url": "http://127.0.0.1/jd"}, headers=AUTH
+    )
+    assert response.status_code == 422
+    assert response.json() == {
+        "error": "could not fetch that URL; paste the JD text instead"
+    }
+
+
+def test_post_packages_maps_fetch_failures_to_422(monkeypatch):
+    import httpx
+
+    import scorer.api.app as app_module
+
+    def fetch_boom(url):
+        raise httpx.ConnectError("connection refused")
+
+    monkeypatch.setattr(app_module, "fetch_jd", fetch_boom)
+    client, _ = _client(FakeGenAI([]))
+    response = client.post(
+        "/api/packages", json={"jd_url": "http://example.com/jd"}, headers=AUTH
+    )
+    assert response.status_code == 422
+    assert response.json() == {
+        "error": "could not fetch that URL; paste the JD text instead"
+    }
+
+
 def test_get_package_unknown_token_is_404():
     client, _ = _client(FakeGenAI([]))
     assert client.get("/api/packages/by-token/nope", headers=AUTH).status_code == 404

@@ -14,6 +14,7 @@ import os
 import secrets
 from typing import Annotated
 
+import httpx
 from fastapi import (
     APIRouter,
     BackgroundTasks,
@@ -22,12 +23,13 @@ from fastapi import (
     Header,
     HTTPException,
 )
+from fastapi.responses import JSONResponse
 from pydantic import BaseModel, ConfigDict
 
 from scorer.api.db import Database, PackageRow
 from scorer.api.pipeline import compile_package, score_session
 from scorer.api.storage import Storage
-from scorer.intake.jd import fetch_jd
+from scorer.intake.jd import JdFetchError, fetch_jd
 from scorer.intake.profile import extract_pdf_text
 from scorer.schemas import CandidateProfile, GenAIClientLike
 from scorer.sessionplan.planner import (
@@ -106,7 +108,17 @@ def create_app(db: Database, storage: Storage, client: GenAIClientLike) -> FastA
         if body.jd_text is not None:
             jd_text = body.jd_text
         elif body.jd_url is not None:
-            jd_text = fetch_jd(body.jd_url)
+            try:
+                jd_text = fetch_jd(body.jd_url)
+            except (JdFetchError, httpx.HTTPError):
+                # Unsafe/unfetchable URL is a client problem, never a 500;
+                # the message stays generic (no echoed URL, no exception text).
+                return JSONResponse(
+                    status_code=422,
+                    content={
+                        "error": "could not fetch that URL; paste the JD text instead"
+                    },
+                )
         else:
             raise HTTPException(
                 status_code=422, detail="one of jd_text or jd_url is required"
