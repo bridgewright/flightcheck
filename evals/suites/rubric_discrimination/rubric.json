@@ -1,0 +1,387 @@
+{
+  "role_title": "Forward Deployed Product Manager – AI",
+  "company": "Iterative Health",
+  "dimensions": [
+    {
+      "key": "ai-product-strategy-judgment",
+      "name": "AI Product Strategy & Judgment",
+      "weight": 0.2,
+      "channel": "content",
+      "anchors": [
+        {
+          "score": 1,
+          "behavior": "Proposes AI solutions without thoroughly analyzing user needs, business impact, or alternative non-AI approaches, and struggles to articulate key trade-offs or a strategic rationale."
+        },
+        {
+          "score": 3,
+          "behavior": "Identifies relevant AI opportunities and articulates a clear strategy, demonstrating awareness of trade-offs, but may occasionally default to AI-first solutions without fully exploring simpler alternatives."
+        },
+        {
+          "score": 5,
+          "behavior": "Consistently identifies high-impact AI opportunities, thoroughly evaluating business outcomes and non-AI alternatives. Articulates nuanced strategic trade-offs (e.g., cost vs. capability, accuracy vs. speed) with strong product judgment."
+        }
+      ],
+      "signals": [
+        "Strong Product Fundamentals: Customer empathy, discovery, strategic thinking, prioritization, product judgment in the field (translating customer reality into product direction, credibly saying no)",
+        "Strategic Thinking about AI Products: Understanding AI product economics, cost-capability tradeoffs, balancing short-term revenue with long-term positioning, treating AI as a product problem",
+        "Penalized: Jumping straight to an ML solution when a simple rule-based approach would've been more appropriate",
+        "Penalized: Generic AI-First Answers: Forcing an AI-first answer without a strategic thought process for integrating AI into a solution",
+        "Penalized: Ignoring AI Product Economics"
+      ],
+      "citations": [
+        {
+          "url": "https://vertexaisearch.cloud.google.com/grounding-api-redirect/AUZIYQH1ay8OtGyrbgQjiGV7LqlTTpGTqgkKIsweBqQ-ZM3rOvBEIvN0Fkp28JxYh7SrV0F9lo8--6VopnCTXWNwgyxboKNnTPdP41pKoSZiHM6g3ztPF4bHdRwEMG9si1ScJ7LJXSoHWyasDGR8nrZYFA0FveClWvRN7_TKIwM8kjwzXGLp3u0dWNqrkbQRNV2K35eK3iBbtL0MxVr6SjxQPqkaOs8iDW1oDdWREPTy3morjrLTPPk31gO4JNyucy_kaJQ==",
+          "title": "agotoffer.com",
+          "snippet": "Where would you deploy an AI solution, and how would you prove it was a better approach than a non-AI solution?"
+        },
+        {
+          "url": "https://vertexaisearch.cloud.google.com/grounding-api-redirect/AUZIYQH1cek5RQ_k8Pef4cEx4h6LTYcWs7xxnLE3ZfCNuKqK7_XZhngJJlgX3gOCcaCh7pquRSOAR11ohVS6D0R_XdII4nTIwrng2qUa6DBsH3V2MD60VEKiIhJQFa3NLTIJALllWBROaCuBfrrVuiviPXSAwu3jcJP2OLX-LKCmDFEPBbsK9acCZ-QiYM7dNPNncIq2eELdFA==",
+          "title": "lockedinai.com",
+          "snippet": "How would you prioritize between making GPT-4 cheaper or investing in GPT-5?"
+        },
+        {
+          "url": "https://vertexaisearch.cloud.google.com/grounding-api-redirect/AUZIYQHedlZHEPMAaS-HLRKv2zFlBH8byRFgc9Zb0xViHpztI8P4CXg-tlKpW1jCi7cCeOtwxyOcWZ-fYR8LBDGdqojp_vpgL_8wBUo11Zq-2NmF66zwJzAN403xy3OLLYBnjW9vbHv4v1vp-1ZhZxV_Rwqrx1Vb1qQ=",
+          "title": "yardstick.team",
+          "snippet": "What's your strategy for defining minimum viable product (MVP) for AI features, given that model performance improves iteratively?"
+        }
+      ]
+    },
+    {
+      "key": "ai-technical-fluency-implementation",
+      "name": "AI Technical Fluency & Implementation",
+      "weight": 0.2,
+      "channel": "content",
+      "anchors": [
+        {
+          "score": 1,
+          "behavior": "Demonstrates only surface-level knowledge of AI/ML concepts, struggles to discuss modern AI development workflows, or lacks practical experience with relevant AI tooling (LLMs, RAG, agent design)."
+        },
+        {
+          "score": 3,
+          "behavior": "Possesses a solid understanding of AI/ML concepts and modern workflows, can discuss architectural trade-offs, and has some hands-on experience, but may need guidance on moving complex solutions to production at scale."
+        },
+        {
+          "score": 5,
+          "behavior": "Demonstrates deep technical fluency with modern AI development workflows and tooling (LLMs, RAG, agent design, evaluation frameworks), can confidently discuss architectural trade-offs, and has a proven track record of bringing complex AI solutions from prototype to production."
+        }
+      ],
+      "signals": [
+        "Technical Fluency and Builder Mentality: Ability to hold real conversations with platform engineers about architectural tradeoffs, understanding how systems work in production, and hands-on experience with AI tools and prototyping.",
+        "AI/ML Lifecycle and Technical Fluency: Data requirements, model training, evaluation metrics, strong algorithm and statistics background, experience with ML models, and modern AI development workflows and tooling; Specific concepts include LLMs, RAG, embeddings, vector databases, prompt engineering, agent design, and evaluation frameworks.",
+        "Penalized: Surface-Level Knowledge: Not going beyond surface-level understanding of AI/ML concepts or product execution",
+        "Penalized: Resumes Tuned for TPM vs. AI-First"
+      ],
+      "citations": [
+        {
+          "url": "https://vertexaisearch.cloud.google.com/grounding-api-redirect/AUZIYQFbY4HARSunwt9OKBnK-TnIxOizSp2opZn5WahNCqU4gBjUNnk6K8BqF_ujMysWgGOk20f7TbfBJYBXcQVYUt9U9CnGfareLGQl5S_Wsr7KJ5DghjZ1FTb5c_GO1yIUnHbFG5IqEEhV8aBs-qapH30noE9HQ1wtT6Oie8M=",
+          "title": "greenhouse.io",
+          "snippet": "AI/ML Lifecycle and Technical Fluency: Data requirements, model training, evaluation metrics, strong algorithm and statistics background, experience with ML models, and modern AI development workflows and tooling."
+        },
+        {
+          "url": "https://vertexaisearch.cloud.google.com/grounding-api-redirect/AUZIYQGIEt2elS2htOna0Ia-Ecb76sRP24YDfnBa2GdzKXJ1bK-o300Ms9EoL8rQktnSq2bwgKVpvt3CAyN9Ng3OC7EQ7DmiR8M_lhw1VOPQYcTnslzDEVGhA6Ir-YKJtT_8IVnptoAUgG6NzFSgCPHDTWHgAOyQOZzYsdn8_289touZ-dSIfYTOQMOV9UnRam6u-zJrhy464nvMnyBhXXHJMsjT7jTm5OvGM1o=",
+          "title": "pminterviewprep.club",
+          "snippet": "Specific concepts include LLMs, RAG, embeddings, vector databases, prompt engineering, agent design, and evaluation frameworks."
+        }
+      ]
+    },
+    {
+      "key": "end-to-end-ownership",
+      "name": "End-to-End Ownership & Ambiguity Navigation",
+      "weight": 0.15,
+      "channel": "content",
+      "anchors": [
+        {
+          "score": 1,
+          "behavior": "Requires significant direction to define problems or drive projects, struggles with unstructured environments, or takes a hands-off approach after initial ideation, lacking follow-through."
+        },
+        {
+          "score": 3,
+          "behavior": "Takes ownership of features or smaller projects from concept to deployment, can navigate some ambiguity, and demonstrates a willingness to iterate, but may occasionally need reminders for follow-through on complex, cross-functional initiatives."
+        },
+        {
+          "score": 5,
+          "behavior": "Demonstrates extreme ownership and a strong bias toward action, consistently driving complex AI solutions from concept through adoption with minimal direction. Thrives in ambiguous environments, creating structure and demonstrating resilience through iterative learning and experimentation."
+        }
+      ],
+      "signals": [
+        "End-to-End Ownership/Enterprise Deployment Ownership: Demonstrated record of shipping complete AI/ML or complex software solutions from contract to production at scale, including integration, security constraints, and change management.",
+        "Extreme Ownership and Follow-Through: Closing loops without reminders, driving outcomes across teams without formal authority, and holding self and others to commitments.",
+        "Comfort with Ambiguity and Iteration/Experimentation: Demonstrating resilience, a learner's mindset, pioneering experimentation"
+      ],
+      "citations": [
+        {
+          "url": "https://vertexaisearch.cloud.google.com/grounding-api-redirect/AUZIYQGkEUZAOWTbRbJnRPPTn6V4-P8o9UAYB4GmZWpbEi3MubLseRAe2HXoG_H_D1Wuz7D_78DdyN4ad-JipbV_yKoq7DeNWWkiKL_Jx0tnmneWIAvQHsPYlyy7zlNTDbcYbdpy_jB7LcOXZ61sahLDlzaPPxAEWYKqkh1pxcHJXx_jOfXUJtfohGdhL_35GSIFnfOBV9FaN0qTZviRFSvEMFlQdT8=",
+          "title": "sundeepteki.org",
+          "snippet": "End-to-End Ownership: Candidates are rewarded for demonstrating \"evidence you've shipped complete solutions to customer problems, not just contributed code to larger projects,\" emphasizing \"end-to-end ownership.\""
+        },
+        {
+          "url": "https://vertexaisearch.cloud.google.com/grounding-api-redirect/AUZIYQFs05mL8fmXRTqsppyeGHECoykgQqmK4hSHFzaDHh1Epvpy6ve-sm7zMqldu4GhHqZHN0o3w7z4QlvFRApMm8741G70alWYvw1cU5hmWaB29nkbEiDo_NY5DSbjLuk0HZIhG3n6jkPOCQSms_I0Z67X1AUlfztLjT1SqZ_z",
+          "title": "mindthebeet.com",
+          "snippet": "Comfort with Ambiguity and Experimentation: A candidate's \"comfort with ambiguity and iteration\" is a positive signal, as is a \"learner's mindset\" and the ability to articulate \"experimentation that you pioneered.\""
+        }
+      ]
+    },
+    {
+      "key": "stakeholder-collaboration-communication",
+      "name": "Stakeholder Collaboration & Communication",
+      "weight": 0.15,
+      "channel": "content",
+      "anchors": [
+        {
+          "score": 1,
+          "behavior": "Struggles to tailor communication to different audiences, fails to proactively manage stakeholder expectations, or has difficulty resolving conflicting priorities across teams."
+        },
+        {
+          "score": 3,
+          "behavior": "Effectively communicates with various stakeholders, can articulate technical concepts clearly to non-technical audiences, and generally manages expectations, but may occasionally struggle with deeply entrenched conflicts or sensitive negotiations."
+        },
+        {
+          "score": 5,
+          "behavior": "Builds strong, trusted partnerships across all levels, adeptly translating complex AI concepts for diverse audiences while proactively managing expectations and resolving conflicts. Consistently achieves cross-functional alignment by clearly articulating value and balancing risks."
+        }
+      ],
+      "signals": [
+        "Strong Communication Skills: Ability to translate super technical jargon into simple terms, break down technical concepts into analogies, tailor messages to stakeholders' goals, and balance transparency about risks with a clear articulation of value.",
+        "Customer Trust-Building: Earning and maintaining trust with demanding senior stakeholders over multi-quarter engagements, and managing conflict without eroding relationships."
+      ],
+      "citations": [
+        {
+          "url": "https://vertexaisearch.cloud.google.com/grounding-api-redirect/AUZIYQEmZqB30mmMCYjED1iHMUk3ilUeKA-w8Ul7jALZT75ime81T7i4i-HvzRVvnW4weC6u5jDh7VG8hkgHGyv1PDs_zhHr3QgbbFXOh9TA0id8jF2Utz2elrSjVo2__ikJ6Yjna20DG9ZHDOloqVYaBUPe6y8UI08tmtB7NNL-AYHCmE2xa_XQGD6iBnpAOpzO-8VrYqrGBMDEqPsjIQ==",
+          "title": "reddit.com",
+          "snippet": "AI Product Manager Interview at a different B2B SaaS company (not Iterative Health): A candidate was given an \"operational product case, a broken approval workflow with multiple stakeholders, one hour to diagnose it and present solutions.\""
+        },
+        {
+          "url": "https://vertexaisearch.cloud.google.com/grounding-api-redirect/AUZIYQFs05mL8fmXRTqsppyeGHECoykgQqmK4hSHFzaDHh1Epvpy6ve-sm7zMqldu4GhHqZHN0o3w7z4QlvFRApMm8741G70alWYvw1cU5hmWaB29nkbEiDo_NY5DSbjLuk0HZIhG3n6jkPOCQSms_I0Z67X1AUlfztLjT1SqZ_z",
+          "title": "mindthebeet.com",
+          "snippet": "Strong Communication Skills: Ability to translate super technical jargon into simple terms, break down technical concepts into analogies, tailor messages to stakeholders' goals, and balance transparency about risks with a clear articulation of value."
+        }
+      ]
+    },
+    {
+      "key": "ai-evaluation-responsible-ai",
+      "name": "AI Evaluation & Responsible AI",
+      "weight": 0.2,
+      "channel": "content",
+      "anchors": [
+        {
+          "score": 1,
+          "behavior": "Lacks a clear strategy for measuring AI product success, does not distinguish between offline/online metrics, or fails to articulate a plan for handling model errors or ethical concerns."
+        },
+        {
+          "score": 3,
+          "behavior": "Can articulate relevant success metrics and evaluation frameworks for AI, including some consideration for offline/online performance and responsible AI principles, but may lack depth in designing robust fallback systems or comprehensive ethical safeguards."
+        },
+        {
+          "score": 5,
+          "behavior": "Designs robust evaluation frameworks with clear offline and online metrics, proactively addresses model underperformance with well-defined triage and fallback plans, and deeply integrates responsible AI considerations (fairness, transparency, privacy) throughout the product lifecycle, including designing AI-native UX with realistic user expectations and robust failure states."
+        }
+      ],
+      "signals": [
+        "Holistic Evaluation of AI Models: Ability to design offline evaluation sets, define online metrics, and articulate clear fallback plans when models perform unexpectedly, including human review processes.",
+        "Proactive Responsible AI: Setting realistic user expectations, designing robust failure/fallback states in the user experience, and proactively addressing critical concerns around Responsible AI.",
+        "Ethical AI Considerations: Algorithmic bias, fairness, explainability of AI decisions, and how to proactively address Responsible AI throughout the product lifecycle.",
+        "Penalized: Inability to Separate Offline/Online Metrics",
+        "Penalized: No Answer for Model Errors",
+        "Penalized: Lack of UX Thinking for AI"
+      ],
+      "citations": [
+        {
+          "url": "https://vertexaisearch.cloud.google.com/grounding-api-redirect/AUZIYQHedlZHEPMAaS-HLRKv2zFlBH8byRFgc9Zb0xViHpztI8P4CXg-tlKpW1jCi7cCeOtwxyOcWZ-fYR8LBDGdqojp_vpgL_8wBUo11Zq-2NmF66zwJzAN403xy3OLLYBnjW9vbHv4v1vp-1ZhZxV_Rwqrx1Vb1qQ=",
+          "title": "yardstick.team",
+          "snippet": "Ethical AI Considerations: Algorithmic bias, fairness, explainability of AI decisions, and how to proactively address Responsible AI throughout the product lifecycle."
+        },
+        {
+          "url": "https://vertexaisearch.cloud.google.com/grounding-api-redirect/AUZIYQHbeRPGF7AmM_Fm0mWfjYg1bN3FwJRwhYHmagNJ2PVQUt9rzlkZUqAUPjfNL74PBLNRUGWpcIiZR2tl187cFqPFEA_TDlivXxLFWXwhJJQXa9HdFFRNL0mc4BV2JRUdZABeDeiauspdZOsPpScGpf06Yhci7FcJLHKVPpXlhg==",
+          "title": "kore1.com",
+          "snippet": "Offline and Online Evaluation: Designing offline evaluation sets, naming online metrics, and describing fallback mechanisms when models underperform."
+        },
+        {
+          "url": "https://vertexaisearch.cloud.google.com/grounding-api-redirect/AUZIYQH-XujRrz0kjG_yxBe7QlDdM8SG9rnPFl8xJ4rb4QT80T22XXgnVLNFChI5wXcOJg6_dsm0oXD9243UI12sGBs2tUUltRtanR-7surir06GY9QMz6KYS-Ear-qbnh2A1VEarB8v4NlW5t7z45vP1quVLNSZExgQpqR-",
+          "title": "agotoffer.com",
+          "snippet": "No Answer for Model Errors: Lacking a plan or strategy for what happens when an AI model recommends the wrong thing or underperforms in a real-world scenario."
+        }
+      ]
+    },
+    {
+      "key": "spoken-clarity-composure",
+      "name": "Spoken Clarity & Composure",
+      "weight": 0.1,
+      "channel": "delivery",
+      "anchors": [
+        {
+          "score": 1,
+          "behavior": "Speech is often unclear, disorganized, or hesitant, making it difficult to follow the candidate's points, particularly under pressure or when challenged."
+        },
+        {
+          "score": 3,
+          "behavior": "Communicates clearly and organizes thoughts effectively for most of the interview. Maintains composure generally, but may show slight hesitation or disorganization when navigating complex or challenging questions."
+        },
+        {
+          "score": 5,
+          "behavior": "Consistently articulates complex ideas with exceptional clarity and conciseness, even when discussing highly technical topics. Maintains strong composure and confidence throughout, effectively responding to challenges and demonstrating live critical thinking under pressure."
+        }
+      ],
+      "signals": [
+        "Rewarded: Live critical thinking under pressure, knowing what questions to ask, and not freezing when things get pushed back on.",
+        "Rewarded: Strong Communication Skills (ability to translate super technical jargon into simple terms, break down technical concepts into analogies, tailor messages to stakeholders' goals, and balance transparency about risks with a clear articulation of value)",
+        "Rewarded: Strong Judgment Under Pressure",
+        "Penalized: Freezing when pushed back on"
+      ],
+      "citations": [
+        {
+          "url": "https://vertexaisearch.cloud.google.com/grounding-api-redirect/AUZIYQFs05mL8fmXRTqsppyeGHECoykgQqmK4hSHFzaDHh1Epvpy6ve-sm7zMqldu4GhHqZHN0o3w7z4QlvFRApMm8741G70alWYvw1cU5hmWaB29nkbEiDo_NY5DSbjLuk0HZIhG3n6jkPOCQSms_I0Z67X1AUlfztLjT1SqZ_z",
+          "title": "mindthebeet.com",
+          "snippet": "Strong Communication Skills: Ability to translate super technical jargon into simple terms, break down technical concepts into analogies, tailor messages to stakeholders' goals, and balance transparency about risks with a clear articulation of value."
+        }
+      ]
+    }
+  ],
+  "question_bank": [
+    {
+      "dimension_key": "ai-product-strategy-judgment",
+      "question": "Given our company's goal to increase customer engagement by 30%, what would you do? Where would you deploy an AI solution, and how would you prove it was a better approach than a non-AI solution?",
+      "probes": [
+        "How did you identify this specific opportunity for AI?",
+        "What metrics would you use to measure success, and how would you establish a baseline?",
+        "What are the risks or potential downsides of an AI solution here compared to a traditional one?",
+        "How would you iterate and improve this solution over time?"
+      ],
+      "source": "research-sweep"
+    },
+    {
+      "dimension_key": "ai-product-strategy-judgment",
+      "question": "How would you prioritize between making GPT-4 cheaper or investing in GPT-5?",
+      "probes": [
+        "What factors would influence your decision?",
+        "How would you quantify the value of each option?",
+        "What are the potential market implications of each choice?",
+        "Who are the key stakeholders you would consult for this decision?"
+      ],
+      "source": "research-sweep"
+    },
+    {
+      "dimension_key": "ai-product-strategy-judgment",
+      "question": "Design an AI code reviewer for GitHub pull requests.",
+      "probes": [
+        "Who are the primary users and their pain points?",
+        "What are the core functionalities of the AI code reviewer?",
+        "How would you handle false positives or negatives from the AI?",
+        "What are the ethical considerations for an AI reviewing code, especially concerning bias or fairness?",
+        "How would you define the MVP for this product?"
+      ],
+      "source": "research-sweep"
+    },
+    {
+      "dimension_key": "ai-technical-fluency-implementation",
+      "question": "Tell me about a time you launched an AI-powered product or feature. What was your process from ideation through launch, and what did you learn?",
+      "probes": [
+        "What specific AI technologies did you utilize (e.g., LLMs, RAG, agent design)?",
+        "How did you manage data requirements and model training?",
+        "What technical challenges did you encounter, and how did you overcome them?",
+        "How did you collaborate with engineering and data science teams?"
+      ],
+      "source": "research-sweep"
+    },
+    {
+      "dimension_key": "ai-technical-fluency-implementation",
+      "question": "Describe a situation where you had to pivot an AI product strategy based on technical limitations or model performance issues. How did you handle it?",
+      "probes": [
+        "What were the specific technical limitations or performance issues?",
+        "How did you diagnose the problem?",
+        "What alternatives did you consider, and why did you choose your pivot strategy?",
+        "How did you communicate this pivot to stakeholders?"
+      ],
+      "source": "research-sweep"
+    },
+    {
+      "dimension_key": "end-to-end-ownership",
+      "question": "Tell me something you built end-to-end.",
+      "probes": [
+        "Walk me through the full product lifecycle from discovery to adoption.",
+        "What was your role in each phase?",
+        "What were the biggest challenges you faced in moving from concept to production?",
+        "How did you ensure ongoing optimization and adoption?"
+      ],
+      "source": "research-sweep"
+    },
+    {
+      "dimension_key": "end-to-end-ownership",
+      "question": "What tradeoffs did you consider on past projects?",
+      "probes": [
+        "Can you give an example of a time you chose speed over perfection, or vice versa?",
+        "How did you manage the impact of these tradeoffs?",
+        "Who were the key decision-makers, and how did you influence them?",
+        "What was the ultimate outcome, and would you make the same tradeoff again?"
+      ],
+      "source": "research-sweep"
+    },
+    {
+      "dimension_key": "stakeholder-collaboration-communication",
+      "question": "You are given an operational product case, a broken approval workflow with multiple stakeholders, one hour to diagnose it and present solutions.",
+      "probes": [
+        "What questions would you ask to understand the current workflow and its pain points?",
+        "How would you identify the different stakeholders and their motivations?",
+        "What potential AI solutions do you envision, and how would you prioritize them?",
+        "How would you present your solution to gain buy-in from all stakeholders?",
+        "What non-AI improvements might you consider first?"
+      ],
+      "source": "research-sweep"
+    },
+    {
+      "dimension_key": "stakeholder-collaboration-communication",
+      "question": "Can you tell me about a time you had to manage stakeholder expectations when an AI feature didn't perform as well as anticipated?",
+      "probes": [
+        "What was the initial expectation, and what was the actual performance?",
+        "How did you communicate the discrepancy to stakeholders?",
+        "What steps did you take to re-align expectations and address their concerns?",
+        "What did you learn about managing expectations for non-deterministic AI outputs?"
+      ],
+      "source": "research-sweep"
+    },
+    {
+      "dimension_key": "ai-evaluation-responsible-ai",
+      "question": "Imagine the model you launched is underperforming—how do you triage and prioritize next steps?",
+      "probes": [
+        "What are your immediate diagnostic steps?",
+        "How do you distinguish between data issues, model issues, or deployment issues?",
+        "What fallback mechanisms do you have in place?",
+        "How would you communicate this to users and internal teams?"
+      ],
+      "source": "research-sweep"
+    },
+    {
+      "dimension_key": "ai-evaluation-responsible-ai",
+      "question": "How do you ensure your AI models are ethical?",
+      "probes": [
+        "What specific ethical considerations (e.g., bias, fairness, privacy) are most relevant to AI in healthcare?",
+        "What processes or frameworks do you employ to address these concerns during development?",
+        "How do you involve diverse perspectives in evaluating ethical risks?",
+        "Can you give an example of a time you identified and mitigated an ethical risk in an AI product?"
+      ],
+      "source": "research-sweep"
+    },
+    {
+      "dimension_key": "ai-evaluation-responsible-ai",
+      "question": "Walk me through how you would approach responsible AI considerations (fairness, transparency, privacy) in your product planning process.",
+      "probes": [
+        "At what stages of the product lifecycle do you integrate these considerations?",
+        "What tools or methodologies do you use for assessment?",
+        "How do you balance these concerns with business objectives or performance goals?",
+        "How do you design for explainability in user-facing AI products?"
+      ],
+      "source": "research-sweep"
+    },
+    {
+      "dimension_key": "spoken-clarity-composure",
+      "question": "Tell me about a challenging situation where you had to present a complex technical solution to non-technical executives and ensure their buy-in.",
+      "probes": [
+        "How did you prepare for this presentation?",
+        "What strategies did you use to simplify complex information?",
+        "How did you handle questions or pushback?",
+        "What was the outcome, and what would you do differently next time?"
+      ],
+      "source": "generated"
+    }
+  ],
+  "research_summary": "The research indicates that successful candidates for a Forward Deployed AI Product Manager role at Iterative Health are rewarded for demonstrating strong product fundamentals, deep technical fluency with AI tools, and end-to-end ownership of solutions from concept to deployment. Interviewers value candidates who exhibit strong judgment, particularly in making AI-specific trade-offs and navigating ambiguity, along with exceptional communication skills to manage diverse stakeholders and translate complex concepts. Conversely, candidates are penalized for surface-level AI knowledge, forcing AI-first solutions without strategic thought, ignoring AI product economics, or lacking clear plans for model errors and responsible AI considerations. The ability to articulate an AI-native UX and demonstrate proactive responsible AI practices is also highly valued."
+}
