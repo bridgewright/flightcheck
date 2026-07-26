@@ -71,6 +71,10 @@ class CompatClient:
     """GenAIClientLike wrapper around a real (or fake) genai client."""
 
     def __init__(self, inner: Any):
+        # Hold the client itself, not just .models/.files: genai.Client
+        # closes its shared httpx client on garbage collection, so keeping
+        # only the sub-objects alive kills every request mid-run.
+        self._inner = inner
         self.models = _CompatModels(inner.models)
         self.files = inner.files
 
