@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import {
+  WorkerRejectionError,
   authorizePackage,
   authorizeSession,
   completeSession,
@@ -94,6 +95,31 @@ describe("createPackage", () => {
     await expect(createPackage({ jd_text: "x" })).rejects.toThrow(
       "worker POST /api/packages failed: 500",
     );
+  });
+
+  it("maps the worker's 422 to a WorkerRejectionError with its message", async () => {
+    // The worker's JD-fetch rejection uses the "error" key (not "detail").
+    nextResponse = jsonResponse(
+      { error: "could not fetch that URL; paste the JD text instead" },
+      422,
+    );
+    const err = await createPackage({ jd_url: "https://jd.example.test/x" }).catch(
+      (e: unknown) => e,
+    );
+    expect(err).toBeInstanceOf(WorkerRejectionError);
+    expect((err as Error).message).toBe(
+      "could not fetch that URL; paste the JD text instead",
+    );
+  });
+
+  it("falls back to a generic message when the 422 detail is not a string", async () => {
+    nextResponse = jsonResponse(
+      { detail: [{ loc: ["body", "extra"], msg: "extra fields not permitted" }] },
+      422,
+    );
+    const err = await createPackage({ jd_text: "x" }).catch((e: unknown) => e);
+    expect(err).toBeInstanceOf(WorkerRejectionError);
+    expect((err as Error).message).toBe("the worker rejected the request");
   });
 });
 

@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 
 import type { CreatePackageBody } from "@/lib/types";
-import { createPackage } from "@/lib/worker";
+import { WorkerRejectionError, createPackage } from "@/lib/worker";
 
 export async function POST(request: Request) {
   let body: CreatePackageBody;
@@ -16,7 +16,16 @@ export async function POST(request: Request) {
   try {
     const created = await createPackage(body);
     return NextResponse.json(created, { status: 202 });
-  } catch {
+  } catch (err) {
+    if (err instanceof WorkerRejectionError) {
+      // The worker rejected the input with a user-actionable message (e.g.
+      // an unfetchable jd_url — SSRF guard, timeout, bot wall). Surface it
+      // on the intake form instead of a generic 502. The message is generic
+      // by worker contract (no echoed URL, no exception text).
+      console.error(`packages create: worker rejected the input (422): ${err.message}`);
+      return NextResponse.json({ error: err.message }, { status: 422 });
+    }
+    console.error("packages create: worker create failed", err);
     return NextResponse.json(
       { error: "package creation failed — the scoring worker did not accept the request" },
       { status: 502 },

@@ -34,6 +34,14 @@ async function workerJson<T>(label: string, response: Response): Promise<T> {
   return (await response.json()) as T;
 }
 
+// A worker 422 rejects the INPUT with a user-actionable message (e.g.
+// "could not fetch that URL; paste the JD text instead" for an unfetchable
+// jd_url) — distinct from a worker outage. Callers surface the message to
+// the user instead of a generic 502. The worker's newer error bodies use the
+// "error" key; FastAPI's own validation uses "detail" (sometimes a list) —
+// accept a string from either, else fall back to a generic message.
+export class WorkerRejectionError extends Error {}
+
 export async function createPackage(
   body: CreatePackageBody,
 ): Promise<{ package_id: string; access_token: string }> {
@@ -41,6 +49,19 @@ export async function createPackage(
     method: "POST",
     body: JSON.stringify(body),
   });
+  if (response.status === 422) {
+    const rejection = (await response.json().catch(() => ({}))) as {
+      error?: unknown;
+      detail?: unknown;
+    };
+    const message =
+      typeof rejection.error === "string"
+        ? rejection.error
+        : typeof rejection.detail === "string"
+          ? rejection.detail
+          : "the worker rejected the request";
+    throw new WorkerRejectionError(message);
+  }
   return workerJson("POST /api/packages", response);
 }
 
