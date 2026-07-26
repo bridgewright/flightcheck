@@ -43,3 +43,53 @@ Format per entry: Context · Options · Choice · Why · Rejected because · Rev
 **Context:** the audio-discrimination probe uses recordings of a real person's voice (controlled fluent/filler/hesitant samples).
 **Choice:** clips are git-ignored; only derived metrics and rankings are committed.
 **Why:** a public repo is forever; biometric-adjacent personal data doesn't belong in it. Reproducibility is preserved via the recording protocol doc.
+
+## 006 — v0.1 architecture: Next.js web + FastAPI scoring worker + Supabase
+
+- **Decision:** ship v0.1 as three deploy units — `apps/web` (Next.js App
+  Router on Vercel: landing, intake, session room, report pages, and the
+  server routes that hold secrets), `services/scorer` (the existing Python
+  package extended with a FastAPI worker on Railway: intake normalization,
+  research sweep, rubric compiler, scoring pipeline), and Supabase (Postgres
+  for package/session state; private Storage buckets `recordings` and
+  `corpus`).
+- **Why:** the scoring stack is irreducibly Python (librosa/soundfile DSP,
+  ffmpeg, google-genai file uploads, the already-tested scorer package),
+  while the session room needs a first-class browser runtime (WebRTC plus
+  ephemeral-secret minting on server routes). Splitting on that seam lets
+  each half keep its native toolchain, deploys each unit where it runs best,
+  and keeps every long-lived secret out of the browser.
+- **Rejected — single Next.js monolith:** would force the DSP and scoring
+  pipeline into Node or serverless Python shims — no librosa/ffmpeg parity,
+  and multi-minute background scoring fights serverless execution limits.
+- **Rejected — Python-only server-rendered app:** the WebRTC session room and
+  ephemeral-secret flow are the product's core and are browser-native;
+  server-rendered Python stacks make exactly that part hardest, and the web
+  tier would still need a Node build for the Realtime client.
+- **Revisit when:** v0.2 work (multi-session arcs, per-session cost metering)
+  changes the worker's shape, or when operating three deploy units proves
+  more overhead than the seam is worth at real usage volume.
+
+## 007 — Implementer bake-off: Claude subagent default, Codex validated reserve
+
+- **Decision:** the default implementer for plan tasks stays a Claude
+  subagent; the Codex dispatch path (`/delegate-codex`) is kept as a
+  validated reserve, not retired. Re-test on design-open tasks in v0.2.
+- **Why:** Tasks 9 and 10 were deliberately shape-matched (an LLM judge
+  module plus fake-client tests) and dispatched one to each implementer.
+  Measured result — quality parity, friction asymmetry: wall time 4m00s
+  (Codex) vs 3m51s (Claude); both 3 commits with clean TDD cadence, 4 tests
+  added, review verdict Approved, 0 critical / 0 important findings, 0
+  implementer-attributable minors, 0 rework rounds, 0 rule violations. The
+  only separator was ops friction: Codex needed a uv-cache sandbox fallback,
+  produced one placeholder author email, and carried worktree + merge
+  overhead; the Claude path had none.
+- **Rejected — Codex as default:** no measured quality or speed edge on
+  shape-matched tasks to pay for the recurring ops friction.
+- **Rejected — retiring the Codex path:** it passed review cleanly with zero
+  rework; a second validated implementer is cheap insurance and enables
+  parallel dispatch when task volume spikes.
+- **Revisit when:** v0.2 offers design-open tasks (the pilot's shape-matched
+  tasks measured execution discipline, not design judgment — the dimension
+  where the implementers might actually differ), or the Codex tooling
+  removes the sandbox and worktree friction.
