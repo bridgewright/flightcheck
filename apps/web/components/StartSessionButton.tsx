@@ -18,10 +18,12 @@ export default function StartSessionButton({
     setStarting(true);
     setError(null);
     try {
+      // The package access token rides along: /api/sessions requires it (the
+      // v0.1 capability model) — a bare package UUID must not start sessions.
       const response = await fetch("/api/sessions", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ package_id: packageId }),
+        body: JSON.stringify({ package_id: packageId, token }),
       });
       const data = (await response.json()) as { session_id?: string; error?: string };
       if (!response.ok || !data.session_id) {
