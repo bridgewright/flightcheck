@@ -11,11 +11,12 @@ flowchart LR
     OAI[OpenAI Realtime<br/>gpt-realtime interviewer]
     G[Gemini 2.5 Flash<br/>research / rubric / transcribe / judge]
 
-    B -->|JSON, audio blob upload| W
+    B -->|JSON| W
+    B -->|recording via signed upload URL| S
     B <-->|WebRTC audio + oai-events data channel| OAI
     W -->|Bearer WORKER_API_TOKEN| K
     W -->|mint ephemeral client secret| OAI
-    W -->|recordings bucket upload| S
+    W -->|mint signed upload URL| S
     K -->|package/session state, recordings download, corpus sync| S
     K -->|file-based generate_content| G
 ```
@@ -34,8 +35,10 @@ flowchart LR
 3. **Session** — Start Session creates a session row with a baseline
    `SessionPlan` and interviewer instructions. The session room mints a
    short-lived OpenAI ephemeral secret server-side, opens WebRTC to
-   `gpt-realtime` ("Morgan"), records the candidate locally (webm), and uploads
-   the recording to the private `recordings` bucket on completion.
+   `gpt-realtime` ("Morgan"), and records the interview locally (webm). On
+   completion the browser requests a token-authorized signed upload URL from a
+   Next.js route and PUTs the recording directly to the private `recordings`
+   bucket — the audio never transits a serverless function body.
 4. **Score** — completing the session flips it to `scoring` and runs the
    pipeline: download → `ensure_wav` (ffmpeg) → verbatim transcription → DSP
    delivery metrics → content judge (transcript vs BARS anchors) → delivery
@@ -45,7 +48,8 @@ flowchart LR
    verdict, per-dimension evidence, delivery metrics, and drills. Failures are
    shown honestly, never papered over.
 
-**Secrets boundary:** the browser holds exactly one credential — the short-lived
-Realtime ephemeral secret. Every long-lived key (`OPENAI_API_KEY`,
+**Secrets boundary:** the browser holds only short-lived, single-purpose
+credentials — the Realtime ephemeral secret and a scoped signed upload URL for
+its own recording path. Every long-lived key (`OPENAI_API_KEY`,
 `GEMINI_API_KEY`, `WORKER_API_TOKEN`, Supabase service role) lives in Vercel or
 Railway server env only.
