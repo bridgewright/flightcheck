@@ -34,15 +34,20 @@ Format per entry: Context · Options · Choice · Why · Rejected because · Rev
 
 ## 004 — Payments: merchant-of-record first (2026-07-25)
 
-**Context:** Korean solo builder; Stripe unavailable for KR merchants; domestic PGs require business registration.
-**Choice:** merchant-of-record checkout (Lemon Squeezy or Polar) for v0.x — handles global cards and tax as the seller of record; webhook provisions packages.
-**Revisit when:** domestic volume justifies business registration + a Korean PG.
+**Context:** Korean solo builder; the product sells globally in USD/KRW from day one.
+**Options:** (a) Stripe direct, (b) Korean PG (e.g., Toss Payments), (c) merchant-of-record checkout (Lemon Squeezy or Polar).
+**Choice:** (c) for v0.x — the MoR is the seller of record, handles global cards and tax; a webhook provisions packages.
+**Rejected because:** (a) Stripe does not onboard KR merchants; (b) domestic PGs require business registration the builder does not yet have, and poorly serve non-Korean cards — half the target market.
+**Revisit when:** domestic volume justifies business registration + a Korean PG, or MoR fees exceed ~10% of revenue.
 
 ## 005 — Bake-off voice clips stay out of git (2026-07-25)
 
 **Context:** the audio-discrimination probe uses recordings of a real person's voice (controlled fluent/filler/hesitant samples).
-**Choice:** clips are git-ignored; only derived metrics and rankings are committed.
-**Why:** a public repo is forever; biometric-adjacent personal data doesn't belong in it. Reproducibility is preserved via the recording protocol doc.
+**Options:** (a) commit the clips for full reproducibility, (b) commit via Git LFS, (c) git-ignore the audio and commit only derived metrics + the recording protocol.
+**Choice:** (c) — clips are git-ignored; only derived metrics, rankings, and the re-recording protocol are committed.
+**Why:** a public repo is forever; biometric-adjacent personal data doesn't belong in it. Reproducibility is preserved via the recording protocol doc — anyone can re-record the controlled triplets in ~15 minutes.
+**Rejected because:** (a)/(b) both publish a real person's voice permanently; LFS changes storage, not exposure.
+**Revisit when:** the project obtains consented, license-cleared sample voices (e.g., synthetic or professionally released), which could then ship as a committed reference set.
 
 ## 006 — v0.1 architecture: Next.js web + FastAPI scoring worker + Supabase
 
