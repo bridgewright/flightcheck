@@ -183,7 +183,10 @@ SEGMENTS_JSON = json.dumps({"segments": [
      "text": "Um, I led the churn dashboard rollout and we cut churn by 12 percent."},
 ]})
 
-CONTENT_SCORES_JSON = json.dumps({"scores": [
+# Three identical samples per focused content-dimension call, in rubric order
+# (score_content scores each content dimension in its own call and averages
+# three samples).
+CONTENT_SCORES_JSONS = [json.dumps({"scores": [doc]}) for doc in [
     {"dimension_key": "structured-answers", "score": 4.0,
      "evidence_quotes": ["I led the churn dashboard rollout"],
      "rationale": "One clear arc from ownership to outcome, near the score-5 anchor."},
@@ -193,7 +196,7 @@ CONTENT_SCORES_JSON = json.dumps({"scores": [
     {"dimension_key": "role-knowledge", "score": 3.5,
      "evidence_quotes": ["I led the churn dashboard rollout"],
      "rationale": "One concrete example with thin surrounding detail."},
-]})
+] for _ in range(3)]
 
 DELIVERY_JUDGE_JSON = json.dumps({
     "scores": [
@@ -238,7 +241,7 @@ def test_session_flow_scores_report():
     package = _seed_ready_package(db)
     audio_path = f"packages/{package.id}/session-1.wav"
     storage = FakeStorage(recordings={audio_path: _wav_bytes()})
-    fake = FakeGenAI([SEGMENTS_JSON, CONTENT_SCORES_JSON, DELIVERY_JUDGE_JSON])
+    fake = FakeGenAI([SEGMENTS_JSON, *CONTENT_SCORES_JSONS, DELIVERY_JUDGE_JSON])
     client, _ = _client(fake, storage=storage, db=db)
 
     created = client.post("/api/sessions", json={"package_id": package.id}, headers=AUTH)

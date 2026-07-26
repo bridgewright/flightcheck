@@ -166,7 +166,10 @@ SEGMENTS_JSON = json.dumps({"segments": [
      "text": "Um, I led the churn dashboard rollout and we cut churn by 12 percent."},
 ]})
 
-CONTENT_SCORES_JSON = json.dumps({"scores": [
+# Three identical samples per focused content-dimension call, in rubric order
+# (score_content scores each content dimension in its own call and averages
+# three samples).
+CONTENT_SCORES_JSONS = [json.dumps({"scores": [doc]}) for doc in [
     {"dimension_key": "structured-answers", "score": 4.0,
      "evidence_quotes": ["I led the churn dashboard rollout"],
      "rationale": "One clear arc from ownership to outcome, near the score-5 anchor."},
@@ -176,7 +179,7 @@ CONTENT_SCORES_JSON = json.dumps({"scores": [
     {"dimension_key": "role-knowledge", "score": 3.5,
      "evidence_quotes": ["I led the churn dashboard rollout"],
      "rationale": "One concrete example with thin surrounding detail."},
-]})
+] for _ in range(3)]
 
 DELIVERY_JUDGE_JSON = json.dumps({
     "scores": [
@@ -222,7 +225,7 @@ def test_score_session_saves_scored_report():
     db = FakeDatabase()
     session = _seed_scorable_session(db, "packages/pkg-1/session-1.wav")
     storage = FakeStorage(recordings={"packages/pkg-1/session-1.wav": _wav_bytes()})
-    fake = FakeGenAI([SEGMENTS_JSON, CONTENT_SCORES_JSON, DELIVERY_JUDGE_JSON])
+    fake = FakeGenAI([SEGMENTS_JSON, *CONTENT_SCORES_JSONS, DELIVERY_JUDGE_JSON])
 
     report = score_session(session.id, db, storage, fake)
 

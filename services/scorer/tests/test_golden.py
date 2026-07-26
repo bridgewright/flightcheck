@@ -213,8 +213,11 @@ def test_blind_sheet_shuffle_is_deterministic(tmp_path, monkeypatch):
     ).read_text()
 
 
-def _judge_reply(target_score: float) -> str:
-    scores = [
+def _judge_replies(target_score: float) -> list[str]:
+    # Three identical samples per focused content-dimension call, in rubric
+    # order (score_content scores each content dimension in its own call and
+    # averages three samples).
+    docs = [
         {
             "dimension_key": "structured-answers",
             "score": target_score,
@@ -234,7 +237,7 @@ def _judge_reply(target_score: float) -> str:
             "rationale": "One example, thin detail.",
         },
     ]
-    return json.dumps({"scores": scores})
+    return [json.dumps({"scores": [doc]}) for doc in docs for _ in range(3)]
 
 
 def _write_triplet(triplets_dir) -> TripletDoc:
@@ -252,21 +255,26 @@ def _write_triplet(triplets_dir) -> TripletDoc:
 
 def test_judge_discrimination_counts_strict_ordering(tmp_path):
     doc = _write_triplet(tmp_path / "triplets")
-    fake = FakeGenAI([_judge_reply(4.5), _judge_reply(3.0), _judge_reply(1.5)])
+    fake = FakeGenAI(
+        [*_judge_replies(4.5), *_judge_replies(3.0), *_judge_replies(1.5)]
+    )
 
     result = judge_discrimination(tmp_path / "triplets", _make_rubric(), fake)
 
     assert result == {"trials": 1, "correct": 1, "accuracy": 1.0, "failures": []}
-    # Answers are judged in the documented strong -> borderline -> weak order.
-    assert len(fake.calls) == 3
+    # Answers are judged in the documented strong -> borderline -> weak order,
+    # three focused dimension calls x three samples per answer.
+    assert len(fake.calls) == 27
     assert doc.strong in fake.calls[0]["contents"]
-    assert doc.borderline in fake.calls[1]["contents"]
-    assert doc.weak in fake.calls[2]["contents"]
+    assert doc.borderline in fake.calls[9]["contents"]
+    assert doc.weak in fake.calls[18]["contents"]
 
 
 def test_judge_discrimination_records_ordering_failures(tmp_path):
     _write_triplet(tmp_path / "triplets")
-    fake = FakeGenAI([_judge_reply(4.0), _judge_reply(4.0), _judge_reply(1.5)])
+    fake = FakeGenAI(
+        [*_judge_replies(4.0), *_judge_replies(4.0), *_judge_replies(1.5)]
+    )
 
     result = judge_discrimination(tmp_path / "triplets", _make_rubric(), fake)
 
@@ -279,16 +287,10 @@ def test_judge_discrimination_records_ordering_failures(tmp_path):
     assert "strictly" in failure["reason"]
 
 
-def _judge_reply_missing_dimension() -> str:
-    # Omits "role-knowledge" -- score_content raises ContentJudgeError for a
-    # content dimension present in the rubric but absent from the reply.
+def _judge_reply_wrong_dimension() -> str:
+    # Answers the focused structured-answers call with a different key --
+    # score_content raises ContentJudgeError for the dimension it asked about.
     scores = [
-        {
-            "dimension_key": "structured-answers",
-            "score": 4.5,
-            "evidence_quotes": [],
-            "rationale": "Matches the anchor language for this level.",
-        },
         {
             "dimension_key": "quantified-impact",
             "score": 3.0,
@@ -301,16 +303,17 @@ def _judge_reply_missing_dimension() -> str:
 
 def test_judge_discrimination_records_content_judge_error_with_partial_scores(tmp_path):
     _write_triplet(tmp_path / "triplets")
-    # "strong" scores cleanly; "borderline" triggers ContentJudgeError -- the
-    # judge is never called for "weak", so scores stays partial (strong only).
-    fake = FakeGenAI([_judge_reply(4.5), _judge_reply_missing_dimension()])
+    # "strong" scores cleanly; "borderline" triggers ContentJudgeError on its
+    # first focused call -- the judge is never called for "weak", so scores
+    # stays partial (strong only).
+    fake = FakeGenAI([*_judge_replies(4.5), _judge_reply_wrong_dimension()])
 
     result = judge_discrimination(tmp_path / "triplets", _make_rubric(), fake)
 
     assert result["trials"] == 1
     assert result["correct"] == 0
     assert result["accuracy"] == 0.0
-    assert len(fake.calls) == 2
+    assert len(fake.calls) == 10
     (failure,) = result["failures"]
     assert failure["triplet"] == "structured-answers-1"
     assert failure["scores"] == {"strong": 4.5}
@@ -337,29 +340,35 @@ def test_judge_discrimination_records_missing_target_dimension(tmp_path):
     # Relabel the triplet's target dimension as delivery-channel: score_content
     # never scores it, so the judge output can never contain it.
     rubric = _make_rubric_with_dimension_channel("structured-answers", "delivery")
-    reply = json.dumps({
-        "scores": [
-            {
-                "dimension_key": "quantified-impact",
-                "score": 3.0,
-                "evidence_quotes": [],
-                "rationale": "One example, thin detail.",
-            },
-            {
-                "dimension_key": "role-knowledge",
-                "score": 3.0,
-                "evidence_quotes": [],
-                "rationale": "One example, thin detail.",
-            },
-        ]
-    })
-    fake = FakeGenAI([reply])
+    replies = [
+        json.dumps({
+            "scores": [
+                {
+                    "dimension_key": "quantified-impact",
+                    "score": 3.0,
+                    "evidence_quotes": [],
+                    "rationale": "One example, thin detail.",
+                },
+            ]
+        }),
+        json.dumps({
+            "scores": [
+                {
+                    "dimension_key": "role-knowledge",
+                    "score": 3.0,
+                    "evidence_quotes": [],
+                    "rationale": "One example, thin detail.",
+                },
+            ]
+        }),
+    ]
+    fake = FakeGenAI([reply for reply in replies for _ in range(3)])
 
     result = judge_discrimination(tmp_path / "triplets", rubric, fake)
 
     assert result["trials"] == 1
     assert result["correct"] == 0
-    assert len(fake.calls) == 1
+    assert len(fake.calls) == 6
     (failure,) = result["failures"]
     assert failure["triplet"] == "structured-answers-1"
     assert failure["scores"] == {}

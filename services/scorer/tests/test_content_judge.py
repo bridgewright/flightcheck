@@ -125,10 +125,16 @@ def _happy_scores() -> list[dict]:
     ]
 
 
-def test_happy_path_scores_content_dimensions_with_bars_prompt():
+def test_happy_path_scores_each_content_dimension_in_focused_sampled_calls():
     rubric = _make_rubric()
     segments = _make_segments()
-    fake = FakeGenAI([json.dumps({"scores": _happy_scores()})])
+    # Three identical samples per content dimension, in rubric order (a batched
+    # all-dimensions call was measured to saturate the responsive dimension at
+    # 5.0, and a single call was measured to be non-reproducible -- evals
+    # layer 1, release prep).
+    fake = FakeGenAI(
+        [json.dumps({"scores": [doc]}) for doc in _happy_scores() for _ in range(3)]
+    )
 
     scores = score_content(rubric, segments, fake)
 
@@ -140,24 +146,58 @@ def test_happy_path_scores_content_dimensions_with_bars_prompt():
     assert scores[1].score == 4.5
     assert scores[1].evidence_quotes == ["we cut churn by 12 percent in one quarter"]
 
-    assert len(fake.calls) == 1
-    call = fake.calls[0]
-    assert call["model"] == load_product_config().models.scorer
-    assert call["config"]["response_mime_type"] == "application/json"
-    assert call["config"]["response_schema"] is ContentScoreDoc
+    content_dims = [d for d in rubric.dimensions if d.channel == "content"]
+    assert len(fake.calls) == 3 * len(content_dims)
+    for i, dim in enumerate(content_dims):
+        dim_calls = fake.calls[3 * i:3 * i + 3]
+        # Distinct seeds label the three draws of one dimension.
+        assert [c["config"]["seed"] for c in dim_calls] == [7, 11, 13]
+        for call in dim_calls:
+            assert call["model"] == load_product_config().models.scorer
+            assert call["config"]["response_mime_type"] == "application/json"
+            assert call["config"]["response_schema"] is ContentScoreDoc
+            assert call["config"]["temperature"] == 0.0
 
-    prompt = call["contents"]
-    assert "[00:00] INTERVIEWER: Tell me about a project you led end to end." in prompt
-    assert "[00:06] CANDIDATE: I led the churn dashboard rollout" in prompt
-    for dim in rubric.dimensions:
-        if dim.channel != "content":
-            continue
-        assert dim.key in prompt
-        assert dim.name in prompt
-        for signal in dim.signals:
-            assert signal in prompt
-        for anchor in dim.anchors:
-            assert anchor.behavior in prompt
+            prompt = call["contents"]
+            assert (
+                "[00:00] INTERVIEWER: Tell me about a project you led end to end."
+                in prompt
+            )
+            assert "[00:06] CANDIDATE: I led the churn dashboard rollout" in prompt
+            assert dim.key in prompt
+            assert dim.name in prompt
+            for signal in dim.signals:
+                assert signal in prompt
+            for anchor in dim.anchors:
+                assert anchor.behavior in prompt
+            # Focused call: the other content dimensions' anchors stay out.
+            for other in content_dims:
+                if other.key == dim.key:
+                    continue
+                for anchor in other.anchors:
+                    assert anchor.behavior not in prompt
+
+
+def test_dimension_score_is_the_mean_of_three_samples():
+    rubric = _make_rubric()
+    segments = _make_segments()
+    happy = _happy_scores()
+    # structured-answers samples disagree: 4.0, 5.0, 4.4 -> mean 4.47; quotes
+    # and rationale must come from the sample closest to that mean (4.4).
+    varied = [
+        dict(happy[0], score=4.0, rationale="First draw."),
+        dict(happy[0], score=5.0, rationale="Second draw."),
+        dict(happy[0], score=4.4, rationale="Third draw."),
+    ]
+    fake = FakeGenAI(
+        [json.dumps({"scores": [doc]}) for doc in varied]
+        + [json.dumps({"scores": [doc]}) for doc in happy[1:] for _ in range(3)]
+    )
+
+    scores = score_content(rubric, segments, fake)
+
+    assert scores[0].score == 4.47
+    assert scores[0].rationale == "Third draw."
 
 
 def test_fabricated_quotes_dropped_and_flagged():
@@ -166,34 +206,32 @@ def test_fabricated_quotes_dropped_and_flagged():
     fabricated = "I scaled the platform to ten million users"
     fake = FakeGenAI(
         [
-            json.dumps(
-                {
-                    "scores": [
-                        _content_score(
-                            "structured-answers",
-                            4.0,
-                            [
-                                "I owned the metrics definition and ran weekly reviews "
-                                "with the sales team.",
-                                fabricated,
-                            ],
-                            "Clear ownership story.",
-                        ),
-                        _content_score(
-                            "quantified-impact",
-                            4.5,
-                            [fabricated],
-                            "Strong quantified outcome.",
-                        ),
-                        _content_score(
-                            "role-knowledge",
-                            3.0,
-                            ["I led   the churn\ndashboard rollout"],
-                            "One concrete example.",
-                        ),
-                    ]
-                }
-            )
+            json.dumps({"scores": [doc]})
+            for doc in [
+                _content_score(
+                    "structured-answers",
+                    4.0,
+                    [
+                        "I owned the metrics definition and ran weekly reviews "
+                        "with the sales team.",
+                        fabricated,
+                    ],
+                    "Clear ownership story.",
+                ),
+                _content_score(
+                    "quantified-impact",
+                    4.5,
+                    [fabricated],
+                    "Strong quantified outcome.",
+                ),
+                _content_score(
+                    "role-knowledge",
+                    3.0,
+                    ["I led   the churn\ndashboard rollout"],
+                    "One concrete example.",
+                ),
+            ]
+            for _ in range(3)
         ]
     )
 
@@ -214,30 +252,38 @@ def test_fabricated_quotes_dropped_and_flagged():
 
 
 def test_missing_content_dimension_raises():
-    # role-knowledge is a content dimension but absent from the response
-    fake = FakeGenAI([json.dumps({"scores": _happy_scores()[:2]})])
+    # role-knowledge's first sample answers with the wrong dimension key, so
+    # role-knowledge never gets a score.
+    happy = _happy_scores()
+    fake = FakeGenAI(
+        [json.dumps({"scores": [doc]}) for doc in happy[:2] for _ in range(3)]
+        + [json.dumps({"scores": [happy[0]]})]
+    )
     with pytest.raises(ContentJudgeError, match="role-knowledge"):
         score_content(_make_rubric(), _make_segments(), fake)
 
 
 def test_delivery_dimensions_stay_out_of_prompt_and_output():
     rubric = _make_rubric()
+    happy = _happy_scores()
+    quantified_with_extra = json.dumps(
+        {
+            "scores": [
+                happy[1],
+                # An off-dimension delivery score in a response is dropped.
+                _content_score(
+                    "pacing-control",
+                    2.0,
+                    ["I led the churn dashboard rollout"],
+                    "Rushed pacing throughout.",
+                ),
+            ]
+        }
+    )
     fake = FakeGenAI(
-        [
-            json.dumps(
-                {
-                    "scores": [
-                        *_happy_scores(),
-                        _content_score(
-                            "pacing-control",
-                            2.0,
-                            ["I led the churn dashboard rollout"],
-                            "Rushed pacing throughout.",
-                        ),
-                    ]
-                }
-            )
-        ]
+        [json.dumps({"scores": [happy[0]]})] * 3
+        + [quantified_with_extra] * 3
+        + [json.dumps({"scores": [happy[2]]})] * 3
     )
 
     scores = score_content(rubric, _make_segments(), fake)
@@ -247,11 +293,12 @@ def test_delivery_dimensions_stay_out_of_prompt_and_output():
         "quantified-impact",
         "role-knowledge",
     }
-    prompt = fake.calls[0]["contents"]
-    assert "pacing-control" not in prompt
-    assert "Pacing control" not in prompt
-    for dim in rubric.dimensions:
-        if dim.channel != "delivery":
-            continue
-        for anchor in dim.anchors:
-            assert anchor.behavior not in prompt
+    for call in fake.calls:
+        prompt = call["contents"]
+        assert "pacing-control" not in prompt
+        assert "Pacing control" not in prompt
+        for dim in rubric.dimensions:
+            if dim.channel != "delivery":
+                continue
+            for anchor in dim.anchors:
+                assert anchor.behavior not in prompt
