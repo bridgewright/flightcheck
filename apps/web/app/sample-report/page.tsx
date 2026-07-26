@@ -13,7 +13,9 @@ export default function SampleReportPage() {
   return (
     <main className="mx-auto flex min-h-screen max-w-3xl flex-col gap-8 px-6 py-16">
       <div className="rounded-md border border-neutral-300 bg-neutral-50 p-4 text-sm dark:border-neutral-700 dark:bg-neutral-900">
-        Sample report from a real practice session (anonymized)
+        Illustrative sample report &mdash; synthetic data in the exact format
+        the product produces. A real anonymized session replaces this at
+        launch.
       </div>
       <h1 className="text-3xl font-bold tracking-tight">What your report looks like</h1>
       <ReportView report={sample.report} dimensions={sample.dimensions} />
