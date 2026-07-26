@@ -6,12 +6,16 @@
 
 > **Operator TODO (pre-push, release-blocking):** replace every
 > `PENDING-DEPLOY-URL` below with the Vercel production URL from the deploy
-> runbook ([docs/deploy.md](docs/deploy.md), section 3), then delete this note.
-> The URL exists only after the runbook's deploy steps run, so this section
-> ships with an explicit placeholder rather than a made-up address.
+> runbook ([docs/deploy.md](docs/deploy.md), section 3), record the demo GIF
+> from the release smoke session and link it here (runbook section 5.1a),
+> then delete this note. The URL and demo exist only after the runbook's
+> deploy steps run, so this section ships with explicit placeholders rather
+> than made-up artifacts.
 
 - **App:** PENDING-DEPLOY-URL
 - **Sample report (no signup):** PENDING-DEPLOY-URL/sample-report
+- **Demo:** captured from the release smoke session at deploy time
+  (docs/deploy.md section 5.1a)
 
 ### Quickstart
 
@@ -25,19 +29,20 @@
    (not ready / approaching / ready), per-dimension evidence, delivery
    metrics, and concrete drills — honestly, including "not ready yet".
 
-Release notes: [docs/releases/v0.1.md](docs/releases/v0.1.md). Deploy
-runbook: [docs/deploy.md](docs/deploy.md).
+Release notes: [docs/releases/v0.1.md](docs/releases/v0.1.md). Architecture
+(system diagram + data flow): [docs/architecture.md](docs/architecture.md).
+Deploy runbook: [docs/deploy.md](docs/deploy.md).
 
-> **Status: v0.1.** Built in public. PRD was committed before the first line of code — [read it](PRD.md). The S2S provider bake-off that picked the interviewer and scoring models is measured, not guessed ([report](evals/reports/)).
+> **Status: v0.1.** Built in public. PRD was committed before the first line of code — [read it](PRD.md). The S2S provider bake-off that picked the interviewer and scoring models is measured, not guessed ([report](evals/reports/2026-08-02-provider-bakeoff.md)); the release-gate eval numbers are committed verbatim ([2026-07-26 gate run](evals/reports/2026-07-26-v01-gate.md)).
 
 ## Why not just ChatGPT voice?
 
 1. **A verdict, not a chat** — an evidence-grounded rubric compiled from your target JD and real interview experiences for that company and role, with behaviorally-anchored scoring.
-2. **Growth across sessions** — evidence map, recurring-weakness tracking, fresh questions every time, until Ready.
-3. **Delivery is scored from raw audio** — hesitation, fillers, hedging intonation. Cascade pipelines erase these before the model ever hears them.
+2. **Delivery is scored from raw audio** — hesitation, fillers, hedging intonation. Cascade pipelines erase these before the model ever hears them.
+3. **Growth across sessions** *(v0.2, planned)* — evidence map, recurring-weakness tracking, fresh questions every time, until Ready. v0.1 ships one baseline session per package.
 
 ## Roadmap
 
-v0.1 full single-session loop (2026-08-09) → v0.2 packages + payments (08-16) → v1.0 (08-21). See [CHANGELOG.md](CHANGELOG.md).
+v0.1 full single-session loop — shipped 2026-07-26 → v0.2 will add multi-session packages, payments, and per-session cost metering → v1.0. See [CHANGELOG.md](CHANGELOG.md); real-user metrics land with v0.2 ([docs/metrics/](docs/metrics/)).
 
-MIT · Built AI-natively — see [CLAUDE.md](CLAUDE.md) · Decisions logged in [DECISIONS.md](DECISIONS.md)
+MIT · Built AI-natively — see [CLAUDE.md](CLAUDE.md) · Decisions logged in [DECISIONS.md](DECISIONS.md) · Patterns in [PLAYBOOK.md](PLAYBOOK.md) · Honest retros in [RETRO.md](RETRO.md)
