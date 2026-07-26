@@ -1,30 +1,7 @@
+// No GET: session reports are served only via the token-authorized server page — do not add an unauthenticated proxy.
 import { NextResponse } from "next/server";
 
-import { authorizeSession, completeSession, getSession } from "@/lib/worker";
-
-// GET: status/report polling proxy for the report flow. The worker's payload
-// additionally carries session_plan and the rebuilt interviewer_instructions
-// — the interview answer key. Neither may ever reach the browser, so the
-// response is allow-listed to exactly the fields the report flow needs.
-export async function GET(
-  _request: Request,
-  { params }: { params: Promise<{ id: string }> },
-) {
-  const { id } = await params;
-  try {
-    const row = await getSession(id);
-    return NextResponse.json({
-      id: row.id,
-      package_id: row.package_id,
-      index: row.index,
-      status: row.status,
-      audio_path: row.audio_path,
-      report: row.report,
-    });
-  } catch {
-    return NextResponse.json({ error: "session not found" }, { status: 404 });
-  }
-}
+import { authorizeSession, completeSession } from "@/lib/worker";
 
 // POST {action: "complete", audio_path, token} → worker
 // /api/sessions/{id}/complete, which flips the session to "scoring" and
