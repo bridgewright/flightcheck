@@ -318,6 +318,98 @@ def test_get_session_rebuilds_instructions_and_never_stores_them():
     assert "interviewer_instructions" not in stored.model_dump()
 
 
+def test_create_session_is_idempotent_for_a_package_with_a_session():
+    db = FakeDatabase()
+    package = _seed_ready_package(db)
+    client, _ = _client(FakeGenAI([]), db=db)
+
+    first = client.post("/api/sessions", json={"package_id": package.id}, headers=AUTH)
+    second = client.post("/api/sessions", json={"package_id": package.id}, headers=AUTH)
+
+    assert first.status_code == 200
+    assert second.status_code == 200
+    # Same session, same payload -- no second row is ever created (v0.1 is
+    # single-session; a second index-1 row would share the first session's
+    # recording storage key).
+    assert second.json() == first.json()
+    assert len(db.sessions) == 1
+    assert db.list_sessions(package.id)[0].id == first.json()["session_id"]
+
+
+def test_complete_while_scoring_is_409_and_does_not_rescore():
+    db = FakeDatabase()
+    package = _seed_ready_package(db)
+    fake = FakeGenAI([])
+    client, _ = _client(fake, db=db)
+    session_id = client.post(
+        "/api/sessions", json={"package_id": package.id}, headers=AUTH
+    ).json()["session_id"]
+    db.set_session_status(session_id, "scoring", audio_path="packages/p/session-1.webm")
+
+    response = client.post(
+        f"/api/sessions/{session_id}/complete",
+        json={"audio_path": "packages/p/session-1.webm"},
+        headers=AUTH,
+    )
+
+    assert response.status_code == 409
+    assert response.json() == {
+        "error": "session is already scoring; it cannot be re-scored"
+    }
+    assert db.get_session(session_id).status == "scoring"
+    assert fake.calls == []          # no scoring job was enqueued
+
+
+def test_complete_after_scored_is_409_and_keeps_the_report():
+    db = FakeDatabase()
+    package = _seed_ready_package(db)
+    audio_path = f"packages/{package.id}/session-1.wav"
+    storage = FakeStorage(recordings={audio_path: _wav_bytes()})
+    fake = FakeGenAI([SEGMENTS_JSON, *CONTENT_SCORES_JSONS, DELIVERY_JUDGE_JSON])
+    client, _ = _client(fake, storage=storage, db=db)
+    session_id = client.post(
+        "/api/sessions", json={"package_id": package.id}, headers=AUTH
+    ).json()["session_id"]
+    assert client.post(
+        f"/api/sessions/{session_id}/complete",
+        json={"audio_path": audio_path}, headers=AUTH,
+    ).status_code == 202
+
+    calls_after_scoring = len(fake.calls)
+    again = client.post(
+        f"/api/sessions/{session_id}/complete",
+        json={"audio_path": audio_path}, headers=AUTH,
+    )
+
+    assert again.status_code == 409
+    assert again.json() == {
+        "error": "session is already scored; it cannot be re-scored"
+    }
+    session = db.get_session(session_id)
+    assert session.status == "scored"
+    assert session.report is not None
+    assert len(fake.calls) == calls_after_scoring   # no re-run, no extra spend
+
+
+def test_complete_after_failed_is_202_so_a_retry_still_works():
+    db = FakeDatabase()
+    package = _seed_ready_package(db)
+    client, _ = _client(FakeGenAI([]), storage=FakeStorage(), db=db)
+    session_id = client.post(
+        "/api/sessions", json={"package_id": package.id}, headers=AUTH
+    ).json()["session_id"]
+    db.set_session_status(session_id, "failed")
+
+    response = client.post(
+        f"/api/sessions/{session_id}/complete",
+        json={"audio_path": "packages/missing.wav"},
+        headers=AUTH,
+    )
+
+    assert response.status_code == 202   # the retry re-enqueues scoring
+    assert db.get_session(session_id).status == "failed"   # job failed again
+
+
 def test_session_for_unready_package_is_409():
     db = FakeDatabase()
     package = db.create_package(JD_TEXT, None)   # status "compiling"

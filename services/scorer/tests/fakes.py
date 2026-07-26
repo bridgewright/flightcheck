@@ -176,6 +176,14 @@ class FakeDatabase:
     def get_session(self, session_id: str) -> SessionRow:
         return self.sessions[session_id]
 
+    def list_sessions(self, package_id: str) -> list[SessionRow]:
+        # A filter, not a lookup: an unknown package_id yields [] (mirrors
+        # PostgREST select-by-eq), never KeyError.
+        return sorted(
+            (row for row in self.sessions.values() if row.package_id == package_id),
+            key=lambda row: row.index,
+        )
+
     def set_session_status(self, session_id: str, status: str,
                            audio_path: str | None = None) -> None:
         row = self.sessions[session_id]

@@ -26,7 +26,7 @@ from fastapi import (
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel, ConfigDict
 
-from scorer.api.db import Database, PackageRow
+from scorer.api.db import Database, PackageRow, SessionRow
 from scorer.api.pipeline import compile_package, score_session
 from scorer.api.storage import Storage
 from scorer.intake.jd import JdFetchError, fetch_jd
@@ -82,6 +82,25 @@ def _require_worker_token(authorization: Annotated[str, Header()] = "") -> None:
         authorization, f"Bearer {expected}"
     ):
         raise HTTPException(status_code=401, detail="invalid or missing bearer token")
+
+
+def _session_response(row: SessionRow, package: PackageRow) -> dict:
+    """The POST /api/sessions payload for a session row (new or existing).
+
+    Callers guarantee row.session_plan and package.rubric are present: a
+    session row is only ever created for a "ready" package, with its plan.
+    """
+    profile = package.candidate_profile
+    if profile is None:
+        profile = _empty_profile()
+    instructions = build_interviewer_instructions(
+        row.session_plan, package.rubric, profile
+    )
+    return {
+        "session_id": row.id,
+        "session_plan": row.session_plan.model_dump(mode="json"),
+        "interviewer_instructions": instructions,
+    }
 
 
 def _score_session_job(
@@ -150,10 +169,23 @@ def create_app(db: Database, storage: Storage, client: GenAIClientLike) -> FastA
 
     @api.post("/sessions")
     def create_session(body: CreateSessionRequest):
+        """Create the package's baseline session -- idempotent.
+
+        v0.1 is single-session per package, so when the package already has
+        a session this returns that existing session's payload unchanged
+        instead of creating another row. Besides making the paid trigger
+        safe to retry, this closes the index-overwrite risk: every session
+        is created at index 1, so a second row would share the first row's
+        recording storage key and the later upload would silently replace
+        the earlier session's audio.
+        """
         try:
             package = db.get_package(body.package_id)
         except KeyError as exc:
             raise HTTPException(status_code=404, detail="package not found") from exc
+        existing = db.list_sessions(body.package_id)
+        if existing:
+            return _session_response(existing[0], package)
         if package.status != "ready" or package.rubric is None:
             raise HTTPException(
                 status_code=409,
@@ -161,24 +193,25 @@ def create_app(db: Database, storage: Storage, client: GenAIClientLike) -> FastA
             )
         plan = plan_baseline_session(package.rubric)
         row = db.create_session(body.package_id, 1, plan)
-        profile = package.candidate_profile
-        if profile is None:
-            profile = _empty_profile()
-        instructions = build_interviewer_instructions(plan, package.rubric, profile)
-        return {
-            "session_id": row.id,
-            "session_plan": plan.model_dump(mode="json"),
-            "interviewer_instructions": instructions,
-        }
+        return _session_response(row, package)
 
     @api.post("/sessions/{session_id}/complete", status_code=202)
     def complete_session(
         session_id: str, body: CompleteSessionRequest, background_tasks: BackgroundTasks
     ):
         try:
-            db.get_session(session_id)
+            row = db.get_session(session_id)
         except KeyError as exc:
             raise HTTPException(status_code=404, detail="session not found") from exc
+        if row.status in ("scoring", "scored"):
+            # Scoring is the expensive paid trigger; a session is scored at
+            # most once. "planned" starts a run and "failed" allows a retry.
+            return JSONResponse(
+                status_code=409,
+                content={
+                    "error": f"session is already {row.status}; it cannot be re-scored"
+                },
+            )
         db.set_session_status(session_id, "scoring", audio_path=body.audio_path)
         background_tasks.add_task(_score_session_job, session_id, db, storage, client)
         return {"session_id": session_id, "status": "scoring"}

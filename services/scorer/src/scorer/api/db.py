@@ -70,6 +70,11 @@ class Database(Protocol):
     def get_session(self, session_id: str) -> SessionRow:
         ...
 
+    def list_sessions(self, package_id: str) -> list[SessionRow]:
+        """All sessions of a package, ascending index; [] when none exist
+        (an unknown package_id is also [] -- a filter, not a lookup)."""
+        ...
+
     def set_session_status(self, session_id: str, status: str,
                            audio_path: str | None = None) -> None:
         ...
@@ -198,6 +203,12 @@ class SupabaseDatabase:
         if not data:
             raise KeyError(session_id)
         return _to_session_row(data[0])
+
+    def list_sessions(self, package_id: str) -> list[SessionRow]:
+        data = (self._client.table("sessions").select("*")
+                .eq("package_id", package_id).execute().data)
+        # Sorted here (not in SQL) so every backend orders identically.
+        return sorted((_to_session_row(d) for d in data), key=lambda r: r.index)
 
     def set_session_status(self, session_id: str, status: str,
                            audio_path: str | None = None) -> None:

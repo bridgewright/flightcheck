@@ -195,6 +195,18 @@ def test_create_session_unknown_package_raises_keyerror():
         FakeDatabase().create_session("missing-package", 1, _plan())
 
 
+def test_fake_list_sessions_orders_by_index_and_filters_by_package():
+    db = FakeDatabase()
+    a = db.create_package("jd a", None)
+    b = db.create_package("jd b", None)
+    second = db.create_session(a.id, 2, _plan())
+    first = db.create_session(a.id, 1, _plan())
+    assert db.list_sessions(a.id) == [first, second]
+    assert db.list_sessions(b.id) == []
+    # A filter, not a lookup: an unknown package id is [] -- never KeyError.
+    assert db.list_sessions("missing-package") == []
+
+
 def test_set_session_status_keeps_audio_path_unless_given():
     db = FakeDatabase()
     package = db.create_package("jd text", None)
@@ -375,6 +387,33 @@ def test_supabase_mutators_raise_keyerror_when_update_matches_no_rows(call):
     stub = StubSupabase([[]])
     with pytest.raises(KeyError):
         call(SupabaseDatabase(stub))
+
+
+def test_supabase_list_sessions_filters_and_orders_by_index():
+    def _session_data(session_id: str, index: int) -> dict:
+        return {
+            "id": session_id,
+            "package_id": "11111111-1111-1111-1111-111111111111",
+            "index": index,
+            "status": "planned",
+            "session_plan": _plan().model_dump(mode="json"),
+            "audio_path": None,
+            "report": None,
+        }
+
+    stub = StubSupabase([
+        [_session_data("sess-b", 2), _session_data("sess-a", 1)],
+        [],
+    ])
+    db = SupabaseDatabase(stub)
+    rows = db.list_sessions("11111111-1111-1111-1111-111111111111")
+    assert [(r.id, r.index) for r in rows] == [("sess-a", 1), ("sess-b", 2)]
+    assert stub.log[0]["table"] == "sessions"
+    assert stub.log[0]["select"] == "*"
+    assert stub.log[0]["eq"] == [
+        ("package_id", "11111111-1111-1111-1111-111111111111")
+    ]
+    assert db.list_sessions("no-sessions-package") == []
 
 
 def test_supabase_session_round_trip_and_report_marks_scored():
