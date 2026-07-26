@@ -1,0 +1,8 @@
+# Railway build config (nixpacks). The scoring pipeline shells out to ffmpeg
+# (scorer.audio_utils.ensure_wav) -- "..." keeps the Python provider's default
+# packages and appends ffmpeg to them.
+[phases.setup]
+nixPkgs = ["...", "ffmpeg"]
+
+[start]
+cmd = "uv run python -m scorer.api.app"
