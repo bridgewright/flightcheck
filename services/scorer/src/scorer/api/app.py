@@ -114,6 +114,32 @@ def _score_session_job(
         logger.exception("background scoring failed: session_id=%s", session_id)
 
 
+def _compile_package_job(
+    package_id: str,
+    db: Database,
+    storage: Storage,
+    client: GenAIClientLike,
+    *,
+    resume_text: str | None,
+    linkedin_text: str | None,
+) -> None:
+    """Background wrapper mirroring _score_session_job: compile_package records
+    "failed" itself, but if even that status write throws (a double fault, e.g.
+    a database outage) the app swallows here so the background task can never
+    crash the worker -- the row may then stay "compiling" until retried."""
+    try:
+        compile_package(
+            package_id,
+            db,
+            storage,
+            client,
+            resume_text=resume_text,
+            linkedin_text=linkedin_text,
+        )
+    except Exception:
+        logger.exception("background compile failed: package_id=%s", package_id)
+
+
 def create_app(db: Database, storage: Storage, client: GenAIClientLike) -> FastAPI:
     app = FastAPI(title="flightcheck scorer worker")
     api = APIRouter(prefix="/api", dependencies=[Depends(_require_worker_token)])
@@ -150,7 +176,7 @@ def create_app(db: Database, storage: Storage, client: GenAIClientLike) -> FastA
             linkedin_text = extract_pdf_text(base64.b64decode(body.linkedin_pdf_b64))
         row = db.create_package(jd_text, body.jd_url)
         background_tasks.add_task(
-            compile_package,
+            _compile_package_job,
             row.id,
             db,
             storage,

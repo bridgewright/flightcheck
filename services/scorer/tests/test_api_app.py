@@ -207,6 +207,31 @@ def test_package_flow_records_failure():
     assert shown["rubric"] is None
 
 
+def test_compile_double_fault_is_swallowed_and_never_crashes_the_worker():
+    # Double fault: the compile fails (exhausted fake -> IndexError) AND the
+    # "failed" status write itself throws. _compile_package_job must swallow
+    # so the background task cannot crash the worker (TestClient re-raises
+    # any exception escaping the app, so an unwrapped task fails this test).
+    class DoubleFaultDatabase(FakeDatabase):
+        def set_package_rubric(self, package_id, rubric, status):
+            raise RuntimeError("database outage during the failure write")
+
+    db = DoubleFaultDatabase()
+    client, _ = _client(FakeGenAI([]), db=db)
+    response = client.post(
+        "/api/packages",
+        json={"jd_text": JD_TEXT, "resume_text": "resume text"},
+        headers=AUTH,
+    )
+    assert response.status_code == 202
+    # The row stays "compiling" (nothing could record the failure), but the
+    # worker keeps serving requests.
+    token = response.json()["access_token"]
+    shown = client.get(f"/api/packages/by-token/{token}", headers=AUTH)
+    assert shown.status_code == 200
+    assert shown.json()["status"] == "compiling"
+
+
 SEGMENTS_JSON = json.dumps({"segments": [
     {"start_s": 0.0, "end_s": 1.8, "speaker": "interviewer",
      "text": "Walk me through a project you led end to end."},
