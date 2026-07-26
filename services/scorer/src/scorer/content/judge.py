@@ -1,19 +1,25 @@
 """Content judge: scores content-channel rubric dimensions against the transcript.
 
-One focused Gemini call per content dimension. The prompt carries the
-candidate-labeled transcript (with timestamps) and that one dimension's BARS
-anchors verbatim, so scores anchor to observable behavior. Scoring every
-dimension in a single batched call was measured (evals layer 1, release prep)
-to saturate the responsive dimension at 5.0 by contrast with the evidence-poor
-ones — strong and borderline answers became indistinguishable; the same judge
-with a single-dimension prompt separated them. Returned evidence quotes are
-verified in code against the actual candidate speech — fabricated quotes are
-dropped, a score left with no verifiable quote is flagged in its rationale
-(score kept), off-dimension keys are dropped, and a missing dimension raises.
+Three focused Gemini samples per content dimension, averaged. The prompt
+carries the candidate-labeled transcript (with timestamps) and that one
+dimension's BARS anchors verbatim, so scores anchor to observable behavior.
+Scoring every dimension in a single batched call was measured (evals layer 1,
+release prep) to saturate the responsive dimension at 5.0 by contrast with the
+evidence-poor ones — strong and borderline answers became indistinguishable;
+the same judge with a single-dimension prompt separated them. Returned
+evidence quotes are verified in code against the actual candidate speech —
+fabricated quotes are dropped, a score left with no verifiable quote is
+flagged in its rationale (score kept), off-dimension keys are dropped. A
+sample whose reply fails to parse or omits its dimension is retried once per
+dimension — the interview it scores is a non-repeatable 20 minutes, so one
+malformed reply must not fail the whole run; a second failure for the same
+dimension raises ContentJudgeError.
 """
 from __future__ import annotations
 
-from pydantic import BaseModel, ConfigDict
+import logging
+
+from pydantic import BaseModel, ConfigDict, ValidationError
 
 from scorer.config import load_product_config
 from scorer.schemas import (
@@ -24,9 +30,11 @@ from scorer.schemas import (
     TranscriptSegment,
 )
 
+logger = logging.getLogger(__name__)
+
 
 class ContentJudgeError(Exception):
-    """The judge response is unusable (a content dimension is missing)."""
+    """The judge response is unusable (parse failure or a missing dimension)."""
 
 
 class ContentScoreDoc(BaseModel):
@@ -140,13 +148,54 @@ def _score_dimension_once(
             "seed": seed,
         },
     )
-    doc = ContentScoreDoc.model_validate_json(response.text)
+    try:
+        doc = ContentScoreDoc.model_validate_json(response.text)
+    except ValidationError as exc:
+        raise ContentJudgeError(
+            f"content judge response for {dim.key!r} failed to parse"
+        ) from exc
     score = next((s for s in doc.scores if s.dimension_key == dim.key), None)
     if score is None:
         raise ContentJudgeError(
             f"content judge response missing dimensions: {[dim.key]}"
         )
     return score
+
+
+def _collect_samples(
+    model: str,
+    rubric: Rubric,
+    dim: RubricDimension,
+    segments: list[TranscriptSegment],
+    client: GenAIClientLike,
+) -> list[DimensionScore]:
+    """The dimension's samples, with ONE retry per dimension on a bad reply.
+
+    The session being scored is a non-repeatable 20-minute interview, so a
+    single malformed judge reply (parse failure or missing dimension) must
+    not fail the whole run. A second bad reply for the same dimension still
+    raises: at that point the judge, not the draw, is the problem.
+    """
+    samples: list[DimensionScore] = []
+    retried = False
+    for seed in _JUDGE_SEEDS[:_JUDGE_SAMPLES]:
+        try:
+            samples.append(
+                _score_dimension_once(model, rubric, dim, segments, client, seed)
+            )
+        except ContentJudgeError:
+            if retried:
+                raise
+            retried = True
+            logger.warning(
+                "content judge sample failed (dimension=%s, seed=%s); retrying once",
+                dim.key,
+                seed,
+            )
+            samples.append(
+                _score_dimension_once(model, rubric, dim, segments, client, seed)
+            )
+    return samples
 
 
 def score_content(
@@ -160,10 +209,7 @@ def score_content(
     )
     kept: list[DimensionScore] = []
     for dim in (d for d in rubric.dimensions if d.channel == "content"):
-        samples = [
-            _score_dimension_once(model, rubric, dim, segments, client, seed)
-            for seed in _JUDGE_SEEDS[:_JUDGE_SAMPLES]
-        ]
+        samples = _collect_samples(model, rubric, dim, segments, client)
         mean_score = round(sum(s.score for s in samples) / len(samples), 2)
         # Quotes and rationale come from the sample closest to the aggregate,
         # so the text always belongs to one real judge reply (ties -> first).

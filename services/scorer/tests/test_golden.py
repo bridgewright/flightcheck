@@ -303,17 +303,22 @@ def _judge_reply_wrong_dimension() -> str:
 
 def test_judge_discrimination_records_content_judge_error_with_partial_scores(tmp_path):
     _write_triplet(tmp_path / "triplets")
-    # "strong" scores cleanly; "borderline" triggers ContentJudgeError on its
-    # first focused call -- the judge is never called for "weak", so scores
-    # stays partial (strong only).
-    fake = FakeGenAI([*_judge_replies(4.5), _judge_reply_wrong_dimension()])
+    # "strong" scores cleanly; "borderline" answers with the wrong dimension
+    # on its first focused call AND on the judge's one per-dimension retry,
+    # so ContentJudgeError surfaces -- the judge is never called for "weak"
+    # and scores stays partial (strong only).
+    fake = FakeGenAI([
+        *_judge_replies(4.5),
+        _judge_reply_wrong_dimension(),
+        _judge_reply_wrong_dimension(),
+    ])
 
     result = judge_discrimination(tmp_path / "triplets", _make_rubric(), fake)
 
     assert result["trials"] == 1
     assert result["correct"] == 0
     assert result["accuracy"] == 0.0
-    assert len(fake.calls) == 10
+    assert len(fake.calls) == 11
     (failure,) = result["failures"]
     assert failure["triplet"] == "structured-answers-1"
     assert failure["scores"] == {"strong": 4.5}

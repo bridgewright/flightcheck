@@ -251,15 +251,48 @@ def test_fabricated_quotes_dropped_and_flagged():
     assert not by_key["role-knowledge"].rationale.startswith("[no verifiable quote] ")
 
 
-def test_missing_content_dimension_raises():
-    # role-knowledge's first sample answers with the wrong dimension key, so
-    # role-knowledge never gets a score.
+def test_missing_content_dimension_raises_after_the_one_retry():
+    # role-knowledge's first sample answers with the wrong dimension key, and
+    # so does its retry -- the per-dimension retry budget is spent, so
+    # role-knowledge never gets a score and the run fails.
     happy = _happy_scores()
+    wrong_key = json.dumps({"scores": [happy[0]]})
     fake = FakeGenAI(
         [json.dumps({"scores": [doc]}) for doc in happy[:2] for _ in range(3)]
-        + [json.dumps({"scores": [happy[0]]})]
+        + [wrong_key, wrong_key]
     )
     with pytest.raises(ContentJudgeError, match="role-knowledge"):
+        score_content(_make_rubric(), _make_segments(), fake)
+
+
+def test_one_bad_sample_is_retried_once_and_the_run_survives():
+    # structured-answers' first sample is unparseable; the retry (same seed)
+    # succeeds, so scoring completes with exactly one extra call.
+    rubric = _make_rubric()
+    happy = _happy_scores()
+    fake = FakeGenAI(
+        ["this is not json"]
+        + [json.dumps({"scores": [happy[0]]})] * 3
+        + [json.dumps({"scores": [doc]}) for doc in happy[1:] for _ in range(3)]
+    )
+
+    scores = score_content(rubric, _make_segments(), fake)
+
+    assert [s.dimension_key for s in scores] == [
+        "structured-answers", "quantified-impact", "role-knowledge",
+    ]
+    assert scores[0].score == 4.0
+    content_dims = [d for d in rubric.dimensions if d.channel == "content"]
+    assert len(fake.calls) == 3 * len(content_dims) + 1
+    # The failed draw's seed is retried before the remaining seeds run.
+    assert [c["config"]["seed"] for c in fake.calls[:4]] == [7, 7, 11, 13]
+
+
+def test_two_bad_samples_for_one_dimension_fail_the_run_with_a_typed_error():
+    # Parse failures surface as ContentJudgeError (never a raw pydantic
+    # ValidationError) so callers keep handling one exception type.
+    fake = FakeGenAI(["not json", "still not json"])
+    with pytest.raises(ContentJudgeError, match="structured-answers"):
         score_content(_make_rubric(), _make_segments(), fake)
 
 
