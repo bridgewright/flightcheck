@@ -2,7 +2,24 @@
 
 ## [Unreleased]
 
-Nothing yet.
+### Changed
+- Content judge scores dimensions concurrently (bounded thread pool): the
+  21 per-dimension judge calls that dominated scoring wall-time now overlap;
+  results assemble in rubric order and retry/failure semantics are unchanged.
+- Every Gemini API request now carries a hard 8-minute timeout: a stalled
+  call fails the session honestly (and "failed" sessions can be re-scored)
+  instead of pinning the row in "scoring" forever — observed once in
+  production on 2026-07-29.
+
+### Added
+- Scoring progress stages: the worker persists which pipeline stage a run is
+  in (download → transcribe → delivery-metrics → content-judge →
+  delivery-judge → compile) and the report page narrates it while polling.
+  Migration: `docs/supabase/migrations/002_scoring_stage.sql`.
+- Deploy runbook: first-production-deploy learnings — the Railway builder
+  must be Nixpacks (Railpack ignores `nixpacks.toml`), full-length scoring
+  needs a Hobby-plan memory ceiling (observed ~1.6 GB peak), `SUPABASE_URL`
+  must be the bare project URL, and migrations run in filename order.
 
 ## [0.1.0] — 2026-07-26
 

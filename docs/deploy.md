@@ -41,7 +41,9 @@ platform's secret store and are never written into the repo, logs, or docs.
    scoring-stage feature — and so on): paste each file's full contents, run it,
    confirm `Success. No rows returned`, then move to the next. Later migrations
    assume earlier ones already ran, so the order is not optional. `001_init.sql`
-   creates the `packages` and `sessions` tables.
+   creates the `packages` and `sessions` tables. When upgrading an existing
+   deployment, apply any new migration files **before** deploying the worker
+   build that uses them — the worker assumes its columns exist.
 3. Storage: create two buckets, `recordings` and `corpus`. Both **must be private**
    (public access off) — recordings are user audio, the corpus is confidential.
 4. Upload the private rubric corpus: every local corpus `*.md` doc into the
