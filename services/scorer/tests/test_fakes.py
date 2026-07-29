@@ -1,4 +1,6 @@
 """Tests for tests/fakes.py -- FakeGenAI canned-client behavior."""
+from concurrent.futures import ThreadPoolExecutor
+
 import pytest
 from google.genai import types
 
@@ -70,6 +72,63 @@ def test_prebuilt_grounding_objects_pass_through():
     fake = FakeGenAI(["text"], canned_grounding=[metadata])
     response = fake.models.generate_content(model="m", contents="a")
     assert response.candidates[0].grounding_metadata is metadata
+
+
+def test_keyed_texts_dispatch_by_prompt_marker_not_call_order():
+    # Parallel judge calls pop in no fixed order, so keyed replies dispatch on
+    # the marker (the rubric dimension key) found in the prompt instead.
+    fake = FakeGenAI(keyed_texts={"dim-a": ["a1", "a2"], "dim-b": ["b1"]})
+    rb = fake.models.generate_content(model="m", contents="Dimension key: dim-b")
+    ra1 = fake.models.generate_content(model="m", contents="Dimension key: dim-a")
+    ra2 = fake.models.generate_content(model="m", contents="scoring dim-a again")
+    assert (rb.text, ra1.text, ra2.text) == ("b1", "a1", "a2")
+    # Keyed replies never carry grounding metadata.
+    assert rb.candidates[0].grounding_metadata is None
+
+
+def test_keyed_texts_exhaustion_raises_index_error():
+    # Same pinned failure behavior as the ordered script, but per key.
+    fake = FakeGenAI(keyed_texts={"dim-a": ["only"]})
+    fake.models.generate_content(model="m", contents="dim-a")
+    with pytest.raises(IndexError):
+        fake.models.generate_content(model="m", contents="dim-a")
+
+
+def test_prompt_without_keyed_marker_falls_back_to_ordered_texts():
+    # Mixed scripts: unkeyed calls (transcribe, delivery judge) keep popping
+    # the ordered queue while keyed calls are served by marker.
+    fake = FakeGenAI(["plain"], keyed_texts={"dim-a": ["keyed"]})
+    plain = fake.models.generate_content(model="m", contents="no marker here")
+    keyed = fake.models.generate_content(model="m", contents="dim-a prompt")
+    assert (plain.text, keyed.text) == ("plain", "keyed")
+
+
+def test_prompt_matching_multiple_keyed_markers_raises():
+    fake = FakeGenAI(keyed_texts={"dim-a": ["a"], "dim-b": ["b"]})
+    with pytest.raises(ValueError, match="dim-a"):
+        fake.models.generate_content(model="m", contents="dim-a and dim-b")
+
+
+def test_keyed_matching_reads_str_parts_of_list_contents():
+    # File-based calls pass [file_handle, prompt]; only str parts are matched.
+    fake = FakeGenAI(keyed_texts={"dim-a": ["keyed"]})
+    handle = fake.files.upload(file="/tmp/clip.wav")
+    response = fake.models.generate_content(model="m", contents=[handle, "dim-a prompt"])
+    assert response.text == "keyed"
+
+
+def test_generate_content_is_thread_safe_under_concurrent_calls():
+    # Parallel judge calls pop concurrently: every canned reply must be served
+    # exactly once and every call recorded (no lost updates, no duplicates).
+    texts = [f"reply-{i}" for i in range(32)]
+    fake = FakeGenAI(texts)
+    with ThreadPoolExecutor(max_workers=8) as pool:
+        results = list(pool.map(
+            lambda i: fake.models.generate_content(model="m", contents=f"call-{i}").text,
+            range(32),
+        ))
+    assert sorted(results) == sorted(texts)
+    assert len(fake.calls) == 32
 
 
 def test_files_upload_returns_non_str_handle_and_records():

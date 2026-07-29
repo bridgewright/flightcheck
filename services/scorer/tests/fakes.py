@@ -7,6 +7,7 @@ Defined once here and reused by every task's tests (imported as
 """
 from __future__ import annotations
 
+import threading
 from pathlib import Path
 from typing import Any
 
@@ -60,14 +61,24 @@ class _FakeModels:
     def generate_content(self, *, model: str, contents: Any,
                          config: Any = None) -> _FakeResponse:
         owner = self._owner
-        # config is recorded exactly as passed -- never normalized (pinned).
-        owner.calls.append({"model": model, "contents": contents, "config": config})
-        # IndexError when the canned script is exhausted -- pinned behavior
-        # that downstream failure-path tests (Task 12) rely on.
-        text = owner.canned_texts.pop(0)
-        raw = owner.canned_grounding.pop(0) if owner.canned_grounding else None
-        metadata = _metadata_from(raw) if isinstance(raw, list) else raw
-        return _FakeResponse(text, metadata)
+        # One lock covers recording and dispatch: the content judge calls this
+        # from a thread pool, and popping a script concurrently must never
+        # lose, duplicate, or misrecord a reply.
+        with owner.lock:
+            # config is recorded exactly as passed -- never normalized (pinned).
+            owner.calls.append({"model": model, "contents": contents, "config": config})
+            keyed = owner.keyed_queue_for(contents)
+            if keyed is not None:
+                # Keyed replies never carry grounding metadata (no keyed
+                # consumer reads it); IndexError when the key's script is
+                # exhausted, mirroring the ordered queue's pinned behavior.
+                return _FakeResponse(keyed.pop(0))
+            # IndexError when the canned script is exhausted -- pinned behavior
+            # that downstream failure-path tests (Task 12) rely on.
+            text = owner.canned_texts.pop(0)
+            raw = owner.canned_grounding.pop(0) if owner.canned_grounding else None
+            metadata = _metadata_from(raw) if isinstance(raw, list) else raw
+            return _FakeResponse(text, metadata)
 
 
 class _FakeFiles:
@@ -82,24 +93,54 @@ class _FakeFiles:
 class FakeGenAI:
     """Canned google-genai client satisfying scorer.schemas.GenAIClientLike.
 
-    canned_texts pop in order, one per models.generate_content call;
-    IndexError once they are exhausted (failure-path tests rely on this).
-    canned_grounding is optional and parallel to canned_texts; each entry is
-    None, a list of {url,title,snippet} dicts (converted to real
-    types.GroundingMetadata), or a prebuilt metadata object passed through
-    as-is. Every generate_content call appends {"model", "contents",
-    "config"} to .calls with config stored exactly as passed (never
-    normalized); every files.upload appends its file argument to
-    .files.uploads and returns a non-str handle.
+    Thread-safe: the content judge issues generate_content from a thread
+    pool, so dispatch and call recording happen under one lock. Two dispatch
+    modes, combinable:
+
+    - canned_texts pop in order, one per models.generate_content call;
+      IndexError once they are exhausted (failure-path tests rely on this).
+    - keyed_texts maps a marker string (judge tests use the rubric dimension
+      key) to that marker's own ordered reply script. A call whose prompt
+      contains exactly one marker pops from that script (IndexError when it
+      is exhausted, same pinned failure behavior); several markers in one
+      prompt is ambiguous and raises ValueError; no marker falls back to
+      canned_texts. Keying by what the prompt asks makes parallel judge
+      tests order-independent: concurrent calls interleave freely without
+      changing which reply each dimension receives. Keyed replies never
+      carry grounding metadata.
+
+    canned_grounding is optional and parallel to canned_texts (keyed replies
+    never consume it); each entry is None, a list of {url,title,snippet}
+    dicts (converted to real types.GroundingMetadata), or a prebuilt
+    metadata object passed through as-is. Every generate_content call
+    appends {"model", "contents", "config"} to .calls with config stored
+    exactly as passed (never normalized); every files.upload appends its
+    file argument to .files.uploads and returns a non-str handle.
     """
 
-    def __init__(self, canned_texts: list[str],
-                 canned_grounding: list[Any] | None = None):
-        self.canned_texts = list(canned_texts)
+    def __init__(self, canned_texts: list[str] | None = None,
+                 canned_grounding: list[Any] | None = None,
+                 keyed_texts: dict[str, list[str]] | None = None):
+        self.canned_texts = list(canned_texts or [])
         self.canned_grounding = list(canned_grounding) if canned_grounding else []
+        self.keyed_texts = {key: list(texts) for key, texts in (keyed_texts or {}).items()}
         self.calls: list[dict[str, Any]] = []
+        self.lock = threading.Lock()
         self.models = _FakeModels(self)
         self.files = _FakeFiles()
+
+    def keyed_queue_for(self, contents: Any) -> list[str] | None:
+        """The keyed script matching the prompt's marker, or None for the ordered queue."""
+        if not self.keyed_texts:
+            return None
+        parts = contents if isinstance(contents, list) else [contents]
+        prompt = " ".join(part for part in parts if isinstance(part, str))
+        matches = [key for key in self.keyed_texts if key in prompt]
+        if len(matches) > 1:
+            raise ValueError(
+                f"prompt matches multiple keyed_texts markers: {sorted(matches)}"
+            )
+        return self.keyed_texts[matches[0]] if matches else None
 
 
 class FakeDatabase:
