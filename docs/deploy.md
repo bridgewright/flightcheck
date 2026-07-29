@@ -36,9 +36,12 @@ platform's secret store and are never written into the repo, logs, or docs.
 
 1. Create a project at supabase.com (pick a region close to the Railway worker).
    Note the project URL and the service-role key from Project Settings > API.
-2. SQL Editor: paste the full contents of `docs/supabase/migrations/001_init.sql`
-   and run it. Expected: `Success. No rows returned`. This creates the `packages`
-   and `sessions` tables.
+2. SQL Editor: run every file in `docs/supabase/migrations/` in filename order
+   (`001_init.sql`, then `002_scoring_stage.sql` — added alongside the
+   scoring-stage feature — and so on): paste each file's full contents, run it,
+   confirm `Success. No rows returned`, then move to the next. Later migrations
+   assume earlier ones already ran, so the order is not optional. `001_init.sql`
+   creates the `packages` and `sessions` tables.
 3. Storage: create two buckets, `recordings` and `corpus`. Both **must be private**
    (public access off) — recordings are user audio, the corpus is confidential.
 4. Upload the private rubric corpus: every local corpus `*.md` doc into the
@@ -50,13 +53,19 @@ platform's secret store and are never written into the repo, logs, or docs.
 
 1. New Project > Deploy from GitHub repo > select this repo, then set
    **Root Directory** to `services/scorer`.
-2. Build and start come from `services/scorer/nixpacks.toml` (nixpacks adds
+2. Settings > Build > **Builder**: set to **Nixpacks**. Railway's current
+   default builder (Railpack) ignores `nixpacks.toml` entirely — the build
+   fails in seconds with "No start command detected", and even hand-feeding a
+   start command would silently omit the ffmpeg install.
+3. Build and start come from `services/scorer/nixpacks.toml` (nixpacks adds
    `ffmpeg` to the default Python toolchain; start command
    `uv run python -m scorer.api.app`, which serves on `$PORT`).
-3. Variables (names only — set values in the Railway dashboard):
+4. Variables (names only — set values in the Railway dashboard):
    - `OPENAI_API_KEY`
    - `GEMINI_API_KEY`
-   - `SUPABASE_URL`
+   - `SUPABASE_URL` — the bare project URL (`https://PROJECT-REF.supabase.co`).
+     The dashboard sometimes displays a `/rest/v1` endpoint form; the SDKs
+     append path prefixes themselves, so a `/rest/v1` suffix breaks every call.
    - `SUPABASE_SERVICE_ROLE_KEY`
    - `WORKER_API_TOKEN` — generate once with `openssl rand -hex 32`; the same
      value goes to Vercel below
@@ -67,8 +76,14 @@ platform's secret store and are never written into the repo, logs, or docs.
      compile every rubric with zero corpus grounding and zero few-shots
      (an empty or wrong directory produces "(no corpus documents provided)"
      rubrics with no error and no log line).
-4. Settings > Networking > Generate Domain. Note the public URL — it becomes
+5. Settings > Networking > Generate Domain. Note the public URL — it becomes
    `WORKER_URL` for the web app.
+
+**Memory:** full-length (~20 min) session scoring holds the whole waveform plus
+analysis intermediates in memory — observed peak ~1.6 GB — and OOM-crashed a
+trial-plan container in production. Move to the Hobby plan or higher before
+running real sessions. After a plan change, **Restart** the service: the new
+limits do not apply to the already-running container.
 
 ## 3. Vercel (web)
 
@@ -78,7 +93,9 @@ platform's secret store and are never written into the repo, logs, or docs.
    - `OPENAI_API_KEY` (mints OpenAI Realtime ephemeral client secrets)
    - `WORKER_URL` (the Railway domain, with `https://`)
    - `WORKER_API_TOKEN` (same value as on Railway)
-   - `SUPABASE_URL`
+   - `SUPABASE_URL` (bare project URL, `https://PROJECT-REF.supabase.co` — no
+     `/rest/v1` suffix; the SDKs append path prefixes themselves, so the
+     suffixed form the dashboard sometimes shows breaks every call)
    - `SUPABASE_SERVICE_ROLE_KEY` (used by the recordings route to mint
      signed upload URLs for the private `recordings` bucket — the browser
      then PUTs the recording straight to Supabase Storage, so multi-megabyte
@@ -98,7 +115,9 @@ platform's secret store and are never written into the repo, logs, or docs.
       probe: the recording upload is a direct-to-Supabase signed-URL PUT and
       must be verified at a real recording size, well past any function body
       limit) → report reaches `scored` with a verdict, delivery metrics, and
-      timestamped observations.
+      timestamped observations. Known gap: during a worker restart window the
+      report page currently renders "Report not found" — reload once the
+      worker is back up (tracked for v0.2).
 - [ ] Evals gate: from `repo/services/scorer/`, `uv run scorer-evals; echo "exit=$?"`
       prints `exit=0`.
 - [ ] Secrets audit: in browser devtools on the production site, search all
