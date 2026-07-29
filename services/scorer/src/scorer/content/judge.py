@@ -13,11 +13,15 @@ flagged in its rationale (score kept), off-dimension keys are dropped. A
 sample whose reply fails to parse or omits its dimension is retried once per
 dimension — the interview it scores is a non-repeatable 20 minutes, so one
 malformed reply must not fail the whole run; a second failure for the same
-dimension raises ContentJudgeError.
+dimension raises ContentJudgeError. Dimensions are scored concurrently under
+a bounded thread pool (their calls are independent and network-dominated);
+results still assemble in rubric dimension order and each dimension keeps
+its own retry budget.
 """
 from __future__ import annotations
 
 import logging
+from concurrent.futures import ThreadPoolExecutor
 
 from pydantic import BaseModel, ConfigDict, ValidationError
 
@@ -129,6 +133,16 @@ def _build_prompt(
 _JUDGE_SAMPLES = 3
 _JUDGE_SEEDS = (7, 11, 13)
 
+# Scoring wall-time is dominated by these independent Gemini calls (measured
+# in production: 7 content dimensions x 3 samples = 21 sequential calls), so
+# dimensions are scored concurrently — the google-genai client is thread-safe
+# for generate_content. Samples stay sequential WITHIN a dimension: the
+# retry-once budget and the retry-with-the-failed-seed-first order are
+# per-dimension state, and with 8 workers covering the 7 production content
+# dimensions, flattening samples into the pool would add retry coordination
+# without reducing wall-time under the same worker bound.
+_JUDGE_MAX_WORKERS = 8
+
 
 def _score_dimension_once(
     model: str,
@@ -207,9 +221,24 @@ def score_content(
     candidate_text = _normalize_ws(
         " ".join(seg.text for seg in segments if seg.speaker == "candidate")
     )
+    content_dims = [d for d in rubric.dimensions if d.channel == "content"]
+    if not content_dims:
+        return []
+    # One task per dimension. pool.map yields results in input order (never
+    # completion order), so the output stays deterministic, and the first
+    # failing dimension in rubric order is the one whose ContentJudgeError
+    # propagates — exactly as in the sequential version.
+    with ThreadPoolExecutor(
+        max_workers=min(_JUDGE_MAX_WORKERS, len(content_dims))
+    ) as pool:
+        sample_sets = list(
+            pool.map(
+                lambda dim: _collect_samples(model, rubric, dim, segments, client),
+                content_dims,
+            )
+        )
     kept: list[DimensionScore] = []
-    for dim in (d for d in rubric.dimensions if d.channel == "content"):
-        samples = _collect_samples(model, rubric, dim, segments, client)
+    for samples in sample_sets:
         mean_score = round(sum(s.score for s in samples) / len(samples), 2)
         # Quotes and rationale come from the sample closest to the aggregate,
         # so the text always belongs to one real judge reply (ties -> first).

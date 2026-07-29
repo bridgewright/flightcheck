@@ -166,10 +166,12 @@ SEGMENTS_JSON = json.dumps({"segments": [
      "text": "Um, I led the churn dashboard rollout and we cut churn by 12 percent."},
 ]})
 
-# Three identical samples per focused content-dimension call, in rubric order
-# (score_content scores each content dimension in its own call and averages
-# three samples).
-CONTENT_SCORES_JSONS = [json.dumps({"scores": [doc]}) for doc in [
+# Nine judge replies (3 content dims x 3 samples). score_content's focused
+# dimension calls run concurrently and pop the ordered script in no fixed
+# order, so every reply carries all three dimensions' scores and is valid for
+# whichever call pops it (the judge keeps only the score for the dimension it
+# asked about).
+CONTENT_SCORES_JSONS = [json.dumps({"scores": [
     {"dimension_key": "structured-answers", "score": 4.0,
      "evidence_quotes": ["I led the churn dashboard rollout"],
      "rationale": "One clear arc from ownership to outcome, near the score-5 anchor."},
@@ -179,7 +181,7 @@ CONTENT_SCORES_JSONS = [json.dumps({"scores": [doc]}) for doc in [
     {"dimension_key": "role-knowledge", "score": 3.5,
      "evidence_quotes": ["I led the churn dashboard rollout"],
      "rationale": "One concrete example with thin surrounding detail."},
-] for _ in range(3)]
+]})] * 9
 
 DELIVERY_JUDGE_JSON = json.dumps({
     "scores": [

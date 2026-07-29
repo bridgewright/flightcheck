@@ -213,31 +213,27 @@ def test_blind_sheet_shuffle_is_deterministic(tmp_path, monkeypatch):
     ).read_text()
 
 
+def _judge_doc(key: str, score: float) -> dict:
+    return {
+        "dimension_key": key,
+        "score": score,
+        "evidence_quotes": [],
+        "rationale": "Matches the anchor language for this level.",
+    }
+
+
 def _judge_replies(target_score: float) -> list[str]:
-    # Three identical samples per focused content-dimension call, in rubric
-    # order (score_content scores each content dimension in its own call and
-    # averages three samples).
+    # Nine replies (3 content dims x 3 samples) per judged answer. The focused
+    # dimension calls run concurrently and pop the ordered script in no fixed
+    # order, so every reply carries all three dimensions' scores and is valid
+    # for whichever call pops it (score_content keeps only the score for the
+    # dimension it asked about).
     docs = [
-        {
-            "dimension_key": "structured-answers",
-            "score": target_score,
-            "evidence_quotes": [],
-            "rationale": "Matches the anchor language for this level.",
-        },
-        {
-            "dimension_key": "quantified-impact",
-            "score": 3.0,
-            "evidence_quotes": [],
-            "rationale": "One example, thin detail.",
-        },
-        {
-            "dimension_key": "role-knowledge",
-            "score": 3.0,
-            "evidence_quotes": [],
-            "rationale": "One example, thin detail.",
-        },
+        _judge_doc("structured-answers", target_score),
+        _judge_doc("quantified-impact", 3.0),
+        _judge_doc("role-knowledge", 3.0),
     ]
-    return [json.dumps({"scores": [doc]}) for doc in docs for _ in range(3)]
+    return [json.dumps({"scores": docs})] * 9
 
 
 def _write_triplet(triplets_dir) -> TripletDoc:
@@ -302,23 +298,43 @@ def _judge_reply_wrong_dimension() -> str:
 
 
 def test_judge_discrimination_records_content_judge_error_with_partial_scores(tmp_path):
-    _write_triplet(tmp_path / "triplets")
-    # "strong" scores cleanly; "borderline" answers with the wrong dimension
-    # on its first focused call AND on the judge's one per-dimension retry,
-    # so ContentJudgeError surfaces -- the judge is never called for "weak"
-    # and scores stays partial (strong only).
-    fake = FakeGenAI([
-        *_judge_replies(4.5),
-        _judge_reply_wrong_dimension(),
-        _judge_reply_wrong_dimension(),
-    ])
+    doc = _write_triplet(tmp_path / "triplets")
+    # "strong" scores cleanly; "borderline" answers its structured-answers
+    # focused call with the wrong dimension on the first call AND on the
+    # judge's one per-dimension retry, so ContentJudgeError surfaces -- the
+    # judge is never called for "weak" and scores stays partial (strong only).
+    # Replies are keyed by dimension: the focused calls run concurrently, and
+    # only the keyed script keeps the wrong-dimension replies landing on
+    # structured-answers deterministically.
+    fake = FakeGenAI(keyed_texts={
+        "structured-answers": (
+            [json.dumps({"scores": [_judge_doc("structured-answers", 4.5)]})] * 3
+            + [_judge_reply_wrong_dimension()] * 2
+        ),
+        "quantified-impact": (
+            [json.dumps({"scores": [_judge_doc("quantified-impact", 3.0)]})] * 6
+        ),
+        "role-knowledge": (
+            [json.dumps({"scores": [_judge_doc("role-knowledge", 3.0)]})] * 6
+        ),
+    })
 
     result = judge_discrimination(tmp_path / "triplets", _make_rubric(), fake)
 
     assert result["trials"] == 1
     assert result["correct"] == 0
     assert result["accuracy"] == 0.0
-    assert len(fake.calls) == 11
+    # strong: 3 structured-answers calls. borderline: the failed first draw
+    # plus the spent retry, and no more -- then ContentJudgeError surfaces.
+    structured_calls = [
+        c for c in fake.calls if "Dimension key: structured-answers\n" in c["contents"]
+    ]
+    assert len(structured_calls) == 5
+    # Sibling dimensions may have 0-3 borderline calls each in flight when the
+    # failure lands (executor scheduling), but "weak" is never judged: strong's
+    # 9 calls, borderline's 2 failures, and at most 3 per sibling.
+    assert 11 <= len(fake.calls) <= 17
+    assert all(doc.weak not in call["contents"] for call in fake.calls)
     (failure,) = result["failures"]
     assert failure["triplet"] == "structured-answers-1"
     assert failure["scores"] == {"strong": 4.5}
@@ -345,29 +361,13 @@ def test_judge_discrimination_records_missing_target_dimension(tmp_path):
     # Relabel the triplet's target dimension as delivery-channel: score_content
     # never scores it, so the judge output can never contain it.
     rubric = _make_rubric_with_dimension_channel("structured-answers", "delivery")
-    replies = [
-        json.dumps({
-            "scores": [
-                {
-                    "dimension_key": "quantified-impact",
-                    "score": 3.0,
-                    "evidence_quotes": [],
-                    "rationale": "One example, thin detail.",
-                },
-            ]
-        }),
-        json.dumps({
-            "scores": [
-                {
-                    "dimension_key": "role-knowledge",
-                    "score": 3.0,
-                    "evidence_quotes": [],
-                    "rationale": "One example, thin detail.",
-                },
-            ]
-        }),
-    ]
-    fake = FakeGenAI([reply for reply in replies for _ in range(3)])
+    # Both remaining content dimensions' concurrent calls pop identical
+    # replies carrying both scores, so pop order never matters.
+    reply = json.dumps({"scores": [
+        _judge_doc("quantified-impact", 3.0),
+        _judge_doc("role-knowledge", 3.0),
+    ]})
+    fake = FakeGenAI([reply] * 6)
 
     result = judge_discrimination(tmp_path / "triplets", rubric, fake)
 
