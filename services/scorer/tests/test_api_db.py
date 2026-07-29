@@ -230,6 +230,38 @@ def test_save_report_stores_report_and_marks_scored():
     assert updated.status == "scored"
 
 
+def test_fake_set_scoring_stage_updates_row_and_records_writes():
+    db = FakeDatabase()
+    package = db.create_package("jd text", None)
+    session = db.create_session(package.id, 1, _plan())
+    assert session.scoring_stage is None
+    db.set_scoring_stage(session.id, "transcribe")
+    assert db.get_session(session.id).scoring_stage == "transcribe"
+    assert db.stage_writes == [(session.id, "transcribe")]
+    with pytest.raises(KeyError):
+        db.set_scoring_stage("missing-sess", "download")
+    assert db.stage_writes == [(session.id, "transcribe")]   # no phantom write
+
+
+def test_fake_terminal_status_writes_clear_scoring_stage():
+    db = FakeDatabase()
+    package = db.create_package("jd text", None)
+    session = db.create_session(package.id, 1, _plan())
+    db.set_scoring_stage(session.id, "download")
+    # A non-terminal status write keeps the in-progress marker...
+    db.set_session_status(session.id, "scoring")
+    assert db.get_session(session.id).scoring_stage == "download"
+    # ...while "failed", "scored", and save_report all clear it.
+    db.set_session_status(session.id, "failed")
+    assert db.get_session(session.id).scoring_stage is None
+    db.set_scoring_stage(session.id, "compile")
+    db.set_session_status(session.id, "scored")
+    assert db.get_session(session.id).scoring_stage is None
+    db.set_scoring_stage(session.id, "compile")
+    db.save_report(session.id, _report(session.id))
+    assert db.get_session(session.id).scoring_stage is None
+
+
 class StubTable:
     """Chainable PostgREST-style recorder replaying canned result rows."""
 
@@ -373,11 +405,32 @@ def test_supabase_set_session_status_omits_audio_path_when_none():
     assert stub.log[0]["eq"] == [("id", "sess-1")]
 
 
+def test_supabase_set_scoring_stage_updates_column():
+    stub = StubSupabase([[{"id": "sess-1"}]])
+    SupabaseDatabase(stub).set_scoring_stage("sess-1", "transcribe")
+    assert stub.log[0]["table"] == "sessions"
+    assert stub.log[0]["update"] == {"scoring_stage": "transcribe"}
+    assert stub.log[0]["eq"] == [("id", "sess-1")]
+
+
+def test_supabase_terminal_status_clears_scoring_stage_in_same_update():
+    # Clearing rides the SAME update as the terminal status write so a
+    # finished row can never be observed with a stale in-progress stage
+    # (house rule pinned by save_report's report+status single update).
+    stub = StubSupabase([[{"id": "sess-1"}], [{"id": "sess-1"}]])
+    db = SupabaseDatabase(stub)
+    db.set_session_status("sess-1", "failed")
+    db.set_session_status("sess-1", "scored")
+    assert stub.log[0]["update"] == {"status": "failed", "scoring_stage": None}
+    assert stub.log[1]["update"] == {"status": "scored", "scoring_stage": None}
+
+
 @pytest.mark.parametrize("call", [
     lambda db: db.set_package_profile("missing-pkg", _profile()),
     lambda db: db.set_package_rubric("missing-pkg", _rubric(), "ready"),
     lambda db: db.set_package_rubric("missing-pkg", None, "failed"),
     lambda db: db.set_session_status("missing-sess", "scoring"),
+    lambda db: db.set_scoring_stage("missing-sess", "download"),
     lambda db: db.save_report("missing-sess", _report("missing-sess")),
 ])
 def test_supabase_mutators_raise_keyerror_when_update_matches_no_rows(call):
@@ -440,4 +493,5 @@ def test_supabase_session_round_trip_and_report_marks_scored():
     save = stub.log[1]
     assert save["update"]["status"] == "scored"
     assert save["update"]["report"]["verdict"] == "ready"
+    assert save["update"]["scoring_stage"] is None   # cleared in the same update
     assert save["eq"] == [("id", row.id)]

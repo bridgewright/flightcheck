@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import {
   formatLatency,
   formatTimestamp,
+  scoringStageCopy,
   VERDICT_LABELS,
   verdictClasses,
 } from "@/lib/report-format";
@@ -51,5 +52,26 @@ describe("formatLatency", () => {
   it("renders one decimal with a unit, and n/a for null", () => {
     expect(formatLatency(1.42)).toBe("1.4s");
     expect(formatLatency(null)).toBe("n/a");
+  });
+});
+
+describe("scoringStageCopy", () => {
+  it("maps every worker scoring stage to progress copy", () => {
+    expect(scoringStageCopy("download")).toBe("Fetching your recording…");
+    expect(scoringStageCopy("transcribe")).toBe("Transcribing the conversation…");
+    expect(scoringStageCopy("delivery-metrics")).toBe(
+      "Measuring pace, fillers, and intonation…",
+    );
+    expect(scoringStageCopy("content-judge")).toBe(
+      "Scoring answers against the rubric…",
+    );
+    expect(scoringStageCopy("delivery-judge")).toBe("Reviewing how it sounded…");
+    expect(scoringStageCopy("compile")).toBe("Compiling your report…");
+  });
+
+  it("returns null for null, undefined, and unknown stages so the page keeps its generic line", () => {
+    expect(scoringStageCopy(null)).toBeNull();
+    expect(scoringStageCopy(undefined)).toBeNull();
+    expect(scoringStageCopy("mystery-stage")).toBeNull();
   });
 });

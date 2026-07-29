@@ -128,6 +128,12 @@ def score_session(
 ) -> SessionReport:
     """Download -> wav -> transcript -> DSP -> both judges -> compiled report.
 
+    Each boundary records a coarse scoring_stage ("download" -> "transcribe"
+    -> "delivery-metrics" -> "content-judge" -> "delivery-judge" ->
+    "compile") so the report page can show progress during the long run; the
+    terminal status write ("scored"/"failed") clears it inside the database
+    layer.
+
     Ends with session status "scored" (report saved) or "failed". On failure
     the exception is re-raised after recording status: the registry return
     type is SessionReport, so this function cannot swallow-and-return; the
@@ -144,15 +150,21 @@ def score_session(
                 f"{row.audio_path!r}, rubric_present={rubric is not None}"
             )
         with tempfile.TemporaryDirectory(prefix="flightcheck-session-") as tmp:
+            db.set_scoring_stage(session_id, "download")
             local = storage.download_recording(row.audio_path, Path(tmp))
             wav = ensure_wav(local)
+            db.set_scoring_stage(session_id, "transcribe")
             segments = transcribe_verbatim(wav, client)
+            db.set_scoring_stage(session_id, "delivery-metrics")
             metrics = compute_delivery_metrics(wav, segments)
+            db.set_scoring_stage(session_id, "content-judge")
             content_scores = score_content(rubric, segments, client)
             delivery_dims = [d for d in rubric.dimensions if d.channel == "delivery"]
+            db.set_scoring_stage(session_id, "delivery-judge")
             delivery_scores, observations = judge_delivery(
                 wav, metrics, delivery_dims, client
             )
+        db.set_scoring_stage(session_id, "compile")
         report = compile_report(
             session_id,
             rubric,

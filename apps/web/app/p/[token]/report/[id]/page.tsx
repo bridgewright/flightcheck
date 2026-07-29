@@ -2,6 +2,7 @@ import Link from "next/link";
 
 import PollRefresh from "@/components/PollRefresh";
 import ReportView, { dimensionMetaFromRubric } from "@/components/ReportView";
+import { scoringStageCopy } from "@/lib/report-format";
 import { authorizeSession } from "@/lib/worker";
 
 export const dynamic = "force-dynamic";
@@ -52,13 +53,16 @@ export default async function SessionReportPage({
   }
 
   if (session.status !== "scored" || !session.report) {
+    // Known stages narrate the worker's progress; null/unknown stages keep
+    // the generic line (older rows, or a newer worker than this build).
+    const stageCopy = scoringStageCopy(session.scoring_stage);
     return (
       <main className="mx-auto flex min-h-screen max-w-2xl flex-col justify-center gap-4 px-6 py-16">
         <PollRefresh intervalMs={3000} />
         <h1 className="text-2xl font-bold">Scoring your session&hellip;</h1>
         <p className="text-neutral-600 dark:text-neutral-400">
-          Transcription, delivery metrics, and dual-channel judging usually take a few
-          minutes. This page refreshes itself.
+          {stageCopy ??
+            "Transcription, delivery metrics, and dual-channel judging usually take a few minutes. This page refreshes itself."}
         </p>
       </main>
     );

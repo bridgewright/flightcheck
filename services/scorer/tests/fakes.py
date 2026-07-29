@@ -157,6 +157,9 @@ class FakeDatabase:
         self.packages: dict[str, PackageRow] = {}
         self.sessions: dict[str, SessionRow] = {}
         self.jd_urls: dict[str, str | None] = {}
+        # Every successful set_scoring_stage call, in order, as
+        # (session_id, stage) -- progression assertions read this.
+        self.stage_writes: list[tuple[str, str]] = []
         self._package_seq = 0
         self._session_seq = 0
 
@@ -229,14 +232,23 @@ class FakeDatabase:
                            audio_path: str | None = None) -> None:
         row = self.sessions[session_id]
         update: dict[str, object] = {"status": status}
+        if status in ("scored", "failed"):
+            # Mirrors SupabaseDatabase: terminal status writes clear the
+            # in-progress stage marker in the same write.
+            update["scoring_stage"] = None
         if audio_path is not None:
             update["audio_path"] = audio_path
         self.sessions[session_id] = row.model_copy(update=update)
 
+    def set_scoring_stage(self, session_id: str, stage: str) -> None:
+        row = self.sessions[session_id]  # KeyError when absent (pinned)
+        self.stage_writes.append((session_id, stage))
+        self.sessions[session_id] = row.model_copy(update={"scoring_stage": stage})
+
     def save_report(self, session_id: str, report: SessionReport) -> None:
         row = self.sessions[session_id]
         self.sessions[session_id] = row.model_copy(
-            update={"report": report, "status": "scored"})
+            update={"report": report, "status": "scored", "scoring_stage": None})
 
 
 class FakeStorage:

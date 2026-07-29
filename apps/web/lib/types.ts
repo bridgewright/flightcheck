@@ -121,6 +121,7 @@ export interface SessionRow {
   package_id: string;
   index: number;
   status: SessionStatus;
+  scoring_stage: string | null; // coarse worker progress while "scoring"
   session_plan: SessionPlan | null;
   audio_path: string | null;
   report: SessionReport | null;

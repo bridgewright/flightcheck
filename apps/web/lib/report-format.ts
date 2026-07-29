@@ -31,3 +31,20 @@ export function formatTimestamp(atS: number): string {
 export function formatLatency(latencyS: number | null): string {
   return latencyS === null ? "n/a" : `${latencyS.toFixed(1)}s`;
 }
+
+// Worker scoring stages (sessions.scoring_stage, set by scorer's
+// score_session pipeline) -> progress copy for the report page's scoring
+// branch. Keyed by string, not a union: a newer worker may emit a stage this
+// build does not know, and that must degrade to the generic line, not crash.
+const SCORING_STAGE_COPY: Record<string, string> = {
+  download: "Fetching your recording…",
+  transcribe: "Transcribing the conversation…",
+  "delivery-metrics": "Measuring pace, fillers, and intonation…",
+  "content-judge": "Scoring answers against the rubric…",
+  "delivery-judge": "Reviewing how it sounded…",
+  compile: "Compiling your report…",
+};
+
+export function scoringStageCopy(stage: string | null | undefined): string | null {
+  return stage == null ? null : (SCORING_STAGE_COPY[stage] ?? null);
+}

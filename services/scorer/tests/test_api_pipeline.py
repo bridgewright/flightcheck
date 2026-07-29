@@ -241,6 +241,28 @@ def test_score_session_saves_scored_report():
     assert stored.report.verdict == "ready"
 
 
+def test_score_session_records_stage_progression_and_clears_on_completion():
+    db = FakeDatabase()
+    session = _seed_scorable_session(db, "packages/pkg-1/session-1.wav")
+    storage = FakeStorage(recordings={"packages/pkg-1/session-1.wav": _wav_bytes()})
+    fake = FakeGenAI([SEGMENTS_JSON, *CONTENT_SCORES_JSONS, DELIVERY_JUDGE_JSON])
+
+    score_session(session.id, db, storage, fake)
+
+    # Coarse stage marker advances through every pipeline boundary, in order.
+    assert db.stage_writes == [
+        (session.id, "download"),
+        (session.id, "transcribe"),
+        (session.id, "delivery-metrics"),
+        (session.id, "content-judge"),
+        (session.id, "delivery-judge"),
+        (session.id, "compile"),
+    ]
+    # The terminal "scored" write clears the stage: a finished row never
+    # keeps a stale in-progress marker.
+    assert db.get_session(session.id).scoring_stage is None
+
+
 def test_score_session_records_failure_and_reraises():
     db = FakeDatabase()
     session = _seed_scorable_session(db, "packages/pkg-1/missing.wav")
@@ -252,3 +274,4 @@ def test_score_session_records_failure_and_reraises():
     stored = db.get_session(session.id)
     assert stored.status == "failed"
     assert stored.report is None
+    assert stored.scoring_stage is None   # terminal "failed" clears the stage

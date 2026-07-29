@@ -36,6 +36,7 @@ class SessionRow(BaseModel):
     package_id: str
     index: int
     status: str                       # "planned" -> "scoring" -> "scored" | "failed"
+    scoring_stage: str | None = None  # coarse progress while "scoring", else None
     session_plan: SessionPlan | None
     audio_path: str | None
     report: SessionReport | None
@@ -77,6 +78,14 @@ class Database(Protocol):
 
     def set_session_status(self, session_id: str, status: str,
                            audio_path: str | None = None) -> None:
+        """Terminal statuses ("scored"/"failed") also clear scoring_stage to
+        None in the same write -- a finished row never keeps a stale stage."""
+        ...
+
+    def set_scoring_stage(self, session_id: str, stage: str) -> None:
+        """Coarse progress marker while status == "scoring" ("download" ->
+        "transcribe" -> "delivery-metrics" -> "content-judge" ->
+        "delivery-judge" -> "compile"); terminal status writes clear it."""
         ...
 
     def save_report(self, session_id: str, report: SessionReport) -> None:
@@ -122,6 +131,7 @@ def _to_session_row(data: dict) -> SessionRow:
         package_id=data["package_id"],
         index=data["index"],
         status=data["status"],
+        scoring_stage=data.get("scoring_stage"),
         session_plan=(
             SessionPlan.model_validate(data["session_plan"])
             if data.get("session_plan") is not None
@@ -212,7 +222,11 @@ class SupabaseDatabase:
 
     def set_session_status(self, session_id: str, status: str,
                            audio_path: str | None = None) -> None:
-        payload: dict[str, str] = {"status": status}
+        payload: dict[str, str | None] = {"status": status}
+        if status in ("scored", "failed"):
+            # Clearing rides the SAME update as the terminal status write so
+            # a finished row can never be observed with a stale stage.
+            payload["scoring_stage"] = None
         if audio_path is not None:
             payload["audio_path"] = audio_path
         data = (self._client.table("sessions").update(payload)
@@ -220,11 +234,19 @@ class SupabaseDatabase:
         if not data:
             raise KeyError(session_id)
 
+    def set_scoring_stage(self, session_id: str, stage: str) -> None:
+        data = (self._client.table("sessions").update({"scoring_stage": stage})
+                .eq("id", session_id).execute().data)
+        if not data:
+            raise KeyError(session_id)
+
     def save_report(self, session_id: str, report: SessionReport) -> None:
         # Report + status land in ONE update so "report present" and
-        # status=="scored" can never be observed apart.
+        # status=="scored" can never be observed apart; the terminal write
+        # also clears scoring_stage (same invariant as set_session_status).
         data = (self._client.table("sessions")
-                .update({"report": report.model_dump(mode="json"), "status": "scored"})
+                .update({"report": report.model_dump(mode="json"),
+                         "status": "scored", "scoring_stage": None})
                 .eq("id", session_id).execute().data)
         if not data:
             raise KeyError(session_id)

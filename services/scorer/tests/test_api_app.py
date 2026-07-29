@@ -329,6 +329,8 @@ def test_session_flow_scores_report():
     assert shown.status_code == 200
     session = shown.json()
     assert session["status"] == "scored"
+    # scoring_stage flows through the response; None once the run finished.
+    assert session["scoring_stage"] is None
     assert session["report"]["verdict"] == "ready"
     assert session["report"]["overall_score"] == 4.0
     assert len(session["report"]["dimension_scores"]) == 5

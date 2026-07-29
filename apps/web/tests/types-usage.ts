@@ -135,6 +135,7 @@ const session: SessionRow = {
   package_id: "pkg-check",
   index: 1,
   status: "scored",
+  scoring_stage: null,
   session_plan: plan,
   audio_path: "packages/pkg-check/session-1.webm",
   report,
