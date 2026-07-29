@@ -11,7 +11,12 @@ from google.genai import types
 from pydantic import BaseModel, ConfigDict
 
 from fakes import FakeGenAI
-from scorer.genai_compat import CompatClient, compat_config
+from scorer.genai_compat import (
+    GEMINI_HTTP_TIMEOUT_MS,
+    CompatClient,
+    compat_config,
+    make_client,
+)
 from scorer.schemas import GenAIClientLike
 
 
@@ -20,6 +25,26 @@ class _Doc(BaseModel):
 
     note: str
     tags: list[str]
+
+
+def test_make_client_sets_hard_http_timeout(monkeypatch) -> None:
+    fake = FakeGenAI([])
+    constructed_with = {}
+
+    def fake_client(**kwargs):
+        constructed_with.update(kwargs)
+        return fake
+
+    monkeypatch.setattr("scorer.genai_compat.genai.Client", fake_client)
+
+    client = make_client("test-key")
+
+    assert isinstance(client, CompatClient)
+    assert GEMINI_HTTP_TIMEOUT_MS == 480_000
+    assert constructed_with["api_key"] == "test-key"
+    assert constructed_with["http_options"] == types.HttpOptions(
+        timeout=GEMINI_HTTP_TIMEOUT_MS
+    )
 
 
 def test_dict_config_reroutes_model_class() -> None:

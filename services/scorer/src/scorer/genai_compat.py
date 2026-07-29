@@ -25,6 +25,8 @@ from google import genai
 from google.genai import types
 from pydantic import BaseModel
 
+GEMINI_HTTP_TIMEOUT_MS = 480_000
+
 
 def _is_model_class(schema: Any) -> bool:
     return isinstance(schema, type) and issubclass(schema, BaseModel)
@@ -81,4 +83,9 @@ class CompatClient:
 
 def make_client(api_key: str) -> CompatClient:
     """The one constructor live entrypoints use for a Gemini client."""
-    return CompatClient(genai.Client(api_key=api_key))
+    return CompatClient(
+        genai.Client(
+            api_key=api_key,
+            http_options=types.HttpOptions(timeout=GEMINI_HTTP_TIMEOUT_MS),
+        )
+    )
