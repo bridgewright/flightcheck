@@ -11,9 +11,11 @@ import {
   RESPONSE_DEBOUNCE_S,
   SILENCE_STAGES,
   STALL_BLIP_MAX_S,
+  SUSPEND_GAP_S,
   committedItemId,
   interviewerStateForEvent,
   speechStateForEvent,
+  tickDeltaS,
 } from "./session-room";
 import {
   candidateTicks,
@@ -22,6 +24,8 @@ import {
   overlapTicks,
   quietTicks,
   runScenario,
+  TICK_S,
+  tick,
 } from "./session-room-adversarial";
 
 const STAGE_AT = SILENCE_STAGES.map((s) => s.at);
@@ -145,6 +149,100 @@ describe("seed ②: single-signal dependence (dropped VAD events)", () => {
     expect(speechStateForEvent(mk("input_audio_buffer.committed"))).toBe(
       "committed",
     );
+  });
+});
+
+describe("seed ③: background-tab throttling burst", () => {
+  // A candidate whose tab is backgrounded has stepped away from the
+  // interview. Browsers deliver the parked time either as one giant-dt tick
+  // or as a burst of queued ticks; both used to fast-forward the quiet clock
+  // and empty the whole scaffold ladder into the candidate's ear the moment
+  // they came back. Morgan resumes quietly instead, as a human would after
+  // glancing up.
+  it("a minute-long gap fires no scaffolds on the way back", () => {
+    const run = runScenario([
+      ...quietTicks(6),
+      tick({ dtS: 60 }),
+      ...quietTicks(5),
+    ]);
+    expect(run.stagesFired).toEqual([]);
+    expect(run.triggers).toBe(0);
+  });
+
+  it("the gap tick itself produces no effects and resets the stretch", () => {
+    const run = runScenario([...quietTicks(6), tick({ dtS: 60 })]);
+    const gap = run.steps[run.steps.length - 1];
+    expect(gap.effects).toEqual({ stage: null, triggerResponse: false });
+    expect(gap.after).toEqual({
+      quietS: 0,
+      episodeS: 0,
+      stagesSent: 0,
+      responseDueInS: null,
+    });
+  });
+
+  it("a response armed before the gap is dropped, not fired on return", () => {
+    const run = runScenario([
+      commitTick(),
+      tick({ dtS: 60 }),
+      ...quietTicks(5),
+    ]);
+    expect(run.triggers).toBe(0);
+  });
+
+  it("the ladder starts over from the resumed quiet stretch", () => {
+    const preGap = quietTicks(20);
+    const run = runScenario([...preGap, tick({ dtS: 45 }), ...quietTicks(8)]);
+    // The candidate earned stages 1 and 2 before stepping away. On return
+    // the ladder restarts at stage 1 rather than continuing to stage 3 —
+    // the reassurance fits a fresh silence, which is what this now is.
+    expect(run.stagesFired).toEqual([STAGE_AT[0], STAGE_AT[1], STAGE_AT[0]]);
+    // And it lands a full 8 s after the resume, not on the way back in.
+    const resumed = run.steps.slice(preGap.length + 1);
+    const firstStageAfter = resumed.findIndex((s) => s.effects.stage !== null);
+    expect(firstStageAfter * TICK_S).toBeCloseTo(STAGE_AT[0] - TICK_S, 5);
+  });
+
+  it("a stage already due before the gap is not replayed after it", () => {
+    const run = runScenario([
+      ...quietTicks(8),
+      tick({ dtS: 60 }),
+      ...quietTicks(7.75),
+    ]);
+    expect(run.stagesFired).toEqual([STAGE_AT[0]]);
+  });
+
+  it("treats the gap threshold as a boundary, not a range", () => {
+    const below = runScenario([
+      ...quietTicks(7),
+      tick({ dtS: SUSPEND_GAP_S - 0.01 }),
+    ]);
+    expect(below.stagesFired).toEqual([STAGE_AT[0]]);
+    const atGap = runScenario([...quietTicks(7), tick({ dtS: SUSPEND_GAP_S })]);
+    expect(atGap.stagesFired).toEqual([]);
+    expect(atGap.finalState.quietS).toBe(0);
+  });
+
+  it("derives tick length from the wall clock so a queued burst is one gap", () => {
+    // The reducer can only see a suspension if the ticker stops assuming
+    // its own 250 ms interval: a refocus burst delivers many callbacks in
+    // the same real second, and only a wall-clock delta reports that as one
+    // large tick followed by normal ones.
+    expect(tickDeltaS(1_000, 750)).toBeCloseTo(0.25, 6);
+    expect(tickDeltaS(61_000, 1_000)).toBeCloseTo(60, 6);
+    const burst = [61_000, 61_001, 61_002, 61_003];
+    const deltas = burst.map((now, i) =>
+      tickDeltaS(now, i === 0 ? 1_000 : burst[i - 1]),
+    );
+    expect(deltas[0]).toBeGreaterThanOrEqual(SUSPEND_GAP_S);
+    expect(deltas.slice(1).every((d) => d < SUSPEND_GAP_S)).toBe(true);
+  });
+
+  it("never reports a negative or non-finite tick length", () => {
+    expect(tickDeltaS(500, 900)).toBe(0);
+    expect(tickDeltaS(Number.NaN, 100)).toBe(0);
+    expect(tickDeltaS(100, Number.NaN)).toBe(0);
+    expect(tickDeltaS(Number.POSITIVE_INFINITY, 100)).toBe(0);
   });
 });
 

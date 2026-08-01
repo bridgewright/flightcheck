@@ -10,6 +10,7 @@ import {
   HARD_CUT_S,
   INITIAL_SILENCE_STATE,
   SESSION_BUDGET_S,
+  SUSPEND_GAP_S,
   committedItemId,
   dueTimeStatus,
   formatTimer,
@@ -22,6 +23,7 @@ import {
   responseTriggerEvent,
   silenceStatusEvent,
   speechStateForEvent,
+  tickDeltaS,
   timeStatusEvent,
 } from "../lib/session-room";
 
@@ -83,6 +85,7 @@ export default function SessionRoom({
   const micAnalyserRef = useRef<AnalyserNode | null>(null);
   const micLevelDataRef = useRef<Uint8Array<ArrayBuffer> | null>(null);
   const silenceStateRef = useRef(INITIAL_SILENCE_STATE);
+  const lastTickAtRef = useRef(0);
   const remoteAnalyserRef = useRef<AnalyserNode | null>(null);
   const remoteLevelDataRef = useRef<Uint8Array<ArrayBuffer> | null>(null);
   const heardMorganRef = useRef(false);
@@ -431,7 +434,15 @@ export default function SessionRoom({
   // --- Timer + 25:00 hard cut -------------------------------------------
   useEffect(() => {
     if (phase !== "live") return;
+    lastTickAtRef.current = performance.now();
     tickerRef.current = setInterval(() => {
+      // Real tick length, never the nominal 250 ms: a throttled tab hands
+      // back its parked time as one very late callback or a queued burst,
+      // and only a monotonic delta lets the clock tell either apart from
+      // silence the candidate actually sat through.
+      const tickAt = performance.now();
+      const dtS = tickDeltaS(tickAt, lastTickAtRef.current);
+      lastTickAtRef.current = tickAt;
       const elapsed = Math.floor((Date.now() - startedAtRef.current) / 1000);
       setElapsedS(elapsed);
       const due = dueTimeStatus(elapsed, timeStatusSentRef.current);
@@ -482,8 +493,11 @@ export default function SessionRoom({
       if (heardMorganRef.current && dcRef.current?.readyState === "open") {
         const commitArrived = commitArrivedRef.current;
         commitArrivedRef.current = false;
+        if (dtS >= SUSPEND_GAP_S) {
+          console.debug("[silence] suspend-resume", Number(dtS.toFixed(1)));
+        }
         const { state, effects } = nextSilenceState(silenceStateRef.current, {
-          dtS: 0.25,
+          dtS,
           candidateAudible: candidateAudibleRef.current,
           interviewerAudible,
           commitArrived,

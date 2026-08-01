@@ -122,6 +122,24 @@ export const STALL_BLIP_MAX_S = 2.0;
  * response.create — the room to resume that server VAD (900 ms) doesn't give. */
 export const RESPONSE_DEBOUNCE_S = 1.2;
 
+/** A tick longer than this did not measure real silence: the tab was
+ * backgrounded, throttled, or the machine slept. */
+export const SUSPEND_GAP_S = 2.0;
+
+/**
+ * Seconds between two ticker callbacks, read from a monotonic clock.
+ *
+ * The ticker must never assume its own interval. A throttled tab delivers
+ * parked time as either one very late callback or a burst of queued ones,
+ * and only a wall-clock delta tells those apart from real elapsed silence.
+ * A clock that fails to advance (or reports garbage) yields 0 rather than a
+ * negative or NaN tick, which would poison every accumulator downstream.
+ */
+export function tickDeltaS(nowMs: number, lastMs: number): number {
+  const dtS = (nowMs - lastMs) / 1000;
+  return Number.isFinite(dtS) && dtS > 0 ? dtS : 0;
+}
+
 export interface SilenceStage {
   /** Fires once accumulated quiet reaches this many seconds. */
   at: number;
@@ -202,6 +220,19 @@ export function nextSilenceState(
   let { quietS, episodeS, stagesSent, responseDueInS } = state;
   const effects: SilenceEffects = { stage: null, triggerResponse: false };
 
+  if (tick.dtS >= SUSPEND_GAP_S) {
+    // Resume from suspension. A candidate whose tab was backgrounded stepped
+    // away from the interview, so none of the parked time was silence they
+    // sat through — crediting it fast-forwards the ladder and empties every
+    // queued scaffold into their ear the moment they come back. Morgan
+    // resumes quietly from a fresh stretch, as a human would after glancing
+    // up. Nothing is emitted on this tick, including a response armed before
+    // the gap: the moment it was meant for is gone.
+    return {
+      state: { quietS: 0, episodeS: 0, stagesSent: 0, responseDueInS: null },
+      effects,
+    };
+  }
   if (tick.commitArrived) {
     responseDueInS = RESPONSE_DEBOUNCE_S;
   }
