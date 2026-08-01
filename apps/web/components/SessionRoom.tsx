@@ -80,6 +80,8 @@ export default function SessionRoom({
   const diagTickRef = useRef(0);
   const lastMorganAudibleAtRef = useRef(0);
   const echoSuspectRef = useRef(false);
+  const micAnalyserRef = useRef<AnalyserNode | null>(null);
+  const micLevelDataRef = useRef<Uint8Array<ArrayBuffer> | null>(null);
   const silenceStateRef = useRef(INITIAL_SILENCE_STATE);
   const remoteAnalyserRef = useRef<AnalyserNode | null>(null);
   const remoteLevelDataRef = useRef<Uint8Array<ArrayBuffer> | null>(null);
@@ -306,6 +308,14 @@ export default function SessionRoom({
         // Recorder starts at data-channel open — session start — so the
         // file timeline matches the interview timeline and scoring
         // timestamps (transcript start_s, observations at_s) line up.
+        // Diagnostic mic level (independent of the pre-session meter, whose
+        // rAF loop stops here): lets the [silence] diag line show whether a
+        // committed turn had real acoustic energy behind it.
+        const micAnalyser = audioCtx.createAnalyser();
+        micAnalyser.fftSize = 512;
+        audioCtx.createMediaStreamSource(micStream).connect(micAnalyser);
+        micAnalyserRef.current = micAnalyser;
+        micLevelDataRef.current = new Uint8Array(micAnalyser.frequencyBinCount);
         const recorder = new MediaRecorder(dest.stream, {
           mimeType: "audio/webm;codecs=opus",
         });
@@ -433,6 +443,15 @@ export default function SessionRoom({
         interviewerAudible = remotePeak > 0.02;
         if (interviewerAudible) heardMorganRef.current = true;
       }
+      let micPeak = 0;
+      const micAnalyser = micAnalyserRef.current;
+      const micData = micLevelDataRef.current;
+      if (micAnalyser && micData) {
+        micAnalyser.getByteTimeDomainData(micData);
+        for (const v of micData) {
+          micPeak = Math.max(micPeak, Math.abs(v - 128) / 128);
+        }
+      }
       // Server events are the second source: whichever signal works on this
       // transport keeps the clock honest (2026-08-01 live failure).
       interviewerAudible = interviewerAudible || morganEventAudibleRef.current;
@@ -443,6 +462,7 @@ export default function SessionRoom({
           "[silence] diag",
           JSON.stringify({
             peak: Number(remotePeak.toFixed(3)),
+            mic: Number(micPeak.toFixed(3)),
             evAudible: morganEventAudibleRef.current,
             gate: heardMorganRef.current,
             cand: candidateAudibleRef.current,

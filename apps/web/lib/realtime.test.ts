@@ -23,6 +23,7 @@ describe("clientSecretRequestBody", () => {
               silence_duration_ms: 900,
               prefix_padding_ms: 300,
               create_response: false,
+              threshold: 0.6,
             },
           },
           output: { voice: "marin" },

@@ -29,6 +29,11 @@ export function clientSecretRequestBody(instructions: string) {
             silence_duration_ms: 900,
             prefix_padding_ms: 300,
             create_response: false,
+            // Raised from the 0.5 default (2026-08-01 diagnostic run):
+            // ambient room noise in the open-speakers environment was
+            // committing phantom turns every ~10 s and each one triggered a
+            // response. Real speech clears 0.6 comfortably.
+            threshold: 0.6,
           },
         },
         output: { voice: "marin" },
