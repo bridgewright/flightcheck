@@ -9,6 +9,7 @@ import {
   SESSION_BUDGET_S,
   dueTimeStatus,
   formatTimer,
+  greetingTriggerEvent,
   indicatorForEvent,
   isHardCut,
   timeStatusEvent,
@@ -287,6 +288,10 @@ export default function SessionRoom({
         recorder.start(1000); // 1s timeslice: a crash loses <= 1s of audio
         startedAtRef.current = Date.now();
         setPhase("live");
+        // Server-VAD models never speak unprompted: nudge the first
+        // response so Morgan opens the session (the recorder is already
+        // rolling, so the greeting lands in the recording).
+        dc.send(greetingTriggerEvent());
       });
       dc.addEventListener("message", (ev) => {
         if (indicatorForEvent(String(ev.data)) === "listening") {

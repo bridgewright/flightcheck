@@ -6,6 +6,7 @@ import {
   TIME_STATUS_PREFIX,
   dueTimeStatus,
   formatTimer,
+  greetingTriggerEvent,
   indicatorForEvent,
   isHardCut,
   timeStatusCheckpoints,
@@ -117,6 +118,14 @@ describe("dueTimeStatus", () => {
 
   it("still fires a checkpoint a delayed tick has passed (throttled tabs)", () => {
     expect(dueTimeStatus(1200, 0)?.atS).toBe(900);
+  });
+});
+
+describe("greetingTriggerEvent", () => {
+  it("builds the response.create nudge that makes Morgan speak first", () => {
+    expect(JSON.parse(greetingTriggerEvent())).toEqual({
+      type: "response.create",
+    });
   });
 });
 

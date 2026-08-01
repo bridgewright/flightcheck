@@ -85,6 +85,16 @@ export function dueTimeStatus(
 }
 
 /**
+ * Kick the interviewer's first response. Server-VAD realtime models never
+ * speak unprompted — without this nudge at data-channel open, Morgan waits
+ * silently for audio and the scripted opening never happens (observed in
+ * the 2026-08-01 v0.2 test session: ~1 minute of mutual silence).
+ */
+export function greetingTriggerEvent(): string {
+  return JSON.stringify({ type: "response.create" });
+}
+
+/**
  * Realtime payload adding a system note to the conversation WITHOUT forcing
  * a response: the note lands in context and shapes the interviewer's next
  * turn instead of interrupting the candidate mid-answer.
