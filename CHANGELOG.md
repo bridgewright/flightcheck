@@ -42,6 +42,13 @@
   tick), and a scaffold and a debounced response could fire on the same
   tick (previously masked by a silent ordering detail in the component).
   Both are fixed in the reducer with named repro tests.
+- Writing the seed scenarios exposed a third, pure-layer hole: an echo
+  outlasting the 2 s filler threshold restarted the scaffold ladder, so a
+  stuck candidate on open speakers would hear "Take your time" every eight
+  seconds forever instead of escalating to the directional hint.
+  Interviewer audibility now wins on overlapping ticks; a genuine barge-in
+  still resets the stretch once the interviewer's audio stops
+  (DECISIONS 011 records the related suspension-gap rule).
 
 ### Fixed — background-tab resume
 - A candidate whose tab was backgrounded (or whose machine slept) no longer

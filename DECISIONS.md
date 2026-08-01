@@ -169,3 +169,28 @@ Format per entry: Context · Options · Choice · Why · Rejected because · Rev
 - **Revisit when:** rubric compilation becomes fast enough (<10 s) that
   freshness beats reuse, or per-candidate rubric variation becomes a
   product feature.
+
+## 011 — a commit pending across a suspension gap is dropped (2026-08-01)
+
+- **Decision:** when the silence clock detects a suspension gap (a tick of
+  ≥ 2 s — backgrounded tab, throttled timers, machine sleep), a response
+  that was armed but not yet fired is dropped, not fired on return and not
+  re-armed. The interviewer stays quiet; if the candidate stays quiet too,
+  the stage-1 scaffold (which carries its own `response.create`) revives
+  the conversation within 8 s.
+- **Why:** the debounced response answers a *moment* — the candidate
+  finishing a turn just then. After a parked minute that moment is gone;
+  answering it on refocus is exactly the uncanny "the app was waiting to
+  pounce" behavior the suspension guard exists to remove. The 8 s
+  self-heal bounds the cost: worst case, a candidate who answered in the
+  last 1.2 s before backgrounding waits eight extra seconds for Morgan.
+- **Rejected — fire the pending response on return:** replays a stale
+  reaction into a resumed room; indistinguishable from the scaffold burst
+  bug from the candidate's side.
+- **Rejected — re-arm the debounce on return:** answers a turn the
+  candidate may no longer stand behind after stepping away; also makes the
+  guard's "fresh stretch" promise false (state would survive the gap).
+- **Revisit when:** real-usage sessions show candidates backgrounding the
+  tab mid-answer often enough that the 8 s self-heal reads as Morgan
+  ignoring them (F-13 metrics would show a spike of suspend-resume lines
+  followed by candidate re-asks).
