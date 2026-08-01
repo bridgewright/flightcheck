@@ -5,9 +5,11 @@ import { useCallback, useEffect, useRef, useState } from "react";
 
 import { MAX_RECORDING_BYTES } from "../lib/realtime";
 import {
+  CONNECTION_LOST_MESSAGE,
   ECHO_OUTLIVE_MS,
   ECHO_START_WINDOW_MS,
   HARD_CUT_S,
+  INITIAL_GUARD_STATE,
   INITIAL_SILENCE_STATE,
   SESSION_BUDGET_S,
   SUSPEND_GAP_S,
@@ -19,17 +21,25 @@ import {
   interviewerStateForEvent,
   isHardCut,
   itemDeleteEvent,
+  nextGuardState,
   nextSilenceState,
   responseTriggerEvent,
   silenceStatusEvent,
   speechStateForEvent,
   tickDeltaS,
   timeStatusEvent,
+  type GuardEndReason,
 } from "../lib/session-room";
 
 const OPENAI_CALLS_URL = "https://api.openai.com/v1/realtime/calls";
 
-type Phase = "ready" | "connecting" | "live" | "uploading" | "done";
+type Phase =
+  | "ready"
+  | "connecting"
+  | "live"
+  | "uploading"
+  | "done"
+  | "connection-lost";
 
 interface RoomError {
   kind: "mic" | "connect" | "upload";
@@ -89,6 +99,11 @@ export default function SessionRoom({
   const remoteAnalyserRef = useRef<AnalyserNode | null>(null);
   const remoteLevelDataRef = useRef<Uint8Array<ArrayBuffer> | null>(null);
   const heardMorganRef = useRef(false);
+  const guardStateRef = useRef(INITIAL_GUARD_STATE);
+  const connStateRef = useRef<string>("new");
+  const messageArrivedRef = useRef(false);
+  const responseRequestedRef = useRef(false);
+  const responseDoneRef = useRef(false);
 
   // --- Ready screen: mic check ------------------------------------------
   const enableMic = useCallback(async () => {
@@ -236,6 +251,23 @@ export default function SessionRoom({
     await uploadAndComplete(blob);
   }, [stopRecorder, uploadAndComplete]);
 
+  const endForConnectionLoss = useCallback(
+    async (reason: GuardEndReason) => {
+      if (endingRef.current) return;
+      endingRef.current = true;
+      console.debug("[guard] trip", reason);
+      if (tickerRef.current) clearInterval(tickerRef.current);
+      // Stop the recorder and DISCARD the blob: audio that will never be
+      // scored has no product use, and complete is never called — the
+      // session row stays "planned" and the slot survives for a retry.
+      await stopRecorder();
+      pcRef.current?.close();
+      micStreamRef.current?.getTracks().forEach((t) => t.stop());
+      setPhase("connection-lost");
+    },
+    [stopRecorder],
+  );
+
   // --- Start: mint secret, connect WebRTC, wire the recording mix -------
   const start = useCallback(async () => {
     // Re-entry guard (mirrors endingRef): a concurrent second start() would
@@ -276,6 +308,10 @@ export default function SessionRoom({
 
       const pc = new RTCPeerConnection();
       pcRef.current = pc;
+      pc.onconnectionstatechange = () => {
+        connStateRef.current = pc.connectionState;
+        console.debug("[guard] conn-state", pc.connectionState);
+      };
       pc.ontrack = (e) => {
         if (remoteAudioRef.current) {
           remoteAudioRef.current.srcObject = e.streams[0];
@@ -333,9 +369,11 @@ export default function SessionRoom({
         // Server-VAD models never speak unprompted: nudge the first
         // response so Morgan opens the session (the recorder is already
         // rolling, so the greeting lands in the recording).
+        responseRequestedRef.current = true;
         dc.send(greetingTriggerEvent());
       });
       dc.addEventListener("message", (ev) => {
+        messageArrivedRef.current = true;
         const speech = speechStateForEvent(String(ev.data));
         if (speech !== null) console.debug("[silence] cand-ev", speech);
         if (speech === "started") {
@@ -385,7 +423,10 @@ export default function SessionRoom({
           heardMorganRef.current = true;
         }
         if (morgan === "quiet") morganEventAudibleRef.current = false;
-        if (morgan === "response_done") heardMorganRef.current = true;
+        if (morgan === "response_done") {
+          responseDoneRef.current = true;
+          heardMorganRef.current = true;
+        }
         if (indicatorForEvent(String(ev.data)) === "listening") {
           setHearing(true);
           if (hearingTimeoutRef.current) {
@@ -507,12 +548,35 @@ export default function SessionRoom({
           if (effects.stage) {
             console.debug("[silence] stage fired", effects.stage.at);
             dcRef.current.send(silenceStatusEvent(effects.stage.text));
+            responseRequestedRef.current = true;
             dcRef.current.send(responseTriggerEvent());
           } else if (effects.triggerResponse) {
             console.debug("[silence] response trigger");
+            responseRequestedRef.current = true;
             dcRef.current.send(responseTriggerEvent());
           }
         }
+      }
+      const messageArrived = messageArrivedRef.current;
+      messageArrivedRef.current = false;
+      const responseRequested = responseRequestedRef.current;
+      responseRequestedRef.current = false;
+      const responseDone = responseDoneRef.current;
+      responseDoneRef.current = false;
+      const guard = nextGuardState(guardStateRef.current, {
+        dtS,
+        connectionState: connStateRef.current,
+        dcOpen: dcRef.current?.readyState === "open",
+        messageArrived,
+        responseRequested,
+        responseDone,
+        candidateAudible: candidateAudibleRef.current,
+        interviewerAudible,
+      });
+      guardStateRef.current = guard.state;
+      if (guard.endReason !== null) {
+        void endForConnectionLoss(guard.endReason);
+        return;
       }
       if (isHardCut(elapsed)) {
         void endSession(); // auto End; endSession guards re-entry
@@ -521,7 +585,7 @@ export default function SessionRoom({
     return () => {
       if (tickerRef.current) clearInterval(tickerRef.current);
     };
-  }, [phase, endSession]);
+  }, [phase, endSession, endForConnectionLoss]);
 
   // --- Unmount cleanup ---------------------------------------------------
   useEffect(
@@ -693,6 +757,22 @@ export default function SessionRoom({
         <p className="text-neutral-500">
           Recording saved. Opening your report…
         </p>
+      )}
+
+      {phase === "connection-lost" && (
+        <section>
+          <h1 className="text-xl font-semibold">Connection lost</h1>
+          <p className="mt-3 text-sm text-neutral-600">
+            {CONNECTION_LOST_MESSAGE}
+          </p>
+          <button
+            type="button"
+            className="mt-6 rounded-lg border border-current px-5 py-3"
+            onClick={() => window.location.reload()}
+          >
+            Try again
+          </button>
+        </section>
       )}
     </main>
   );
