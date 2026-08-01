@@ -1,122 +1,574 @@
 {
   "report": {
-    "session_id": "sample-0001",
+    "session_id": "sample-anon-001",
     "verdict": "approaching",
-    "overall_score": 3.28,
+    "overall_score": 4.27,
     "dimension_scores": [
       {
-        "dimension_key": "structured-communication",
-        "score": 3.5,
+        "dimension_key": "customer-centric-deployment",
+        "score": 4.83,
         "evidence_quotes": [
-          "My recommendation was to sunset the legacy dashboard and move reporting to the new pipeline.",
-          "So the three things that mattered were coverage, latency, and cost - in that order."
+          "first of all, I think I'll I'll do interview with our customer and I think it is the most important thing is to map the whole process this the whole customer service uh process and understands uh the whole procedures and the deep dollar level.",
+          "So, understanding who do what and when is to is and drawing the whole map, the whole whole procedure and in my hat. And along with the customers, what is actually happening and how how they're doing their actual work is the first step to do that.",
+          "after defining the whole process and what they're doing uh in in CS procedure, uh the next step is to define which data is stored in what system and how they accumulate or how they use those kind of uh data.",
+          "one of my uh, one of my clients when I was in consulting firm, uh, they there are a plenty of employees who actually did their counseling, but they actually uh felt that uh, they they are they need more uh employees to handle the overall call. But the the number of calls per employee was quite uh quite low compared to the other competitors or other companies. So, the reason was that they actually uh they didn't analyze the the the types and the categories of their calls.",
+          "other other type of calls just take like in average six minutes per call, but, you know, the formal type former type or categories of call took over like 30 minutes. So, it it is the main cause main root cause of the, you know, delay in CS uh process and that's the way I diagnose those those kind of problems.",
+          "we collected the whole data that the client was actually uh managing or using and we categorized uh the calls based on the based on extracted scripts. So, we re-categorized in the uh calls uh into, you know, new categorized new new standards and and we also had the the direction of call for each call.",
+          "after uh ran ran a pilot, uh, you know, the duration of the calls or the duration of the calls dropped like over 30% and it means that we actually find the root cause and it actually made an impact.",
+          "the most common standard is the duration of the calls the the time spent uh managing the calls from the customers. But also, I think that is that's the part of the quantity, but the more important thing uh for CS is that the CS is engine of retention of the customers.",
+          "we also introduced the retention rate uh for uh to evaluate the quality of the calls. And also we made a new and new LLM uh that can evaluate uh the, you know, the quality of the calls uh based on the transcripts extracted uh from the call itself via uh speech to text uh engine."
         ],
-        "rationale": "Leads with a conclusion in most answers; two answers open with context and reach the point only after prompting."
+        "rationale": "The candidate clearly demonstrates a customer-centric approach by detailing how they would \"map the whole process\" and understand \"what is actually happening and how how they're doing their actual work\" with the customer. They identify specific data points within the customer service workflow, such as \"customer ID, their name, their address, and their former uh counseling uh histories.\" The candidate provides a concrete example of identifying a specific pain point\u2014miscategorized calls leading to significantly longer call durations\u2014and validates this root cause through data analysis (\"collected the whole data,\" \"categorized uh the calls based on the based on extracted scripts\") and a pilot program that resulted in \"the duration of the calls dropped like over 30%.\" Furthermore, they articulate measurable business outcomes directly tied to the customer experience, including \"the time duration of calls\" and \"retention rate,\" emphasizing that \"CS is engine of retention of the customers.\" They also describe designing an AI agent (LLM) to \"evaluate uh the, you know, the quality of the calls\" based on transcripts, linking this directly to improving customer experience and retention. The discussion of \"impact\" and \"visibility\" criteria for AI deployment, considering \"the client's uh needs\" and \"prioritization from the employees,\" further demonstrates a comprehensive approach to enterprise deployment ownership and customer-centric problem-solving. The answer aligns very closely with the score 5 anchor, showing a robust and detailed understanding of customer-centric deployment."
       },
       {
-        "dimension_key": "analytical-rigor",
-        "score": 3.0,
+        "dimension_key": "technical-ai-fluency",
+        "score": 4.43,
         "evidence_quotes": [
-          "We saw a lift of, I think, around twelve percent, though I'd have to check the exact number."
+          "And also we made a new and new LLM uh that can evaluate uh the, you know, the quality of the calls uh based on the transcripts extracted uh from the call itself via uh speech to text uh engine.",
+          "So, we used a subsidiary uh indicators and that was the the the score that the LLM model actually made based on the transcripts for the calls.",
+          "So, one is the impact and the second thing is the visibility.",
+          "So, the visibility consists of uh the resource that is needed to develop the agent and the the the the customers' the client's uh needs, uh their their subject needs uh and their prioritization from the employees."
         ],
-        "rationale": "Quantifies outcomes when probed but hedges baseline figures; one causal claim is stated without the comparison group it needs."
+        "rationale": "The candidate demonstrates hands-on familiarity with AI tools/frameworks by detailing the use of an LLM to evaluate call quality based on speech-to-text transcripts, which delivered a measurable outcome (a quality score used as a subsidiary indicator for retention). They also discuss a framework for AI deployment based on impact and visibility, which includes 'the resource that is needed to develop the agent'. This aligns well with the score 5 anchor's description of solving real problems and delivering measurable outcomes. However, the candidate does not delve into specific system trade-offs, technical constraints encountered during implementation, or how engineering limitations might have influenced scope cutting, which would be expected for a perfect score 5."
       },
       {
-        "dimension_key": "business-impact",
-        "score": 4.0,
+        "dimension_key": "ambiguity-action",
+        "score": 4.7,
         "evidence_quotes": [
-          "That saved the team roughly forty hours a month, which is why finance sponsored the rollout."
+          "first of all, I think I'll I'll do interview with our customer and I think it is the most important thing is to map the whole process this the whole customer service uh process and understands uh the whole procedures and the deep dollar level.",
+          "So, after defining the whole process and what they're doing uh in in CS procedure, uh the next step is to define which data is stored in what system and how they accumulate or how they use those kind of uh data.",
+          "So, to diagnose the root cause of the slowness, I think it is uh important to form an initial view or we call hypotheses uh via uh cotton with the the employees itself.",
+          "So, we collected the whole data that the client was actually uh managing or using and we categorized uh the calls based on the based on extracted scripts. So, we re-categorized in the uh calls uh into, you know, new categorized new new standards and and we also had the the direction of call for each call. So, we analyzed we analyzed those calls and derived the conclusion that they they are actually uh miscategorizing their calls and it means that they have to focus on the different kind of uh different kind of calls and they have to uh rethink about the the resource plan or resource strategy they they were uh stick to. So, that's the way I uh got the confidence that it was the root cause. And after uh we uh ran a pilot, uh, sure. So, and after uh ran ran a pilot, uh, you know, the duration of the calls or the duration of the calls dropped like over 30% and it means that we actually find the root cause and it actually made an impact.",
+          "Uh, first of all, uh, we uh introduced two major standards, two major uh criteria to evaluate where to uh deploy AI first. So, one is the impact and the second thing is the visibility."
         ],
-        "rationale": "Consistently ties analysis to a business owner and a number; the strongest channel in this session."
+        "rationale": "The candidate consistently demonstrates a strong bias for action and the ability to structure ambiguous problems into actionable plans. Initially, they propose mapping the process and defining data, which are clear first steps. When pressed on validating the root cause, the candidate provides a highly detailed and concrete example from a past role, describing how they collected and categorized data, analyzed it to form a conclusion, and then ran a pilot that resulted in a measurable 30% drop in call duration. This clearly aligns with the score 5 anchor's description of 'structuring chaos into an actionable plan with clear next steps and iterative loops' and 'demonstrates a bias for action, making decisions and learning publicly...to drive real-world impact.' Furthermore, their approach to measurable outcomes includes both direct metrics and a more complex, AI-driven quality score, showing a production mindset. The candidate also outlines a structured approach (impact and visibility criteria) for deploying AI. The score is slightly below 5.0 because while the candidate ultimately provides excellent, specific, and iterative examples, some of the initial responses required prompting to fully reveal the depth of their action-oriented and structured approach."
       },
       {
-        "dimension_key": "stakeholder-collaboration",
-        "score": 3.5,
+        "dimension_key": "field-to-product-strategy",
+        "score": 4.83,
         "evidence_quotes": [
-          "I brought the sales ops lead in early because the definition of an active account was theirs, not ours."
+          "first of all, I think I'll I'll do interview with our customer and I think it is the most important thing is to map the whole process this the whole customer service uh process and understands uh the whole procedures and the deep dollar level.",
+          "So, after defining the whole process and what they're doing uh in in CS procedure, uh the next step is to define which data is stored in what system and how they accumulate or how they use those kind of uh data.",
+          "So, we collected the whole data that the client was actually uh managing or using and we categorized uh the calls based on the based on extracted scripts. So, we re-categorized in the uh calls uh into, you know, new categorized new new standards and and we also had the the direction of call for each call.",
+          "So, we analyzed we analyzed those calls and derived the conclusion that they they are actually uh miscategorizing their calls and it means that they have to focus on the different kind of uh different kind of calls and they have to uh rethink about the the resource plan or resource strategy they they were uh stick to.",
+          "So, in conclusion, we uh used we introduced two major uh uh KPIs, one is the the time duration of uh the average time duration of calls and the second one was the retention rate."
         ],
-        "rationale": "Names counterparts and their stakes concretely; conflict-resolution examples stay at the summary level."
+        "rationale": "The candidate consistently demonstrates a systematic and data-driven approach to understanding customer problems and translating them into actionable product insights. They propose mapping the entire customer service process and identifying specific data points. The candidate provides a concrete example from a consulting firm where they systematically collected and re-categorized call data based on scripts, identified patterns (miscategorized calls leading to longer durations), and validated their hypothesis by running a pilot that resulted in a 'duration of the calls dropped like over 30%'. This clearly shows supporting data and evidence. Furthermore, they articulate measurable business outcomes beyond just call duration, linking CS to customer retention and proposing an LLM-based quality score, demonstrating a clear understanding of broader business context. Finally, the candidate outlines a strategic framework for prioritizing AI deployment based on 'impact' and 'visibility,' showcasing strong product judgment and prioritization. The candidate's responses align very closely with the score 5 anchor, providing specific, evidence-backed examples of how they would surface insights, identify patterns, and advocate for product opportunities."
       },
       {
-        "dimension_key": "role-motivation",
+        "dimension_key": "ownership-impact",
+        "score": 3.3,
+        "evidence_quotes": [
+          "that's the way I diagnose those those kind of problems.",
+          "So, we collected the whole data that the client was actually uh managing or using and we categorized uh the calls based on the based on extracted scripts.",
+          "And after uh we uh ran a pilot, uh, sure. So, and after uh ran ran a pilot, uh, you know, the duration of the calls or the duration of the calls dropped like over 30% and it means that we actually find the root cause and it actually made an impact.",
+          "we also introduced the retention rate uh for uh to evaluate the quality of the calls. And also we made a new and new LLM uh that can evaluate uh the, you know, the quality of the calls"
+        ],
+        "rationale": "The candidate presents a concrete story about diagnosing a root cause and validating it, quantifying the result by stating 'the duration of the calls dropped like over 30%'. This moves the answer beyond a score 1. However, while the candidate uses 'I' for the diagnosis ('that's the way I diagnose those those kind of problems'), the specific actions taken to collect data, categorize calls, run a pilot, and introduce new KPIs/LLMs are consistently attributed to 'we' ('we collected the whole data', 'we categorized', 'we ran a pilot', 'we introduced the retention rate', 'we made a new and new LLM'). This makes it difficult to discern the candidate's specific personal actions and quantify their individual impact, aligning with the score 3 anchor's description of lacking 'clear quantification of personal impact'. The answer also avoids discussing failures or lessons learned, which would be expected for a higher score."
+      },
+      {
+        "dimension_key": "communication-delivery",
         "score": 2.5,
         "evidence_quotes": [
-          "I want to work somewhere my analysis actually ships."
+          "Uh, first of all, I think I'll I'll do an interview with our customer [00:26]",
+          "and I think it is the most important thing is to map the whole process [00:32]",
+          "understanding who do what and when [00:46]",
+          "and align with the customers what is actually happening and how how they're doing their actual work [00:57]",
+          "the number of calls per employee was quite uh quite low [03:38]",
+          "Uh, because of the analysis. [05:50]",
+          "So we collected the whole data that the client was actually uh managing or using. [05:53]",
+          "And we also had the the direction of the call for each call. [06:16]",
+          "So in conclusion we uh used we introduced two major uh uh KPIs [08:44]",
+          "but, you know, there are a lot of a lot of uh factors that actually can influence the retention itself. [08:59]",
+          "uh we uh introduced two major standards, two major uh criteria [09:38]",
+          "we uh made a prediction of the a potential impact of, you know, three uh three to four options of deploying AI. [10:23]"
         ],
-        "rationale": "Motivation stays generic; no answer connects to this company's product, market, or the JD's stated priorities."
-      },
-      {
-        "dimension_key": "delivery-composure",
-        "score": 3.0,
-        "evidence_quotes": [
-          "04:12-04:31",
-          "11:05-11:48"
-        ],
-        "rationale": "Pace holds steady through the pressure probe; volume drops and sentences shorten in the two flagged windows before recovering."
+        "rationale": "The candidate's delivery is characterized by an exceptionally high frequency of filler words ('uh', 'um', 'you know'), making the answers feel dense and requiring significant listener effort. There are also numerous unannounced pauses, some quite lengthy, and frequent instances of repetition or restarts mid-sentence. While the candidate's pronunciation is generally clear, the slow, often broken pacing, and lack of deliberate vocal variation make the delivery feel flat. When challenged by the interviewer, the candidate exhibits a noticeable pause before responding and continues with a filler-heavy delivery, indicating a lack of calibrated confidence in the delivery itself."
       }
     ],
     "delivery_metrics": {
-      "wpm_overall": 132.6,
-      "wpm_timeline": [118.2, 127.9, 135.4, 141.0, 129.8, 138.6, 133.1, 126.4, 130.9, 144.2, 137.5, 128.8, 131.7, 136.2, 125.3, 133.9, 140.1, 129.5],
-      "silence_events": [
-        {"start_s": 252.4, "duration_s": 2.8},
-        {"start_s": 431.0, "duration_s": 1.6},
-        {"start_s": 665.2, "duration_s": 3.4},
-        {"start_s": 918.7, "duration_s": 1.2},
-        {"start_s": 1104.5, "duration_s": 2.1}
+      "wpm_overall": 75.65462526764357,
+      "wpm_timeline": [
+        124.66140014124083,
+        34.961483610925626,
+        118.84756029294418,
+        57.59013826186536,
+        35.23719091039165,
+        70.26314946990595,
+        76.25953775304387,
+        75.47384277115034,
+        103.1365317008714,
+        77.43447657812972,
+        83.86937462176923,
+        170.51221327559378
       ],
-      "filler_count": 34,
-      "filler_rate_per_min": 2.6,
-      "f0_variance": 385.2,
-      "avg_response_latency_s": 1.8
+      "silence_events": [
+        {
+          "start_s": 24.319,
+          "duration_s": 1.5050000000000026
+        },
+        {
+          "start_s": 66.208,
+          "duration_s": 2.912000000000006
+        },
+        {
+          "start_s": 75.936,
+          "duration_s": 1.6319999999999908
+        },
+        {
+          "start_s": 157.536,
+          "duration_s": 1.7920000000000016
+        },
+        {
+          "start_s": 165.824,
+          "duration_s": 1.5999999999999943
+        },
+        {
+          "start_s": 171.84,
+          "duration_s": 1.024000000000001
+        },
+        {
+          "start_s": 187.264,
+          "duration_s": 1.3760000000000048
+        },
+        {
+          "start_s": 190.848,
+          "duration_s": 1.2479999999999905
+        },
+        {
+          "start_s": 260.992,
+          "duration_s": 1.2799999999999727
+        },
+        {
+          "start_s": 308.64,
+          "duration_s": 1.184000000000026
+        },
+        {
+          "start_s": 316.096,
+          "duration_s": 1.3759999999999764
+        },
+        {
+          "start_s": 323.2,
+          "duration_s": 2.944000000000017
+        },
+        {
+          "start_s": 332.576,
+          "duration_s": 2.1119999999999663
+        },
+        {
+          "start_s": 349.12,
+          "duration_s": 1.024000000000001
+        },
+        {
+          "start_s": 375.072,
+          "duration_s": 1.024000000000001
+        },
+        {
+          "start_s": 383.42400000000004,
+          "duration_s": 1.1199999999999477
+        },
+        {
+          "start_s": 414.40000000000003,
+          "duration_s": 1.343999999999994
+        },
+        {
+          "start_s": 434.176,
+          "duration_s": 1.9519999999999982
+        },
+        {
+          "start_s": 445.216,
+          "duration_s": 2.1759999999999877
+        },
+        {
+          "start_s": 502.688,
+          "duration_s": 1.5680000000000405
+        },
+        {
+          "start_s": 509.12,
+          "duration_s": 1.184000000000026
+        },
+        {
+          "start_s": 559.488,
+          "duration_s": 2.0799999999999272
+        },
+        {
+          "start_s": 574.24,
+          "duration_s": 2.272000000000048
+        },
+        {
+          "start_s": 591.968,
+          "duration_s": 1.4080000000000155
+        },
+        {
+          "start_s": 621.312,
+          "duration_s": 1.344000000000051
+        },
+        {
+          "start_s": 648.736,
+          "duration_s": 1.4400000000000546
+        },
+        {
+          "start_s": 667.6800000000001,
+          "duration_s": 1.024000000000001
+        },
+        {
+          "start_s": 669.12,
+          "duration_s": 1.47199999999998
+        },
+        {
+          "start_s": 674.432,
+          "duration_s": 1.8559999999999945
+        },
+        {
+          "start_s": 681.664,
+          "duration_s": 1.0880000000000791
+        }
+      ],
+      "filler_count": 123,
+      "filler_rate_per_min": 7.6968725458396685,
+      "f0_variance": 1151.1435054564072,
+      "avg_response_latency_s": 1.9541428571428254
     },
     "delivery_observations": [
       {
-        "at_s": 252.4,
-        "kind": "trailing-off",
-        "note": "Volume drops and the clause is left unfinished after the follow-up on metric choice.",
+        "at_s": 24.6,
+        "kind": "silence",
+        "note": "A noticeable pause occurs before the candidate begins their answer.",
         "conflicts_with_dsp": false
       },
       {
-        "at_s": 431.0,
-        "kind": "hedging-intonation",
-        "note": "Rising intonation on factual statements - signals associated with uncertainty observed while restating the baseline number.",
+        "at_s": 26.1,
+        "kind": "filler",
+        "note": "Frequent use of 'uh' filler.",
         "conflicts_with_dsp": false
       },
       {
-        "at_s": 665.2,
-        "kind": "recovery-under-pressure",
-        "note": "After a 3.4s silence, the answer restarts with a clear structure and steady pace.",
+        "at_s": 28.5,
+        "kind": "repetition",
+        "note": "Repetition of 'I'll' as the candidate formulates their thought.",
         "conflicts_with_dsp": false
       },
       {
-        "at_s": 1104.5,
-        "kind": "trailing-off",
-        "note": "Sentence endings soften audibly here, while measured pace and volume stay within the session's normal range.",
-        "conflicts_with_dsp": true
+        "at_s": 32.7,
+        "kind": "repetition",
+        "note": "Repetition of 'the most important thing is the' before completing the thought.",
+        "conflicts_with_dsp": false
+      },
+      {
+        "at_s": 41.3,
+        "kind": "filler",
+        "note": "Mid-sentence 'uh' filler.",
+        "conflicts_with_dsp": false
+      },
+      {
+        "at_s": 57.5,
+        "kind": "repetition",
+        "note": "Repetition of 'how how' before completing the phrase.",
+        "conflicts_with_dsp": false
+      },
+      {
+        "at_s": 66.0,
+        "kind": "silence",
+        "note": "A noticeable unannounced pause after completing a thought.",
+        "conflicts_with_dsp": false
+      },
+      {
+        "at_s": 106.3,
+        "kind": "silence",
+        "note": "A prolonged unannounced pause occurs after the candidate's answer.",
+        "conflicts_with_dsp": false
+      },
+      {
+        "at_s": 115.6,
+        "kind": "silence",
+        "note": "A noticeable pause before the candidate responds to the follow-up question.",
+        "conflicts_with_dsp": false
+      },
+      {
+        "at_s": 121.7,
+        "kind": "filler",
+        "note": "Use of 'uh' filler mid-sentence.",
+        "conflicts_with_dsp": false
+      },
+      {
+        "at_s": 136.3,
+        "kind": "filler",
+        "note": "Use of 'uh' filler before providing examples.",
+        "conflicts_with_dsp": false
+      },
+      {
+        "at_s": 139.7,
+        "kind": "repetition",
+        "note": "Repetition of 'when when' before continuing.",
+        "conflicts_with_dsp": false
+      },
+      {
+        "at_s": 199.7,
+        "kind": "filler",
+        "note": "Use of 'uh' filler mid-sentence.",
+        "conflicts_with_dsp": false
+      },
+      {
+        "at_s": 204.3,
+        "kind": "filler",
+        "note": "Frequent use of 'uh' fillers while explaining the process.",
+        "conflicts_with_dsp": false
+      },
+      {
+        "at_s": 220.1,
+        "kind": "repetition",
+        "note": "Repetition of 'of of the employees'.",
+        "conflicts_with_dsp": false
+      },
+      {
+        "at_s": 227.1,
+        "kind": "repetition",
+        "note": "Repetition/restart 'that's a different that's another'.",
+        "conflicts_with_dsp": false
+      },
+      {
+        "at_s": 237.7,
+        "kind": "silence",
+        "note": "A prolonged unannounced pause after the answer.",
+        "conflicts_with_dsp": false
+      },
+      {
+        "at_s": 245.8,
+        "kind": "silence",
+        "note": "A noticeable pause before the candidate responds.",
+        "conflicts_with_dsp": false
+      },
+      {
+        "at_s": 251.7,
+        "kind": "silence",
+        "note": "A short unannounced pause mid-sentence.",
+        "conflicts_with_dsp": false
+      },
+      {
+        "at_s": 255.4,
+        "kind": "filler",
+        "note": "Use of 'uh' filler while explaining how to form an initial view.",
+        "conflicts_with_dsp": false
+      },
+      {
+        "at_s": 307.9,
+        "kind": "silence",
+        "note": "A noticeable unannounced pause.",
+        "conflicts_with_dsp": false
+      },
+      {
+        "at_s": 310.9,
+        "kind": "silence",
+        "note": "A noticeable unannounced pause.",
+        "conflicts_with_dsp": false
+      },
+      {
+        "at_s": 312.2,
+        "kind": "repetition",
+        "note": "Repetition 'one of my uh one of my clients'.",
+        "conflicts_with_dsp": false
+      },
+      {
+        "at_s": 326.1,
+        "kind": "filler",
+        "note": "Frequent 'uh' fillers and repetition ('they they are they need more').",
+        "conflicts_with_dsp": false
+      },
+      {
+        "at_s": 348.6,
+        "kind": "filler",
+        "note": "Frequent 'uh' fillers and repetition ('the the the types').",
+        "conflicts_with_dsp": false
+      },
+      {
+        "at_s": 419.6,
+        "kind": "filler",
+        "note": "Use of 'like' filler.",
+        "conflicts_with_dsp": false
+      },
+      {
+        "at_s": 420.7,
+        "kind": "silence",
+        "note": "A noticeable unannounced pause.",
+        "conflicts_with_dsp": false
+      },
+      {
+        "at_s": 423.4,
+        "kind": "filler",
+        "note": "Use of 'you know' filler.",
+        "conflicts_with_dsp": false
+      },
+      {
+        "at_s": 428.1,
+        "kind": "repetition",
+        "note": "Repetition of 'the the misarrival'.",
+        "conflicts_with_dsp": false
+      },
+      {
+        "at_s": 435.9,
+        "kind": "filler",
+        "note": "Use of 'uh' and 'you know' fillers while explaining why resources weren't added.",
+        "conflicts_with_dsp": false
+      },
+      {
+        "at_s": 441.4,
+        "kind": "filler",
+        "note": "Use of 'uh' filler.",
+        "conflicts_with_dsp": false
+      },
+      {
+        "at_s": 452.0,
+        "kind": "filler",
+        "note": "Use of 'you know' and repetition 'auto other type of calls'.",
+        "conflicts_with_dsp": false
+      },
+      {
+        "at_s": 508.4,
+        "kind": "silence",
+        "note": "A noticeable unannounced pause before concluding the explanation.",
+        "conflicts_with_dsp": false
+      },
+      {
+        "at_s": 516.3,
+        "kind": "silence",
+        "note": "A noticeable unannounced pause.",
+        "conflicts_with_dsp": false
+      },
+      {
+        "at_s": 523.6,
+        "kind": "silence",
+        "note": "A prolonged pause before responding to the interviewer's pushback.",
+        "conflicts_with_dsp": false
+      },
+      {
+        "at_s": 526.4,
+        "kind": "filler",
+        "note": "Use of 'uh' fillers at the start of the response.",
+        "conflicts_with_dsp": false
+      },
+      {
+        "at_s": 532.4,
+        "kind": "silence",
+        "note": "A prolonged pause before the interviewer asks the next question.",
+        "conflicts_with_dsp": false
+      },
+      {
+        "at_s": 550.5,
+        "kind": "filler",
+        "note": "Use of 'uh' filler at the start of the answer.",
+        "conflicts_with_dsp": false
+      },
+      {
+        "at_s": 557.4,
+        "kind": "filler",
+        "note": "Use of 'uh' filler mid-sentence.",
+        "conflicts_with_dsp": false
+      },
+      {
+        "at_s": 601.5,
+        "kind": "filler",
+        "note": "Use of 'uh' filler mid-sentence.",
+        "conflicts_with_dsp": false
+      },
+      {
+        "at_s": 604.2,
+        "kind": "repetition",
+        "note": "Repetition 'based on the based on the extracted scripts'.",
+        "conflicts_with_dsp": false
+      },
+      {
+        "at_s": 615.8,
+        "kind": "silence",
+        "note": "A noticeable unannounced pause.",
+        "conflicts_with_dsp": false
+      },
+      {
+        "at_s": 617.8,
+        "kind": "repetition",
+        "note": "Repetition of 'the the duration'.",
+        "conflicts_with_dsp": false
+      },
+      {
+        "at_s": 623.6,
+        "kind": "silence",
+        "note": "A noticeable unannounced pause.",
+        "conflicts_with_dsp": false
+      },
+      {
+        "at_s": 629.5,
+        "kind": "repetition",
+        "note": "Repetition 'they they are actually'.",
+        "conflicts_with_dsp": false
+      },
+      {
+        "at_s": 631.0,
+        "kind": "filler",
+        "note": "Use of 'uh' filler mid-sentence.",
+        "conflicts_with_dsp": false
+      },
+      {
+        "at_s": 637.7,
+        "kind": "filler",
+        "note": "Use of 'uh' filler and repetition 'different kind of different kind of calls'.",
+        "conflicts_with_dsp": false
+      },
+      {
+        "at_s": 653.6,
+        "kind": "silence",
+        "note": "A noticeable unannounced pause.",
+        "conflicts_with_dsp": false
+      },
+      {
+        "at_s": 656.7,
+        "kind": "filler",
+        "note": "Frequent 'uh' fillers while describing running a pilot.",
+        "conflicts_with_dsp": false
       }
     ],
     "strengths": [
-      "Business impact framing (4.0/5): consistently ties analysis to a business owner and a quantified outcome.",
-      "Structured communication (3.5/5): leads with the recommendation before the supporting evidence in most answers."
+      "Customer-Centric Problem Solving & Deployment: scored 4.8/5. Evidence: \"first of all, I think I'll I'll do interview with our customer and I think it is the most important thing is to map the whole process this the whole customer service uh process and understands uh the whole procedures and the deep dollar level.\"",
+      "Field-to-Product Loop & Strategy: scored 4.8/5. Evidence: \"first of all, I think I'll I'll do interview with our customer and I think it is the most important thing is to map the whole process this the whole customer service uh process and understands uh the whole procedures and the deep dollar level.\""
     ],
     "gaps": [
-      "Role and company motivation (2.5/5): the score-5 anchor expects motivation grounded in this company's product and the JD's priorities; answers stayed generic.",
-      "Analytical rigor (3.0/5): the score-5 anchor expects exact baselines and a stated comparison group; key figures were hedged.",
-      "Composure and delivery under pressure (3.0/5): the score-5 anchor expects steady sentence endings through challenges; two windows showed trailing-off."
+      "Communication Delivery: scored 2.5/5. Score-5 behavior: Maintains a controlled pace with deliberate variation (slowing on key points), uses announced thinking pauses effectively, and employs clear spoken structure and signposting; hedges only where genuine uncertainty exists, communicating with calibrated confidence.",
+      "Ownership & Impact: scored 3.3/5. Score-5 behavior: Presents a compressed context, uses 'I' actions with stated reasons, and quantifies results demonstrating clear personal ownership and impact (what it cost or missed); acknowledges failures and explicitly describes learning and applying lessons to subsequent situations."
     ],
     "next_drills": [
-      "Role and company motivation: write and rehearse a 60-second answer linking one JD priority to one of your shipped analyses; the signal to hit is a company-specific reason, not a generic one.",
-      "Analytical rigor: for your three headline projects, memorize baseline, delta, and comparison group as exact numbers; the signal to hit is an unhedged baseline figure."
+      "Drill for Communication Delivery: record a 90-second answer and check it against the signal \"Effective communication\"; repeat until the answer shows the signal without prompting.",
+      "Drill for Ownership & Impact: record a 90-second answer and check it against the signal \"Ownership of failures\"; repeat until the answer shows the signal without prompting."
     ],
     "limits_note": "This verdict reflects alignment with rubric anchors and an experienced-interviewer scoring protocol; it is not a prediction of any specific company's decision."
   },
   "dimensions": [
-    {"key": "structured-communication", "name": "Structured communication", "channel": "content"},
-    {"key": "analytical-rigor", "name": "Analytical rigor", "channel": "content"},
-    {"key": "business-impact", "name": "Business impact framing", "channel": "content"},
-    {"key": "stakeholder-collaboration", "name": "Stakeholder collaboration", "channel": "content"},
-    {"key": "role-motivation", "name": "Role and company motivation", "channel": "content"},
-    {"key": "delivery-composure", "name": "Composure and delivery under pressure", "channel": "delivery"}
+    {
+      "key": "customer-centric-deployment",
+      "name": "Customer-Centric Problem Solving & Deployment",
+      "channel": "content"
+    },
+    {
+      "key": "technical-ai-fluency",
+      "name": "Technical Fluency & AI Application",
+      "channel": "content"
+    },
+    {
+      "key": "ambiguity-action",
+      "name": "Ambiguity Management & Bias for Action",
+      "channel": "content"
+    },
+    {
+      "key": "field-to-product-strategy",
+      "name": "Field-to-Product Loop & Strategy",
+      "channel": "content"
+    },
+    {
+      "key": "ownership-impact",
+      "name": "Ownership & Impact",
+      "channel": "content"
+    },
+    {
+      "key": "communication-delivery",
+      "name": "Communication Delivery",
+      "channel": "delivery"
+    }
   ]
 }
