@@ -1,7 +1,7 @@
 # PLAYBOOK — reusable patterns from building flightcheck
 
 Patterns that survived contact with real APIs, real audio, and real eval
-numbers. Everything here is written from the shipped v0.1 implementation —
+numbers. Everything here is written from the shipped implementation (v0.1–v0.2) —
 file paths are real, numbers are from recorded runs, and anything not yet
 shipped is labeled as planned. See [RETRO.md](RETRO.md) for the failures that
 produced these patterns.
@@ -184,7 +184,7 @@ from the committed recording protocol, not committed audio.
 - Keep model IDs in config (`services/scorer/config/product.toml`) —
   providers drift, and the eval gate exists to catch drift before users do.
 
-### Shipped in v0.1 vs planned
+### Appendix — v0.1 ship-status snapshot (historical record, not a pattern)
 
 | | Status |
 | --- | --- |

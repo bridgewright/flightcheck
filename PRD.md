@@ -34,6 +34,11 @@ One JD = one package: **₩89,000 · 30 days · 6 sessions × 20 min · per-sess
 
 Changes to targets are recorded here with date and reason — never silently.
 
+> 2026-08-01: the "Paid packages ≥ 1 · 2026-08-23" target's timeline moved —
+> payments now start no earlier than v0.3 (product depth first). The target
+> number itself stays as written; full options-and-rejections trail in
+> [DECISIONS.md #008](DECISIONS.md).
+
 ## Scope
 
 - **v0.1 (2026-08-09):** full loop, single session — intake (JD + resume + LinkedIn PDF) → rubric (shown to user before the interview) → one 20-min S2S session → dual-channel score → report. Live deployed URL; sample report public, no signup.

@@ -4,9 +4,11 @@
 
 ## [0.2.0] — 2026-08-01
 
-Interviewer UX release, driven by the first real user session (2026-07-29):
-the interviewer now opens the call, tolerates thinking pauses, listens
-actively, and manages the clock — and the report explains its scores.
+Interviewer UX release, driven by the first full end-to-end session
+(2026-07-29 — run by the developer as the product's first user; no external
+users yet): the interviewer now opens the call, tolerates thinking pauses,
+listens actively, and manages the clock — and the report explains its
+scores.
 
 ### Added — interviewer UX
 - The interviewer speaks first. Instructions alone could not do this —
