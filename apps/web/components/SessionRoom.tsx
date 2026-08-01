@@ -7,9 +7,11 @@ import { MAX_RECORDING_BYTES } from "../lib/realtime";
 import {
   HARD_CUT_S,
   SESSION_BUDGET_S,
+  dueTimeStatus,
   formatTimer,
   indicatorForEvent,
   isHardCut,
+  timeStatusEvent,
 } from "../lib/session-room";
 
 const OPENAI_CALLS_URL = "https://api.openai.com/v1/realtime/calls";
@@ -59,6 +61,8 @@ export default function SessionRoom({
   const meterRafRef = useRef(0);
   const endingRef = useRef(false);
   const connectingRef = useRef(false); // re-entry guard for start()
+  const dcRef = useRef<RTCDataChannel | null>(null);
+  const timeStatusSentRef = useRef(0);
 
   // --- Ready screen: mic check ------------------------------------------
   const enableMic = useCallback(async () => {
@@ -260,6 +264,7 @@ export default function SessionRoom({
       }
 
       const dc = pc.createDataChannel("oai-events");
+      dcRef.current = dc;
       dc.addEventListener("open", () => {
         // The mic-check level meter is gone from the UI once the room is
         // live: stop its rAF loop instead of re-rendering ~60fps for the
@@ -335,6 +340,11 @@ export default function SessionRoom({
     tickerRef.current = setInterval(() => {
       const elapsed = Math.floor((Date.now() - startedAtRef.current) / 1000);
       setElapsedS(elapsed);
+      const due = dueTimeStatus(elapsed, timeStatusSentRef.current);
+      if (due && dcRef.current?.readyState === "open") {
+        dcRef.current.send(timeStatusEvent(due.text));
+        timeStatusSentRef.current += 1;
+      }
       if (isHardCut(elapsed)) {
         void endSession(); // auto End; endSession guards re-entry
       }
@@ -421,7 +431,10 @@ export default function SessionRoom({
       )}
 
       {phase === "connecting" && (
-        <p className="text-neutral-500">Connecting to your interviewer…</p>
+        <p className="text-neutral-500">
+          Connecting to your interviewer… Morgan speaks first — no need to
+          say hello.
+        </p>
       )}
 
       {phase === "live" && (
@@ -442,6 +455,12 @@ export default function SessionRoom({
               ● hearing you
             </span>
           </div>
+          {elapsedS < 15 && (
+            <p className="mt-2 text-sm text-neutral-500">
+              Morgan will greet you in a moment — you don&apos;t need to
+              speak first.
+            </p>
+          )}
           {!confirmingEnd && (
             <button
               type="button"
