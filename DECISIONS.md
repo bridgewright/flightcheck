@@ -146,3 +146,26 @@ Format per entry: Context · Options · Choice · Why · Rejected because · Rev
 - **Revisit when:** OpenAI ships a semantic_vad mode with event visibility
   during held turns and bounded commit latency, or live sessions show the
   client debounce adding perceptible lag after complete answers.
+
+## 010 — identical JDs reuse their rubric instead of recompiling (2026-08-01)
+
+- **Decision:** creating a package whose `jd_text` exactly matches a
+  previously compiled, "ready" package — and which carries no
+  personalization inputs (no resume, no LinkedIn) — copies that package's
+  rubric and profile and is ready instantly. Everything personalized, and
+  every unseen JD, compiles fresh.
+- **Why:** a rubric compile costs a Gemini run and 100–200 s of measured
+  wall clock. Packages are single-session in v0.1, so iterating on the same
+  JD (the developer-testing loop today; a candidate re-attempting the same
+  role tomorrow) paid the full price every time for a deterministic-enough
+  output. Same input, same price paid twice is pure spend.
+- **Rejected — hash-keyed cache table:** a content-hash column needs a
+  migration; exact `jd_text` equality against the existing column gets the
+  same hits for zero schema change. Revisit if fuzzy matching (whitespace
+  variants) ever matters.
+- **Rejected — caching personalized packages too:** a resume changes what
+  the rubric emphasizes; serving a JD-only rubric to a personalized request
+  would silently degrade it. Conservative scope keeps the quality bar.
+- **Revisit when:** rubric compilation becomes fast enough (<10 s) that
+  freshness beats reuse, or per-candidate rubric variation becomes a
+  product feature.
