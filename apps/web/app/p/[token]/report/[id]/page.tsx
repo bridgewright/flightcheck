@@ -22,6 +22,20 @@ function NotFound() {
   );
 }
 
+function WorkerUnreachable() {
+  return (
+    <main className="mx-auto flex min-h-screen max-w-2xl flex-col justify-center gap-4 px-6 py-16">
+      <PollRefresh intervalMs={5000} />
+      <h1 className="text-2xl font-bold">Can&apos;t reach the scoring service</h1>
+      <p className="text-neutral-600 dark:text-neutral-400">
+        Your link is fine — the scoring service is briefly unreachable, most
+        often during a restart window. This page retries automatically;
+        leave it open.
+      </p>
+    </main>
+  );
+}
+
 export default async function SessionReportPage({
   params,
 }: {
@@ -32,7 +46,7 @@ export default async function SessionReportPage({
   // id from another package must be indistinguishable from a missing one.
   const access = await authorizeSession(token, id);
   if (!access.ok) {
-    return <NotFound />;
+    return access.status === 502 ? <WorkerUnreachable /> : <NotFound />;
   }
   const { pkg, session } = access.value;
 
