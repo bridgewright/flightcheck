@@ -42,48 +42,54 @@ export default function ReportView({
         <p className="mt-3 text-sm">{report.limits_note}</p>
       </section>
 
-      <section className="flex flex-col gap-3">
+      <section className="flex flex-col gap-4">
         <h2 className="text-xl font-semibold">Dimension scores</h2>
-        <div className="overflow-x-auto">
-          <table className="w-full min-w-[36rem] text-left text-sm">
-            <thead>
-              <tr className="border-b border-neutral-300 dark:border-neutral-700">
-                <th className="py-2 pr-4">Dimension</th>
-                <th className="py-2 pr-4">Channel</th>
-                <th className="py-2 pr-4">Score</th>
-                <th className="py-2">Evidence</th>
-              </tr>
-            </thead>
-            <tbody>
-              {report.dimension_scores.map((score) => {
-                const meta = metaByKey.get(score.dimension_key);
-                return (
-                  <tr
-                    key={score.dimension_key}
-                    className="border-b border-neutral-200 align-top dark:border-neutral-800"
-                  >
-                    <td className="py-3 pr-4 font-medium">
-                      {meta?.name ?? score.dimension_key}
-                    </td>
-                    <td className="py-3 pr-4">{meta?.channel ?? "—"}</td>
-                    <td className="whitespace-nowrap py-3 pr-4">
-                      {score.score.toFixed(1)} / 5
-                    </td>
-                    <td className="py-3">
-                      <ul className="flex flex-col gap-1">
-                        {score.evidence_quotes.map((quote) => (
-                          <li key={quote} className="text-neutral-600 dark:text-neutral-400">
-                            &ldquo;{quote}&rdquo;
-                          </li>
-                        ))}
-                      </ul>
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-        </div>
+        {/* One card per dimension: the score, the judge's written rationale
+            (why this score — previously computed but never rendered), and
+            the candidate's own verified words as quotes. */}
+        {report.dimension_scores.map((score) => {
+          const meta = metaByKey.get(score.dimension_key);
+          return (
+            <article
+              key={score.dimension_key}
+              className="rounded-lg border border-neutral-200 p-5 dark:border-neutral-800"
+            >
+              <header className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
+                <h3 className="text-base font-semibold">
+                  {meta?.name ?? score.dimension_key}
+                </h3>
+                <span className="rounded bg-neutral-100 px-2 py-0.5 text-xs uppercase tracking-wide text-neutral-600 dark:bg-neutral-900 dark:text-neutral-400">
+                  {meta?.channel ?? "—"}
+                </span>
+                <span className="ml-auto text-lg font-semibold tabular-nums">
+                  {score.score.toFixed(1)}
+                  <span className="text-sm font-normal text-neutral-500">
+                    {" "}
+                    / 5
+                  </span>
+                </span>
+              </header>
+              <p className="mt-3 text-sm leading-relaxed text-neutral-700 dark:text-neutral-300">
+                {score.rationale}
+              </p>
+              {score.evidence_quotes.length > 0 && (
+                <div className="mt-4 flex flex-col gap-2">
+                  <p className="text-xs uppercase tracking-wide text-neutral-500">
+                    What you actually said
+                  </p>
+                  {score.evidence_quotes.map((quote) => (
+                    <blockquote
+                      key={quote}
+                      className="border-l-2 border-neutral-300 pl-3 text-sm italic text-neutral-600 dark:border-neutral-700 dark:text-neutral-400"
+                    >
+                      &ldquo;{quote}&rdquo;
+                    </blockquote>
+                  ))}
+                </div>
+              )}
+            </article>
+          );
+        })}
       </section>
 
       <section className="flex flex-col gap-3">
