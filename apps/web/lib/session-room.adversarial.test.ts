@@ -56,6 +56,49 @@ describe("seed ①: echo chain (speaker leak into the mic)", () => {
     ]);
     expect(run.stagesFired).toEqual([STAGE_AT[0]]);
   });
+
+  it("an echo lasting Morgan's whole utterance still does not reset the stretch", () => {
+    // Morgan speaks for 3 s and the speakers leak the whole utterance back
+    // into the mic, so the "episode" outlives STALL_BLIP_MAX_S. It is still
+    // not the candidate speaking: the stretch must resume, not restart.
+    const run = runScenario([
+      ...quietTicks(6),
+      ...interviewerTicks(0.5),
+      ...overlapTicks(3),
+      ...interviewerTicks(0.5),
+      ...quietTicks(2),
+    ]);
+    expect(run.stagesFired).toEqual([STAGE_AT[0]]);
+  });
+
+  it("the scaffold ladder escalates across the echo of its own scaffold", () => {
+    // The product failure this protects: stage 1 fires, Morgan says "Take
+    // your time", the speakers leak it back, the stretch restarts — and a
+    // candidate who stays stuck hears "Take your time" again and again
+    // instead of the directional hint stage 2 owes them.
+    const run = runScenario([
+      ...quietTicks(8),
+      ...interviewerTicks(0.5),
+      ...overlapTicks(3),
+      ...interviewerTicks(0.5),
+      ...quietTicks(7),
+    ]);
+    expect(run.stagesFired).toEqual([STAGE_AT[0], STAGE_AT[1]]);
+  });
+
+  it("a real barge-in still resets the stretch once Morgan stops", () => {
+    // The other side of the same rule: echo dies with Morgan's audio, a
+    // candidate who talks over him keeps going. Once he is quiet the
+    // episode is unambiguous speech and must reset the stretch.
+    const run = runScenario([
+      ...quietTicks(6),
+      ...overlapTicks(2),
+      ...candidateTicks(STALL_BLIP_MAX_S + 0.5),
+      ...quietTicks(7),
+    ]);
+    expect(run.stagesFired).toEqual([]);
+    expect(run.finalState.quietS).toBeCloseTo(7, 5);
+  });
 });
 
 describe("seed ②: single-signal dependence (dropped VAD events)", () => {

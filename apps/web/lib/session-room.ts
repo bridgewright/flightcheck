@@ -205,15 +205,22 @@ export function nextSilenceState(
   if (tick.commitArrived) {
     responseDueInS = RESPONSE_DEBOUNCE_S;
   }
-  if (tick.candidateAudible) {
+  if (tick.interviewerAudible) {
+    // Interviewer audibility wins over the mic. In the open-speakers
+    // environment Morgan's own voice re-enters the microphone, so a
+    // "candidate audible" tick overlapping his audio is as likely to be
+    // leaked echo as a barge-in — and treating leaked echo as speech reset
+    // the quiet stretch, which made the scaffold ladder repeat stage 1
+    // forever instead of escalating. A real barge-in still resets the
+    // stretch: it outlives Morgan's audio and lands in the branch below.
+    episodeS = 0;
+  } else if (tick.candidateAudible) {
     responseDueInS = null;
     episodeS += tick.dtS;
     if (episodeS >= STALL_BLIP_MAX_S) {
       quietS = 0;
       stagesSent = 0;
     }
-  } else if (tick.interviewerAudible) {
-    episodeS = 0;
   } else {
     episodeS = 0;
     quietS += tick.dtS;
