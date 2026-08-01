@@ -5,15 +5,19 @@ import { useCallback, useEffect, useRef, useState } from "react";
 
 import { MAX_RECORDING_BYTES } from "../lib/realtime";
 import {
+  ECHO_OUTLIVE_MS,
+  ECHO_START_WINDOW_MS,
   HARD_CUT_S,
   INITIAL_SILENCE_STATE,
   SESSION_BUDGET_S,
+  committedItemId,
   dueTimeStatus,
   formatTimer,
   greetingTriggerEvent,
   indicatorForEvent,
   interviewerStateForEvent,
   isHardCut,
+  itemDeleteEvent,
   nextSilenceState,
   responseTriggerEvent,
   silenceStatusEvent,
@@ -75,7 +79,6 @@ export default function SessionRoom({
   const morganEventAudibleRef = useRef(false);
   const diagTickRef = useRef(0);
   const lastMorganAudibleAtRef = useRef(0);
-  const speechStartAtRef = useRef(0);
   const echoSuspectRef = useRef(false);
   const silenceStateRef = useRef(INITIAL_SILENCE_STATE);
   const remoteAnalyserRef = useRef<AnalyserNode | null>(null);
@@ -324,25 +327,32 @@ export default function SessionRoom({
         if (speech !== null) console.debug("[silence] cand-ev", speech);
         if (speech === "started") {
           candidateAudibleRef.current = true;
-          speechStartAtRef.current = Date.now();
-          // Echo guard (2026-08-01 diagnostic run): the interviewer's own
-          // voice leaking from speakers into the mic commits as candidate
-          // speech and chain-triggers responses. Speech that starts within
-          // the echo window of Morgan's audio is suspect.
+          // Echo physics (2026-08-01, speakers-first requirement): leaked
+          // interviewer audio can only START while Morgan is (nearly)
+          // audible. Episodes starting inside that window are suspect.
           echoSuspectRef.current =
-            Date.now() - lastMorganAudibleAtRef.current < 600;
+            Date.now() - lastMorganAudibleAtRef.current < ECHO_START_WINDOW_MS;
         }
-        if (speech === "stopped" || speech === "committed") {
-          if (speech === "stopped") candidateAudibleRef.current = false;
-          // Arm on either event (transport belt-and-suspenders), but an
-          // echo-suspect episode arms only if it lasted like real speech —
-          // a genuine barge-in is seconds long, an echo blip is not.
-          const durS = (Date.now() - speechStartAtRef.current) / 1000;
-          if (!echoSuspectRef.current || durS >= 1.5) {
+        if (speech === "stopped") candidateAudibleRef.current = false;
+        if (speech === "committed") {
+          // A suspect episode is real speech only if it OUTLIVED Morgan's
+          // audio — an echo dies with its source, a barge-in keeps going.
+          // Measured at commit time, which absorbs the 900 ms VAD tail.
+          const sinceMorganMs = Date.now() - lastMorganAudibleAtRef.current;
+          if (!echoSuspectRef.current || sinceMorganMs >= ECHO_OUTLIVE_MS) {
             commitArrivedRef.current = true;
           } else {
-            console.debug("[silence] echo-suppressed", Number(durS.toFixed(2)));
+            console.debug("[silence] echo-suppressed", sinceMorganMs);
+            const itemId = committedItemId(String(ev.data));
+            if (itemId && dcRef.current?.readyState === "open") {
+              // Purge the echo turn so the model never sees its own words
+              // as a candidate answer.
+              dcRef.current.send(itemDeleteEvent(itemId));
+            }
           }
+        }
+        if (String(ev.data).includes('"type":"error"')) {
+          console.debug("[silence] server-error", String(ev.data).slice(0, 300));
         }
         // Morgan's audio lifecycle from server events — the analyser is the
         // fallback, not the sole source; response_done also opens the

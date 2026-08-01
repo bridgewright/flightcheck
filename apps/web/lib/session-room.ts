@@ -296,3 +296,32 @@ export function interviewerStateForEvent(
     return null;
   }
 }
+
+/** Echo physics: leaked interviewer audio can only exist while (or just
+ * after) the interviewer is audible. Candidate speech STARTING inside this
+ * window is echo-suspect. */
+export const ECHO_START_WINDOW_MS = 400;
+
+/** A suspect episode is real speech only if it outlives the interviewer's
+ * audio by more than the VAD tail (900 ms) plus a real margin — an echo
+ * dies with its source, a barge-in keeps going. */
+export const ECHO_OUTLIVE_MS = 2400;
+
+/** item_id of an input_audio_buffer.committed payload, else null. */
+export function committedItemId(raw: string): string | null {
+  try {
+    const event = JSON.parse(raw) as { type?: unknown; item_id?: unknown };
+    return event.type === "input_audio_buffer.committed" &&
+      typeof event.item_id === "string"
+      ? event.item_id
+      : null;
+  } catch {
+    return null;
+  }
+}
+
+/** Remove an echo-committed item from the conversation so the model never
+ * mistakes its own leaked words for a candidate answer. */
+export function itemDeleteEvent(itemId: string): string {
+  return JSON.stringify({ type: "conversation.item.delete", item_id: itemId });
+}

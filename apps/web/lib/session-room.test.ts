@@ -9,8 +9,10 @@ import {
   SILENCE_STATUS_PREFIX,
   STALL_BLIP_MAX_S,
   TIME_STATUS_PREFIX,
+  committedItemId,
   dueTimeStatus,
   formatTimer,
+  itemDeleteEvent,
   greetingTriggerEvent,
   indicatorForEvent,
   interviewerStateForEvent,
@@ -296,5 +298,26 @@ describe("interviewer lifecycle events (F-06 hotfix — no single-signal depende
     );
     expect(interviewerStateForEvent(mk("input_audio_buffer.speech_started"))).toBeNull();
     expect(interviewerStateForEvent("not json")).toBeNull();
+  });
+});
+
+describe("echo-turn hygiene helpers", () => {
+  it("committedItemId extracts the id only from committed events", () => {
+    expect(
+      committedItemId(
+        JSON.stringify({ type: "input_audio_buffer.committed", item_id: "item_A" }),
+      ),
+    ).toBe("item_A");
+    expect(
+      committedItemId(JSON.stringify({ type: "response.done", item_id: "x" })),
+    ).toBeNull();
+    expect(committedItemId("junk")).toBeNull();
+  });
+
+  it("itemDeleteEvent shapes a conversation.item.delete", () => {
+    expect(JSON.parse(itemDeleteEvent("item_A"))).toEqual({
+      type: "conversation.item.delete",
+      item_id: "item_A",
+    });
   });
 });
