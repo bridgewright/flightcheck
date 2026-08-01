@@ -11,7 +11,9 @@
  * server default, and the interviewer talks over the candidate's thinking
  * pauses. 900 ms tail + 300 ms prefix padding is the bake-off-validated
  * setting (global constraint). `output_modalities: ["audio"]` was
- * live-verified in the webroom harness — keep it.
+ * live-verified in the webroom harness — keep it. With
+ * `create_response: false` the server commits turns but never responds on its
+ * own — the client owns all response timing (DECISIONS 009).
  */
 export function clientSecretRequestBody(instructions: string) {
   return {
@@ -26,6 +28,7 @@ export function clientSecretRequestBody(instructions: string) {
             type: "server_vad",
             silence_duration_ms: 900,
             prefix_padding_ms: 300,
+            create_response: false,
           },
         },
         output: { voice: "marin" },

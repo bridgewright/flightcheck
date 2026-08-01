@@ -2,15 +2,26 @@ import { describe, expect, it } from "vitest";
 
 import {
   HARD_CUT_S,
+  INITIAL_SILENCE_STATE,
+  RESPONSE_DEBOUNCE_S,
   SESSION_BUDGET_S,
+  SILENCE_STAGES,
+  SILENCE_STATUS_PREFIX,
+  STALL_BLIP_MAX_S,
   TIME_STATUS_PREFIX,
   dueTimeStatus,
   formatTimer,
   greetingTriggerEvent,
   indicatorForEvent,
   isHardCut,
+  nextSilenceState,
+  responseTriggerEvent,
+  silenceStatusEvent,
+  speechStateForEvent,
   timeStatusCheckpoints,
   timeStatusEvent,
+  type SilenceClockState,
+  type SilenceTick,
 } from "./session-room";
 
 describe("formatTimer", () => {
@@ -139,5 +150,129 @@ describe("timeStatusEvent", () => {
       type: "input_text",
       text: "[time status] test",
     });
+  });
+});
+
+const QUIET: SilenceTick = {
+  dtS: 0.25,
+  candidateAudible: false,
+  interviewerAudible: false,
+  commitArrived: false,
+};
+
+function runTicks(state: SilenceClockState, ticks: SilenceTick[]) {
+  const stages: string[] = [];
+  let triggers = 0;
+  for (const tick of ticks) {
+    const r = nextSilenceState(state, tick);
+    state = r.state;
+    if (r.effects.stage) stages.push(r.effects.stage.text);
+    if (r.effects.triggerResponse) triggers += 1;
+  }
+  return { state, stages, triggers };
+}
+
+const quietFor = (s: number) => Array(Math.round(s / 0.25)).fill(QUIET);
+const candidateFor = (s: number) =>
+  Array(Math.round(s / 0.25)).fill({ ...QUIET, candidateAudible: true });
+const interviewerFor = (s: number) =>
+  Array(Math.round(s / 0.25)).fill({ ...QUIET, interviewerAudible: true });
+
+describe("silence clock", () => {
+  it("fires stage 1 once at 8s of quiet", () => {
+    const { stages } = runTicks(INITIAL_SILENCE_STATE, quietFor(10));
+    expect(stages).toEqual([SILENCE_STAGES[0].text]);
+    expect(stages[0].startsWith(SILENCE_STATUS_PREFIX)).toBe(true);
+  });
+
+  it("escalates through stages 2 and 3, then stops", () => {
+    const { stages } = runTicks(INITIAL_SILENCE_STATE, quietFor(45));
+    expect(stages).toEqual(SILENCE_STAGES.map((s) => s.text));
+  });
+
+  it("resets on candidate speech of 2s or more", () => {
+    const mid = runTicks(INITIAL_SILENCE_STATE, [
+      ...quietFor(6),
+      ...candidateFor(STALL_BLIP_MAX_S + 0.5),
+    ]);
+    expect(mid.state.quietS).toBe(0);
+    const after = runTicks(mid.state, quietFor(7.5));
+    expect(after.stages).toEqual([]);
+  });
+
+  it("stall blips pause but do not reset accumulation", () => {
+    const { stages } = runTicks(INITIAL_SILENCE_STATE, [
+      ...quietFor(6),
+      ...candidateFor(1),
+      ...quietFor(2.5),
+    ]);
+    expect(stages).toEqual([SILENCE_STAGES[0].text]);
+  });
+
+  it("interviewer audio pauses but never resets", () => {
+    const { stages } = runTicks(INITIAL_SILENCE_STATE, [
+      ...quietFor(5),
+      ...interviewerFor(3),
+      ...quietFor(3.5),
+    ]);
+    expect(stages).toEqual([SILENCE_STAGES[0].text]);
+  });
+
+  it("a commit arms a debounced response trigger", () => {
+    const { triggers } = runTicks(INITIAL_SILENCE_STATE, [
+      { ...QUIET, commitArrived: true },
+      ...quietFor(RESPONSE_DEBOUNCE_S + 0.5),
+    ]);
+    expect(triggers).toBe(1);
+  });
+
+  it("candidate sound cancels a pending response", () => {
+    const { triggers } = runTicks(INITIAL_SILENCE_STATE, [
+      { ...QUIET, commitArrived: true },
+      ...quietFor(0.5),
+      ...candidateFor(0.5),
+      ...quietFor(3),
+    ]);
+    expect(triggers).toBe(0);
+  });
+
+  it("a firing stage supersedes a pending response", () => {
+    const { stages, triggers } = runTicks(INITIAL_SILENCE_STATE, [
+      ...quietFor(7.5),
+      { ...QUIET, commitArrived: true },
+      ...quietFor(3),
+    ]);
+    expect(stages).toEqual([SILENCE_STAGES[0].text]);
+    expect(triggers).toBe(0);
+  });
+});
+
+describe("silence events and wire helpers", () => {
+  it("silenceStatusEvent shapes a system note", () => {
+    const parsed = JSON.parse(silenceStatusEvent(SILENCE_STAGES[0].text));
+    expect(parsed.type).toBe("conversation.item.create");
+    expect(parsed.item.role).toBe("system");
+    expect(parsed.item.content[0].text).toBe(SILENCE_STAGES[0].text);
+  });
+
+  it("responseTriggerEvent is a bare response.create", () => {
+    expect(JSON.parse(responseTriggerEvent())).toEqual({
+      type: "response.create",
+    });
+  });
+
+  it("speechStateForEvent maps the three input events and ignores junk", () => {
+    const mk = (type: string) => JSON.stringify({ type });
+    expect(speechStateForEvent(mk("input_audio_buffer.speech_started"))).toBe(
+      "started",
+    );
+    expect(speechStateForEvent(mk("input_audio_buffer.speech_stopped"))).toBe(
+      "stopped",
+    );
+    expect(speechStateForEvent(mk("input_audio_buffer.committed"))).toBe(
+      "committed",
+    );
+    expect(speechStateForEvent(mk("response.done"))).toBeNull();
+    expect(speechStateForEvent("not json")).toBeNull();
   });
 });

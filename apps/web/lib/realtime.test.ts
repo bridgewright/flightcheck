@@ -22,6 +22,7 @@ describe("clientSecretRequestBody", () => {
               type: "server_vad",
               silence_duration_ms: 900,
               prefix_padding_ms: 300,
+              create_response: false,
             },
           },
           output: { voice: "marin" },

@@ -109,3 +109,159 @@ export function timeStatusEvent(text: string): string {
     },
   });
 }
+
+/** Contract marker for injected silence notes — must match the planner's
+ * PAUSES AND SILENCE rule. */
+export const SILENCE_STATUS_PREFIX = "[silence status]";
+
+/** A candidate sound episode shorter than this is a stall blip (filler,
+ * cough): it pauses the silence clock instead of resetting it. */
+export const STALL_BLIP_MAX_S = 2.0;
+
+/** Quiet seconds between a committed turn and the client-armed
+ * response.create — the room to resume that server VAD (900 ms) doesn't give. */
+export const RESPONSE_DEBOUNCE_S = 1.2;
+
+export interface SilenceStage {
+  /** Fires once accumulated quiet reaches this many seconds. */
+  at: number;
+  text: string;
+}
+
+/** Staged scaffolds (spec D3): light reassurance, directional hint, offer to
+ * move on. Each fires at most once per quiet stretch. */
+export const SILENCE_STAGES: SilenceStage[] = [
+  {
+    at: 8,
+    text:
+      `${SILENCE_STATUS_PREFIX} The candidate has been quiet for about ` +
+      'eight seconds. Say only a short, warm "Take your time." — nothing else.',
+  },
+  {
+    at: 15,
+    text:
+      `${SILENCE_STATUS_PREFIX} The candidate has been quiet for about ` +
+      "fifteen seconds. Offer one directional hint toward where they were " +
+      "heading — never the answer itself.",
+  },
+  {
+    at: 30,
+    text:
+      `${SILENCE_STATUS_PREFIX} The candidate has been quiet for about ` +
+      'thirty seconds. Gently offer to set this question aside — in the ' +
+      'spirit of "We can come back to this one — want to try the next one ' +
+      'instead?" — and let them choose.',
+  },
+];
+
+export interface SilenceClockState {
+  /** Accumulated room-quiet seconds (survives stall blips). */
+  quietS: number;
+  /** Length of the candidate's current sound episode, 0 while quiet. */
+  episodeS: number;
+  /** Stages already fired in this quiet stretch. */
+  stagesSent: number;
+  /** Seconds until a client-armed response.create, null when none pending. */
+  responseDueInS: number | null;
+}
+
+export const INITIAL_SILENCE_STATE: SilenceClockState = {
+  quietS: 0,
+  episodeS: 0,
+  stagesSent: 0,
+  responseDueInS: null,
+};
+
+export interface SilenceTick {
+  dtS: number;
+  candidateAudible: boolean;
+  interviewerAudible: boolean;
+  /** True when an input_audio_buffer.committed arrived since the last tick. */
+  commitArrived: boolean;
+}
+
+export interface SilenceEffects {
+  /** Send silenceStatusEvent(stage.text) + responseTriggerEvent(). */
+  stage: SilenceStage | null;
+  /** Send responseTriggerEvent() — the debounced answer to a committed turn. */
+  triggerResponse: boolean;
+}
+
+/**
+ * One tick of the client-owned silence clock (spec sections 1 + 6a).
+ * Pure: drives every response.create and every [silence status] note.
+ * - Every commit arms a debounced response; any candidate sound cancels it
+ *   (they were not done — Morgan judges completeness when he does speak).
+ * - Candidate speech ≥ STALL_BLIP_MAX_S resets the quiet stretch; shorter
+ *   episodes (fillers) and interviewer audio only pause it.
+ */
+export function nextSilenceState(
+  state: SilenceClockState,
+  tick: SilenceTick,
+): { state: SilenceClockState; effects: SilenceEffects } {
+  let { quietS, episodeS, stagesSent, responseDueInS } = state;
+  const effects: SilenceEffects = { stage: null, triggerResponse: false };
+
+  if (tick.commitArrived) {
+    responseDueInS = RESPONSE_DEBOUNCE_S;
+  }
+  if (tick.candidateAudible) {
+    responseDueInS = null;
+    episodeS += tick.dtS;
+    if (episodeS >= STALL_BLIP_MAX_S) {
+      quietS = 0;
+      stagesSent = 0;
+    }
+  } else if (tick.interviewerAudible) {
+    episodeS = 0;
+  } else {
+    episodeS = 0;
+    quietS += tick.dtS;
+    if (responseDueInS !== null) {
+      responseDueInS -= tick.dtS;
+      if (responseDueInS <= 0) {
+        responseDueInS = null;
+        effects.triggerResponse = true;
+      }
+    }
+    const next = SILENCE_STAGES[stagesSent];
+    if (next !== undefined && quietS >= next.at) {
+      effects.stage = next;
+      stagesSent += 1;
+      responseDueInS = null;
+    }
+  }
+  return { state: { quietS, episodeS, stagesSent, responseDueInS }, effects };
+}
+
+/** Same payload as timeStatusEvent — a system note that shapes the next turn. */
+export function silenceStatusEvent(text: string): string {
+  return timeStatusEvent(text);
+}
+
+/** response.create — the only way Morgan ever speaks (create_response is
+ * false). Also used for the opening greeting. */
+export function responseTriggerEvent(): string {
+  return greetingTriggerEvent();
+}
+
+/** Map a raw data-channel payload to the silence clock's input events. */
+export function speechStateForEvent(
+  raw: string,
+): "started" | "stopped" | "committed" | null {
+  try {
+    const event = JSON.parse(raw) as { type?: unknown };
+    switch (event.type) {
+      case "input_audio_buffer.speech_started":
+        return "started";
+      case "input_audio_buffer.speech_stopped":
+        return "stopped";
+      case "input_audio_buffer.committed":
+        return "committed";
+      default:
+        return null;
+    }
+  } catch {
+    return null;
+  }
+}

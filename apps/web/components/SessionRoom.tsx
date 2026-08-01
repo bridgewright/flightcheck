@@ -6,12 +6,17 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { MAX_RECORDING_BYTES } from "../lib/realtime";
 import {
   HARD_CUT_S,
+  INITIAL_SILENCE_STATE,
   SESSION_BUDGET_S,
   dueTimeStatus,
   formatTimer,
   greetingTriggerEvent,
   indicatorForEvent,
   isHardCut,
+  nextSilenceState,
+  responseTriggerEvent,
+  silenceStatusEvent,
+  speechStateForEvent,
   timeStatusEvent,
 } from "../lib/session-room";
 
@@ -64,6 +69,12 @@ export default function SessionRoom({
   const connectingRef = useRef(false); // re-entry guard for start()
   const dcRef = useRef<RTCDataChannel | null>(null);
   const timeStatusSentRef = useRef(0);
+  const candidateAudibleRef = useRef(false);
+  const commitArrivedRef = useRef(false);
+  const silenceStateRef = useRef(INITIAL_SILENCE_STATE);
+  const remoteAnalyserRef = useRef<AnalyserNode | null>(null);
+  const remoteLevelDataRef = useRef<Uint8Array<ArrayBuffer> | null>(null);
+  const heardMorganRef = useRef(false);
 
   // --- Ready screen: mic check ------------------------------------------
   const enableMic = useCallback(async () => {
@@ -259,6 +270,15 @@ export default function SessionRoom({
         audioCtx
           .createMediaStreamSource(new MediaStream([e.track]))
           .connect(dest);
+        const analyser = audioCtx.createAnalyser();
+        analyser.fftSize = 512;
+        audioCtx
+          .createMediaStreamSource(new MediaStream([e.track]))
+          .connect(analyser);
+        remoteAnalyserRef.current = analyser;
+        remoteLevelDataRef.current = new Uint8Array(
+          analyser.frequencyBinCount,
+        );
       };
       for (const track of micStream.getAudioTracks()) {
         pc.addTrack(track, micStream);
@@ -294,6 +314,10 @@ export default function SessionRoom({
         dc.send(greetingTriggerEvent());
       });
       dc.addEventListener("message", (ev) => {
+        const speech = speechStateForEvent(String(ev.data));
+        if (speech === "started") candidateAudibleRef.current = true;
+        if (speech === "stopped") candidateAudibleRef.current = false;
+        if (speech === "committed") commitArrivedRef.current = true;
         if (indicatorForEvent(String(ev.data)) === "listening") {
           setHearing(true);
           if (hearingTimeoutRef.current) {
@@ -349,6 +373,35 @@ export default function SessionRoom({
       if (due && dcRef.current?.readyState === "open") {
         dcRef.current.send(timeStatusEvent(due.text));
         timeStatusSentRef.current += 1;
+      }
+      let interviewerAudible = false;
+      const analyser = remoteAnalyserRef.current;
+      const data = remoteLevelDataRef.current;
+      if (analyser && data) {
+        analyser.getByteTimeDomainData(data);
+        let peak = 0;
+        for (const v of data) peak = Math.max(peak, Math.abs(v - 128) / 128);
+        interviewerAudible = peak > 0.02;
+        if (interviewerAudible) heardMorganRef.current = true;
+      }
+      if (heardMorganRef.current && dcRef.current?.readyState === "open") {
+        const commitArrived = commitArrivedRef.current;
+        commitArrivedRef.current = false;
+        const { state, effects } = nextSilenceState(silenceStateRef.current, {
+          dtS: 0.25,
+          candidateAudible: candidateAudibleRef.current,
+          interviewerAudible,
+          commitArrived,
+        });
+        silenceStateRef.current = state;
+        if (!due) {
+          if (effects.stage) {
+            dcRef.current.send(silenceStatusEvent(effects.stage.text));
+            dcRef.current.send(responseTriggerEvent());
+          } else if (effects.triggerResponse) {
+            dcRef.current.send(responseTriggerEvent());
+          }
+        }
       }
       if (isHardCut(elapsed)) {
         void endSession(); // auto End; endSession guards re-entry
