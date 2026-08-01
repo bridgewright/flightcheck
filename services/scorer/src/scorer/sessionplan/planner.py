@@ -11,6 +11,9 @@ rules learned in the W1 bake-off (one question at a time, never answer for
 the candidate, probe until specifics, hold on vague answers).
 v0.2 adds the interviewer-UX sections from the first real user session:
 opening frame, active listening, pause tolerance, time-status contract.
+v0.3 adds script-derived contracts: audio-check opening, backchannels,
+overlap yield, 8s/15s silence policy, softened pressure + release,
+good-luck closing.
 
 Both functions are pure: same input, same output. No model call, no
 randomness, no clock.
@@ -29,11 +32,14 @@ _TIME_BUDGET_MINUTES = 20
 _WRAP_UP_MARGIN_MINUTES = 2
 
 _PRESSURE_PROBE_TEXT = (
-    "I'm not convinced that would work in practice — walk me through why "
-    "you're confident, with specifics."
+    "Hm — I'm not sure that would hold up in practice. Help me see why "
+    "you're confident: what makes you sure, specifically?"
 )
 
-_CLOSING_LINE = "Thanks for taking the time today. That's everything from my side."
+_CLOSING_LINE = (
+    "Thanks for taking the time today. That's everything from my side. "
+    "Good luck out there."
+)
 
 
 def _generated_question(dimension: RubricDimension) -> QuestionSpec:
@@ -134,7 +140,9 @@ def build_interviewer_instructions(plan: SessionPlan, rubric: Rubric,
         "it conversationally — never recite the job description and never "
         "list every topic you plan to cover.\n"
         "3. Put the candidate at ease: they can pause to think whenever "
-        "they need, and there is no rush.\n"
+        "they need, and there is no rush. End the framing with a quick "
+        "check — \"Sound good?\" — and wait for their reply before your "
+        "first question.\n"
         "Keep your opening under thirty seconds of speaking, then move "
         "into your first question naturally.\n"
         "\n"
@@ -145,6 +153,9 @@ def build_interviewer_instructions(plan: SessionPlan, rubric: Rubric,
         "- After each answer, probe for specifics until the candidate gives a concrete "
         "example or a direct quote-worthy statement.\n"
         "- Do not move on after a vague answer; ask one of the probes instead.\n"
+        "- If the candidate starts speaking while you are talking, stop "
+        "immediately, say \"Sorry — go ahead\", and follow their thread — "
+        "never force a return to your interrupted sentence.\n"
         "\n"
         "# ACTIVE LISTENING\n"
         "- Before each follow-up question, restate the candidate's key claim "
@@ -154,16 +165,22 @@ def build_interviewer_instructions(plan: SessionPlan, rubric: Rubric,
         "then ask, in the spirit of: \"That part was strong — I'm curious "
         "about the impact: roughly what percent change did you see?\" Never "
         "fire a bare \"what was the number?\".\n"
+        "- Open restatement turns with a one-word acknowledgment — "
+        "\"Mm-hm.\", \"Right.\", \"Okay.\" — then restate. Only on "
+        "restatement turns; acknowledging every turn sounds mechanical.\n"
         "\n"
         "# PAUSES AND SILENCE\n"
         "Many candidates are non-native English speakers: a mid-answer pause "
         "almost always means they are still thinking, not that they are "
         "done.\n"
-        "- When the candidate pauses mid-answer, wait for them to continue. "
-        "Waiting in silence is fine.\n"
-        "- If a pause runs long and you must speak, offer a short supportive "
-        "scaffold — say \"take your time\", or ask one gentle sub-question "
-        "that points at where they were heading. Then wait again.\n"
+        "- When an answer is clearly complete, respond promptly — no "
+        "artificial waiting.\n"
+        "- When the candidate pauses mid-answer, hold the silence — up to "
+        "about eight seconds — before you say anything at all.\n"
+        "- If the pause stretches past that, say only \"Take your time.\" "
+        "and keep waiting.\n"
+        "- Around fifteen seconds, offer one directional hint that points "
+        "at where they were heading — never the answer itself.\n"
         "- Never re-ask the question you just asked in the same words.\n"
         "- Never move on to a new question while the current answer is "
         "unfinished.\n"
@@ -174,12 +191,17 @@ def build_interviewer_instructions(plan: SessionPlan, rubric: Rubric,
         "The numbering is for you alone — never say \"question one\" or "
         "announce that you are moving to the next question. Transition the "
         "way a human interviewer does: react to what was said, then ask.\n"
+        "Never recite the job description's wording or string its phrases "
+        "together — ask in your own conversational words.\n"
         "\n"
         "# PRESSURE MOMENT\n"
         f"Exactly once, mid-session (around question {midpoint}), challenge the "
         "candidate's answer by saying, verbatim:\n"
         f"{plan.pressure_probe.question}\n"
         "Deliver it calmly, do not soften it, and let the candidate respond in full.\n"
+        "When they finish, release the tension with one short "
+        "acknowledgment of what landed — in the spirit of \"Okay — that's "
+        "fair.\" — before moving on.\n"
         "\n"
         "# PACING\n"
         f"- The session budget is {plan.time_budget_minutes} minutes.\n"

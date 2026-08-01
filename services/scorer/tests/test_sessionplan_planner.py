@@ -10,8 +10,8 @@ from scorer.schemas import (
 from scorer.sessionplan.planner import build_interviewer_instructions, plan_baseline_session
 
 PRESSURE_PROBE_TEXT = (
-    "I'm not convinced that would work in practice — walk me through why "
-    "you're confident, with specifics."
+    "Hm — I'm not sure that would hold up in practice. Help me see why "
+    "you're confident: what makes you sure, specifically?"
 )
 
 
@@ -241,7 +241,7 @@ def test_instructions_forbid_reading_question_numbers_aloud():
 def test_instructions_embed_silence_tolerance_rules():
     text = _instructions()
     assert "# PAUSES AND SILENCE" in text
-    assert "wait for them to continue" in text
+    assert "hold the silence" in text
     assert "Never re-ask the question you just asked in the same words." in text
     assert ("Never move on to a new question while the current answer is "
             "unfinished.") in text
@@ -267,3 +267,48 @@ def test_confidentiality_allows_coarse_area_framing_only():
             "instructions") in text
     assert ("never the weights, the scoring anchors, or the exact question "
             "list") in text
+
+
+def test_opening_ends_with_a_sound_good_check():
+    text = _instructions()
+    assert '"Sound good?"' in text
+    assert "wait for their reply before your first question" in text
+
+
+def test_rules_include_overlap_yield():
+    text = _instructions()
+    assert '"Sorry — go ahead"' in text
+    assert "follow their thread" in text
+
+
+def test_active_listening_opens_with_backchannel():
+    text = _instructions()
+    assert "one-word acknowledgment" in text
+    assert '"Mm-hm."' in text
+    assert "Only on restatement turns" in text
+
+
+def test_pauses_hold_eight_seconds_then_scaffold():
+    text = _instructions()
+    assert "clearly complete, respond promptly" in text
+    assert "eight seconds" in text
+    assert '"Take your time."' in text
+    assert "fifteen seconds" in text
+    assert "never the answer itself" in text
+
+
+def test_questions_never_recite_jd_wording():
+    text = _instructions()
+    assert "Never recite the job description's wording" in text
+
+
+def test_pressure_probe_gets_a_tension_release():
+    text = _instructions()
+    assert text.count(PRESSURE_PROBE_TEXT) == 1
+    assert "release the tension" in text
+    assert "Okay — that's fair." in text
+
+
+def test_closing_wishes_good_luck():
+    text = _instructions()
+    assert "Good luck out there." in text
