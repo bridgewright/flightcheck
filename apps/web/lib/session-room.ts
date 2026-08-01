@@ -372,3 +372,112 @@ export function committedItemId(raw: string): string | null {
 export function itemDeleteEvent(itemId: string): string {
   return JSON.stringify({ type: "conversation.item.delete", item_id: itemId });
 }
+
+// --- F-17: connection guard ----------------------------------------------
+
+/** ICE "disconnected" sustained past this is a dead call, not a blip. */
+export const DISCONNECTED_GRACE_S = 8;
+
+/** Expected-traffic seconds with zero data-channel messages before the
+ * session is declared starved. Tighter than a blanket no-events timeout on
+ * purpose: a healthy silent room accumulates nothing (see the guard
+ * reducer), so this only measures genuinely missing traffic. */
+export const STARVATION_TRIP_S = 20;
+
+export type GuardEndReason =
+  | "ice-failed"
+  | "ice-disconnected"
+  | "channel-closed"
+  | "starvation";
+
+/** Honest copy for the connection-lost screen. The slot promise is real:
+ * the client never calls complete on a guarded ending, the session row
+ * stays "planned", and create_session is idempotent — the same link serves
+ * a fresh attempt. */
+export const CONNECTION_LOST_MESSAGE =
+  "We hit a connection problem, so this session has to end here. " +
+  "It won't count against your package — please try again in a few minutes.";
+
+export interface ConnectionGuardState {
+  /** Seconds spent continuously in ICE "disconnected". */
+  disconnectedForS: number;
+  /** Expected-traffic seconds with no data-channel message. */
+  starvedS: number;
+  /** A response.create left the client with no response.done back yet. */
+  responsePending: boolean;
+}
+
+export const INITIAL_GUARD_STATE: ConnectionGuardState = {
+  disconnectedForS: 0,
+  starvedS: 0,
+  responsePending: false,
+};
+
+export interface GuardTick {
+  dtS: number;
+  /** RTCPeerConnection.connectionState at tick time. */
+  connectionState: string;
+  /** Data channel readyState === "open" at tick time. */
+  dcOpen: boolean;
+  /** Any data-channel message arrived since the last tick. */
+  messageArrived: boolean;
+  /** A response.create was sent since the last tick (greeting, scaffold,
+   * debounced trigger). */
+  responseRequested: boolean;
+  /** A response.done arrived since the last tick. */
+  responseDone: boolean;
+  candidateAudible: boolean;
+  interviewerAudible: boolean;
+}
+
+/**
+ * One tick of the connection guard (spec: F-17). Pure, same contract as
+ * nextSilenceState. Detection is honest by construction: starvation only
+ * accumulates while traffic is EXPECTED — candidate audible (speech must
+ * produce VAD events), interviewer audible (audio must produce lifecycle
+ * events), or a response in flight — so an AFK-silent candidate on a
+ * healthy connection can idle forever without being lied to about a
+ * "connection problem".
+ */
+export function nextGuardState(
+  state: ConnectionGuardState,
+  tick: GuardTick,
+): { state: ConnectionGuardState; endReason: GuardEndReason | null } {
+  if (tick.dtS >= SUSPEND_GAP_S) {
+    // Suspension amnesty (DECISIONS 011): parked time is absence, not
+    // evidence. The silence clock drops its pending response across a gap,
+    // so the guard drops its expectation of an answer to it too.
+    return { state: { ...INITIAL_GUARD_STATE }, endReason: null };
+  }
+  let { disconnectedForS, starvedS, responsePending } = state;
+  // done before requested: a same-tick completion + new request stays pending.
+  if (tick.responseDone) responsePending = false;
+  if (tick.responseRequested) responsePending = true;
+  disconnectedForS =
+    tick.connectionState === "disconnected"
+      ? disconnectedForS + tick.dtS
+      : 0;
+  if (tick.messageArrived) {
+    starvedS = 0;
+  } else if (
+    tick.candidateAudible ||
+    tick.interviewerAudible ||
+    responsePending
+  ) {
+    starvedS += tick.dtS;
+  }
+  const next = { disconnectedForS, starvedS, responsePending };
+  if (tick.connectionState === "failed") {
+    return { state: next, endReason: "ice-failed" };
+  }
+  if (!tick.dcOpen) {
+    return { state: next, endReason: "channel-closed" };
+  }
+  if (disconnectedForS >= DISCONNECTED_GRACE_S) {
+    return { state: next, endReason: "ice-disconnected" };
+  }
+  if (starvedS >= STARVATION_TRIP_S) {
+    return { state: next, endReason: "starvation" };
+  }
+  return { state: next, endReason: null };
+}
