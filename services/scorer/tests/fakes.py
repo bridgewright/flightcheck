@@ -208,6 +208,13 @@ class FakeDatabase:
             update["rubric"] = rubric
         self.packages[package_id] = row.model_copy(update=update)
 
+    def find_ready_rubric_by_jd(self, jd_text):
+        for row in reversed(list(self.packages.values())):
+            if (row.jd_text == jd_text and row.status == "ready"
+                    and row.rubric is not None):
+                return (row.candidate_profile, row.rubric)
+        return None
+
     def create_session(self, package_id: str, index: int,
                        plan: SessionPlan) -> SessionRow:
         if package_id not in self.packages:

@@ -177,15 +177,29 @@ def create_app(db: Database, storage: Storage, client: GenAIClientLike) -> FastA
         if linkedin_text is None and body.linkedin_pdf_b64 is not None:
             linkedin_text = extract_pdf_text(base64.b64decode(body.linkedin_pdf_b64))
         row = db.create_package(jd_text, body.jd_url)
-        background_tasks.add_task(
-            _compile_package_job,
-            row.id,
-            db,
-            storage,
-            client,
-            resume_text=resume_text,
-            linkedin_text=linkedin_text,
+        cached = (
+            db.find_ready_rubric_by_jd(jd_text)
+            if resume_text is None and linkedin_text is None
+            else None
         )
+        if cached is not None:
+            # Same JD, no personalization inputs: the compile output is
+            # reusable -- copy it instead of paying for and waiting on
+            # another Gemini run (~100-200 s measured).
+            profile, rubric = cached
+            if profile is not None:
+                db.set_package_profile(row.id, profile)
+            db.set_package_rubric(row.id, rubric, "ready")
+        else:
+            background_tasks.add_task(
+                _compile_package_job,
+                row.id,
+                db,
+                storage,
+                client,
+                resume_text=resume_text,
+                linkedin_text=linkedin_text,
+            )
         return {"package_id": row.id, "access_token": row.access_token}
 
     @api.get("/packages/by-token/{access_token}")

@@ -64,6 +64,15 @@ class Database(Protocol):
         """rubric=None marks a failed compile: status update only, no rubric write."""
         ...
 
+    def find_ready_rubric_by_jd(
+        self, jd_text: str
+    ) -> tuple[CandidateProfile | None, Rubric] | None:
+        """Newest "ready" package with EXACTLY this jd_text, as
+        (candidate_profile, rubric); None when no such package exists.
+        Rubric reuse: identical intake inputs compile to an equivalent
+        rubric, so a recompile is pure spend."""
+        ...
+
     def create_session(self, package_id: str, index: int,
                        plan: SessionPlan) -> SessionRow:
         ...
@@ -195,6 +204,19 @@ class SupabaseDatabase:
                 .eq("id", package_id).execute().data)
         if not data:
             raise KeyError(package_id)
+
+    def find_ready_rubric_by_jd(
+        self, jd_text: str
+    ) -> tuple[CandidateProfile | None, Rubric] | None:
+        data = (self._client.table("packages").select("*")
+                .eq("jd_text", jd_text).eq("status", "ready")
+                .order("created_at", desc=True).limit(1).execute().data)
+        if not data:
+            return None
+        row = _to_package_row(data[0])
+        if row.rubric is None:
+            return None
+        return (row.candidate_profile, row.rubric)
 
     def create_session(self, package_id: str, index: int,
                        plan: SessionPlan) -> SessionRow:

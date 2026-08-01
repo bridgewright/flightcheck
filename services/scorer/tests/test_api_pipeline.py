@@ -5,8 +5,10 @@ import json
 import numpy as np
 import pytest
 import soundfile as sf
+from fastapi.testclient import TestClient
 
 from fakes import FakeDatabase, FakeGenAI, FakeStorage
+from scorer.api.app import create_app
 from scorer.api.pipeline import compile_package, score_session
 from scorer.schemas import (
     BarsAnchor,
@@ -275,3 +277,80 @@ def test_score_session_records_failure_and_reraises():
     assert stored.status == "failed"
     assert stored.report is None
     assert stored.scoring_stage is None   # terminal "failed" clears the stage
+
+
+def _package_client(fake: FakeGenAI, db: FakeDatabase) -> TestClient:
+    return TestClient(create_app(db, FakeStorage(corpus=CORPUS), fake))
+
+
+def _post_package(client: TestClient, body: dict[str, str]):
+    return client.post(
+        "/api/packages",
+        json=body,
+        headers={"Authorization": "Bearer test-worker-token"},
+    )
+
+
+def test_same_jd_reuses_rubric_without_recompile(monkeypatch):
+    monkeypatch.setenv("WORKER_API_TOKEN", "test-worker-token")
+    db = FakeDatabase()
+    fake = FakeGenAI(_package_responses()[1:])
+    client = _package_client(fake, db)
+
+    first = _post_package(client, {"jd_text": JD_TEXT})
+    first_row = db.get_package(first.json()["package_id"])
+    call_count = len(fake.calls)
+
+    second = _post_package(client, {"jd_text": JD_TEXT})
+    second_row = db.get_package(second.json()["package_id"])
+
+    assert second_row.status == "ready"
+    assert second_row.rubric == first_row.rubric
+    assert len(fake.calls) == call_count
+
+
+def test_different_jd_still_compiles(monkeypatch):
+    monkeypatch.setenv("WORKER_API_TOKEN", "test-worker-token")
+    db = FakeDatabase()
+    fake = FakeGenAI([*_package_responses()[1:], *_package_responses()[1:]])
+    client = _package_client(fake, db)
+
+    _post_package(client, {"jd_text": JD_TEXT})
+    call_count = len(fake.calls)
+    second = _post_package(client, {"jd_text": f"{JD_TEXT} Different role."})
+
+    assert db.get_package(second.json()["package_id"]).status == "ready"
+    assert len(fake.calls) > call_count
+
+
+def test_personalized_package_skips_cache(monkeypatch):
+    monkeypatch.setenv("WORKER_API_TOKEN", "test-worker-token")
+    db = FakeDatabase()
+    fake = FakeGenAI([*_package_responses()[1:], *_package_responses()])
+    client = _package_client(fake, db)
+
+    _post_package(client, {"jd_text": JD_TEXT})
+    call_count = len(fake.calls)
+    second = _post_package(
+        client,
+        {"jd_text": JD_TEXT, "resume_text": "Alex Example. Senior Product Analyst."},
+    )
+
+    assert db.get_package(second.json()["package_id"]).status == "ready"
+    assert len(fake.calls) > call_count
+
+
+def test_failed_compile_is_not_a_cache_source(monkeypatch):
+    monkeypatch.setenv("WORKER_API_TOKEN", "test-worker-token")
+    db = FakeDatabase()
+    fake = FakeGenAI([RuntimeError("scripted compile failure"), *_package_responses()[1:]])
+    client = _package_client(fake, db)
+
+    first = _post_package(client, {"jd_text": JD_TEXT})
+    assert db.get_package(first.json()["package_id"]).status == "failed"
+    call_count = len(fake.calls)
+
+    second = _post_package(client, {"jd_text": JD_TEXT})
+
+    assert db.get_package(second.json()["package_id"]).status == "ready"
+    assert len(fake.calls) > call_count
