@@ -98,3 +98,26 @@ Format per entry: Context · Options · Choice · Why · Rejected because · Rev
   tasks measured execution discipline, not design judgment — the dimension
   where the implementers might actually differ), or the Codex tooling
   removes the sandbox and worktree friction.
+
+## 008 — v0.2 ships product depth before payments (2026-08-01)
+
+- **Decision:** the first paid transaction moves out of the near-term
+  window; the merchant-of-record integration (DECISIONS 004) starts no
+  earlier than v0.3. Each version ships one feature bundle: v0.2
+  interviewer UX, v0.3 report quality, v0.4 session history, v0.5
+  curriculum-lite, then payments. The PRD's original success metrics stay
+  as written — this entry is the honest change log for the timeline shift.
+- **Why:** the first real 20-minute user session (2026-07-29) surfaced
+  interviewer-UX defects that define the product for its target audience of
+  non-native English speakers: thinking pauses treated as end-of-answer,
+  no active listening, no session-arc management. Charging for sessions in
+  that state would burn the first paying cohort on exactly the behaviors
+  they came for. Quality is the constraint; the schedule moves, not the bar.
+- **Rejected — payments alongside the UX fixes in v0.2:** splitting one
+  version across a payment integration and the audience-defining session
+  fixes risks shipping both half-done.
+- **Rejected — free early access as a bridge:** free usage does not
+  validate willingness to pay and anchors the perceived price at zero.
+- **Revisit when:** real-usage metrics show sessions completing cleanly
+  through the new arc (v0.2) and report quality lands (v0.3) — payments
+  then leads the following version.
