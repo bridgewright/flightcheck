@@ -26,6 +26,31 @@
   newest ready rubric instead of recompiling — repeat links are instant and
   cost zero judge-model calls (DECISIONS 010).
 
+### Added — adversarial stability harness
+- A seeded adversarial suite now attacks the conversation clock on every
+  test run: five generators (VAD flapping, commit storms, dropped/duplicated
+  commit flags, echo/barge-in overlap patterns, tick-length spikes) plus a
+  5,000-tick mixed soup, all checked against six spec-level invariants by a
+  shadow model written independently of the reducer. Every scenario is a
+  pure function of its seed, so any failure replays exactly. The five
+  2026-08-01 live faults are pinned as named regression scenarios, and the
+  wire-event parsers are fuzzed with hostile payloads (malformed frames,
+  prototype-pollution shapes, 50 KB strings) and must never throw.
+- The generated rounds found two real clock faults before any user did:
+  the tick that carried a commit was also credited toward the response
+  debounce (shrinking the candidate's room to resume — to zero on a jittery
+  tick), and a scaffold and a debounced response could fire on the same
+  tick (previously masked by a silent ordering detail in the component).
+  Both are fixed in the reducer with named repro tests.
+
+### Fixed — background-tab resume
+- A candidate whose tab was backgrounded (or whose machine slept) no longer
+  gets the queued silence scaffolds machine-gunned into their ear on
+  refocus: the ticker now measures real elapsed time on a monotonic clock,
+  and any gap ≥ 2 s counts as absence rather than silence — the clock
+  resets and the interviewer resumes quietly, as a human would after
+  glancing up.
+
 ### Fixed — open-speakers hardening (five same-evening fixes, instrumented live sessions)
 - Silence clock inert and the interviewer mute after the greeting: the
   machinery depended on single transport signals; commit arming and
