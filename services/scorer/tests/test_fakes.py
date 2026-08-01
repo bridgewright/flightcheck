@@ -141,3 +141,13 @@ def test_files_upload_returns_non_str_handle_and_records():
 
 def test_fake_satisfies_genai_client_protocol():
     assert isinstance(FakeGenAI([]), GenAIClientLike)
+
+
+def test_scripted_exception_is_raised_and_recorded():
+    boom = RuntimeError("scripted failure")
+    fake = FakeGenAI(keyed_texts={"marker-a": [boom, "after"]})
+    with pytest.raises(RuntimeError, match="scripted failure"):
+        fake.models.generate_content(model="m", contents="marker-a prompt")
+    assert len(fake.calls) == 1  # the failed call is still recorded
+    ok = fake.models.generate_content(model="m", contents="marker-a prompt")
+    assert ok.text == "after"

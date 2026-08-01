@@ -72,13 +72,18 @@ class _FakeModels:
                 # Keyed replies never carry grounding metadata (no keyed
                 # consumer reads it); IndexError when the key's script is
                 # exhausted, mirroring the ordered queue's pinned behavior.
-                return _FakeResponse(keyed.pop(0))
+                reply = keyed.pop(0)
+                if isinstance(reply, Exception):
+                    raise reply
+                return _FakeResponse(reply)
             # IndexError when the canned script is exhausted -- pinned behavior
             # that downstream failure-path tests (Task 12) rely on.
-            text = owner.canned_texts.pop(0)
+            item = owner.canned_texts.pop(0)
+            if isinstance(item, Exception):
+                raise item
             raw = owner.canned_grounding.pop(0) if owner.canned_grounding else None
             metadata = _metadata_from(raw) if isinstance(raw, list) else raw
-            return _FakeResponse(text, metadata)
+            return _FakeResponse(item, metadata)
 
 
 class _FakeFiles:
@@ -109,6 +114,9 @@ class FakeGenAI:
       changing which reply each dimension receives. Keyed replies never
       carry grounding metadata.
 
+    Scripted entries may be Exception instances, which are raised after the
+    call is recorded instead of returned.
+
     canned_grounding is optional and parallel to canned_texts (keyed replies
     never consume it); each entry is None, a list of {url,title,snippet}
     dicts (converted to real types.GroundingMetadata), or a prebuilt
@@ -118,9 +126,9 @@ class FakeGenAI:
     file argument to .files.uploads and returns a non-str handle.
     """
 
-    def __init__(self, canned_texts: list[str] | None = None,
+    def __init__(self, canned_texts: list[str | Exception] | None = None,
                  canned_grounding: list[Any] | None = None,
-                 keyed_texts: dict[str, list[str]] | None = None):
+                 keyed_texts: dict[str, list[str | Exception]] | None = None):
         self.canned_texts = list(canned_texts or [])
         self.canned_grounding = list(canned_grounding) if canned_grounding else []
         self.keyed_texts = {key: list(texts) for key, texts in (keyed_texts or {}).items()}
@@ -129,7 +137,7 @@ class FakeGenAI:
         self.models = _FakeModels(self)
         self.files = _FakeFiles()
 
-    def keyed_queue_for(self, contents: Any) -> list[str] | None:
+    def keyed_queue_for(self, contents: Any) -> list[str | Exception] | None:
         """The keyed script matching the prompt's marker, or None for the ordered queue."""
         if not self.keyed_texts:
             return None
