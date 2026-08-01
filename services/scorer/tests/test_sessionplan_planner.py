@@ -221,11 +221,21 @@ def test_instructions_open_by_speaking_first_with_time_and_areas():
     text = _instructions()
     assert "# OPENING" in text
     assert "Speak first, the moment the call connects" in text
-    assert "Never open with silence." in text
-    assert "running about 20 minutes" in text
-    assert ("You will cover pacing control, quantified impact, and "
-            "structured answers, among other areas.") in text
+    assert "can you hear me okay?" in text
+    assert "Wait for their reply" in text
+    assert "about 20 minutes" in text
+    assert ("touching on things like pacing control and quantified "
+            "impact.") in text
+    assert "never recite the job description" in text
     assert "they can pause to think whenever they need" in text
+    assert "move into your first question naturally" in text
+
+
+def test_instructions_forbid_reading_question_numbers_aloud():
+    text = _instructions()
+    assert "The numbering is for you alone" in text
+    assert 'never say "question one"' in text
+    assert "react to what was said, then ask" in text
 
 
 def test_instructions_embed_silence_tolerance_rules():

@@ -79,18 +79,15 @@ def plan_baseline_session(rubric: Rubric) -> SessionPlan:
 
 
 def _area_list(plan: SessionPlan, rubric: Rubric) -> str:
-    """First three planned areas, lowercased, Oxford-joined — coarse names only."""
+    """Up to two planned areas, lowercased — casual framing, never the full list.
+
+    Two on purpose: the 2026-08-01 test session showed that offering more
+    invites the model to recite every JD topic, which reads as AI, not as
+    an interviewer.
+    """
     names = {dim.key: dim.name.lower() for dim in rubric.dimensions}
-    areas = [names[q.dimension_key] for q in plan.question_sequence[:3]]
-    if len(areas) == 1:
-        listed = areas[0]
-    elif len(areas) == 2:
-        listed = f"{areas[0]} and {areas[1]}"
-    else:
-        listed = f"{areas[0]}, {areas[1]}, and {areas[2]}"
-    if len(plan.question_sequence) > 3:
-        listed += ", among other areas"
-    return listed
+    areas = [names[q.dimension_key] for q in plan.question_sequence[:2]]
+    return " and ".join(areas)
 
 
 def _candidate_block(profile: CandidateProfile) -> str:
@@ -124,15 +121,22 @@ def build_interviewer_instructions(plan: SessionPlan, rubric: Rubric,
         f"{_candidate_block(profile)}\n"
         "\n"
         "# OPENING\n"
-        "Speak first, the moment the call connects — greet the candidate "
-        "warmly before they say anything. Never open with silence.\n"
-        "Then, before question 1, set the frame in your own words, briefly:\n"
-        f"- This is a mock interview for the {rubric.role_title} role, "
-        f"running about {plan.time_budget_minutes} minutes.\n"
-        f"- You will cover {_area_list(plan, rubric)}.\n"
-        "- Put the candidate at ease: they can pause to think whenever they "
-        "need, and there is no rush.\n"
-        "Keep the whole opening under thirty seconds, then ask question 1.\n"
+        "Speak first, the moment the call connects — never wait in silence "
+        "for the candidate.\n"
+        "Open like a human interviewer joining a video call, in three "
+        "quick beats:\n"
+        "1. A warm hello with an audio check — for example \"Hello, thanks "
+        "for joining — can you hear me okay?\" Wait for their reply before "
+        "moving on.\n"
+        f"2. One or two short sentences of framing: a mock interview for "
+        f"the {rubric.role_title} role, about {plan.time_budget_minutes} "
+        f"minutes, touching on things like {_area_list(plan, rubric)}. Say "
+        "it conversationally — never recite the job description and never "
+        "list every topic you plan to cover.\n"
+        "3. Put the candidate at ease: they can pause to think whenever "
+        "they need, and there is no rush.\n"
+        "Keep your opening under thirty seconds of speaking, then move "
+        "into your first question naturally.\n"
         "\n"
         "# RULES\n"
         "- Ask exactly one question at a time, then stop talking and listen.\n"
@@ -167,6 +171,9 @@ def build_interviewer_instructions(plan: SessionPlan, rubric: Rubric,
         "# QUESTION SEQUENCE\n"
         "Ask these questions in this order, using the probes when answers lack specifics:\n"
         f"{_question_block(plan)}\n"
+        "The numbering is for you alone — never say \"question one\" or "
+        "announce that you are moving to the next question. Transition the "
+        "way a human interviewer does: react to what was said, then ask.\n"
         "\n"
         "# PRESSURE MOMENT\n"
         f"Exactly once, mid-session (around question {midpoint}), challenge the "
