@@ -154,3 +154,50 @@ coverage — instructions written for the model's *planning* were performed as
 the model's eyes ("the numbering is for you alone") and what is meant to be
 said. AI-feel is mostly this: internal scaffolding escaping into the
 conversation.
+
+## 2026-08-01 — The silence clock's first night: five fixes and one physics rule
+
+The silence machinery merged green (three parallel tracks, 90+ unit tests, a
+measured VAD bake-off) and then needed **five fixes in one evening** of live
+sessions. Worth recording honestly, because each fix was exposed by the
+previous fix working:
+
+1. Dual-sourcing the transport signals revealed the echo chain (the
+   interviewer answering its own speaker-leaked audio, previously masked by
+   an inert clock). 2. The first echo guard (a duration heuristic) survived
+   earphone testing and failed on open speakers the same hour. 3. The
+   physics-based rule that replaced it exposed phantom commits from room
+   noise. 4. Raising the VAD threshold made sessions quiet enough to *hear*
+   the last bug: server-side interruption truncating the interviewer's first
+   words — tripped by the same echo.
+
+**Lesson 1 — distributed-timing bugs relocate; they don't disappear.** The
+conversation clock spans three deciders (server VAD, client reducer, model
+judgment) across two transports. What broke the blind fix-test cycle was
+instrumentation, not cleverness: a permanent structured diagnostic line and a
+**silent-room null test** — in a silent room the only legal output is the
+greeting plus the 8/15/30 s scaffolds, so any other event in the log is a
+bug, no ears required. Every one of the five fixes was diagnosed from logs
+before being believed.
+
+**Lesson 2 — both audio environments are first-class.** The echo chain
+shipped twice because verification happened wearing earphones. Customers run
+sessions on open laptop speakers; "wear headphones" is not a fix, it's the
+product failing its own bar. The durable engineering rule turned out to be
+physics, not tuning: **an echo dies with its source** — input that starts
+during interviewer audio must outlive that audio to count as speech. This is
+now a standing design constraint: every conversational-timing feature is
+designed and verified for speakers and headsets both.
+
+**Lesson 3 — probe transport ≠ production transport.** The VAD bake-off ran
+over WebSocket with synthesized speech tapes; production runs WebRTC. The
+architectural conclusion transferred, but two production-only behaviors
+(`output_audio_buffer.*` lifecycle events and server-side interruption
+chopping onset audio) only appeared live. Timing-sensitive decisions get a
+production-transport confirmation pass from now on.
+
+**Left deliberately unfixed:** background-tab timer throttling queues silence
+ticks and machine-guns scaffolds on refocus. It is the first seed scenario of
+the adversarial stability harness (next release) rather than tonight's sixth
+blind patch — a fix without a failing test would repeat the exact cycle this
+entry documents.

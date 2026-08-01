@@ -2,6 +2,52 @@
 
 ## [Unreleased]
 
+### Added — the client owns all conversational timing
+- Silence machinery: with `create_response: false` the server commits turns
+  but never speaks on its own — a pure, unit-tested reducer is now the only
+  source of `response.create`. Every committed turn arms a debounced
+  response (1.2 s); any candidate sound cancels it; sustained quiet walks
+  staged `[silence status]` scaffolds at 8 s / 15 s / 30 s (a warm "take
+  your time" → one directional hint → an offer to set the question aside),
+  each at most once per quiet stretch.
+- Filler tolerance: candidate sound shorter than 2 s (um, uh, a cough)
+  pauses the silence clock without resetting it — thinking aloud does not
+  restart the 8-second count. Interviewer audio also pauses the clock; only
+  ≥ 2 s of real speech resets it.
+- Reactive silence contract in the interviewer instructions: the model never
+  self-initiates "Take your time" — it acts only on injected notes and never
+  reads them aloud. If a turn is forced while the candidate's answer is
+  clearly unfinished, it degrades to a soft "Mm-hm." and keeps waiting.
+- Session-script alignment: interviewer instructions rewritten backwards
+  from a co-designed ideal session script — audio-check opening, turn-initial
+  backchannels, overlap yield, softened pressure with release, good-luck
+  closing.
+- Rubric reuse: an identical JD with no personalization inputs copies the
+  newest ready rubric instead of recompiling — repeat links are instant and
+  cost zero judge-model calls (DECISIONS 010).
+
+### Fixed — open-speakers hardening (five same-evening fixes, instrumented live sessions)
+- Silence clock inert and the interviewer mute after the greeting: the
+  machinery depended on single transport signals; commit arming and
+  interviewer-audibility are now each fed by two independent sources
+  (server events plus a WebAudio analyser fallback).
+- The interviewer answering its own speaker-leaked echo (self-talking):
+  physics-based echo rejection — candidate speech that starts during
+  interviewer audio counts as real only if it outlives that audio (an echo
+  dies with its source); echo-committed items are deleted from the
+  conversation so the model never treats its own words as an answer.
+- Phantom turns from ambient room noise: VAD threshold raised to 0.6.
+- Broken audio at utterance onset: leaked echo tripped server-side
+  interruption, truncating the interviewer's first words —
+  `interrupt_response: false`; the audio stream is never chopped, and
+  overlap yielding stays an instruction-level behavior.
+
+### Decisions
+- DECISIONS 009: `server_vad` + `create_response: false` chosen over
+  `semantic_vad` by measured bake-off (semantic_vad never committed complete
+  test answers and interrupted an 8 s thinking pause at ~4.4 s).
+- DECISIONS 010: rubric reuse for identical JDs.
+
 ## [0.2.0] — 2026-08-01
 
 Interviewer UX release, driven by the first full end-to-end session
