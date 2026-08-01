@@ -13,14 +13,21 @@ import {
   STALL_BLIP_MAX_S,
   SUSPEND_GAP_S,
   committedItemId,
+  indicatorForEvent,
   interviewerStateForEvent,
   speechStateForEvent,
   tickDeltaS,
 } from "./session-room";
 import {
+  GENERATOR_NAMES,
   candidateTicks,
+  checkInvariants,
   commitTick,
+  describeViolations,
+  generate,
+  hostileWirePayloads,
   interviewerTicks,
+  mulberry32,
   overlapTicks,
   quietTicks,
   runScenario,
@@ -317,6 +324,137 @@ describe("seed ⑤: onset truncation adjacency", () => {
       ...overlapTicks(5),
       ...candidateTicks(STALL_BLIP_MAX_S + 1),
     ]);
+    expect(run.triggers).toBe(0);
+  });
+});
+
+// --- Part 3/4: generated adversarial rounds ------------------------------
+//
+// Every scenario below is a pure function of its seed: a failure here names
+// the generator and the seed that produced it, and replays exactly.
+
+const ROUND_SEEDS = [1, 7, 42, 1337, 20260801, 987654321];
+
+describe("clock invariants under generated adversarial load", () => {
+  for (const name of GENERATOR_NAMES) {
+    for (const seed of ROUND_SEEDS) {
+      it(`${name} holds I1-I6 (seed ${seed})`, () => {
+        const run = runScenario(generate(name, seed));
+        const violations = checkInvariants(run);
+        expect(
+          violations,
+          `${name} seed=${seed} — ${violations.length} violation(s):\n` +
+            describeViolations(violations),
+        ).toEqual([]);
+      });
+    }
+  }
+
+  it("holds I1-I6 across a 5,000-tick soup of everything", () => {
+    const run = runScenario(generate("soup", 20260801, 5_000));
+    const violations = checkInvariants(run);
+    expect(
+      violations,
+      `soup seed=20260801 — ${violations.length} violation(s):\n` +
+        describeViolations(violations),
+    ).toEqual([]);
+  });
+});
+
+describe("wire helpers under hostile payloads", () => {
+  const payloads = hostileWirePayloads(mulberry32(20260801), 300);
+
+  it("never throw, whatever arrives on the data channel", () => {
+    for (const raw of payloads) {
+      expect(() => speechStateForEvent(raw)).not.toThrow();
+      expect(() => interviewerStateForEvent(raw)).not.toThrow();
+      expect(() => committedItemId(raw)).not.toThrow();
+      expect(() => indicatorForEvent(raw)).not.toThrow();
+    }
+  });
+
+  it("return only contract values or null", () => {
+    const speech = new Set(["started", "stopped", "committed", null]);
+    const morgan = new Set(["speaking", "quiet", "response_done", null]);
+    for (const raw of payloads) {
+      expect(speech.has(speechStateForEvent(raw))).toBe(true);
+      expect(morgan.has(interviewerStateForEvent(raw))).toBe(true);
+      const id = committedItemId(raw);
+      expect(id === null || typeof id === "string").toBe(true);
+      const indicator = indicatorForEvent(raw);
+      expect(indicator === null || indicator === "listening").toBe(true);
+    }
+  });
+
+  it("leave Object.prototype unpolluted", () => {
+    for (const raw of payloads) {
+      speechStateForEvent(raw);
+      interviewerStateForEvent(raw);
+      committedItemId(raw);
+      indicatorForEvent(raw);
+    }
+    expect(
+      (Object.prototype as Record<string, unknown>).polluted,
+    ).toBeUndefined();
+    expect(({} as Record<string, unknown>).polluted).toBeUndefined();
+  });
+
+  it("only a well-formed committed payload yields an item id", () => {
+    for (const raw of payloads) {
+      const id = committedItemId(raw);
+      if (id !== null) {
+        expect(speechStateForEvent(raw)).toBe("committed");
+      }
+    }
+  });
+});
+
+// --- Findings from the generated rounds ----------------------------------
+
+describe("round finding: the debounce must be measured from the commit", () => {
+  // Found by commitFlagNoise/commitStorms/soup on every seed tried: the tick
+  // that CARRIES the commit was also credited as quiet-since-commit, so the
+  // candidate got one tick less room to resume than RESPONSE_DEBOUNCE_S
+  // promises. The audio in that interval is the tail of the utterance the
+  // commit closes — it is not the room going quiet.
+  it("does not count the tick that carried the commit", () => {
+    const short = runScenario([commitTick(), ...quietTicks(1.0)]);
+    expect(short.triggers).toBe(0);
+    const full = runScenario([commitTick(), ...quietTicks(1.25)]);
+    expect(full.triggers).toBe(1);
+  });
+
+  it("a long tick carrying a commit does not consume the debounce whole", () => {
+    // The sharp case dtSpikes found: with a jittery 1.9 s tick the debounce
+    // was spent the instant it was armed, and Morgan answered with zero
+    // room for the candidate to keep going.
+    const run = runScenario([commitTick({ dtS: 1.9 })]);
+    expect(run.triggers).toBe(0);
+    expect(run.steps[0].after.responseDueInS).toBeCloseTo(
+      RESPONSE_DEBOUNCE_S,
+      5,
+    );
+  });
+});
+
+describe("round finding: one tick, one thing to say", () => {
+  // The generators produced ticks carrying BOTH a scaffold and a debounced
+  // response. The wiring happened to send only the scaffold (its else-if),
+  // so nothing misbehaved live — but that made a silent ordering detail in
+  // the component the only thing standing between a candidate and two
+  // response.create frames. The reducer now states it: a scaffold carries
+  // its own response, so it supersedes the pending one.
+  it("a scaffold and a debounced response never fire on the same tick", () => {
+    const run = runScenario([
+      ...quietTicks(6.5),
+      commitTick(),
+      ...quietTicks(1.25),
+    ]);
+    const both = run.steps.filter(
+      (s) => s.effects.stage !== null && s.effects.triggerResponse,
+    );
+    expect(both).toEqual([]);
+    expect(run.stagesFired).toEqual([STAGE_AT[0]]);
     expect(run.triggers).toBe(0);
   });
 });

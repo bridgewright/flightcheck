@@ -255,7 +255,12 @@ export function nextSilenceState(
   } else {
     episodeS = 0;
     quietS += tick.dtS;
-    if (responseDueInS !== null) {
+    // The tick that carried the commit contributes nothing to the debounce:
+    // its interval holds the tail of the utterance the commit closes, not
+    // the room going quiet. Counting it handed the candidate one tick less
+    // room to resume than RESPONSE_DEBOUNCE_S promises — and on a jittery
+    // tick longer than the debounce itself, no room at all.
+    if (responseDueInS !== null && !tick.commitArrived) {
       responseDueInS -= tick.dtS;
       if (responseDueInS <= 0) {
         responseDueInS = null;
@@ -264,7 +269,11 @@ export function nextSilenceState(
     }
     const next = SILENCE_STAGES[stagesSent];
     if (next !== undefined && quietS >= next.at) {
+      // A scaffold speaks for itself (the wiring sends a response.create
+      // with it), so it supersedes a debounced response falling on the same
+      // tick — otherwise this one tick asks Morgan to speak twice.
       effects.stage = next;
+      effects.triggerResponse = false;
       stagesSent += 1;
       responseDueInS = null;
     }
