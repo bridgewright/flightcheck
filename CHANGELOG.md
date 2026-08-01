@@ -2,7 +2,43 @@
 
 ## [Unreleased]
 
+## [0.2.0] — 2026-08-01
+
+Interviewer UX release, driven by the first real user session (2026-07-29):
+the interviewer now opens the call, tolerates thinking pauses, listens
+actively, and manages the clock — and the report explains its scores.
+
+### Added — interviewer UX
+- The interviewer speaks first. Instructions alone could not do this —
+  server-VAD realtime models never speak unprompted, so the session room now
+  nudges the first response at data-channel open (`response.create`), and the
+  opening beat is scripted: a hello with an audio check ("can you hear me
+  okay?"), one conversational sentence of framing, and a put-at-ease line.
+- Thinking-pause tolerance: mid-answer pauses are treated as thinking, not
+  end-of-answer — wait, or offer one supportive scaffold; never re-ask the
+  same question verbatim, never advance over an unfinished answer. Built for
+  non-native speakers, for whom pauses are the norm.
+- Active listening: one-sentence restatement of the candidate's key claim
+  before follow-ups; evidence probes lead with an acknowledging clause.
+- Time awareness: the model has no clock, so the client injects `[time
+  status]` system notes at 75% elapsed and at the wrap-up margin; the
+  interviewer treats them as its clock and never reads them aloud.
+- Session-room copy: "Morgan speaks first — no need to say hello."
+
+### Added — report
+- Per-dimension cards now render the judge's written rationale (previously
+  computed and stored but never displayed) with verified candidate quotes as
+  block quotes under "What you actually said".
+- Trimmed-by-default display: the four most load-bearing quotes per dimension
+  and the five most significant timeline observations (DSP conflicts always
+  surface); the full sets stay one native disclosure away.
+- The report page distinguishes a briefly unreachable scoring worker
+  (auto-retrying, honest copy) from a genuinely unknown link.
+
 ### Changed
+- Content judge backs off briefly (1s/2s/4s) on transient 429/transport
+  errors instead of failing the run — with a budget separate from the
+  one-parse-retry-per-dimension semantics, sized for concurrent sessions.
 - Content judge scores dimensions concurrently (bounded thread pool): the
   21 per-dimension judge calls that dominated scoring wall-time now overlap;
   results assemble in rubric order and retry/failure semantics are unchanged.
@@ -11,7 +47,7 @@
   instead of pinning the row in "scoring" forever — observed once in
   production on 2026-07-29.
 
-### Added
+### Added — operations
 - Scoring progress stages: the worker persists which pipeline stage a run is
   in (download → transcribe → delivery-metrics → content-judge →
   delivery-judge → compile) and the report page narrates it while polling.
@@ -20,6 +56,11 @@
   must be Nixpacks (Railpack ignores `nixpacks.toml`), full-length scoring
   needs a Hobby-plan memory ceiling (observed ~1.6 GB peak), `SUPABASE_URL`
   must be the bare project URL, and migrations run in filename order.
+
+### Decisions
+- DECISIONS 008: v0.2 ships product depth before payments — versions ship
+  one bundle each; the PRD's original metrics stay as written, with the
+  timeline shift logged honestly.
 
 ## [0.1.0] — 2026-07-26
 

@@ -122,3 +122,35 @@ run sees provider-contract drift. None of the layers is decorative; the
 ledger shows each one earning its cost on this branch. The standing risk is
 equally honest: every layer above per-task TDD found real Criticals, which
 means single-layer verification would have shipped them.
+
+## 2026-08-01 — Three v0.2 lessons: the trigger, the flicker, and the numbering
+
+**"Speak first" cannot be instructed — it must be triggered.** We shipped an
+opening script ("greet the candidate the moment the call connects") purely as
+system instructions, with text-assertion tests proving the words were in the
+prompt. The first real test session got a minute of mutual silence: server-VAD
+realtime models generate nothing until audio arrives or a `response.create`
+event is sent, so the model held a perfect opening script it was never asked
+to perform. The fix is one client-side nudge at data-channel open. The lesson
+generalizes: unit tests on instruction text verify what the model is *told*,
+not what the runtime lets it *do* — every instruction-shaped behavior needs
+one live confirmation of the mechanism that lets the behavior begin.
+
+**The eval gate flickered, and the flicker was the finding.** The v0.2 merged
+tree failed rubric discrimination twice (a borderline answer saturating to
+5.0 — the exact mode the v0.1 judge redesign fixed), then passed with no code
+change; an untouched v0.1.0 checkout passed in the same window. We nearly
+mis-attributed it to our own merge. The control-probe habit (re-run the old
+code before blaming the new) is what separated "regression" from "N=3 gate
+fragility on a boundary triplet". Consequences: the golden set grows (E1
+pulled forward), passing-trial margins get recorded so flicker is visible
+before it fails a gate, and gate reports now publish failing runs — a gate
+that only records its passes teaches nothing.
+
+**Structure leaks into speech.** The interviewer read its numbered question
+list aloud ("Question 1…") and recited JD topics when asked to preview
+coverage — instructions written for the model's *planning* were performed as
+*script*. Realtime instructions need an explicit boundary between what is for
+the model's eyes ("the numbering is for you alone") and what is meant to be
+said. AI-feel is mostly this: internal scaffolding escaping into the
+conversation.
