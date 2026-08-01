@@ -16,13 +16,17 @@ malformed reply must not fail the whole run; a second failure for the same
 dimension raises ContentJudgeError. Dimensions are scored concurrently under
 a bounded thread pool (their calls are independent and network-dominated);
 results still assemble in rubric dimension order and each dimension keeps
-its own retry budget.
+its own retry budget. Transient 429/5xx/transport failures back off briefly
+(1s/2s/4s) and retry with a budget separate from the parse retry.
 """
 from __future__ import annotations
 
 import logging
+import time
 from concurrent.futures import ThreadPoolExecutor
 
+import httpx
+from google.genai import errors as genai_errors
 from pydantic import BaseModel, ConfigDict, ValidationError
 
 from scorer.config import load_product_config
@@ -143,6 +147,35 @@ _JUDGE_SEEDS = (7, 11, 13)
 # without reducing wall-time under the same worker bound.
 _JUDGE_MAX_WORKERS = 8
 
+# Transient-failure backoff (parallel review finding, 2026-07-29): per-session
+# concurrency went 1->7, so a 429 or dropped connection mid-run is expected
+# pressure, not a judge-quality problem. It gets its own short backoff budget
+# so it never spends the one parse retry a dimension holds.
+_BACKOFF_SCHEDULE_S = (1.0, 2.0, 4.0)
+_sleep = time.sleep  # module-level so tests can stub the wait
+
+
+def _is_transient(exc: Exception) -> bool:
+    """429 and 5xx are pressure/outage; other API errors are real bugs."""
+    if isinstance(exc, genai_errors.APIError):
+        return exc.code == 429 or (exc.code is not None and exc.code >= 500)
+    return isinstance(exc, httpx.TransportError)
+
+
+def _generate_with_backoff(client: GenAIClientLike, **kwargs):
+    for delay in _BACKOFF_SCHEDULE_S:
+        try:
+            return client.models.generate_content(**kwargs)
+        except Exception as exc:
+            if not _is_transient(exc):
+                raise
+            logger.warning(
+                "transient content judge failure (%s); retrying in %.0fs",
+                exc, delay,
+            )
+            _sleep(delay)
+    return client.models.generate_content(**kwargs)
+
 
 def _score_dimension_once(
     model: str,
@@ -152,7 +185,8 @@ def _score_dimension_once(
     client: GenAIClientLike,
     seed: int,
 ) -> DimensionScore:
-    response = client.models.generate_content(
+    response = _generate_with_backoff(
+        client,
         model=model,
         contents=_build_prompt(rubric, [dim], segments),
         config={

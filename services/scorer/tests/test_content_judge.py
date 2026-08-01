@@ -1,8 +1,11 @@
 import json
 import threading
 
+import httpx
 import pytest
+from google.genai import errors as genai_errors
 
+import scorer.content.judge as judge_module
 from fakes import FakeGenAI
 from scorer.config import load_product_config
 from scorer.content.judge import ContentJudgeError, ContentScoreDoc, score_content
@@ -436,3 +439,86 @@ def test_delivery_dimensions_stay_out_of_prompt_and_output():
                 continue
             for anchor in dim.anchors:
                 assert anchor.behavior not in prompt
+
+
+def _api_error(code: int):
+    return genai_errors.APIError(
+        code, {"error": {"message": f"scripted {code}", "status": "SCRIPTED"}})
+
+
+def _stub_sleep(monkeypatch) -> list[float]:
+    sleeps: list[float] = []
+    monkeypatch.setattr(judge_module, "_sleep", sleeps.append)
+    return sleeps
+
+
+def test_429_gets_backoff_retry_and_the_run_survives(monkeypatch):
+    sleeps = _stub_sleep(monkeypatch)
+    keyed = _happy_keyed_texts()
+    keyed["structured-answers"] = [_api_error(429)] + keyed["structured-answers"]
+    fake = FakeGenAI(keyed_texts=keyed)
+
+    scores = score_content(_make_rubric(), _make_segments(), fake)
+
+    assert [s.dimension_key for s in scores] == [
+        "structured-answers", "quantified-impact", "role-knowledge",
+    ]
+    assert sleeps == [1.0]
+    # The transient retry repeats the call it lost: same seed, then the rest.
+    seeds = [c["config"]["seed"] for c in _calls_for(fake, "structured-answers")]
+    assert seeds == [7, 7, 11, 13]
+
+
+def test_transport_error_gets_the_same_backoff(monkeypatch):
+    sleeps = _stub_sleep(monkeypatch)
+    keyed = _happy_keyed_texts()
+    keyed["role-knowledge"] = (
+        [httpx.ConnectError("connection reset")] + keyed["role-knowledge"])
+    fake = FakeGenAI(keyed_texts=keyed)
+
+    scores = score_content(_make_rubric(), _make_segments(), fake)
+
+    assert [s.dimension_key for s in scores][-1] == "role-knowledge"
+    assert sleeps == [1.0]
+
+
+def test_transient_retries_exhaust_and_reraise(monkeypatch):
+    sleeps = _stub_sleep(monkeypatch)
+    keyed = _happy_keyed_texts()
+    keyed["structured-answers"] = [_api_error(429)] * 4
+    fake = FakeGenAI(keyed_texts=keyed)
+
+    with pytest.raises(genai_errors.APIError):
+        score_content(_make_rubric(), _make_segments(), fake)
+    assert sleeps == [1.0, 2.0, 4.0]
+
+
+def test_non_transient_api_error_is_not_retried(monkeypatch):
+    sleeps = _stub_sleep(monkeypatch)
+    keyed = _happy_keyed_texts()
+    keyed["structured-answers"] = [_api_error(400)]
+    fake = FakeGenAI(keyed_texts=keyed)
+
+    with pytest.raises(genai_errors.APIError):
+        score_content(_make_rubric(), _make_segments(), fake)
+    assert sleeps == []
+    assert len(_calls_for(fake, "structured-answers")) == 1
+
+
+def test_transient_backoff_does_not_spend_the_parse_retry(monkeypatch):
+    # A 429 then a malformed reply on the same dimension: the backoff layer
+    # absorbs the 429 and the parse-retry budget still covers the bad JSON.
+    sleeps = _stub_sleep(monkeypatch)
+    happy = _happy_scores()
+    keyed = _happy_keyed_texts()
+    keyed["structured-answers"] = (
+        [_api_error(429), "this is not json"]
+        + [json.dumps({"scores": [happy[0]]})] * 3)
+    fake = FakeGenAI(keyed_texts=keyed)
+
+    scores = score_content(_make_rubric(), _make_segments(), fake)
+
+    assert scores[0].score == 4.0
+    assert sleeps == [1.0]
+    seeds = [c["config"]["seed"] for c in _calls_for(fake, "structured-answers")]
+    assert seeds == [7, 7, 7, 11, 13]
