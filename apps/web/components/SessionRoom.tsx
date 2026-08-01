@@ -73,6 +73,7 @@ export default function SessionRoom({
   const candidateAudibleRef = useRef(false);
   const commitArrivedRef = useRef(false);
   const morganEventAudibleRef = useRef(false);
+  const diagTickRef = useRef(0);
   const silenceStateRef = useRef(INITIAL_SILENCE_STATE);
   const remoteAnalyserRef = useRef<AnalyserNode | null>(null);
   const remoteLevelDataRef = useRef<Uint8Array<ArrayBuffer> | null>(null);
@@ -330,6 +331,7 @@ export default function SessionRoom({
         // fallback, not the sole source; response_done also opens the
         // clock's activation gate.
         const morgan = interviewerStateForEvent(String(ev.data));
+        if (morgan !== null) console.debug("[silence] morgan-ev", morgan);
         if (morgan === "speaking") {
           morganEventAudibleRef.current = true;
           heardMorganRef.current = true;
@@ -393,18 +395,34 @@ export default function SessionRoom({
         timeStatusSentRef.current += 1;
       }
       let interviewerAudible = false;
+      let remotePeak = 0;
       const analyser = remoteAnalyserRef.current;
       const data = remoteLevelDataRef.current;
       if (analyser && data) {
         analyser.getByteTimeDomainData(data);
-        let peak = 0;
-        for (const v of data) peak = Math.max(peak, Math.abs(v - 128) / 128);
-        interviewerAudible = peak > 0.02;
+        for (const v of data) {
+          remotePeak = Math.max(remotePeak, Math.abs(v - 128) / 128);
+        }
+        interviewerAudible = remotePeak > 0.02;
         if (interviewerAudible) heardMorganRef.current = true;
       }
       // Server events are the second source: whichever signal works on this
       // transport keeps the clock honest (2026-08-01 live failure).
       interviewerAudible = interviewerAudible || morganEventAudibleRef.current;
+      diagTickRef.current = (diagTickRef.current + 1) % 8;
+      if (diagTickRef.current === 0) {
+        console.debug(
+          "[silence] diag",
+          JSON.stringify({
+            peak: Number(remotePeak.toFixed(3)),
+            evAudible: morganEventAudibleRef.current,
+            gate: heardMorganRef.current,
+            cand: candidateAudibleRef.current,
+            quietS: Number(silenceStateRef.current.quietS.toFixed(1)),
+            stages: silenceStateRef.current.stagesSent,
+          }),
+        );
+      }
       if (heardMorganRef.current && dcRef.current?.readyState === "open") {
         const commitArrived = commitArrivedRef.current;
         commitArrivedRef.current = false;
