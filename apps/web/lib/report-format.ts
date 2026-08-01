@@ -1,6 +1,6 @@
 // Pure formatting helpers for session reports. Kept JSX-free so vitest can
 // exercise them without a React transform.
-import type { Verdict } from "@/lib/types";
+import type { TimestampedObservation, Verdict } from "@/lib/types";
 
 export const VERDICT_LABELS: Record<Verdict, string> = {
   not_ready: "Not ready yet",
@@ -47,4 +47,20 @@ const SCORING_STAGE_COPY: Record<string, string> = {
 
 export function scoringStageCopy(stage: string | null | undefined): string | null {
   return stage == null ? null : (SCORING_STAGE_COPY[stage] ?? null);
+}
+
+/**
+ * The observations worth surfacing before "show all": every DSP conflict
+ * (a judge-vs-measurement disagreement is always worth reading) plus the
+ * earliest of the rest up to `max`, returned in timeline order. The full
+ * list stays one disclosure away — trimmed display, no data loss.
+ */
+export function topObservations(
+  observations: TimestampedObservation[],
+  max: number,
+): TimestampedObservation[] {
+  const conflicts = observations.filter((o) => o.conflicts_with_dsp);
+  const rest = observations.filter((o) => !o.conflicts_with_dsp);
+  const picked = new Set([...conflicts, ...rest].slice(0, max));
+  return observations.filter((o) => picked.has(o));
 }

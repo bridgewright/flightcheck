@@ -1,10 +1,44 @@
 import {
   formatLatency,
   formatTimestamp,
+  topObservations,
   VERDICT_LABELS,
   verdictClasses,
 } from "@/lib/report-format";
-import type { Channel, Rubric, SessionReport } from "@/lib/types";
+import type {
+  Channel,
+  Rubric,
+  SessionReport,
+  TimestampedObservation,
+} from "@/lib/types";
+
+// Trimmed-by-default display (user feedback, 2026-08-01): lead with the few
+// items that carry the judgment; the full set stays one native <details>
+// disclosure away, so nothing is lost and the page needs no client JS.
+const MAX_QUOTES = 4;
+const MAX_TIMELINE = 5;
+
+function ObservationItem({
+  observation,
+}: {
+  observation: TimestampedObservation;
+}) {
+  return (
+    <li className="flex items-baseline gap-3 text-sm">
+      <span className="font-mono text-neutral-500">
+        {formatTimestamp(observation.at_s)}
+      </span>
+      <span>
+        {observation.note}
+        {observation.conflicts_with_dsp ? (
+          <span className="ml-2 rounded bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-900 dark:bg-amber-950 dark:text-amber-200">
+            DSP conflict — differs from measured audio metrics
+          </span>
+        ) : null}
+      </span>
+    </li>
+  );
+}
 
 export interface DimensionMeta {
   key: string;
@@ -77,7 +111,7 @@ export default function ReportView({
                   <p className="text-xs uppercase tracking-wide text-neutral-500">
                     What you actually said
                   </p>
-                  {score.evidence_quotes.map((quote) => (
+                  {score.evidence_quotes.slice(0, MAX_QUOTES).map((quote) => (
                     <blockquote
                       key={quote}
                       className="border-l-2 border-neutral-300 pl-3 text-sm italic text-neutral-600 dark:border-neutral-700 dark:text-neutral-400"
@@ -85,6 +119,26 @@ export default function ReportView({
                       &ldquo;{quote}&rdquo;
                     </blockquote>
                   ))}
+                  {score.evidence_quotes.length > MAX_QUOTES && (
+                    <details>
+                      <summary className="cursor-pointer text-xs text-neutral-500 underline underline-offset-4">
+                        Show {score.evidence_quotes.length - MAX_QUOTES} more
+                        quotes
+                      </summary>
+                      <div className="mt-2 flex flex-col gap-2">
+                        {score.evidence_quotes
+                          .slice(MAX_QUOTES)
+                          .map((quote) => (
+                            <blockquote
+                              key={quote}
+                              className="border-l-2 border-neutral-300 pl-3 text-sm italic text-neutral-600 dark:border-neutral-700 dark:text-neutral-400"
+                            >
+                              &ldquo;{quote}&rdquo;
+                            </blockquote>
+                          ))}
+                      </div>
+                    </details>
+                  )}
                 </div>
               )}
             </article>
@@ -121,25 +175,31 @@ export default function ReportView({
       <section className="flex flex-col gap-3">
         <h2 className="text-xl font-semibold">Observations timeline</h2>
         <ol className="flex flex-col gap-3">
-          {report.delivery_observations.map((observation) => (
-            <li
-              key={`${observation.at_s}-${observation.kind}`}
-              className="flex items-baseline gap-3 text-sm"
-            >
-              <span className="font-mono text-neutral-500">
-                {formatTimestamp(observation.at_s)}
-              </span>
-              <span>
-                {observation.note}
-                {observation.conflicts_with_dsp ? (
-                  <span className="ml-2 rounded bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-900 dark:bg-amber-950 dark:text-amber-200">
-                    DSP conflict — differs from measured audio metrics
-                  </span>
-                ) : null}
-              </span>
-            </li>
-          ))}
+          {topObservations(report.delivery_observations, MAX_TIMELINE).map(
+            (observation) => (
+              <ObservationItem
+                key={`${observation.at_s}-${observation.kind}`}
+                observation={observation}
+              />
+            ),
+          )}
         </ol>
+        {report.delivery_observations.length > MAX_TIMELINE && (
+          <details>
+            <summary className="cursor-pointer text-xs text-neutral-500 underline underline-offset-4">
+              Show the full timeline (
+              {report.delivery_observations.length} observations)
+            </summary>
+            <ol className="mt-3 flex flex-col gap-3">
+              {report.delivery_observations.map((observation) => (
+                <ObservationItem
+                  key={`full-${observation.at_s}-${observation.kind}`}
+                  observation={observation}
+                />
+              ))}
+            </ol>
+          </details>
+        )}
       </section>
 
       <section className="grid gap-8 sm:grid-cols-2">
