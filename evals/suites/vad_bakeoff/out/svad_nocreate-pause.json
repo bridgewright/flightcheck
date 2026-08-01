@@ -1,0 +1,99 @@
+{
+ "config": "svad_nocreate",
+ "tape": "pause",
+ "events": [
+  {
+   "t": 618,
+   "type": "session.created"
+  },
+  {
+   "t": 780,
+   "type": "session.updated"
+  },
+  {
+   "t": 787,
+   "type": "input_audio_buffer.speech_started"
+  },
+  {
+   "t": 4446,
+   "type": "input_audio_buffer.speech_stopped"
+  },
+  {
+   "t": 4447,
+   "type": "input_audio_buffer.committed",
+   "item_id": "item_E810AHkcbBV0pYml8qTa7"
+  },
+  {
+   "t": 4447,
+   "type": "conversation.item.added"
+  },
+  {
+   "t": 4447,
+   "type": "conversation.item.done"
+  },
+  {
+   "t": 11711,
+   "type": "input_audio_buffer.speech_started"
+  },
+  {
+   "t": 18218,
+   "type": "input_audio_buffer.speech_stopped"
+  },
+  {
+   "t": 18218,
+   "type": "input_audio_buffer.committed",
+   "item_id": "item_E810LiS6X2p9WKXxYU9vN"
+  },
+  {
+   "t": 18218,
+   "type": "conversation.item.added"
+  },
+  {
+   "t": 18218,
+   "type": "conversation.item.done"
+  }
+ ],
+ "marks": [
+  {
+   "t": 615,
+   "label": "begin:lead",
+   "audio_pos_s": 0.0
+  },
+  {
+   "t": 3461,
+   "label": "end:lead",
+   "audio_pos_s": 2.78
+  },
+  {
+   "t": 3461,
+   "label": "begin:silence_8.0s",
+   "audio_pos_s": 2.78
+  },
+  {
+   "t": 11535,
+   "label": "end:silence_8.0s",
+   "audio_pos_s": 10.78
+  },
+  {
+   "t": 11535,
+   "label": "begin:cont",
+   "audio_pos_s": 10.78
+  },
+  {
+   "t": 17237,
+   "label": "end:cont",
+   "audio_pos_s": 16.27
+  },
+  {
+   "t": 17237,
+   "label": "begin:silence_5.0s",
+   "audio_pos_s": 16.27
+  },
+  {
+   "t": 22279,
+   "label": "end:silence_5.0s",
+   "audio_pos_s": 21.27
+  }
+ ],
+ "delta_counts": {}
+}

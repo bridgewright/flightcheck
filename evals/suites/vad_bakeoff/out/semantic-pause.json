@@ -1,0 +1,188 @@
+{
+ "config": "semantic",
+ "tape": "pause",
+ "events": [
+  {
+   "t": 1543,
+   "type": "session.created"
+  },
+  {
+   "t": 1709,
+   "type": "session.updated"
+  },
+  {
+   "t": 1723,
+   "type": "input_audio_buffer.speech_started"
+  },
+  {
+   "t": 19132,
+   "type": "input_audio_buffer.speech_stopped"
+  },
+  {
+   "t": 19132,
+   "type": "input_audio_buffer.committed",
+   "item_id": "item_E80yS6GaFxFPJ69LLyXwr"
+  },
+  {
+   "t": 19132,
+   "type": "conversation.item.added"
+  },
+  {
+   "t": 19132,
+   "type": "conversation.item.done"
+  },
+  {
+   "t": 19132,
+   "type": "response.created",
+   "response_id": "resp_E80yj7Hlglezkvd40CaNe"
+  },
+  {
+   "t": 19375,
+   "type": "response.output_item.added"
+  },
+  {
+   "t": 19375,
+   "type": "conversation.item.added"
+  },
+  {
+   "t": 19390,
+   "type": "response.content_part.added"
+  },
+  {
+   "t": 19390,
+   "type": "response.output_audio_transcript.delta"
+  },
+  {
+   "t": 19398,
+   "type": "response.output_audio_transcript.delta"
+  },
+  {
+   "t": 19405,
+   "type": "response.output_audio_transcript.delta"
+  },
+  {
+   "t": 19484,
+   "type": "first_audio_delta",
+   "response_id": "resp_E80yj7Hlglezkvd40CaNe"
+  },
+  {
+   "t": 19548,
+   "type": "response.output_audio_transcript.delta"
+  },
+  {
+   "t": 19548,
+   "type": "response.output_audio_transcript.delta"
+  },
+  {
+   "t": 19641,
+   "type": "response.output_audio_transcript.delta"
+  },
+  {
+   "t": 19707,
+   "type": "response.output_audio_transcript.delta"
+  },
+  {
+   "t": 19707,
+   "type": "response.output_audio_transcript.delta"
+  },
+  {
+   "t": 19832,
+   "type": "response.output_audio_transcript.delta"
+  },
+  {
+   "t": 19839,
+   "type": "response.output_audio_transcript.delta"
+  },
+  {
+   "t": 19844,
+   "type": "response.output_audio_transcript.delta"
+  },
+  {
+   "t": 19852,
+   "type": "response.output_audio_transcript.delta"
+  },
+  {
+   "t": 19860,
+   "type": "response.output_audio_transcript.delta"
+  },
+  {
+   "t": 19866,
+   "type": "response.output_audio_transcript.delta"
+  },
+  {
+   "t": 20236,
+   "type": "response.output_audio.done"
+  },
+  {
+   "t": 20236,
+   "type": "response.output_audio_transcript.done"
+  },
+  {
+   "t": 20236,
+   "type": "response.content_part.done"
+  },
+  {
+   "t": 20236,
+   "type": "conversation.item.done"
+  },
+  {
+   "t": 20236,
+   "type": "response.output_item.done"
+  },
+  {
+   "t": 20243,
+   "type": "response.done",
+   "status": "completed",
+   "transcript": "That's a solid growth rate, showing the rollout had a strong impact."
+  },
+  {
+   "t": 20267,
+   "type": "rate_limits.updated"
+  }
+ ],
+ "marks": [
+  {
+   "t": 1539,
+   "label": "begin:lead",
+   "audio_pos_s": 0.0
+  },
+  {
+   "t": 4421,
+   "label": "end:lead",
+   "audio_pos_s": 2.78
+  },
+  {
+   "t": 4421,
+   "label": "begin:silence_8.0s",
+   "audio_pos_s": 2.78
+  },
+  {
+   "t": 12491,
+   "label": "end:silence_8.0s",
+   "audio_pos_s": 10.78
+  },
+  {
+   "t": 12491,
+   "label": "begin:cont",
+   "audio_pos_s": 10.78
+  },
+  {
+   "t": 18190,
+   "label": "end:cont",
+   "audio_pos_s": 16.27
+  },
+  {
+   "t": 18190,
+   "label": "begin:silence_5.0s",
+   "audio_pos_s": 16.27
+  },
+  {
+   "t": 23229,
+   "label": "end:silence_5.0s",
+   "audio_pos_s": 21.27
+  }
+ ],
+ "delta_counts": {
+  "resp_E80yj7Hlglezkvd40CaNe": 16
+ }
+}

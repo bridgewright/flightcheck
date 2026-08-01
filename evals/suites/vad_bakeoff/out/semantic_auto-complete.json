@@ -1,0 +1,188 @@
+{
+ "config": "semantic_auto",
+ "tape": "complete",
+ "events": [
+  {
+   "t": 722,
+   "type": "session.created"
+  },
+  {
+   "t": 892,
+   "type": "session.updated"
+  },
+  {
+   "t": 899,
+   "type": "input_audio_buffer.speech_started"
+  },
+  {
+   "t": 13683,
+   "type": "input_audio_buffer.speech_stopped"
+  },
+  {
+   "t": 13683,
+   "type": "input_audio_buffer.committed",
+   "item_id": "item_E8145z1wZUJ3T3r9KPEsO"
+  },
+  {
+   "t": 13684,
+   "type": "conversation.item.added"
+  },
+  {
+   "t": 13684,
+   "type": "conversation.item.done"
+  },
+  {
+   "t": 13688,
+   "type": "response.created",
+   "response_id": "resp_E814I9S1snA85PjuNOqfw"
+  },
+  {
+   "t": 13829,
+   "type": "response.output_item.added"
+  },
+  {
+   "t": 13829,
+   "type": "conversation.item.added"
+  },
+  {
+   "t": 13844,
+   "type": "response.content_part.added"
+  },
+  {
+   "t": 13844,
+   "type": "response.output_audio_transcript.delta"
+  },
+  {
+   "t": 13850,
+   "type": "response.output_audio_transcript.delta"
+  },
+  {
+   "t": 13858,
+   "type": "response.output_audio_transcript.delta"
+  },
+  {
+   "t": 13923,
+   "type": "first_audio_delta",
+   "response_id": "resp_E814I9S1snA85PjuNOqfw"
+  },
+  {
+   "t": 14016,
+   "type": "response.output_audio_transcript.delta"
+  },
+  {
+   "t": 14016,
+   "type": "response.output_audio_transcript.delta"
+  },
+  {
+   "t": 14016,
+   "type": "response.output_audio_transcript.delta"
+  },
+  {
+   "t": 14016,
+   "type": "response.output_audio_transcript.delta"
+  },
+  {
+   "t": 14147,
+   "type": "response.output_audio_transcript.delta"
+  },
+  {
+   "t": 14153,
+   "type": "response.output_audio_transcript.delta"
+  },
+  {
+   "t": 14288,
+   "type": "response.output_audio_transcript.delta"
+  },
+  {
+   "t": 14293,
+   "type": "response.output_audio_transcript.delta"
+  },
+  {
+   "t": 14300,
+   "type": "response.output_audio_transcript.delta"
+  },
+  {
+   "t": 14309,
+   "type": "response.output_audio_transcript.delta"
+  },
+  {
+   "t": 14317,
+   "type": "response.output_audio_transcript.delta"
+  },
+  {
+   "t": 14325,
+   "type": "response.output_audio_transcript.delta"
+  },
+  {
+   "t": 14579,
+   "type": "response.output_audio_transcript.delta"
+  },
+  {
+   "t": 14588,
+   "type": "response.output_audio_transcript.delta"
+  },
+  {
+   "t": 14594,
+   "type": "response.output_audio_transcript.delta"
+  },
+  {
+   "t": 14598,
+   "type": "response.output_audio_transcript.delta"
+  },
+  {
+   "t": 14997,
+   "type": "response.output_audio.done"
+  },
+  {
+   "t": 14997,
+   "type": "response.output_audio_transcript.done"
+  },
+  {
+   "t": 14997,
+   "type": "response.content_part.done"
+  },
+  {
+   "t": 14997,
+   "type": "conversation.item.done"
+  },
+  {
+   "t": 14997,
+   "type": "response.output_item.done"
+  },
+  {
+   "t": 15001,
+   "type": "response.done",
+   "status": "completed",
+   "transcript": "Impressive\u2014delivering to three client teams in just two months shows strong leadership and efficiency."
+  },
+  {
+   "t": 15008,
+   "type": "rate_limits.updated"
+  }
+ ],
+ "marks": [
+  {
+   "t": 720,
+   "label": "begin:complete",
+   "audio_pos_s": 0.0
+  },
+  {
+   "t": 9062,
+   "label": "end:complete",
+   "audio_pos_s": 8.14
+  },
+  {
+   "t": 9062,
+   "label": "begin:silence_6.0s",
+   "audio_pos_s": 8.14
+  },
+  {
+   "t": 15108,
+   "label": "end:silence_6.0s",
+   "audio_pos_s": 14.14
+  }
+ ],
+ "delta_counts": {
+  "resp_E814I9S1snA85PjuNOqfw": 24
+ }
+}

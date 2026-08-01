@@ -1,0 +1,334 @@
+{
+ "config": "semantic_auto",
+ "tape": "pause",
+ "events": [
+  {
+   "t": 619,
+   "type": "session.created"
+  },
+  {
+   "t": 781,
+   "type": "session.updated"
+  },
+  {
+   "t": 799,
+   "type": "input_audio_buffer.speech_started"
+  },
+  {
+   "t": 8068,
+   "type": "input_audio_buffer.speech_stopped"
+  },
+  {
+   "t": 8068,
+   "type": "input_audio_buffer.committed",
+   "item_id": "item_E814SZwy8wIjKy3iUITxN"
+  },
+  {
+   "t": 8068,
+   "type": "conversation.item.added"
+  },
+  {
+   "t": 8068,
+   "type": "conversation.item.done"
+  },
+  {
+   "t": 8071,
+   "type": "response.created",
+   "response_id": "resp_E814ZakmWpbamnycrv1jL"
+  },
+  {
+   "t": 8253,
+   "type": "response.output_item.added"
+  },
+  {
+   "t": 8253,
+   "type": "conversation.item.added"
+  },
+  {
+   "t": 8268,
+   "type": "response.content_part.added"
+  },
+  {
+   "t": 8268,
+   "type": "response.output_audio_transcript.delta"
+  },
+  {
+   "t": 8272,
+   "type": "response.output_audio_transcript.delta"
+  },
+  {
+   "t": 8279,
+   "type": "response.output_audio_transcript.delta"
+  },
+  {
+   "t": 8287,
+   "type": "response.output_audio_transcript.delta"
+  },
+  {
+   "t": 8365,
+   "type": "first_audio_delta",
+   "response_id": "resp_E814ZakmWpbamnycrv1jL"
+  },
+  {
+   "t": 8509,
+   "type": "response.output_audio_transcript.delta"
+  },
+  {
+   "t": 8509,
+   "type": "response.output_audio_transcript.delta"
+  },
+  {
+   "t": 8576,
+   "type": "response.output_audio_transcript.delta"
+  },
+  {
+   "t": 8584,
+   "type": "response.output_audio_transcript.delta"
+  },
+  {
+   "t": 8727,
+   "type": "response.output_audio_transcript.delta"
+  },
+  {
+   "t": 8728,
+   "type": "response.output_audio_transcript.delta"
+  },
+  {
+   "t": 8733,
+   "type": "response.output_audio_transcript.delta"
+  },
+  {
+   "t": 8740,
+   "type": "response.output_audio_transcript.delta"
+  },
+  {
+   "t": 9109,
+   "type": "response.output_audio.done"
+  },
+  {
+   "t": 9109,
+   "type": "response.output_audio_transcript.done"
+  },
+  {
+   "t": 9109,
+   "type": "response.content_part.done"
+  },
+  {
+   "t": 9109,
+   "type": "conversation.item.done"
+  },
+  {
+   "t": 9109,
+   "type": "response.output_item.done"
+  },
+  {
+   "t": 9110,
+   "type": "response.done",
+   "status": "completed",
+   "transcript": "The main metric you tracked was customer adoption rate, correct?"
+  },
+  {
+   "t": 9136,
+   "type": "rate_limits.updated"
+  },
+  {
+   "t": 11701,
+   "type": "input_audio_buffer.speech_started"
+  },
+  {
+   "t": 17878,
+   "type": "input_audio_buffer.speech_stopped"
+  },
+  {
+   "t": 17878,
+   "type": "input_audio_buffer.committed",
+   "item_id": "item_E814ds7cGpNHll0iBqpWv"
+  },
+  {
+   "t": 17880,
+   "type": "conversation.item.added"
+  },
+  {
+   "t": 17880,
+   "type": "conversation.item.done"
+  },
+  {
+   "t": 17883,
+   "type": "response.created",
+   "response_id": "resp_E814jZKPE8d0nTSgqqv1r"
+  },
+  {
+   "t": 18037,
+   "type": "response.output_item.added"
+  },
+  {
+   "t": 18037,
+   "type": "conversation.item.added"
+  },
+  {
+   "t": 18051,
+   "type": "response.content_part.added"
+  },
+  {
+   "t": 18053,
+   "type": "response.output_audio_transcript.delta"
+  },
+  {
+   "t": 18058,
+   "type": "response.output_audio_transcript.delta"
+  },
+  {
+   "t": 18066,
+   "type": "response.output_audio_transcript.delta"
+  },
+  {
+   "t": 18138,
+   "type": "first_audio_delta",
+   "response_id": "resp_E814jZKPE8d0nTSgqqv1r"
+  },
+  {
+   "t": 18290,
+   "type": "response.output_audio_transcript.delta"
+  },
+  {
+   "t": 18290,
+   "type": "response.output_audio_transcript.delta"
+  },
+  {
+   "t": 18359,
+   "type": "response.output_audio_transcript.delta"
+  },
+  {
+   "t": 18365,
+   "type": "response.output_audio_transcript.delta"
+  },
+  {
+   "t": 18503,
+   "type": "response.output_audio_transcript.delta"
+  },
+  {
+   "t": 18516,
+   "type": "response.output_audio_transcript.delta"
+  },
+  {
+   "t": 18517,
+   "type": "response.output_audio_transcript.delta"
+  },
+  {
+   "t": 18529,
+   "type": "response.output_audio_transcript.delta"
+  },
+  {
+   "t": 18541,
+   "type": "response.output_audio_transcript.delta"
+  },
+  {
+   "t": 18543,
+   "type": "response.output_audio_transcript.delta"
+  },
+  {
+   "t": 18546,
+   "type": "response.output_audio_transcript.delta"
+  },
+  {
+   "t": 18795,
+   "type": "response.output_audio_transcript.delta"
+  },
+  {
+   "t": 18811,
+   "type": "response.output_audio_transcript.delta"
+  },
+  {
+   "t": 18821,
+   "type": "response.output_audio_transcript.delta"
+  },
+  {
+   "t": 18825,
+   "type": "response.output_audio_transcript.delta"
+  },
+  {
+   "t": 18834,
+   "type": "response.output_audio_transcript.delta"
+  },
+  {
+   "t": 18838,
+   "type": "response.output_audio_transcript.delta"
+  },
+  {
+   "t": 19192,
+   "type": "response.output_audio.done"
+  },
+  {
+   "t": 19192,
+   "type": "response.output_audio_transcript.done"
+  },
+  {
+   "t": 19193,
+   "type": "response.content_part.done"
+  },
+  {
+   "t": 19193,
+   "type": "conversation.item.done"
+  },
+  {
+   "t": 19197,
+   "type": "response.output_item.done"
+  },
+  {
+   "t": 19204,
+   "type": "response.done",
+   "status": "completed",
+   "transcript": "Understood, weekly active usage grew 20% over the quarter\u2014that\u2019s a solid outcome."
+  },
+  {
+   "t": 19208,
+   "type": "rate_limits.updated"
+  }
+ ],
+ "marks": [
+  {
+   "t": 616,
+   "label": "begin:lead",
+   "audio_pos_s": 0.0
+  },
+  {
+   "t": 3456,
+   "label": "end:lead",
+   "audio_pos_s": 2.78
+  },
+  {
+   "t": 3456,
+   "label": "begin:silence_8.0s",
+   "audio_pos_s": 2.78
+  },
+  {
+   "t": 11526,
+   "label": "end:silence_8.0s",
+   "audio_pos_s": 10.78
+  },
+  {
+   "t": 11526,
+   "label": "begin:cont",
+   "audio_pos_s": 10.78
+  },
+  {
+   "t": 17209,
+   "label": "end:cont",
+   "audio_pos_s": 16.27
+  },
+  {
+   "t": 17209,
+   "label": "begin:silence_5.0s",
+   "audio_pos_s": 16.27
+  },
+  {
+   "t": 22245,
+   "label": "end:silence_5.0s",
+   "audio_pos_s": 21.27
+  }
+ ],
+ "delta_counts": {
+  "resp_E814ZakmWpbamnycrv1jL": 16,
+  "resp_E814jZKPE8d0nTSgqqv1r": 23
+ }
+}

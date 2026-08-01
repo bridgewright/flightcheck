@@ -1,0 +1,121 @@
+{
+ "config": "semantic",
+ "tape": "filler",
+ "events": [
+  {
+   "t": 731,
+   "type": "session.created"
+  },
+  {
+   "t": 898,
+   "type": "session.updated"
+  },
+  {
+   "t": 906,
+   "type": "input_audio_buffer.speech_started"
+  }
+ ],
+ "marks": [
+  {
+   "t": 730,
+   "label": "begin:lead",
+   "audio_pos_s": 0.0
+  },
+  {
+   "t": 3576,
+   "label": "end:lead",
+   "audio_pos_s": 2.78
+  },
+  {
+   "t": 3576,
+   "label": "begin:silence_2.0s",
+   "audio_pos_s": 2.78
+  },
+  {
+   "t": 5612,
+   "label": "end:silence_2.0s",
+   "audio_pos_s": 4.78
+  },
+  {
+   "t": 5612,
+   "label": "begin:um",
+   "audio_pos_s": 4.78
+  },
+  {
+   "t": 6018,
+   "label": "end:um",
+   "audio_pos_s": 5.11
+  },
+  {
+   "t": 6018,
+   "label": "begin:silence_2.0s",
+   "audio_pos_s": 5.11
+  },
+  {
+   "t": 8036,
+   "label": "end:silence_2.0s",
+   "audio_pos_s": 7.11
+  },
+  {
+   "t": 8036,
+   "label": "begin:um",
+   "audio_pos_s": 7.11
+  },
+  {
+   "t": 8440,
+   "label": "end:um",
+   "audio_pos_s": 7.44
+  },
+  {
+   "t": 8440,
+   "label": "begin:silence_2.0s",
+   "audio_pos_s": 7.44
+  },
+  {
+   "t": 10455,
+   "label": "end:silence_2.0s",
+   "audio_pos_s": 9.44
+  },
+  {
+   "t": 10455,
+   "label": "begin:um",
+   "audio_pos_s": 9.44
+  },
+  {
+   "t": 10859,
+   "label": "end:um",
+   "audio_pos_s": 9.78
+  },
+  {
+   "t": 10859,
+   "label": "begin:silence_2.0s",
+   "audio_pos_s": 9.78
+  },
+  {
+   "t": 12875,
+   "label": "end:silence_2.0s",
+   "audio_pos_s": 11.78
+  },
+  {
+   "t": 12875,
+   "label": "begin:um",
+   "audio_pos_s": 11.78
+  },
+  {
+   "t": 13281,
+   "label": "end:um",
+   "audio_pos_s": 12.11
+  },
+  {
+   "t": 13281,
+   "label": "begin:silence_5.0s",
+   "audio_pos_s": 12.11
+  },
+  {
+   "t": 18415,
+   "label": "end:silence_5.0s",
+   "audio_pos_s": 17.11
+  }
+ ],
+ "delta_counts": {}
+}

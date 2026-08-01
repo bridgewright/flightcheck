@@ -1,0 +1,41 @@
+{
+ "config": "semantic",
+ "tape": "complete",
+ "events": [
+  {
+   "t": 682,
+   "type": "session.created"
+  },
+  {
+   "t": 848,
+   "type": "session.updated"
+  },
+  {
+   "t": 860,
+   "type": "input_audio_buffer.speech_started"
+  }
+ ],
+ "marks": [
+  {
+   "t": 677,
+   "label": "begin:complete",
+   "audio_pos_s": 0.0
+  },
+  {
+   "t": 9016,
+   "label": "end:complete",
+   "audio_pos_s": 8.14
+  },
+  {
+   "t": 9016,
+   "label": "begin:silence_6.0s",
+   "audio_pos_s": 8.14
+  },
+  {
+   "t": 15067,
+   "label": "end:silence_6.0s",
+   "audio_pos_s": 14.14
+  }
+ ],
+ "delta_counts": {}
+}

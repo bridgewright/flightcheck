@@ -121,3 +121,28 @@ Format per entry: Context · Options · Choice · Why · Rejected because · Rev
 - **Revisit when:** real-usage metrics show sessions completing cleanly
   through the new arc (v0.2) and report quality lands (v0.3) — payments
   then leads the following version.
+
+## 009 — server_vad + create_response:false carries the silence machinery (2026-08-01)
+
+- **Decision:** the interviewer session keeps `server_vad` (900 ms tail,
+  300 ms prefix padding) and adds `create_response: false`; the web client
+  owns ALL response timing — a debounce after real-speech commits, a
+  stall-blip filter for sub-2 s episodes (fillers, coughs), and a silence
+  clock that injects `[silence status]` notes with `response.create` at
+  8 s / 15 s / 30 s of accumulated quiet.
+- **Why:** measured bake-off (evals/reports/2026-08-01-f06-vad-bakeoff.md).
+  semantic_vad at low eagerness never committed a fully complete answer in
+  2/2 runs (Morgan goes silent forever); at auto eagerness it interrupted
+  an 8 s thinking pause at ~4.4 s and the forced response invented content
+  the candidate never said. Both settings also emit no events while holding
+  a turn, starving the client clock. server_vad + create_response:false was
+  deterministic in every scenario and fired zero uninvited responses (3/3),
+  which moves the complete/thinking distinction into client code that unit
+  tests and the adversarial harness can exercise.
+- **Rejected — semantic_vad (either eagerness):** disqualified by the
+  measurements above.
+- **Rejected — longer silence_duration_ms alone:** taxes every transition
+  including complete answers; kept only as a fallback knob.
+- **Revisit when:** OpenAI ships a semantic_vad mode with event visibility
+  during held turns and bounded commit latency, or live sessions show the
+  client debounce adding perceptible lag after complete answers.
