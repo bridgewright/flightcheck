@@ -50,6 +50,26 @@
   still resets the stretch once the interviewer's audio stops
   (DECISIONS 011 records the related suspension-gap rule).
 
+### Added — session stability guard
+- A broken transport now ends the session honestly instead of leaving a
+  ghost room where the timer runs and the interviewer never speaks again.
+  A pure connection-guard reducer watches four signals every quarter
+  second: ICE `failed` (immediate), ICE `disconnected` sustained 8 s, the
+  data channel closing mid-session, and starvation — 20 s of expected
+  traffic (candidate speaking, interviewer audible, or a response in
+  flight) with nothing arriving. Detection is honest by construction: a
+  healthy silent room accumulates nothing, so an away-from-keyboard
+  candidate is never shown a fake "connection problem", and a
+  backgrounded-tab gap resets the guard entirely (the suspension-amnesty
+  rule, DECISIONS 011).
+- On trip: a plain-language notice ("We hit a connection problem, so this
+  session has to end here. It won't count against your package — please
+  try again in a few minutes."), graceful teardown, no recording upload,
+  and no scoring call — the session row stays `planned`, so the same link
+  serves a fresh attempt and the package slot survives. A session where
+  the interviewer never answers the opening nudge now ends at ~20 s
+  instead of hanging forever.
+
 ### Fixed — background-tab resume
 - A candidate whose tab was backgrounded (or whose machine slept) no longer
   gets the queued silence scaffolds machine-gunned into their ear on
