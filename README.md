@@ -4,22 +4,15 @@
 
 ## v0.1 — live
 
-> **Operator TODO (pre-push, release-blocking):** replace every
-> `PENDING-DEPLOY-URL` below with the Vercel production URL from the deploy
-> runbook ([docs/deploy.md](docs/deploy.md), section 3), record the demo GIF
-> from the release smoke session and link it here (runbook section 5.1a),
-> then delete this note. The URL and demo exist only after the runbook's
-> deploy steps run, so this section ships with explicit placeholders rather
-> than made-up artifacts.
+- **App:** https://flightcheck.vercel.app
+- **Sample report (no signup):** https://flightcheck.vercel.app/sample-report
+  — a real practice session, anonymized
 
-- **App:** PENDING-DEPLOY-URL
-- **Sample report (no signup):** PENDING-DEPLOY-URL/sample-report
-- **Demo:** captured from the release smoke session at deploy time
-  (docs/deploy.md section 5.1a)
+![flightcheck demo: paste a JD, preview the cited rubric, take the voice interview, read the honest report](docs/demo.gif)
 
 ### Quickstart
 
-1. Open PENDING-DEPLOY-URL/new and paste a job description or its URL;
+1. Open https://flightcheck.vercel.app/new and paste a job description or its URL;
    optionally attach a resume PDF and a LinkedIn "Save to PDF" export
    (no scraping — DECISIONS #003).
 2. Wait for the rubric preview — 5-8 weighted dimensions, every one citing
