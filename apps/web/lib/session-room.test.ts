@@ -13,6 +13,7 @@ import {
   formatTimer,
   greetingTriggerEvent,
   indicatorForEvent,
+  interviewerStateForEvent,
   isHardCut,
   nextSilenceState,
   responseTriggerEvent,
@@ -274,5 +275,26 @@ describe("silence events and wire helpers", () => {
     );
     expect(speechStateForEvent(mk("response.done"))).toBeNull();
     expect(speechStateForEvent("not json")).toBeNull();
+  });
+});
+
+describe("interviewer lifecycle events (F-06 hotfix — no single-signal dependence)", () => {
+  const mk = (type: string) => JSON.stringify({ type });
+
+  it("maps output_audio_buffer lifecycle and response.done", () => {
+    expect(interviewerStateForEvent(mk("output_audio_buffer.started"))).toBe(
+      "speaking",
+    );
+    expect(interviewerStateForEvent(mk("output_audio_buffer.stopped"))).toBe(
+      "quiet",
+    );
+    expect(interviewerStateForEvent(mk("output_audio_buffer.cleared"))).toBe(
+      "quiet",
+    );
+    expect(interviewerStateForEvent(mk("response.done"))).toBe(
+      "response_done",
+    );
+    expect(interviewerStateForEvent(mk("input_audio_buffer.speech_started"))).toBeNull();
+    expect(interviewerStateForEvent("not json")).toBeNull();
   });
 });

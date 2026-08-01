@@ -12,6 +12,7 @@ import {
   formatTimer,
   greetingTriggerEvent,
   indicatorForEvent,
+  interviewerStateForEvent,
   isHardCut,
   nextSilenceState,
   responseTriggerEvent,
@@ -71,6 +72,7 @@ export default function SessionRoom({
   const timeStatusSentRef = useRef(0);
   const candidateAudibleRef = useRef(false);
   const commitArrivedRef = useRef(false);
+  const morganEventAudibleRef = useRef(false);
   const silenceStateRef = useRef(INITIAL_SILENCE_STATE);
   const remoteAnalyserRef = useRef<AnalyserNode | null>(null);
   const remoteLevelDataRef = useRef<Uint8Array<ArrayBuffer> | null>(null);
@@ -316,8 +318,24 @@ export default function SessionRoom({
       dc.addEventListener("message", (ev) => {
         const speech = speechStateForEvent(String(ev.data));
         if (speech === "started") candidateAudibleRef.current = true;
-        if (speech === "stopped") candidateAudibleRef.current = false;
+        if (speech === "stopped") {
+          candidateAudibleRef.current = false;
+          // Belt-and-suspenders arming (2026-08-01 live failure): if the
+          // committed event never arrives on this transport, speech_stopped
+          // still arms the response — the debounce absorbs the VAD tail.
+          commitArrivedRef.current = true;
+        }
         if (speech === "committed") commitArrivedRef.current = true;
+        // Morgan's audio lifecycle from server events — the analyser is the
+        // fallback, not the sole source; response_done also opens the
+        // clock's activation gate.
+        const morgan = interviewerStateForEvent(String(ev.data));
+        if (morgan === "speaking") {
+          morganEventAudibleRef.current = true;
+          heardMorganRef.current = true;
+        }
+        if (morgan === "quiet") morganEventAudibleRef.current = false;
+        if (morgan === "response_done") heardMorganRef.current = true;
         if (indicatorForEvent(String(ev.data)) === "listening") {
           setHearing(true);
           if (hearingTimeoutRef.current) {
@@ -384,6 +402,9 @@ export default function SessionRoom({
         interviewerAudible = peak > 0.02;
         if (interviewerAudible) heardMorganRef.current = true;
       }
+      // Server events are the second source: whichever signal works on this
+      // transport keeps the clock honest (2026-08-01 live failure).
+      interviewerAudible = interviewerAudible || morganEventAudibleRef.current;
       if (heardMorganRef.current && dcRef.current?.readyState === "open") {
         const commitArrived = commitArrivedRef.current;
         commitArrivedRef.current = false;
@@ -396,9 +417,11 @@ export default function SessionRoom({
         silenceStateRef.current = state;
         if (!due) {
           if (effects.stage) {
+            console.debug("[silence] stage fired", effects.stage.at);
             dcRef.current.send(silenceStatusEvent(effects.stage.text));
             dcRef.current.send(responseTriggerEvent());
           } else if (effects.triggerResponse) {
+            console.debug("[silence] response trigger");
             dcRef.current.send(responseTriggerEvent());
           }
         }

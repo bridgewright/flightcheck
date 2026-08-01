@@ -265,3 +265,34 @@ export function speechStateForEvent(
     return null;
   }
 }
+
+/**
+ * Map a raw data-channel payload to the interviewer's audio lifecycle.
+ *
+ * Two independent sources exist for "Morgan is audible" because neither is
+ * guaranteed: output_audio_buffer.* events are WebRTC-specific and clean,
+ * but the 2026-08-01 live session showed the machinery must not depend on
+ * any single signal (the analyser-only gate left the whole clock inert and
+ * Morgan silent after the greeting). "response_done" doubles as the
+ * clock-activation gate: once any response completes, the session is live.
+ */
+export function interviewerStateForEvent(
+  raw: string,
+): "speaking" | "quiet" | "response_done" | null {
+  try {
+    const event = JSON.parse(raw) as { type?: unknown };
+    switch (event.type) {
+      case "output_audio_buffer.started":
+        return "speaking";
+      case "output_audio_buffer.stopped":
+      case "output_audio_buffer.cleared":
+        return "quiet";
+      case "response.done":
+        return "response_done";
+      default:
+        return null;
+    }
+  } catch {
+    return null;
+  }
+}
