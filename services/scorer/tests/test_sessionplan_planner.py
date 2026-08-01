@@ -316,3 +316,9 @@ def test_pressure_probe_gets_a_tension_release():
 def test_closing_wishes_good_luck():
     text = _instructions()
     assert "Good luck out there." in text
+
+
+def test_unfinished_floor_gets_backchannel_only():
+    text = _instructions()
+    assert "clearly unfinished" in text
+    assert "never treat the fragment as a finished answer" in text
