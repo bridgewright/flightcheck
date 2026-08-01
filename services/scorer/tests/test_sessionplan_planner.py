@@ -241,7 +241,7 @@ def test_instructions_forbid_reading_question_numbers_aloud():
 def test_instructions_embed_silence_tolerance_rules():
     text = _instructions()
     assert "# PAUSES AND SILENCE" in text
-    assert "hold the silence" in text
+    assert "You have no clock" in text
     assert "Never re-ask the question you just asked in the same words." in text
     assert ("Never move on to a new question while the current answer is "
             "unfinished.") in text
@@ -288,13 +288,17 @@ def test_active_listening_opens_with_backchannel():
     assert "Only on restatement turns" in text
 
 
-def test_pauses_hold_eight_seconds_then_scaffold():
+def test_pauses_react_only_to_silence_status_notes():
     text = _instructions()
+    assert "[silence status]" in text
+    assert "on your own initiative" in text
+    assert "do exactly what it says" in text
     assert "clearly complete, respond promptly" in text
-    assert "eight seconds" in text
-    assert '"Take your time."' in text
-    assert "fifteen seconds" in text
-    assert "never the answer itself" in text
+
+
+def test_silence_notes_stay_unspoken():
+    text = _instructions()
+    assert "Never mention these notes" in text
 
 
 def test_questions_never_recite_jd_wording():

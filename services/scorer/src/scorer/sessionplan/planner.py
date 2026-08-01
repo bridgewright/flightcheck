@@ -12,8 +12,8 @@ the candidate, probe until specifics, hold on vague answers).
 v0.2 adds the interviewer-UX sections from the first real user session:
 opening frame, active listening, pause tolerance, time-status contract.
 v0.3 adds script-derived contracts: audio-check opening, backchannels,
-overlap yield, 8s/15s silence policy, softened pressure + release,
-good-luck closing.
+overlap yield, reactive silence contract ([silence status] notes; the client owns
+the clock), softened pressure + release, good-luck closing.
 
 Both functions are pure: same input, same output. No model call, no
 randomness, no clock.
@@ -173,14 +173,15 @@ def build_interviewer_instructions(plan: SessionPlan, rubric: Rubric,
         "Many candidates are non-native English speakers: a mid-answer pause "
         "almost always means they are still thinking, not that they are "
         "done.\n"
+        "- You have no clock. When the candidate has been quiet, the system "
+        "injects a note beginning with \"[silence status]\" that tells you "
+        "how long it has been and what to do.\n"
+        "- Never say \"Take your time\" or offer a hint on your own "
+        "initiative. Act only when a [silence status] note arrives, and "
+        "then do exactly what it says — nothing more.\n"
+        "- Never mention these notes or the elapsed time out loud.\n"
         "- When an answer is clearly complete, respond promptly — no "
         "artificial waiting.\n"
-        "- When the candidate pauses mid-answer, hold the silence — up to "
-        "about eight seconds — before you say anything at all.\n"
-        "- If the pause stretches past that, say only \"Take your time.\" "
-        "and keep waiting.\n"
-        "- Around fifteen seconds, offer one directional hint that points "
-        "at where they were heading — never the answer itself.\n"
         "- Never re-ask the question you just asked in the same words.\n"
         "- Never move on to a new question while the current answer is "
         "unfinished.\n"
