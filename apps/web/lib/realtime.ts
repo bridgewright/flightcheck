@@ -34,6 +34,14 @@ export function clientSecretRequestBody(instructions: string) {
             // committing phantom turns every ~10 s and each one triggered a
             // response. Real speech clears 0.6 comfortably.
             threshold: 0.6,
+            // Off for the same reason create_response is off: on open
+            // speakers, Morgan's own leaked audio trips VAD at utterance
+            // onset (logged 1.7 s into the greeting) and the default
+            // server-side interruption truncated his first words — heard
+            // as broken audio. Yielding on overlap is handled in the
+            // interviewer instructions (follow the candidate's thread),
+            // not by chopping the audio stream.
+            interrupt_response: false,
           },
         },
         output: { voice: "marin" },

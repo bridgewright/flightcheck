@@ -364,6 +364,14 @@ export default function SessionRoom({
         if (String(ev.data).includes('"type":"error"')) {
           console.debug("[silence] server-error", String(ev.data).slice(0, 300));
         }
+        // Truncation visibility: if these ever reappear, Morgan's audio is
+        // being cut server-side again (interrupt_response must stay false).
+        if (String(ev.data).includes("output_audio_buffer.cleared")) {
+          console.debug("[silence] morgan-audio-cleared");
+        }
+        if (String(ev.data).includes('"conversation.item.truncated"')) {
+          console.debug("[silence] morgan-item-truncated");
+        }
         // Morgan's audio lifecycle from server events — the analyser is the
         // fallback, not the sole source; response_done also opens the
         // clock's activation gate.
