@@ -9,6 +9,7 @@ import {
   trailingBottomTwoStreak,
   trajectoryCells,
 } from "@/components/progress-view";
+import { recurringIssues } from "@/lib/progress";
 import type { Rubric } from "@/lib/types";
 import type { SessionProgressEntry } from "@/lib/worker";
 
@@ -174,6 +175,64 @@ describe("gapRecurrenceCount", () => {
     ];
     expect(gapRecurrenceCount(entries, "Long silences after challenges.")).toBe(2);
     expect(gapRecurrenceCount(entries, "Never reported.")).toBe(0);
+  });
+});
+
+// progress-view restates rules that are private to lib/progress (bottom-two
+// tie-break, gap normalization, scored ordering) because the focus copy must
+// describe exactly what recurringIssues computed. These tests hold the two
+// modules to EACH OTHER: if either side's rule drifts — a different
+// tie-break, smarter gap matching, a changed status filter — an agreement
+// here breaks before the copy can misdescribe a flagged issue.
+describe("agreement with lib/progress recurringIssues", () => {
+  it("keys flagged via a tie-broken bottom two carry a trailing streak; unflagged keys do not", () => {
+    // All three dimensions tied: bottom-two membership is DECIDED by the
+    // tie-break (rubric position), so any drift in either module's ranking
+    // changes one side of these assertions.
+    const tied = [
+      { dimension_key: "a", score: 2.0 },
+      { dimension_key: "b", score: 2.0 },
+      { dimension_key: "c", score: 2.0 },
+    ];
+    const entries = [
+      entry({ session_id: "s1", index: 1, dimension_scores: tied }),
+      entry({ session_id: "s2", index: 2, dimension_scores: tied }),
+    ];
+    expect(recurringIssues(entries).weakDimensions).toEqual(["a", "b"]);
+    for (const key of recurringIssues(entries).weakDimensions) {
+      expect(trailingBottomTwoStreak(entries, key)).toBeGreaterThanOrEqual(2);
+    }
+    expect(trailingBottomTwoStreak(entries, "c")).toBe(0);
+  });
+
+  it("streaks survive an unscored row between scored sessions on both sides", () => {
+    const low = [
+      { dimension_key: "structure", score: 4.0 },
+      { dimension_key: "composure", score: 2.0 },
+      { dimension_key: "specificity", score: 2.5 },
+    ];
+    const entries = [
+      entry({ session_id: "s1", index: 1, dimension_scores: low }),
+      entry({ session_id: "s2", index: 2, status: "failed", overall: null }),
+      entry({ session_id: "s3", index: 3, dimension_scores: low }),
+    ];
+    expect(recurringIssues(entries).weakDimensions).toContain("composure");
+    expect(trailingBottomTwoStreak(entries, "composure")).toBe(2);
+  });
+
+  it("every flagged gap counts at least the two reports that flagged it", () => {
+    // The same wording with different casing and spacing: flagging depends on
+    // lib/progress's normalization, the count on progress-view's restatement.
+    const entries = [
+      entry({ session_id: "s1", index: 1, gaps: ["Long silences after challenges."] }),
+      entry({ session_id: "s2", index: 2, gaps: [" long  SILENCES after challenges. "] }),
+      entry({ session_id: "s3", index: 3, gaps: ["Something else."] }),
+    ];
+    const flagged = recurringIssues(entries).gaps;
+    expect(flagged).toEqual(["Long silences after challenges."]);
+    for (const gap of flagged) {
+      expect(gapRecurrenceCount(entries, gap)).toBeGreaterThanOrEqual(2);
+    }
   });
 });
 
