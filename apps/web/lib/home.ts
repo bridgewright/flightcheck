@@ -1,7 +1,12 @@
 // Pure helpers behind the home dashboard and the package page. JSX-free and
 // free of any server-only import, so vitest exercises them directly and both
 // screens compose the same logic instead of each deriving its own.
-import type { SessionReport, SessionStatus, Verdict } from "@/lib/types";
+import type {
+  PackageStatus,
+  SessionReport,
+  SessionStatus,
+  Verdict,
+} from "@/lib/types";
 
 /** The only shape the journey logic needs — the worker's richer session
  * summaries satisfy it structurally. */
@@ -290,4 +295,53 @@ export function latestVerdict(
     .filter((session) => session.verdict !== null)
     .sort((a, b) => b.index - a.index)[0];
   return latest?.verdict ?? null;
+}
+
+// --- Package cards -------------------------------------------------------
+
+/** What a package is called wherever it is named — the switcher, the cards,
+ * the home header. One fallback so "Untitled package" cannot drift. */
+export function packageDisplayTitle(roleTitle: string | null): string {
+  const title = (roleTitle ?? "").trim();
+  return title === "" ? "Untitled package" : title;
+}
+
+/** How a pill should read, decided here; how it looks stays in the component. */
+export type PillTone = "neutral" | "wait" | "bad" | "done";
+
+export interface PackagePill {
+  label: string;
+  tone: PillTone;
+}
+
+/**
+ * The one status word a package card carries. Compile lifecycle first — a
+ * package that has no rubric yet (or never will) has nothing to say about
+ * session usage. "Ready" is deliberately not a label here: that word is
+ * reserved for the readiness verdict.
+ */
+export function packagePill(
+  status: PackageStatus,
+  sessionsUsed: number,
+  totalSessions: number,
+): PackagePill {
+  if (status === "compiling") {
+    return { label: "Compiling", tone: "wait" };
+  }
+  if (status === "failed") {
+    return { label: "Compile failed", tone: "bad" };
+  }
+  if (sessionsUsed >= totalSessions) {
+    return { label: "Complete", tone: "done" };
+  }
+  if (sessionsUsed === 0) {
+    return { label: "Not started", tone: "neutral" };
+  }
+  return { label: "In progress", tone: "neutral" };
+}
+
+/** The exhausted ticket's first sentence, sized to the package's own quota —
+ * packages are not all six sessions. */
+export function exhaustedSessionsLine(totalSessions: number): string {
+  return `All ${totalSessions} sessions of this package are used.`;
 }

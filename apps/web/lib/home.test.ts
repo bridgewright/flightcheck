@@ -3,11 +3,14 @@ import { describe, expect, it } from "vitest";
 import {
   NAV_TABS,
   activeNavTab,
+  exhaustedSessionsLine,
   formatSessionDate,
   greetingName,
   journeyLegs,
   latestVerdict,
   nextSessionNumber,
+  packageDisplayTitle,
+  packagePill,
   scoringStageLine,
   switchHref,
   verdictLine,
@@ -432,5 +435,65 @@ describe("verdictPhrase", () => {
     expect(verdictPhrase("not_ready")).toBe("Not yet ready");
     expect(verdictPhrase("approaching")).toBe("Approaching");
     expect(verdictPhrase("ready")).toBe("Ready");
+  });
+});
+
+describe("packageDisplayTitle", () => {
+  it("uses the role title when the package has one", () => {
+    expect(packageDisplayTitle("Deployment Strategist")).toBe(
+      "Deployment Strategist",
+    );
+  });
+
+  it("falls back for packages without a title", () => {
+    expect(packageDisplayTitle(null)).toBe("Untitled package");
+    expect(packageDisplayTitle("")).toBe("Untitled package");
+    expect(packageDisplayTitle("   ")).toBe("Untitled package");
+  });
+});
+
+describe("packagePill", () => {
+  it("shows the compile lifecycle before anything else", () => {
+    expect(packagePill("compiling", 0, 6)).toEqual({
+      label: "Compiling",
+      tone: "wait",
+    });
+    expect(packagePill("failed", 0, 6)).toEqual({
+      label: "Compile failed",
+      tone: "bad",
+    });
+  });
+
+  it("tracks session usage once the package is ready", () => {
+    expect(packagePill("ready", 0, 6)).toEqual({
+      label: "Not started",
+      tone: "neutral",
+    });
+    expect(packagePill("ready", 3, 6)).toEqual({
+      label: "In progress",
+      tone: "neutral",
+    });
+    expect(packagePill("ready", 6, 6)).toEqual({
+      label: "Complete",
+      tone: "done",
+    });
+  });
+
+  it("treats usage beyond the quota as complete, never in progress", () => {
+    expect(packagePill("ready", 7, 6)).toEqual({
+      label: "Complete",
+      tone: "done",
+    });
+  });
+});
+
+describe("exhaustedSessionsLine", () => {
+  it("counts the package's own quota, not a hardcoded six", () => {
+    expect(exhaustedSessionsLine(6)).toBe(
+      "All 6 sessions of this package are used.",
+    );
+    expect(exhaustedSessionsLine(4)).toBe(
+      "All 4 sessions of this package are used.",
+    );
   });
 });
