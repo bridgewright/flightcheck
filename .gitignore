@@ -14,3 +14,4 @@ evals/suites/delivery_discrimination/clips/*.wav
 # generated eval outputs (the numbers of record are committed verbatim as an
 # evals/reports/ snapshot per release, cited by docs/releases + CHANGELOG)
 evals/out/
+.gstack/
