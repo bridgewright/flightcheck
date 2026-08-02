@@ -2,6 +2,29 @@
 
 ## [Unreleased]
 
+### Added — accounts, landing, home (v0.4 core)
+- Sign-in with Google or a passwordless email link (Supabase Auth). No
+  passwords exist anywhere in the product. Interviews now require sign-in;
+  a package binds to the first signed-in account that opens it, and a
+  package opened by a different account gets an honest 403 page.
+- Public landing page: the product explained plainly, a demo-video slot
+  (coming soon), and sign-in as the single entry to the app.
+- Logged-in home: session journey strip, the next session as a ticket-style
+  card with the last verdict and one focus line, the full session list with
+  report links, and a readiness dial. The package page becomes the same
+  dashboard; the rubric moves into a collapsed disclosure.
+- Pricing page and a checkout stub (₩89,000 · one JD · 30 days · 6
+  sessions). Payment-provider wiring stays with the payments feature; the
+  stub says so honestly.
+- Multi-session packages live end to end: a 6-session quota, resume of an
+  unfinished session (a connection-guard ending never burns the slot),
+  next-index creation, and honest "package exhausted" copy. Two new worker
+  routes list a package's sessions and a user's packages.
+- Night visual identity across every screen: dark-only palette, serif
+  greetings, amber progress lights, coral primary actions — the aviation
+  identity lives in the visuals (journey strip, readiness dial, ticket
+  structure) while the copy stays plain.
+
 ### Added — the client owns all conversational timing
 - Silence machinery: with `create_response: false` the server commits turns
   but never speaks on its own — a pure, unit-tested reducer is now the only
