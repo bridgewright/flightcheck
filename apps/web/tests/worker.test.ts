@@ -9,8 +9,12 @@ import {
   createSession,
   getPackageByToken,
   getSession,
+  listPackagesForUser,
+  listSessions,
+  packageOwnerId,
   workerFetch,
 } from "@/lib/worker";
+import type { PackageRow } from "@/lib/types";
 
 interface RecordedCall {
   url: string;
@@ -180,6 +184,100 @@ describe("getSession", () => {
     const row = await getSession("sess-1");
     expect(calls[0].url).toBe("https://worker.example.test/api/sessions/sess-1");
     expect(row.status).toBe("scoring");
+  });
+});
+
+describe("listSessions", () => {
+  it("gets the package's session list with the id url-encoded", async () => {
+    nextResponse = jsonResponse({ sessions: [] });
+    await listSessions("pkg/1");
+    expect(calls[0].url).toBe(
+      "https://worker.example.test/api/packages/pkg%2F1/sessions",
+    );
+  });
+
+  it("returns the session summaries the worker reports", async () => {
+    nextResponse = jsonResponse({
+      sessions: [
+        { id: "sess-1", index: 1, status: "scored", report_available: true, overall: 2.9 },
+        { id: "sess-2", index: 2, status: "scoring", report_available: false, overall: null },
+      ],
+    });
+    const sessions = await listSessions("pkg-1");
+    expect(sessions).toHaveLength(2);
+    expect(sessions[0].overall).toBe(2.9);
+    expect(sessions[1].status).toBe("scoring");
+  });
+
+  it("treats a missing sessions key as an empty list", async () => {
+    nextResponse = jsonResponse({});
+    expect(await listSessions("pkg-1")).toEqual([]);
+  });
+
+  it("throws with the status code on a non-2xx reply", async () => {
+    nextResponse = jsonResponse({ detail: "boom" }, 500);
+    await expect(listSessions("pkg-1")).rejects.toThrow(
+      "worker GET /api/packages/pkg-1/sessions failed: 500",
+    );
+  });
+});
+
+describe("listPackagesForUser", () => {
+  it("gets the user's packages with the id url-encoded", async () => {
+    nextResponse = jsonResponse({ packages: [] });
+    await listPackagesForUser("user/1");
+    expect(calls[0].url).toBe(
+      "https://worker.example.test/api/users/user%2F1/packages",
+    );
+  });
+
+  it("returns the package summaries the worker reports", async () => {
+    nextResponse = jsonResponse({
+      packages: [
+        {
+          id: "pkg-1",
+          access_token: "tok-1",
+          status: "ready",
+          user_id: "user-1",
+          total_sessions: 6,
+          sessions_used: 3,
+          role_title: "Forward Deployed PM",
+        },
+      ],
+    });
+    const packages = await listPackagesForUser("user-1");
+    expect(packages).toHaveLength(1);
+    expect(packages[0].role_title).toBe("Forward Deployed PM");
+    expect(packages[0].sessions_used).toBe(3);
+  });
+
+  it("treats a missing packages key as an empty list", async () => {
+    nextResponse = jsonResponse({});
+    expect(await listPackagesForUser("user-1")).toEqual([]);
+  });
+
+  it("throws with the status code on a non-2xx reply", async () => {
+    nextResponse = jsonResponse({ detail: "boom" }, 500);
+    await expect(listPackagesForUser("user-1")).rejects.toThrow(
+      "worker GET /api/users/user-1/packages failed: 500",
+    );
+  });
+});
+
+describe("packageOwnerId", () => {
+  it("reads the owner the worker reports", () => {
+    const pkg = { id: "pkg-1", user_id: "user-1" } as unknown as PackageRow;
+    expect(packageOwnerId(pkg)).toBe("user-1");
+  });
+
+  it("reports an unclaimed package as null", () => {
+    const pkg = { id: "pkg-1", user_id: null } as unknown as PackageRow;
+    expect(packageOwnerId(pkg)).toBeNull();
+  });
+
+  it("reports null when the worker predates the ownership column", () => {
+    const pkg = { id: "pkg-1" } as unknown as PackageRow;
+    expect(packageOwnerId(pkg)).toBeNull();
   });
 });
 

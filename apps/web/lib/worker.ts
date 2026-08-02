@@ -7,7 +7,9 @@ import type {
   CreatePackageBody,
   CreateSessionResponse,
   PackageRow,
+  PackageStatus,
   SessionRow,
+  SessionStatus,
 } from "@/lib/types";
 
 export async function workerFetch(path: string, init: RequestInit = {}): Promise<Response> {
@@ -106,6 +108,65 @@ export async function completeSession(
 export async function getSession(id: string): Promise<SessionRow> {
   const path = `/api/sessions/${encodeURIComponent(id)}`;
   return workerJson(`GET ${path}`, await workerFetch(path));
+}
+
+// --- Multi-session listings ---------------------------------------------
+//
+// The dashboards read a package's progress and a user's packages over HTTP
+// like everything else: the browser never touches the database, and these
+// summaries are deliberately narrower than the full rows (no session plan, no
+// rubric, no interviewer instructions) because a list view has no use for
+// them and they are expensive to ship.
+
+export interface SessionSummary {
+  id: string;
+  index: number;
+  status: SessionStatus;
+  report_available: boolean;
+  overall: number | null;
+  // Older rows predate the column, so the list renders without a date rather
+  // than inventing one.
+  created_at?: string | null;
+}
+
+export interface PackageSummary {
+  id: string;
+  access_token: string;
+  status: PackageStatus;
+  user_id: string | null;
+  total_sessions: number;
+  sessions_used: number;
+  role_title: string | null;
+}
+
+export async function listSessions(packageId: string): Promise<SessionSummary[]> {
+  const path = `/api/packages/${encodeURIComponent(packageId)}/sessions`;
+  const body = await workerJson<{ sessions?: SessionSummary[] }>(
+    `GET ${path}`,
+    await workerFetch(path),
+  );
+  return body.sessions ?? [];
+}
+
+export async function listPackagesForUser(userId: string): Promise<PackageSummary[]> {
+  const path = `/api/users/${encodeURIComponent(userId)}/packages`;
+  const body = await workerJson<{ packages?: PackageSummary[] }>(
+    `GET ${path}`,
+    await workerFetch(path),
+  );
+  return body.packages ?? [];
+}
+
+/**
+ * The account a package belongs to, or null while it is still unclaimed.
+ *
+ * packages.user_id arrives with F-07 and is not yet declared on
+ * lib/types.PackageRow, which the session room and report page share. Reading
+ * it through one accessor keeps the cast in a single documented place until
+ * that type catches up.
+ */
+export function packageOwnerId(pkg: PackageRow): string | null {
+  return (pkg as PackageRow & { user_id?: string | null }).user_id ?? null;
 }
 
 // --- Token capability checks -------------------------------------------
