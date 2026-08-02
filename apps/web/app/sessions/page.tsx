@@ -115,8 +115,10 @@ function RowLinks({ session }: { session: SessionSummary }) {
       {label}
     </Link>
   );
-  if (session.status === "failed") {
-    // Retry enters this session's OWN room — the slot is resumed, not burned.
+  if (session.status === "failed" || session.status === "insufficient") {
+    // Both statuses are retriable the same way (F-04: insufficient is terminal
+    // like failed, slot preserved): Retry enters this session's OWN room — the
+    // slot is resumed, not burned.
     return (
       <span className="flex gap-3">
         {detail("View")}
