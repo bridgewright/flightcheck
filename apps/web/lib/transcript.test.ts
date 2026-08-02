@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import {
   deriveSessionDetailState,
   detailCta,
+  detailCtaHref,
   dimensionScoreMap,
   groupTurns,
   previousScoredEntry,
@@ -285,10 +286,12 @@ describe("detailCta", () => {
   it("points a scored session at starting the next one", () => {
     expect(detailCta("scored", "s-3", 4)).toEqual({
       kind: "start",
+      nextIndex: 4,
       label: "Start session 4",
     });
     expect(detailCta("limited", "s-3", 4)).toEqual({
       kind: "start",
+      nextIndex: 4,
       label: "Start session 4",
     });
   });
@@ -305,5 +308,45 @@ describe("detailCta", () => {
       kind: "home",
       label: "Back to home",
     });
+  });
+});
+
+describe("detailCtaHref", () => {
+  it("links a room CTA to that session's own room", () => {
+    expect(
+      detailCtaHref(
+        { kind: "room", sessionId: "s-2", label: "Start this session" },
+        [],
+      ),
+    ).toBe("/sessions/s-2/room");
+  });
+
+  it("links a home CTA to home", () => {
+    expect(detailCtaHref({ kind: "home", label: "Back to home" }, [])).toBe(
+      "/home",
+    );
+  });
+
+  it("links a start CTA straight into the next slot's room when that row exists", () => {
+    // The worker resumes open slots, so "session 2" here IS the existing
+    // planned row — entering its room directly matches create_session.
+    const entries = [entry(1, "scored", 3.0), entry(2, "failed", null)];
+    expect(
+      detailCtaHref(
+        { kind: "start", nextIndex: 2, label: "Start session 2" },
+        entries,
+      ),
+    ).toBe("/sessions/s2/room");
+  });
+
+  it("falls back to home when the next session has no row yet", () => {
+    // A fresh index needs the create flow, which lives on home.
+    const entries = [entry(1, "scored", 3.0)];
+    expect(
+      detailCtaHref(
+        { kind: "start", nextIndex: 2, label: "Start session 2" },
+        entries,
+      ),
+    ).toBe("/home");
   });
 });

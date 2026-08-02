@@ -163,7 +163,7 @@ export function dimensionScoreMap(
  */
 export type DetailCta =
   | { kind: "room"; sessionId: string; label: string }
-  | { kind: "start"; label: string }
+  | { kind: "start"; nextIndex: number; label: string }
   | { kind: "home"; label: string };
 
 export function detailCta(
@@ -182,8 +182,34 @@ export function detailCta(
     case "limited":
       return nextSessionNumber === null
         ? { kind: "home", label: "Back to home" }
-        : { kind: "start", label: `Start session ${nextSessionNumber}` };
+        : {
+            kind: "start",
+            nextIndex: nextSessionNumber,
+            label: `Start session ${nextSessionNumber}`,
+          };
     case "scoring":
       return { kind: "home", label: "Back to home" };
+  }
+}
+
+/**
+ * Where the CTA actually goes. A "start" CTA enters the next slot's own room
+ * when that row already exists (the worker resumes open slots, so the row IS
+ * the next session); a fresh index has no room yet, so the create flow on
+ * home takes over.
+ */
+export function detailCtaHref(
+  cta: DetailCta,
+  entries: SessionProgressEntry[],
+): string {
+  switch (cta.kind) {
+    case "room":
+      return `/sessions/${cta.sessionId}/room`;
+    case "home":
+      return "/home";
+    case "start": {
+      const next = entries.find((entry) => entry.index === cta.nextIndex);
+      return next === undefined ? "/home" : `/sessions/${next.session_id}/room`;
+    }
   }
 }

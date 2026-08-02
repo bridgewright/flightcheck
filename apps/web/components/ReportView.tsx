@@ -89,6 +89,11 @@ export function ReportDimensionCards({
       {report.dimension_scores.map((score) => {
         const meta = metaByKey.get(score.dimension_key);
         const before = previous?.[score.dimension_key];
+        // F-03 fields are declared required, but reports serialized before
+        // the fields existed (the checked-in sample fixture, cached JSON)
+        // omit them at runtime — read defensively, render nothing.
+        const strengths = score.strengths ?? [];
+        const weaknesses = score.weaknesses ?? [];
         return (
           <article
             key={score.dimension_key}
@@ -117,27 +122,27 @@ export function ReportDimensionCards({
             <p className="mt-3 text-sm leading-relaxed text-neutral-700 dark:text-neutral-300">
               {score.rationale}
             </p>
-            {(score.strengths.length > 0 || score.weaknesses.length > 0) && (
+            {(strengths.length > 0 || weaknesses.length > 0) && (
               <div className="mt-4 grid gap-4 sm:grid-cols-2">
-                {score.strengths.length > 0 && (
+                {strengths.length > 0 && (
                   <div>
                     <p className="text-xs uppercase tracking-wide text-neutral-500">
                       What worked
                     </p>
                     <ul className="mt-1.5 list-disc pl-5 text-sm text-neutral-700 dark:text-neutral-300">
-                      {score.strengths.map((item) => (
+                      {strengths.map((item) => (
                         <li key={item}>{item}</li>
                       ))}
                     </ul>
                   </div>
                 )}
-                {score.weaknesses.length > 0 && (
+                {weaknesses.length > 0 && (
                   <div>
                     <p className="text-xs uppercase tracking-wide text-neutral-500">
                       What held the score down
                     </p>
                     <ul className="mt-1.5 list-disc pl-5 text-sm text-neutral-700 dark:text-neutral-300">
-                      {score.weaknesses.map((item) => (
+                      {weaknesses.map((item) => (
                         <li key={item}>{item}</li>
                       ))}
                     </ul>
