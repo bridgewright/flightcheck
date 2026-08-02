@@ -322,3 +322,12 @@ def test_unfinished_floor_gets_backchannel_only():
     text = _instructions()
     assert "clearly unfinished" in text
     assert "never treat the fragment as a finished answer" in text
+
+
+def test_instructions_lock_interviewer_language_to_english():
+    text = _instructions()
+    assert "# LANGUAGE" in text
+    assert "never mirror a switch" in text
+    assert "Let's keep it in English" in text
+    assert "plainly and without scolding" in text
+    assert text.index("# PERSONA") < text.index("# LANGUAGE") < text.index("# OPENING")
