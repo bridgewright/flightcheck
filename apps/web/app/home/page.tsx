@@ -17,7 +17,7 @@ import { getPackageByToken, getSession, listPackagesForUser, listSessions } from
 export const dynamic = "force-dynamic";
 
 const PRIMARY_BUTTON =
-  "rounded-[10px] bg-coral px-5 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-[#c96a4a]";
+  "rounded-md bg-neutral-900 px-5 py-2.5 text-sm font-medium text-white dark:bg-white dark:text-neutral-900";
 
 function Shell({
   viewer,
@@ -29,7 +29,7 @@ function Shell({
   return (
     <>
       <TopBar viewer={viewer} />
-      <main className="mx-auto w-full max-w-2xl px-7 pt-10 pb-12">{children}</main>
+      <main className="mx-auto w-full max-w-2xl px-6 pt-10 pb-12">{children}</main>
     </>
   );
 }
@@ -41,7 +41,7 @@ function SignedOut() {
   return (
     <Shell viewer={null}>
       <div className="flex flex-col items-center gap-4 py-16 text-center">
-        <h1 className="font-display text-[28px] font-[460] text-balance">
+        <h1 className="text-2xl font-bold tracking-tight text-balance">
           You need to sign in to see your sessions.
         </h1>
         <Link href="/login?next=/home" className={PRIMARY_BUTTON}>
@@ -57,10 +57,10 @@ function Unreachable({ viewer }: { viewer: Viewer }) {
     <Shell viewer={viewer}>
       <PollRefresh intervalMs={5000} />
       <div className="flex flex-col items-center gap-3 py-16 text-center">
-        <h1 className="font-display text-[28px] font-[460] text-balance">
+        <h1 className="text-2xl font-bold tracking-tight text-balance">
           Can&apos;t reach your sessions right now.
         </h1>
-        <p className="max-w-md text-sm text-muted">
+        <p className="max-w-md text-sm text-neutral-600 dark:text-neutral-400">
           Your account is fine — the service that holds your packages is briefly
           unreachable, most often during a restart. This page retries by itself;
           leave it open.
@@ -74,10 +74,10 @@ function NoPackages({ viewer }: { viewer: Viewer }) {
   return (
     <Shell viewer={viewer}>
       <div className="flex flex-col items-center gap-5 py-14 text-center">
-        <h1 className="font-display text-[28px] font-[460] text-balance">
+        <h1 className="text-2xl font-bold tracking-tight text-balance">
           {greetingName(viewer.email)}
         </h1>
-        <p className="max-w-md text-[15px] text-muted">
+        <p className="max-w-md text-neutral-600 dark:text-neutral-400">
           Paste the job description you&apos;re applying to and your first session is
           ready in about two minutes.
         </p>
@@ -156,10 +156,10 @@ export default async function HomePage() {
 
   return (
     <Shell viewer={viewer}>
-      <h1 className="text-center font-display text-[28px] font-[460] text-balance">
+      <h1 className="text-center text-2xl font-bold tracking-tight text-balance">
         {greetingName(viewer.email)}
       </h1>
-      <p className="mb-6 text-center text-[13.5px] text-muted">
+      <p className="mb-6 text-center text-sm text-neutral-600 dark:text-neutral-400">
         {featured.role_title ?? "Your interview package"} · {done} of {total} sessions
         done
       </p>
@@ -192,19 +192,19 @@ export default async function HomePage() {
 
       {packages.length > 1 ? (
         <section className="mt-9">
-          <h2 className="mb-2.5 text-[11.5px] font-bold tracking-[.1em] text-faint uppercase">
+          <h2 className="mb-2.5 text-xs font-semibold tracking-wide text-neutral-500 uppercase">
             Your other packages
           </h2>
-          <ul className="flex flex-col gap-2 text-[13.5px]">
+          <ul className="flex flex-col gap-2 text-sm">
             {packages.slice(1).map((pkg) => (
               <li key={pkg.id}>
                 <Link
                   href={`/p/${pkg.access_token}`}
-                  className="border-b border-coral/45 text-coral"
+                  className="underline underline-offset-4"
                 >
                   {pkg.role_title ?? "Untitled package"}
                 </Link>
-                <span className="ml-2 text-faint">
+                <span className="ml-2 text-neutral-500">
                   {pkg.sessions_used} of {pkg.total_sessions} used
                 </span>
               </li>

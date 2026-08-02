@@ -27,7 +27,7 @@ function DemoVideo() {
   if (DEMO_VIDEO_URL) {
     return (
       <video
-        className="aspect-video w-full rounded-2xl border border-line shadow-[0_2px_6px_rgba(0,0,0,.35),0_18px_48px_rgba(0,0,0,.45)]"
+        className="aspect-video w-full rounded-md border border-neutral-300 dark:border-neutral-700"
         src={DEMO_VIDEO_URL}
         controls
         preload="metadata"
@@ -35,29 +35,16 @@ function DemoVideo() {
     );
   }
   return (
-    <div className="relative flex aspect-video w-full items-center justify-center rounded-2xl border border-line bg-[linear-gradient(165deg,var(--color-night-2)_0%,var(--color-night-1)_55%,#1a2544_100%)] shadow-[0_2px_6px_rgba(0,0,0,.35),0_18px_48px_rgba(0,0,0,.45)]">
+    <div className="relative flex aspect-video w-full items-center justify-center rounded-md border border-neutral-300 bg-neutral-50 dark:border-neutral-700 dark:bg-neutral-900">
       <span
         aria-hidden="true"
-        className="flex size-17 items-center justify-center rounded-full border border-line bg-night-0/60"
+        className="flex size-16 items-center justify-center rounded-full border border-neutral-300 dark:border-neutral-700"
       >
-        <span className="ml-1.5 border-y-[12px] border-l-[20px] border-y-transparent border-l-faint" />
+        <span className="ml-1.5 border-y-[12px] border-l-[20px] border-y-transparent border-l-neutral-400" />
       </span>
-      <span className="absolute bottom-3.5 left-4 text-xs text-muted">
+      <span className="absolute bottom-3.5 left-4 text-xs text-neutral-500">
         Demo video — coming soon
       </span>
-    </div>
-  );
-}
-
-function RunwayLights() {
-  return (
-    <div aria-hidden="true" className="flex justify-center gap-2.5">
-      {Array.from({ length: 10 }, (_, i) => (
-        <i
-          key={i}
-          className={`size-1.5 rounded-full bg-amber ${i % 2 ? "opacity-40" : ""}`}
-        />
-      ))}
     </div>
   );
 }
@@ -69,10 +56,10 @@ export default async function LandingPage() {
       <TopBar viewer={viewer} />
       <main className="flex flex-col">
         <section className="mx-auto flex w-full max-w-3xl flex-col px-6 pt-16 pb-14 text-center">
-          <h1 className="font-display text-[33px] leading-[1.14] font-[480] text-balance md:text-[46px]">
-            Would you pass the interview <em className="text-coral">today?</em>
+          <h1 className="text-3xl font-bold tracking-tight text-balance md:text-5xl">
+            Would you pass the interview <em>today?</em>
           </h1>
-          <p className="mx-auto mt-4 mb-8 max-w-xl text-[16.5px] text-muted">
+          <p className="mx-auto mt-4 mb-8 max-w-xl text-neutral-600 dark:text-neutral-400">
             Paste the job description you&apos;re facing. A live interviewer holds you
             to that role&apos;s real bar — in English, out loud — and tells you honestly
             what&apos;s still missing. Repeat until you&apos;d pass.
@@ -81,26 +68,25 @@ export default async function LandingPage() {
           <div className="mt-8 flex flex-wrap justify-center gap-3">
             <Link
               href="/login"
-              className="rounded-[10px] bg-coral px-6 py-3 text-[15px] font-semibold text-white transition-colors hover:bg-[#c96a4a]"
+              className="rounded-md bg-neutral-900 px-6 py-3 font-medium text-white dark:bg-white dark:text-neutral-900"
             >
               Sign in and try it
             </Link>
             <Link
               href="/pricing"
-              className="rounded-[10px] border border-line px-6 py-3 text-[15px] font-semibold text-ink transition-colors hover:border-faint"
+              className="rounded-md border border-neutral-300 px-6 py-3 font-medium dark:border-neutral-700"
             >
               See pricing
             </Link>
           </div>
-          <div className="mt-9">
-            <RunwayLights />
-          </div>
         </section>
-        <section className="mx-auto grid w-full max-w-5xl gap-px border-y border-line bg-line sm:grid-cols-3">
+        <section className="mx-auto grid w-full max-w-5xl divide-y divide-neutral-200 border-y border-neutral-200 sm:grid-cols-3 sm:divide-x sm:divide-y-0 dark:divide-neutral-800 dark:border-neutral-800">
           {FEATURES.map((feature) => (
-            <div key={feature.title} className="bg-night-0 px-6 py-6">
-              <b className="mb-1.5 block text-sm font-semibold">{feature.title}</b>
-              <span className="text-[13px] text-muted">{feature.detail}</span>
+            <div key={feature.title} className="px-6 py-6">
+              <b className="mb-1.5 block font-semibold">{feature.title}</b>
+              <span className="text-sm text-neutral-600 dark:text-neutral-400">
+                {feature.detail}
+              </span>
             </div>
           ))}
         </section>

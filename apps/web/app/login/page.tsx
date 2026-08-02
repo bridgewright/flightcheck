@@ -6,63 +6,12 @@ import { useSearchParams } from "next/navigation";
 import { safeNextPath } from "../../lib/auth-redirect";
 import { createClient } from "../../lib/supabase/client";
 
-const styles = {
-  page: {
-    alignItems: "center",
-    background: "#0a0f1e",
-    color: "#ece9dc",
-    display: "flex",
-    flex: 1,
-    justifyContent: "center",
-    minHeight: "100vh",
-    padding: "32px 20px",
-  },
-  column: { maxWidth: 360, width: "100%" },
-  wordmark: {
-    fontFamily: "Georgia, serif",
-    fontSize: 22,
-    marginBottom: 48,
-  },
-  heading: {
-    fontFamily: "Georgia, serif",
-    fontSize: 36,
-    lineHeight: 1.12,
-    margin: "0 0 32px",
-  },
-  field: {
-    background: "#101830",
-    border: "1px solid #24304e",
-    borderRadius: 8,
-    color: "#ece9dc",
-    fontSize: 16,
-    padding: "13px 14px",
-    width: "100%",
-  },
-  button: {
-    background: "#d97757",
-    border: "1px solid #d97757",
-    borderRadius: 8,
-    color: "white",
-    cursor: "pointer",
-    fontSize: 15,
-    fontWeight: 600,
-    padding: "13px 16px",
-    width: "100%",
-  },
-  googleButton: {
-    background: "transparent",
-    border: "1px solid #24304e",
-    borderRadius: 8,
-    color: "#ece9dc",
-    cursor: "pointer",
-    fontSize: 15,
-    fontWeight: 600,
-    padding: "13px 16px",
-    width: "100%",
-  },
-  muted: { color: "#939cb4", fontSize: 13, lineHeight: 1.5 },
-  error: { color: "#f2a38b", fontSize: 14, lineHeight: 1.5 },
-};
+const FIELD =
+  "w-full rounded-md border border-neutral-300 px-3 py-2.5 dark:border-neutral-700 dark:bg-neutral-900";
+const PRIMARY_BUTTON =
+  "w-full rounded-md bg-neutral-900 px-4 py-2.5 font-medium text-white disabled:cursor-wait disabled:opacity-50 dark:bg-white dark:text-neutral-900";
+const SECONDARY_BUTTON =
+  "w-full rounded-md border border-neutral-300 px-4 py-2.5 font-medium disabled:cursor-wait disabled:opacity-50 dark:border-neutral-700";
 
 function LoginForm() {
   const searchParams = useSearchParams();
@@ -105,19 +54,21 @@ function LoginForm() {
   }
 
   return (
-    <main style={styles.page}>
-      <div style={styles.column}>
-        <div style={styles.wordmark}>
+    <main className="flex min-h-screen flex-1 items-center justify-center px-5 py-8">
+      <div className="w-full max-w-sm">
+        <div className="mb-12 text-lg">
           <strong>flight</strong>check
         </div>
-        <h1 style={styles.heading}>Your interviewer is ready when you are.</h1>
+        <h1 className="mb-8 text-3xl font-bold tracking-tight text-balance">
+          Your interviewer is ready when you are.
+        </h1>
         {searchParams.get("error") === "auth" && (
-          <p style={styles.error} role="alert">
+          <p className="mb-4 text-sm text-red-600" role="alert">
             That sign-in link didn&apos;t work — it may have expired. Try again.
           </p>
         )}
         {error && (
-          <p style={styles.error} role="alert">
+          <p className="mb-4 text-sm text-red-600" role="alert">
             {error}
           </p>
         )}
@@ -126,8 +77,7 @@ function LoginForm() {
         ) : (
           <>
             <button
-              className="auth-control"
-              style={styles.googleButton}
+              className={SECONDARY_BUTTON}
               type="button"
               disabled={pending}
               onClick={continueWithGoogle}
@@ -136,18 +86,17 @@ function LoginForm() {
             </button>
             <div
               aria-hidden="true"
-              style={{ color: "#939cb4", margin: "20px 0", textAlign: "center" }}
+              className="my-5 text-center text-sm text-neutral-500"
             >
               or
             </div>
             <form onSubmit={sendSignInLink}>
-              <label htmlFor="email" style={{ display: "block", marginBottom: 8 }}>
+              <label htmlFor="email" className="mb-2 block text-sm">
                 Email
               </label>
               <input
-                className="auth-control"
                 id="email"
-                style={styles.field}
+                className={FIELD}
                 type="email"
                 autoComplete="email"
                 required
@@ -155,8 +104,7 @@ function LoginForm() {
                 onChange={(event) => setEmail(event.target.value)}
               />
               <button
-                className="auth-control"
-                style={{ ...styles.button, marginTop: 12 }}
+                className={`${PRIMARY_BUTTON} mt-3`}
                 type="submit"
                 disabled={pending}
               >
@@ -165,21 +113,10 @@ function LoginForm() {
             </form>
           </>
         )}
-        <p style={{ ...styles.muted, marginTop: 24 }}>
+        <p className="mt-6 text-sm text-neutral-600 dark:text-neutral-400">
           We only use your email to keep your sessions and reports in one place.
           No spam, no sharing.
         </p>
-        <style jsx>{`
-          .auth-control:focus-visible {
-            outline: 3px solid #ece9dc;
-            outline-offset: 3px;
-          }
-
-          button:disabled {
-            cursor: wait;
-            opacity: 0.65;
-          }
-        `}</style>
       </div>
     </main>
   );

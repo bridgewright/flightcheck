@@ -33,7 +33,7 @@ function Shell({
   return (
     <>
       <TopBar viewer={viewer} />
-      <main className="mx-auto w-full max-w-2xl px-7 pt-10 pb-12">{children}</main>
+      <main className="mx-auto w-full max-w-2xl px-6 pt-10 pb-12">{children}</main>
     </>
   );
 }
@@ -106,10 +106,10 @@ export default async function PackagePage({
     return (
       <Shell viewer={viewer}>
         <div className="flex flex-col gap-3 py-16">
-          <h1 className="font-display text-[28px] font-[460]">Package not found</h1>
-          <p className="text-muted">
+          <h1 className="text-2xl font-bold tracking-tight">Package not found</h1>
+          <p className="text-neutral-600 dark:text-neutral-400">
             This link does not match any interview package. Check the URL, or{" "}
-            <Link href="/new" className="text-coral underline underline-offset-4">
+            <Link href="/new" className="underline underline-offset-4">
               start a new one
             </Link>
             .
@@ -129,10 +129,8 @@ export default async function PackagePage({
       <Shell viewer={viewer}>
         <PollRefresh intervalMs={3000} />
         <div className="flex flex-col gap-3 py-16">
-          <h1 className="font-display text-[28px] font-[460]">
-            Compiling your rubric&hellip;
-          </h1>
-          <p className="text-muted">
+          <h1 className="text-2xl font-bold tracking-tight">Compiling your rubric&hellip;</h1>
+          <p className="text-neutral-600 dark:text-neutral-400">
             We are reading the JD, researching how this role actually interviews, and
             compiling your rubric. This page refreshes itself — usually 1&ndash;2
             minutes.
@@ -146,13 +144,11 @@ export default async function PackagePage({
     return (
       <Shell viewer={viewer}>
         <div className="flex flex-col gap-3 py-16">
-          <h1 className="font-display text-[28px] font-[460]">
-            We could not compile this package
-          </h1>
-          <p className="text-muted">
+          <h1 className="text-2xl font-bold tracking-tight">We could not compile this package</h1>
+          <p className="text-neutral-600 dark:text-neutral-400">
             Rubric compilation failed — most often because the JD page could not be
             read. No charge, nothing saved.{" "}
-            <Link href="/new" className="text-coral underline underline-offset-4">
+            <Link href="/new" className="underline underline-offset-4">
               Try again
             </Link>{" "}
             with the JD pasted as text instead of a URL.
@@ -172,10 +168,10 @@ export default async function PackagePage({
 
   return (
     <Shell viewer={viewer}>
-      <h1 className="text-center font-display text-[28px] font-[460] text-balance">
+      <h1 className="text-center text-2xl font-bold tracking-tight text-balance">
         {rubric.role_title}
       </h1>
-      <p className="mb-6 text-center text-[13.5px] text-muted">
+      <p className="mb-6 text-center text-sm text-neutral-600 dark:text-neutral-400">
         {rubric.company ? `${rubric.company} · ` : ""}
         {done} of {total} sessions done
       </p>
@@ -192,7 +188,7 @@ export default async function PackagePage({
           next === null ? (
             <Link
               href="/pricing"
-              className="rounded-[10px] bg-coral px-5 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-[#c96a4a]"
+              className="rounded-md bg-neutral-900 px-5 py-2.5 text-sm font-medium text-white dark:bg-white dark:text-neutral-900"
             >
               See pricing
             </Link>
@@ -209,8 +205,8 @@ export default async function PackagePage({
 
       {/* The rubric is why the verdicts mean anything, but it is reference
           material — it opens when the user wants it, not every visit. */}
-      <details className="group mt-9 border-t border-line pt-5">
-        <summary className="flex cursor-pointer list-none items-center gap-2 text-[13px] text-faint [&::-webkit-details-marker]:hidden">
+      <details className="group mt-9 border-t border-neutral-200 pt-5 dark:border-neutral-800">
+        <summary className="flex cursor-pointer list-none items-center gap-2 text-sm text-neutral-600 dark:text-neutral-400 [&::-webkit-details-marker]:hidden">
           <span
             aria-hidden="true"
             className="text-[10px] transition-transform group-open:rotate-90"
@@ -225,16 +221,16 @@ export default async function PackagePage({
             <li key={dimension.key} className="flex flex-col gap-2">
               <div className="flex items-baseline justify-between gap-4">
                 <h2 className="font-semibold">{dimension.name}</h2>
-                <span className="font-data text-xs text-faint">
+                <span className="text-xs text-neutral-500">
                   {Math.round(dimension.weight * 100)}% of your score
                 </span>
               </div>
-              <ul className="list-disc pl-5 text-[13.5px] text-muted">
+              <ul className="list-disc pl-5 text-sm text-neutral-600 dark:text-neutral-400">
                 {dimension.signals.map((signal) => (
                   <li key={signal}>{signal}</li>
                 ))}
               </ul>
-              <p className="text-xs text-faint">
+              <p className="text-xs text-neutral-500">
                 Sources:{" "}
                 {dimension.citations.map((citation, i) => (
                   <span key={citation.url}>
