@@ -6,6 +6,11 @@ import { useSearchParams } from "next/navigation";
 import { safeNextPath } from "../../lib/auth-redirect";
 import { createClient } from "../../lib/supabase/client";
 
+// The Google provider is not configured yet, so the button dead-ends on a raw
+// error page. The whole OAuth path below stays wired and typechecked; turning
+// it back on once the provider exists is this one line.
+const GOOGLE_AUTH_ENABLED = false;
+
 const FIELD =
   "w-full rounded-md border border-neutral-300 px-3 py-2.5 dark:border-neutral-700 dark:bg-neutral-900";
 const PRIMARY_BUTTON =
@@ -76,20 +81,24 @@ function LoginForm() {
           <p>Check your email — we sent you a sign-in link.</p>
         ) : (
           <>
-            <button
-              className={SECONDARY_BUTTON}
-              type="button"
-              disabled={pending}
-              onClick={continueWithGoogle}
-            >
-              Continue with Google
-            </button>
-            <div
-              aria-hidden="true"
-              className="my-5 text-center text-sm text-neutral-500"
-            >
-              or
-            </div>
+            {GOOGLE_AUTH_ENABLED ? (
+              <>
+                <button
+                  className={SECONDARY_BUTTON}
+                  type="button"
+                  disabled={pending}
+                  onClick={continueWithGoogle}
+                >
+                  Continue with Google
+                </button>
+                <div
+                  aria-hidden="true"
+                  className="my-5 text-center text-sm text-neutral-500"
+                >
+                  or
+                </div>
+              </>
+            ) : null}
             <form onSubmit={sendSignInLink}>
               <label htmlFor="email" className="mb-2 block text-sm">
                 Email
