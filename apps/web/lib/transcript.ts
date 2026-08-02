@@ -152,3 +152,38 @@ export function dimensionScoreMap(
     entry.dimension_scores.map((d) => [d.dimension_key, d.score]),
   );
 }
+
+/**
+ * The detail page's one primary action, derived from the session's state:
+ * - room: enter THIS session's room. Precise on purpose — the generic start
+ *   flow resumes the LOWEST open slot, which for "rerun session 4" could be a
+ *   different session entirely.
+ * - start: begin the next session through the generic start flow.
+ * - home: nothing to start from here (mid-scoring, or the package is spent).
+ */
+export type DetailCta =
+  | { kind: "room"; sessionId: string; label: string }
+  | { kind: "start"; label: string }
+  | { kind: "home"; label: string };
+
+export function detailCta(
+  state: SessionDetailState,
+  sessionId: string,
+  nextSessionNumber: number | null,
+): DetailCta {
+  switch (state) {
+    case "not_started":
+    case "guard_ended":
+      return { kind: "room", sessionId, label: "Start this session" };
+    case "failed":
+    case "insufficient":
+      return { kind: "room", sessionId, label: "Run this session again" };
+    case "scored":
+    case "limited":
+      return nextSessionNumber === null
+        ? { kind: "home", label: "Back to home" }
+        : { kind: "start", label: `Start session ${nextSessionNumber}` };
+    case "scoring":
+      return { kind: "home", label: "Back to home" };
+  }
+}

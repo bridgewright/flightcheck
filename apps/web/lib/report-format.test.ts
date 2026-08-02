@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  archiveStatusPill,
   formatDelta,
   overallDeltas,
   topObservations,
@@ -127,5 +128,37 @@ describe("verdictPillClasses", () => {
       verdictPillClasses("ready"),
     ]);
     expect(styles.size).toBe(3);
+  });
+});
+
+describe("archiveStatusPill", () => {
+  it("returns null for scored rows — the verdict pill speaks instead", () => {
+    expect(archiveStatusPill("scored")).toBeNull();
+  });
+
+  it("labels a planned row as a preserved slot", () => {
+    const pill = archiveStatusPill("planned");
+    expect(pill?.label).toBe("Not started — slot preserved");
+  });
+
+  it("labels scoring, failed, and insufficient rows honestly", () => {
+    expect(archiveStatusPill("scoring")?.label).toBe("Scoring…");
+    expect(archiveStatusPill("failed")?.label).toBe("Scoring failed");
+    expect(archiveStatusPill("insufficient")?.label).toBe(
+      "Not scored — not enough evidence",
+    );
+  });
+
+  it("gives every unscored status a styled pill", () => {
+    const statuses: SessionStatus[] = [
+      "planned",
+      "scoring",
+      "failed",
+      "insufficient",
+    ];
+    for (const status of statuses) {
+      const pill = archiveStatusPill(status);
+      expect(pill?.className).toBeTruthy();
+    }
   });
 });

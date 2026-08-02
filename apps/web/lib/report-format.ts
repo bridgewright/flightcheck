@@ -71,6 +71,41 @@ export function overallDeltas(
   return deltas;
 }
 
+/**
+ * The archive's status cell for a row without a verdict: what happened to the
+ * session, said plainly. Scored rows return null — they carry a verdict pill
+ * (verdictPillClasses) and a number instead of a status.
+ */
+const ARCHIVE_STATUS_PILLS: Record<
+  SessionStatus,
+  { label: string; className: string } | null
+> = {
+  planned: {
+    label: "Not started — slot preserved",
+    className:
+      "bg-neutral-100 text-neutral-600 dark:bg-neutral-800 dark:text-neutral-400",
+  },
+  scoring: {
+    label: "Scoring…",
+    className: "bg-amber-100 text-amber-900 dark:bg-amber-950 dark:text-amber-200",
+  },
+  failed: {
+    label: "Scoring failed",
+    className: "bg-red-100 text-red-900 dark:bg-red-950 dark:text-red-200",
+  },
+  insufficient: {
+    label: "Not scored — not enough evidence",
+    className: "bg-red-100 text-red-900 dark:bg-red-950 dark:text-red-200",
+  },
+  scored: null,
+};
+
+export function archiveStatusPill(
+  status: SessionStatus,
+): { label: string; className: string } | null {
+  return ARCHIVE_STATUS_PILLS[status];
+}
+
 export function formatTimestamp(atS: number): string {
   const total = Math.floor(atS);
   const minutes = Math.floor(total / 60);

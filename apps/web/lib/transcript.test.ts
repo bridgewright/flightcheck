@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import {
   deriveSessionDetailState,
+  detailCta,
   dimensionScoreMap,
   groupTurns,
   previousScoredEntry,
@@ -248,5 +249,61 @@ describe("dimensionScoreMap", () => {
 
   it("is empty for a session without dimension scores", () => {
     expect(dimensionScoreMap(entry(1, "failed", null))).toEqual({});
+  });
+});
+
+describe("detailCta", () => {
+  it("sends an unstarted slot into its own room", () => {
+    expect(detailCta("not_started", "s-1", 3)).toEqual({
+      kind: "room",
+      sessionId: "s-1",
+      label: "Start this session",
+    });
+  });
+
+  it("sends a guard-ended slot back into its own room — the slot survived", () => {
+    expect(detailCta("guard_ended", "s-1", 3)).toEqual({
+      kind: "room",
+      sessionId: "s-1",
+      label: "Start this session",
+    });
+  });
+
+  it("offers to rerun a failed or insufficient session in its own room", () => {
+    expect(detailCta("failed", "s-2", 3)).toEqual({
+      kind: "room",
+      sessionId: "s-2",
+      label: "Run this session again",
+    });
+    expect(detailCta("insufficient", "s-2", 3)).toEqual({
+      kind: "room",
+      sessionId: "s-2",
+      label: "Run this session again",
+    });
+  });
+
+  it("points a scored session at starting the next one", () => {
+    expect(detailCta("scored", "s-3", 4)).toEqual({
+      kind: "start",
+      label: "Start session 4",
+    });
+    expect(detailCta("limited", "s-3", 4)).toEqual({
+      kind: "start",
+      label: "Start session 4",
+    });
+  });
+
+  it("falls back to home when the package is spent", () => {
+    expect(detailCta("scored", "s-3", null)).toEqual({
+      kind: "home",
+      label: "Back to home",
+    });
+  });
+
+  it("sends a still-scoring session home — there is nothing to start yet", () => {
+    expect(detailCta("scoring", "s-4", 5)).toEqual({
+      kind: "home",
+      label: "Back to home",
+    });
   });
 });
