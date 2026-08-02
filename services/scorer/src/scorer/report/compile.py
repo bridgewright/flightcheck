@@ -37,6 +37,41 @@ LIMITS_NOTE = (
 # behavior (unlike the verdict thresholds, which are config).
 _GAP_THRESHOLD = 3.5
 
+# F-03 headline: one deterministic sentence synthesized from the verdict and
+# the weakest dimension -- always populated, never judge-authored (a judge
+# prompt change carries calibration risk that evals only surface at the
+# release gate). Third person about the performance, never about the person.
+_HEADLINE_MAX_CHARS = 120
+
+_HEADLINE_TEMPLATES = {
+    "ready": (
+        "Ready: the performance cleared the bar; {name} has the most headroom."
+    ),
+    "approaching": (
+        "Approaching: the performance is close to the bar; "
+        "{name} is the widest gap."
+    ),
+    "not_ready": (
+        "Not yet ready: the performance sits below the bar; "
+        "{name} is the widest gap."
+    ),
+}
+
+# The ceiling is guaranteed, not aspirational: a dimension name that would
+# overflow drops the name entirely rather than truncating mid-word.
+_HEADLINE_FALLBACKS = {
+    "ready": "Ready: the performance cleared the bar.",
+    "approaching": "Approaching: the performance is close to the bar.",
+    "not_ready": "Not yet ready: the performance sits below the bar.",
+}
+
+
+def _headline(verdict: str, weakest_name: str) -> str:
+    full = _HEADLINE_TEMPLATES[verdict].format(name=weakest_name)
+    if len(full) <= _HEADLINE_MAX_CHARS:
+        return full
+    return _HEADLINE_FALLBACKS[verdict]
+
 
 def _anchor_behavior(dim: RubricDimension, target: int) -> str:
     for anchor in dim.anchors:
@@ -132,6 +167,9 @@ def compile_report(
     ]
     next_drills = [_drill_line(dims_by_key[s.dimension_key]) for s in weakest_first[:2]]
 
+    verdict = _verdict(overall, ordered, cfg)
+    headline = _headline(verdict, dims_by_key[weakest_first[0].dimension_key].name)
+
     # Language lint over every free-text field the product writes. Evidence
     # quotes are exempt from the field they are actually embedded in -- and
     # only that field -- because they are the candidate's own verbatim
@@ -140,7 +178,10 @@ def compile_report(
     # "nervous") must never exempt an unrelated dimension's product-
     # authored prose that happens to contain the same word. Gaps, drills,
     # and observation notes never embed a candidate quote by construction,
-    # so they get no exemption at all.
+    # so they get no exemption at all. The headline embeds only the rubric's
+    # dimension name, never a quote, and is linted first: it is the report's
+    # first line, so a violation there should be the error that surfaces.
+    _lint_field("headline", headline, cfg.forbidden_patterns, [])
     for score in ordered:
         _lint_field(
             f"dimension_scores[{score.dimension_key}].rationale",
@@ -161,7 +202,8 @@ def compile_report(
 
     return SessionReport(
         session_id=session_id,
-        verdict=_verdict(overall, ordered, cfg),
+        verdict=verdict,
+        headline=headline,
         overall_score=overall,
         dimension_scores=ordered,
         delivery_metrics=metrics,

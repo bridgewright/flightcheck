@@ -240,6 +240,7 @@ def test_score_session_saves_scored_report():
     assert report.session_id == session.id
     assert report.verdict == "ready"          # 0.2 * (4.0+4.5+3.5+4.0+4.0) = 4.0
     assert report.overall_score == 4.0
+    assert report.headline                    # F-03: always populated
     assert len(report.dimension_scores) == 5  # both channels merged
     stored = db.get_session(session.id)
     assert stored.status == "scored"

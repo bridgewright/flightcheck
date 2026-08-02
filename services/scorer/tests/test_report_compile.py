@@ -177,6 +177,77 @@ def test_strengths_gaps_and_drills_reference_dimensions():
     assert "Structured answers" in report.next_drills[1]
 
 
+def test_headline_names_verdict_and_weakest_dimension():
+    # F-03: always populated, deterministic, one sentence about the
+    # performance -- verdict phrase + the weakest dimension by score.
+    report = compile_report(
+        "sess-1", _make_rubric(), _scores([3.2, 4.6, 4.1, 2.4, 3.4]), _metrics(), _obs()
+    )
+    assert report.headline == (
+        "Approaching: the performance is close to the bar; "
+        "Pacing control is the widest gap."
+    )
+    assert len(report.headline) <= 120
+
+
+def test_headline_ready_frames_weakest_dimension_as_headroom():
+    report = compile_report(
+        "sess-1", _make_rubric(), _scores([4.0, 4.5, 3.5, 4.0, 4.0]), _metrics(), _obs()
+    )
+    assert report.headline == (
+        "Ready: the performance cleared the bar; "
+        "Role knowledge has the most headroom."
+    )
+
+
+def test_headline_not_ready_names_the_widest_gap():
+    report = compile_report(
+        "sess-1", _make_rubric(), _scores([2.0, 2.5, 3.0, 2.0, 2.5]), _metrics(), _obs()
+    )
+    # Ties on the weakest score keep rubric order: structured-answers first.
+    assert report.headline == (
+        "Not yet ready: the performance sits below the bar; "
+        "Structured answers is the widest gap."
+    )
+
+
+def test_headline_falls_back_to_short_form_for_a_long_dimension_name():
+    # The 120-char ceiling is guaranteed, not aspirational: a dimension name
+    # that would overflow drops the name rather than truncating mid-word.
+    rubric = _make_rubric()
+    long_name = (
+        "Cross-functional stakeholder alignment and executive communication "
+        "under ambiguous, changing requirements"
+    )
+    rubric = rubric.model_copy(update={"dimensions": [
+        dim.model_copy(update={"name": long_name}) if dim.key == "pacing-control"
+        else dim
+        for dim in rubric.dimensions
+    ]})
+    report = compile_report(
+        "sess-1", rubric, _scores([3.2, 4.6, 4.1, 2.4, 3.4]), _metrics(), _obs()
+    )
+    assert report.headline == "Approaching: the performance is close to the bar."
+    assert len(report.headline) <= 120
+
+
+def test_headline_is_linted_like_every_product_authored_field():
+    # The headline embeds the rubric's dimension name; a name asserting an
+    # inner state must trip the same lint as any other product copy.
+    rubric = _make_rubric()
+    rubric = rubric.model_copy(update={"dimensions": [
+        dim.model_copy(update={"name": "Nervousness control"})
+        if dim.key == "role-knowledge" else dim
+        for dim in rubric.dimensions
+    ]})
+    with pytest.raises(ReportLanguageError) as err:
+        compile_report(
+            "sess-1", rubric, _scores([4.0, 4.5, 3.5, 4.0, 4.0]), _metrics(), _obs()
+        )
+    assert "nervous" in str(err.value)
+    assert "headline" in str(err.value)
+
+
 def test_lint_rejects_inner_state_assertion_in_rationale():
     scores = _scores([4.0, 4.5, 3.5, 4.0, 4.0])
     scores[2] = DimensionScore(
