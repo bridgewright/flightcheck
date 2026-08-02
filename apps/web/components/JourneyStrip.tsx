@@ -3,12 +3,13 @@ import { Fragment } from "react";
 import type { JourneyLeg } from "@/lib/home";
 
 // Start ---o---o---o---•---·---·--- Ready
-// The whole package in one line: what you have flown, where you are now, and
-// how much runway the package still owes you.
+// The whole package in one row: how many sessions are behind you, which one is
+// up next, and how many the package still owes you. Solid / outlined / faint
+// carry those three states without relying on colour.
 const LEG_STYLES: Record<JourneyLeg, string> = {
-  done: "bg-amber shadow-[0_0_8px] shadow-amber/55",
-  next: "bg-coral shadow-[0_0_10px] shadow-coral/60",
-  todo: "bg-line",
+  done: "bg-neutral-900 dark:bg-neutral-100",
+  next: "border-2 border-neutral-900 dark:border-neutral-100",
+  todo: "bg-neutral-300 dark:bg-neutral-700",
 };
 
 const LEG_LABELS: Record<JourneyLeg, string> = {
@@ -25,20 +26,20 @@ export default function JourneyStrip({ legs }: { legs: JourneyLeg[] }) {
     <div
       role="img"
       aria-label={`Session progress: ${done} of ${legs.length} done`}
-      className="flex items-center justify-center gap-[7px] overflow-x-auto px-0.5 py-1 font-data text-xs text-muted"
+      className="flex items-center justify-center gap-[7px] overflow-x-auto px-0.5 py-1 text-xs text-neutral-600 dark:text-neutral-400"
     >
-      <span className="shrink-0 font-semibold tracking-[.06em] text-ink">Start</span>
+      <span className="shrink-0 font-semibold">Start</span>
       {legs.map((leg, i) => (
         <Fragment key={i}>
-          <span className="h-px w-5 shrink-0 bg-faint opacity-50" />
+          <span className="h-px w-5 shrink-0 bg-neutral-300 dark:bg-neutral-700" />
           <span
             title={`Session ${i + 1} · ${LEG_LABELS[leg]}`}
             className={`size-[9px] shrink-0 rounded-full ${LEG_STYLES[leg]}`}
           />
         </Fragment>
       ))}
-      <span className="h-px w-5 shrink-0 bg-faint opacity-50" />
-      <span className="shrink-0 font-semibold tracking-[.06em] text-ink">Ready</span>
+      <span className="h-px w-5 shrink-0 bg-neutral-300 dark:bg-neutral-700" />
+      <span className="shrink-0 font-semibold">Ready</span>
     </div>
   );
 }

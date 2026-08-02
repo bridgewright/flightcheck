@@ -9,18 +9,18 @@ import type { Viewer } from "@/lib/viewer";
 export default function TopBar({ viewer = null }: { viewer?: Viewer | null }) {
   const initial = viewer?.email?.trim()?.[0]?.toUpperCase() ?? "•";
   return (
-    <header className="border-b border-line">
-      <div className="mx-auto flex w-full max-w-5xl items-center justify-between gap-6 px-7 py-4">
-        <Link href={viewer ? "/home" : "/"} className="font-display text-[17px] text-ink">
-          <span className="font-semibold">flight</span>check
+    <header className="border-b border-neutral-200 dark:border-neutral-800">
+      <div className="mx-auto flex w-full max-w-5xl items-center justify-between gap-6 px-6 py-4">
+        <Link href={viewer ? "/home" : "/"} className="text-lg">
+          <span className="font-bold">flight</span>check
         </Link>
-        <nav className="flex items-center gap-5 text-[13.5px] text-muted">
-          <Link href="/pricing" className="transition-colors hover:text-ink">
+        <nav className="flex items-center gap-5 text-sm">
+          <Link href="/pricing" className="underline underline-offset-4">
             Pricing
           </Link>
           {viewer ? (
             <span
-              className="flex size-7 items-center justify-center rounded-full bg-coral text-xs font-bold text-white"
+              className="flex size-7 items-center justify-center rounded-full bg-neutral-900 text-xs font-bold text-white dark:bg-white dark:text-neutral-900"
               title={viewer.email ?? "Signed in"}
             >
               {initial}
@@ -29,7 +29,7 @@ export default function TopBar({ viewer = null }: { viewer?: Viewer | null }) {
           ) : (
             <Link
               href="/login"
-              className="rounded-[9px] border border-line px-4 py-[7px] text-ink transition-colors hover:border-faint"
+              className="rounded-md border border-neutral-300 px-4 py-1.5 dark:border-neutral-700"
             >
               Sign in
             </Link>

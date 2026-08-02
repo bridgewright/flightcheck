@@ -8,9 +8,18 @@ import type { SessionSummary } from "@/lib/worker";
 // itself. "failed" is shown, not hidden: the product's promise is the bar,
 // and a session that could not be scored is part of the record.
 const PILLS: Record<SessionStatus, { label: string; className: string } | null> = {
-  planned: { label: "Not started", className: "bg-faint/15 text-muted" },
-  scoring: { label: "Scoring…", className: "bg-amber/15 text-amber" },
-  failed: { label: "Scoring failed", className: "bg-coral/15 text-coral" },
+  planned: {
+    label: "Not started",
+    className: "bg-neutral-100 text-neutral-600 dark:bg-neutral-800 dark:text-neutral-400",
+  },
+  scoring: {
+    label: "Scoring…",
+    className: "bg-amber-100 text-amber-900 dark:bg-amber-950 dark:text-amber-200",
+  },
+  failed: {
+    label: "Scoring failed",
+    className: "bg-red-100 text-red-900 dark:bg-red-950 dark:text-red-200",
+  },
   scored: null,
 };
 
@@ -19,18 +28,16 @@ function Outcome({ session }: { session: SessionSummary }) {
   if (pill) {
     return (
       <span
-        className={`inline-flex rounded-full px-2.5 py-0.5 text-[11px] font-semibold ${pill.className}`}
+        className={`inline-flex rounded-full px-2.5 py-0.5 text-[11px] font-medium ${pill.className}`}
       >
         {pill.label}
       </span>
     );
   }
   return session.overall === null ? (
-    <span className="font-data text-faint">—</span>
+    <span className="text-neutral-500">—</span>
   ) : (
-    <span className="font-data font-semibold text-amber">
-      {session.overall.toFixed(1)}
-    </span>
+    <span className="font-semibold tabular-nums">{session.overall.toFixed(1)}</span>
   );
 }
 
@@ -44,11 +51,11 @@ export default function SessionList({
   const newestFirst = [...sessions].sort((a, b) => b.index - a.index);
   return (
     <section>
-      <h2 className="mb-2.5 text-[11.5px] font-bold tracking-[.1em] text-faint uppercase">
+      <h2 className="mb-2.5 text-xs font-semibold tracking-wide text-neutral-500 uppercase">
         Your sessions
       </h2>
       {newestFirst.length === 0 ? (
-        <p className="text-[13.5px] text-muted">
+        <p className="text-sm text-neutral-600 dark:text-neutral-400">
           Nothing here yet — your first session appears the moment you finish it.
         </p>
       ) : (
@@ -58,17 +65,19 @@ export default function SessionList({
             return (
               <li
                 key={session.id}
-                className="grid grid-cols-[36px_1fr_auto_auto] items-center gap-3.5 border-b border-line py-3 text-[13.5px]"
+                className="grid grid-cols-[36px_1fr_auto_auto] items-center gap-3.5 border-b border-neutral-200 py-3 text-sm dark:border-neutral-800"
               >
-                <span className="font-data text-xs text-faint">
+                <span className="text-xs text-neutral-500 tabular-nums">
                   {String(session.index).padStart(2, "0")}
                 </span>
-                <span className="text-muted">{when ?? ""}</span>
+                <span className="text-neutral-600 dark:text-neutral-400">
+                  {when ?? ""}
+                </span>
                 <Outcome session={session} />
                 {session.report_available ? (
                   <Link
                     href={`/p/${token}/report/${session.id}`}
-                    className="border-b border-coral/45 text-[12.5px] text-coral"
+                    className="text-xs underline underline-offset-4"
                   >
                     Report
                   </Link>

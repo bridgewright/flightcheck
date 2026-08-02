@@ -1,62 +1,38 @@
 @import "tailwindcss";
 
-/* ---------------------------------------------------------------------------
-   Night Approach — the F-07 design SSOT. The product commits to one dark world
-   in both OS themes, like a cockpit at night: dark-only is a decision, not an
-   omission. Everything below is additive (tokens + the body surface); no
-   existing component's classes are restyled here.
-   --------------------------------------------------------------------------- */
-
-/* Because the app is dark-only, the `dark:` variant applies unconditionally.
-   Every screen written before this skin pairs a light class with a legible
-   `dark:` counterpart (text-neutral-600 dark:text-neutral-400, and so on); on a
-   light-mode machine those pages would otherwise render their light-surface
-   colors against the night background. One line here keeps the session room,
-   the report, and /new readable everywhere without touching their markup. */
-@custom-variant dark (&);
-
-/* `static` so every token is emitted as a real custom property even when no
-   utility references it — the readiness gauge composes its arc in an inline
-   style from var(--color-coral), which Tailwind's class scanner cannot see. */
-@theme static {
-  --color-night-0: #0a0f1e;
-  --color-night-1: #101830;
-  --color-night-2: #16203a;
-  --color-ink: #ece9dc;
-  --color-muted: #939cb4;
-  --color-faint: #5d688a;
-  --color-line: #24304e;
-  --color-amber: #e0a458;
-  --color-coral: #d97757;
-  --color-good: #8db580;
-
-  /* Display serif carries the product voice (headlines, greetings); the data
-     mono carries anything the user reads as an instrument value (scores,
-     session numbers, the journey strip). Body text uses the loaded Geist. */
-  --font-display: ui-serif, "Iowan Old Style", Palatino, Georgia, serif;
-  --font-data: ui-monospace, "SF Mono", Menlo, monospace;
+:root {
+  --background: #ffffff;
+  --foreground: #171717;
 }
 
 @theme inline {
-  --color-background: var(--color-night-0);
-  --color-foreground: var(--color-ink);
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
 }
 
+@media (prefers-color-scheme: dark) {
+  :root {
+    --background: #0a0a0a;
+    --foreground: #ededed;
+  }
+}
+
 body {
-  background: linear-gradient(180deg, #080c18 0%, #0a0f1e 30%, #0d1426 100%);
-  color: var(--color-ink);
-  font-family: var(--font-geist-sans), system-ui, -apple-system, "Segoe UI",
-    sans-serif;
+  background: var(--background);
+  color: var(--foreground);
+  font-family: Arial, Helvetica, sans-serif;
 }
 
 /* One focus treatment for the whole product, so keyboard users get the same
-   amber ring on every surface instead of the browser default. */
+   ring on every surface instead of the browser default. The foreground token
+   keeps it legible in both themes. */
 a:focus-visible,
 button:focus-visible,
 summary:focus-visible,
-input:focus-visible {
-  outline: 2px solid var(--color-amber);
+input:focus-visible,
+textarea:focus-visible {
+  outline: 2px solid var(--foreground);
   outline-offset: 2px;
 }
