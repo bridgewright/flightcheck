@@ -155,6 +155,10 @@ def score_session(
             wav = ensure_wav(local)
             db.set_scoring_stage(session_id, "transcribe")
             segments = transcribe_verbatim(wav, client)
+            # Persisted immediately, BEFORE any judge runs: the 20-minute
+            # interview is not repeatable, so a judge failure later must
+            # still leave the transcript on the failed row.
+            db.save_transcript(session_id, segments)
             db.set_scoring_stage(session_id, "delivery-metrics")
             metrics = compute_delivery_metrics(wav, segments)
             db.set_scoring_stage(session_id, "content-judge")

@@ -241,6 +241,35 @@ def test_score_session_saves_scored_report():
     assert stored.status == "scored"
     assert stored.report is not None
     assert stored.report.verdict == "ready"
+    transcript = db.get_transcript(session.id)
+    assert transcript is not None
+    assert [seg.model_dump(mode="json") for seg in transcript] == (
+        json.loads(SEGMENTS_JSON)["segments"]
+    )
+
+
+def test_judge_failure_still_leaves_the_transcript_persisted():
+    # The transcript is saved immediately after the transcribe stage, BEFORE
+    # any judge runs: the 20-minute interview is not repeatable, so a judge
+    # failure must leave the transcript on the failed row.
+    db = FakeDatabase()
+    session = _seed_scorable_session(db, "packages/pkg-1/session-1.wav")
+    storage = FakeStorage(recordings={"packages/pkg-1/session-1.wav": _wav_bytes()})
+    # Only the transcribe reply is scripted: the first content-judge call
+    # exhausts the script and raises.
+    fake = FakeGenAI([SEGMENTS_JSON])
+
+    with pytest.raises(IndexError):
+        score_session(session.id, db, storage, fake)
+
+    stored = db.get_session(session.id)
+    assert stored.status == "failed"
+    assert stored.report is None
+    transcript = db.get_transcript(session.id)
+    assert transcript is not None
+    assert [seg.model_dump(mode="json") for seg in transcript] == (
+        json.loads(SEGMENTS_JSON)["segments"]
+    )
 
 
 def test_score_session_records_stage_progression_and_clears_on_completion():

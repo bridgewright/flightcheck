@@ -16,6 +16,7 @@ from scorer.schemas import (
     Rubric,
     RubricDimension,
     SourceCitation,
+    TranscriptSegment,
 )
 
 TOKEN = "test-worker-token"
@@ -493,3 +494,68 @@ def test_session_flow_records_failure():
     session = client.get(f"/api/sessions/{session_id}", headers=AUTH).json()
     assert session["status"] == "failed"
     assert session["report"] is None
+
+
+def _seed_session(db: FakeDatabase):
+    package = _seed_ready_package(db)
+    from scorer.sessionplan.planner import plan_baseline_session
+
+    return db.create_session(package.id, 1, plan_baseline_session(package.rubric))
+
+
+def test_get_transcript_returns_stored_segments():
+    db = FakeDatabase()
+    session = _seed_session(db)
+    segments = json.loads(SEGMENTS_JSON)["segments"]
+    db.save_transcript(
+        session.id,
+        [TranscriptSegment.model_validate(item) for item in segments],
+    )
+    client, _ = _client(FakeGenAI([]), db=db)
+
+    response = client.get(f"/api/sessions/{session.id}/transcript", headers=AUTH)
+
+    assert response.status_code == 200
+    assert response.json() == {"session_id": session.id, "segments": segments}
+
+
+def test_get_transcript_null_when_session_has_none_stored():
+    # Sessions scored before transcripts were persisted exist but have
+    # nothing to show: segments is null, never an empty list and never 404.
+    db = FakeDatabase()
+    session = _seed_session(db)
+    client, _ = _client(FakeGenAI([]), db=db)
+
+    response = client.get(f"/api/sessions/{session.id}/transcript", headers=AUTH)
+
+    assert response.status_code == 200
+    assert response.json() == {"session_id": session.id, "segments": None}
+
+
+def test_get_transcript_unknown_session_is_404_and_requires_auth():
+    db = FakeDatabase()
+    client, _ = _client(FakeGenAI([]), db=db)
+
+    missing = client.get("/api/sessions/missing/transcript", headers=AUTH)
+    unauthorized = client.get("/api/sessions/missing/transcript")
+
+    assert missing.status_code == 404
+    assert unauthorized.status_code == 401
+
+
+def test_get_session_payload_never_carries_the_transcript():
+    # The transcript rides its own endpoint only: the hot session GET (the
+    # scoring poll) must not gain a 25-60KB field.
+    db = FakeDatabase()
+    session = _seed_session(db)
+    db.save_transcript(
+        session.id,
+        [TranscriptSegment.model_validate(item)
+         for item in json.loads(SEGMENTS_JSON)["segments"]],
+    )
+    client, _ = _client(FakeGenAI([]), db=db)
+
+    shown = client.get(f"/api/sessions/{session.id}", headers=AUTH)
+
+    assert shown.status_code == 200
+    assert "transcript" not in shown.json()

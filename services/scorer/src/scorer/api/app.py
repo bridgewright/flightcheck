@@ -304,6 +304,26 @@ def create_app(db: Database, storage: Storage, client: GenAIClientLike) -> FastA
         background_tasks.add_task(_score_session_job, session_id, db, storage, client)
         return {"session_id": session_id, "status": "scoring"}
 
+    @api.get("/sessions/{session_id}/transcript")
+    def get_session_transcript(session_id: str) -> dict:
+        """The verbatim transcript, or segments=null when none is stored.
+
+        A dedicated endpoint on purpose: transcripts run 25-60KB and must
+        never ride the hot session-row polls. Null (not 404, not []) is the
+        honest state for sessions scored before transcripts were persisted.
+        """
+        try:
+            segments = db.get_transcript(session_id)
+        except KeyError as exc:
+            raise HTTPException(status_code=404, detail="session not found") from exc
+        return {
+            "session_id": session_id,
+            "segments": (
+                None if segments is None
+                else [seg.model_dump(mode="json") for seg in segments]
+            ),
+        }
+
     @api.get("/sessions/{session_id}")
     def get_session(session_id: str) -> dict:
         """SessionRow fields + interviewer_instructions rebuilt on every read.
