@@ -10,7 +10,7 @@ import {
 
 describe("VERDICT_LABELS", () => {
   it("maps every verdict to honest copy", () => {
-    expect(VERDICT_LABELS.not_ready).toBe("Not ready yet");
+    expect(VERDICT_LABELS.not_ready).toBe("Not yet ready");
     expect(VERDICT_LABELS.approaching).toBe("Approaching");
     expect(VERDICT_LABELS.ready).toBe("Ready");
   });
