@@ -184,6 +184,10 @@ function Section({
   );
 }
 
+// Request-time rendering so the production guard returns a real 404 status —
+// statically prerendered, the notFound() shell was served with HTTP 200.
+export const dynamic = "force-dynamic";
+
 export default function DevPreviewPage() {
   // Fixtures are not product surface: in production this route does not exist.
   if (process.env.NODE_ENV === "production") {
