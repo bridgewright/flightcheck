@@ -1,3 +1,4 @@
+import { cookies } from "next/headers";
 import Link from "next/link";
 
 import JourneyStrip from "@/components/JourneyStrip";
@@ -6,8 +7,18 @@ import ReadinessGauge from "@/components/ReadinessGauge";
 import SessionList from "@/components/SessionList";
 import SessionTicket from "@/components/SessionTicket";
 import Shell from "@/components/Shell";
+import StartSessionButton from "@/components/StartSessionButton";
+import { resolveActivePackage } from "@/lib/active-package";
 import type { VerdictLine } from "@/lib/home";
-import { greetingName, journeyLegs, nextSessionNumber, verdictLine } from "@/lib/home";
+import {
+  ACTIVE_PACKAGE_COOKIE,
+  greetingName,
+  journeyLegs,
+  nextSessionNumber,
+  packageDisplayTitle,
+  scoringStageLine,
+  verdictLine,
+} from "@/lib/home";
 import type { Verdict } from "@/lib/types";
 import { PRIMARY_BUTTON } from "@/lib/ui";
 import type { Viewer } from "@/lib/viewer";
@@ -22,7 +33,7 @@ export const dynamic = "force-dynamic";
 // showed nothing would look broken rather than gated.
 function SignedOut() {
   return (
-    <Shell viewer={null}>
+    <Shell viewer={null} path="/home">
       <div className="flex flex-col items-center gap-4 py-16 text-center">
         <h1 className="text-2xl font-bold tracking-tight text-balance">
           You need to sign in to see your sessions.
@@ -35,9 +46,11 @@ function SignedOut() {
   );
 }
 
+// packages={[]} on purpose: the worker is down, so the TopBar must not try a
+// second fetch of its own for the switcher.
 function Unreachable({ viewer }: { viewer: Viewer }) {
   return (
-    <Shell viewer={viewer}>
+    <Shell viewer={viewer} path="/home" packages={[]}>
       <PollRefresh intervalMs={5000} />
       <div className="flex flex-col items-center gap-3 py-16 text-center">
         <h1 className="text-2xl font-bold tracking-tight text-balance">
@@ -55,7 +68,7 @@ function Unreachable({ viewer }: { viewer: Viewer }) {
 
 function NoPackages({ viewer }: { viewer: Viewer }) {
   return (
-    <Shell viewer={viewer}>
+    <Shell viewer={viewer} path="/home" packages={[]}>
       <div className="flex flex-col items-center gap-5 py-14 text-center">
         <h1 className="text-2xl font-bold tracking-tight text-balance">
           {greetingName(viewer.email)}
@@ -84,7 +97,7 @@ interface LastOutcome {
 // together; if either call fails the line is simply absent rather than the
 // whole dashboard breaking.
 async function lastOutcome(
-  featured: PackageSummary,
+  active: PackageSummary,
   sessions: SessionSummary[],
 ): Promise<LastOutcome> {
   const empty: LastOutcome = { line: null, verdict: null, overall: null };
@@ -96,7 +109,7 @@ async function lastOutcome(
   }
   const [session, pkg] = await Promise.all([
     getSession(latest.id).catch(() => null),
-    getPackageByToken(featured.access_token).catch(() => null),
+    getPackageByToken(active.access_token).catch(() => null),
   ]);
   const names = Object.fromEntries(
     (pkg?.rubric?.dimensions ?? []).map((d) => [d.key, d.name]),
@@ -109,41 +122,55 @@ async function lastOutcome(
   };
 }
 
-export default async function HomePage() {
+export default async function HomePage({
+  searchParams,
+}: {
+  searchParams: Promise<{ pkg?: string | string[] }>;
+}) {
   const viewer = await getViewer();
   if (!viewer) {
     return <SignedOut />;
   }
 
+  // Which package this dashboard is about: ?pkg= query > fc_pkg cookie >
+  // newest owned. The /switch route owns writing the cookie; here both are
+  // only hints resolved against the viewer's own packages.
+  const { pkg: pkgParam } = await searchParams;
+  const cookieStore = await cookies();
   let packages: PackageSummary[];
   let sessions: SessionSummary[];
-  // The worker returns them newest first; the newest one is what the user came
-  // here to continue.
-  let featured: PackageSummary | undefined;
+  let active: PackageSummary | null;
   try {
     packages = await listPackagesForUser(viewer.id);
-    featured = packages[0];
-    sessions = featured ? await listSessions(featured.id) : [];
+    active = resolveActivePackage(
+      packages,
+      typeof pkgParam === "string" ? pkgParam : null,
+      cookieStore.get(ACTIVE_PACKAGE_COOKIE)?.value ?? null,
+    );
+    sessions = active ? await listSessions(active.id) : [];
   } catch {
     return <Unreachable viewer={viewer} />;
   }
-  if (!featured) {
+  if (!active) {
     return <NoPackages viewer={viewer} />;
   }
 
-  const total = featured.total_sessions;
+  const total = active.total_sessions;
   const legs = journeyLegs(sessions, total);
   const next = nextSessionNumber(sessions, total);
   const done = legs.filter((leg) => leg === "done").length;
-  const outcome = await lastOutcome(featured, sessions);
+  const stageLine = scoringStageLine(sessions);
+  const outcome = await lastOutcome(active, sessions);
 
   return (
-    <Shell viewer={viewer}>
+    <Shell viewer={viewer} path="/home" packages={packages} activePackageId={active.id}>
+      {/* While a session is being scored the stage line advances on its own. */}
+      {stageLine !== null ? <PollRefresh intervalMs={5000} /> : null}
       <h1 className="text-center text-2xl font-bold tracking-tight text-balance">
         {greetingName(viewer.email)}
       </h1>
       <p className="mb-6 text-center text-sm text-neutral-600 dark:text-neutral-400">
-        {featured.role_title ?? "Your interview package"} · {done} of {total} sessions
+        {packageDisplayTitle(active.role_title)} · {done} of {total} sessions
         done
       </p>
 
@@ -155,46 +182,34 @@ export default async function HomePage() {
         sessionNumber={next}
         totalSessions={total}
         verdict={outcome.line}
+        stageLine={stageLine}
         action={
           next === null ? (
             <Link href="/pricing" className={PRIMARY_BUTTON}>
               See pricing
             </Link>
           ) : (
-            <Link href={`/p/${featured.access_token}`} className={PRIMARY_BUTTON}>
-              Start session {next}
-            </Link>
+            <StartSessionButton
+              packageId={active.id}
+              token={active.access_token}
+              label={`Start session ${next}`}
+            />
           )
         }
       />
 
       <div className="mt-8 grid gap-6 sm:grid-cols-[1fr_168px] sm:items-start">
-        <SessionList sessions={sessions} token={featured.access_token} />
+        <SessionList sessions={sessions} />
         <ReadinessGauge score={outcome.overall} verdict={outcome.verdict} />
       </div>
 
-      {packages.length > 1 ? (
-        <section className="mt-9">
-          <h2 className="mb-2.5 text-xs font-semibold tracking-wide text-neutral-500 uppercase">
-            Your other packages
-          </h2>
-          <ul className="flex flex-col gap-2 text-sm">
-            {packages.slice(1).map((pkg) => (
-              <li key={pkg.id}>
-                <Link
-                  href={`/p/${pkg.access_token}`}
-                  className="underline underline-offset-4"
-                >
-                  {pkg.role_title ?? "Untitled package"}
-                </Link>
-                <span className="ml-2 text-neutral-500">
-                  {pkg.sessions_used} of {pkg.total_sessions} used
-                </span>
-              </li>
-            ))}
-          </ul>
-        </section>
-      ) : null}
+      {/* The switcher in the TopBar replaced the old package list here; one
+          quiet link remains for the overview screen. */}
+      <p className="mt-9 border-t border-neutral-200 pt-5 text-sm dark:border-neutral-800">
+        <Link href="/packages" className="underline underline-offset-4">
+          All packages
+        </Link>
+      </p>
     </Shell>
   );
 }
