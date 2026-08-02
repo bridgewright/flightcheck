@@ -236,6 +236,7 @@ class FakeDatabase:
             session_plan=plan,
             audio_path=None,
             report=None,
+            created_at=f"2026-08-02T00:00:{self._session_seq:02d}+00:00",
         )
         self.sessions[row.id] = row
         return row

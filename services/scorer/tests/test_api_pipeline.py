@@ -453,8 +453,10 @@ def test_list_package_sessions_orders_and_shapes_payload(monkeypatch):
     assert response.status_code == 200
     assert response.json() == {"sessions": [
         {"id": first.id, "index": 1, "status": "planned",
+         "created_at": first.created_at,
          "report_available": False, "overall": None},
         {"id": second.id, "index": 2, "status": "scored",
+         "created_at": second.created_at,
          "report_available": False, "overall": None},
     ]}
 
@@ -502,3 +504,21 @@ def test_list_user_packages_empty_and_requires_auth(monkeypatch):
     assert empty.status_code == 200
     assert empty.json() == {"packages": []}
     assert unauthorized.status_code == 401
+
+
+def test_sessions_list_exposes_created_at(monkeypatch):
+    """The dashboard renders session dates from created_at (W-B handback:
+    the web types it optional, so a missing field would silently drop every
+    date rather than fail — this pins the contract instead)."""
+    db = FakeDatabase()
+    package = _ready_package(db)
+    db.create_session(package.id, 1, plan_baseline_session(package.rubric))
+    client = _session_client(monkeypatch, db)
+
+    response = client.get(
+        f"/api/packages/{package.id}/sessions", headers=API_HEADERS
+    )
+
+    assert response.status_code == 200
+    (item,) = response.json()["sessions"]
+    assert item["created_at"] is not None

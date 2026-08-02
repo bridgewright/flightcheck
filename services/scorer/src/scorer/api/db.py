@@ -42,6 +42,7 @@ class SessionRow(BaseModel):
     session_plan: SessionPlan | None
     audio_path: str | None
     report: SessionReport | None
+    created_at: str | None = None
 
 
 @runtime_checkable
@@ -155,6 +156,7 @@ def _to_session_row(data: dict) -> SessionRow:
             else None
         ),
         audio_path=data.get("audio_path"),
+        created_at=data.get("created_at"),
         report=(
             SessionReport.model_validate(data["report"])
             if data.get("report") is not None

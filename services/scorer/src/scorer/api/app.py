@@ -221,6 +221,7 @@ def create_app(db: Database, storage: Storage, client: GenAIClientLike) -> FastA
                 "id": row.id,
                 "index": row.index,
                 "status": row.status,
+                "created_at": row.created_at,
                 "report_available": row.report is not None,
                 "overall": row.report.overall_score if row.report is not None else None,
             }

@@ -3,7 +3,7 @@
 import type { TimestampedObservation, Verdict } from "@/lib/types";
 
 export const VERDICT_LABELS: Record<Verdict, string> = {
-  not_ready: "Not ready yet",
+  not_ready: "Not yet ready",
   approaching: "Approaching",
   ready: "Ready",
 };
