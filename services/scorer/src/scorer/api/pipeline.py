@@ -12,6 +12,7 @@ import os
 import tempfile
 from pathlib import Path
 
+import soundfile as sf
 from google.genai import types
 from pydantic import BaseModel, ConfigDict
 
@@ -25,6 +26,7 @@ from scorer.delivery.dsp import compute_delivery_metrics
 from scorer.delivery.judge import judge_delivery
 from scorer.intake.profile import build_profile
 from scorer.report.compile import compile_report
+from scorer.report.eligibility import check_eligibility
 from scorer.research.sweep import run_sweep
 from scorer.rubric.compiler import compile_rubric
 from scorer.rubric.corpus import load_corpus, load_fewshots
@@ -125,19 +127,20 @@ def score_session(
     db: Database,
     storage: Storage,
     client: GenAIClientLike,
-) -> SessionReport:
-    """Download -> wav -> transcript -> DSP -> both judges -> compiled report.
+) -> SessionReport | None:
+    """Download -> wav -> transcript -> eligibility -> DSP -> judges -> report.
 
     Each boundary records a coarse scoring_stage ("download" -> "transcribe"
     -> "delivery-metrics" -> "content-judge" -> "delivery-judge" ->
     "compile") so the report page can show progress during the long run; the
-    terminal status write ("scored"/"failed") clears it inside the database
-    layer.
+    terminal status write ("scored"/"failed"/"insufficient") clears it inside
+    the database layer.
 
-    Ends with session status "scored" (report saved) or "failed". On failure
-    the exception is re-raised after recording status: the registry return
-    type is SessionReport, so this function cannot swallow-and-return; the
-    API layer wraps it in a swallow-and-log background job (_score_session_job).
+    Ends with session status "scored" (report saved), "insufficient" (F-04:
+    evidence below the scoring floors -- no judge calls, no report, returns
+    None; the slot stays retriable), or "failed". On failure the exception is
+    re-raised after recording status; the API layer wraps this in a
+    swallow-and-log background job (_score_session_job).
     """
     try:
         db.set_session_status(session_id, "scoring")
@@ -159,6 +162,22 @@ def score_session(
             # interview is not repeatable, so a judge failure later must
             # still leave the transcript on the failed row.
             db.save_transcript(session_id, segments)
+            # F-04 gate, after the transcript is safe and before any judge
+            # spend: a verdict from a few minutes of speech would be noise
+            # sold as signal. The wav (not the transcript) is the duration
+            # ground truth.
+            duration_s = sf.info(str(wav)).duration
+            eligibility = check_eligibility(
+                segments, duration_s, load_product_config().eligibility
+            )
+            if eligibility == "insufficient":
+                logger.info(
+                    "session %s below scoring floors (duration_s=%.1f); "
+                    "ending insufficient with zero judge calls",
+                    session_id, duration_s,
+                )
+                db.set_session_status(session_id, "insufficient")
+                return None
             db.set_scoring_stage(session_id, "delivery-metrics")
             metrics = compute_delivery_metrics(wav, segments)
             db.set_scoring_stage(session_id, "content-judge")
@@ -175,6 +194,7 @@ def score_session(
             content_scores + delivery_scores,
             metrics,
             observations,
+            eligibility=eligibility,
         )
         db.save_report(session_id, report)
         db.set_session_status(session_id, "scored")

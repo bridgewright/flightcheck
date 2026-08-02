@@ -8,6 +8,8 @@ judge prose.
 """
 from __future__ import annotations
 
+from typing import Literal
+
 from scorer.config import load_product_config
 from scorer.schemas import (
     DeliveryMetrics,
@@ -31,6 +33,13 @@ LIMITS_NOTE = (
     "This verdict reflects alignment with rubric anchors and an "
     "experienced-interviewer scoring protocol; it is not a prediction of "
     "any specific company's decision."
+)
+
+# Appended when the session cleared the F-04 floors but not the full-evidence
+# bars: the numbers stand, and they are honest about their footing.
+LIMITED_EVIDENCE_NOTE = (
+    " This session provided limited evidence -- a shorter run or thinner "
+    "responses than a full session -- so scores carry wider uncertainty."
 )
 
 # Dimensions below this score become gap statements. Fixed product copy
@@ -142,8 +151,14 @@ def compile_report(
     dimension_scores: list[DimensionScore],
     metrics: DeliveryMetrics,
     observations: list[TimestampedObservation],
+    eligibility: Literal["scored", "limited"] = "scored",
 ) -> SessionReport:
-    """Compile judge scores + DSP metrics into the session report."""
+    """Compile judge scores + DSP metrics into the session report.
+
+    eligibility is the F-04 verdict for sessions that were scorable at all
+    ("insufficient" sessions never reach this function); "limited" marks the
+    report and extends the limits note.
+    """
     cfg = load_product_config().report
     by_key = {s.dimension_key: s for s in dimension_scores}
     missing = [d.key for d in rubric.dimensions if d.key not in by_key]
@@ -200,10 +215,15 @@ def compile_report(
     for i, line in enumerate(next_drills):
         _lint_field(f"next_drills[{i}]", line, cfg.forbidden_patterns, [])
 
+    limits_note = LIMITS_NOTE
+    if eligibility == "limited":
+        limits_note += LIMITED_EVIDENCE_NOTE
+
     return SessionReport(
         session_id=session_id,
         verdict=verdict,
         headline=headline,
+        eligibility=eligibility,
         overall_score=overall,
         dimension_scores=ordered,
         delivery_metrics=metrics,
@@ -211,5 +231,5 @@ def compile_report(
         strengths=strengths,
         gaps=gaps,
         next_drills=next_drills,
-        limits_note=LIMITS_NOTE,
+        limits_note=limits_note,
     )

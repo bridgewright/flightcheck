@@ -23,6 +23,16 @@ def test_delivery_filler_lexicon_exact():
     ]
 
 
+def test_eligibility_thresholds():
+    # F-04: scoring-eligibility floors are product config, never code.
+    config = load_product_config()
+    assert config.eligibility.min_duration_s == 600.0
+    assert config.eligibility.min_candidate_turns == 5
+    assert config.eligibility.min_candidate_words == 200
+    assert config.eligibility.full_duration_s == 900.0
+    assert config.eligibility.full_candidate_words == 600
+
+
 def test_report_thresholds_and_forbidden_patterns():
     config = load_product_config()
     assert config.report.ready_overall == 4.0

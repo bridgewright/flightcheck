@@ -37,6 +37,23 @@ class DeliveryConfig(BaseModel):
     fillers: list[str]
 
 
+class EligibilityConfig(BaseModel):
+    """F-04 scoring-eligibility floors (scorer/report/eligibility.py).
+
+    min_* are hard floors: below any of them a session is "insufficient" --
+    no judge calls, no report. full_* are full-evidence bars: at or above
+    every floor but below any bar, the session scores as "limited".
+    """
+
+    model_config = ConfigDict(extra="forbid")
+
+    min_duration_s: float
+    min_candidate_turns: int
+    min_candidate_words: int
+    full_duration_s: float
+    full_candidate_words: int
+
+
 class ReportConfig(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
@@ -52,6 +69,7 @@ class ProductConfig(BaseModel):
     models: ModelsConfig
     session: SessionConfig
     delivery: DeliveryConfig
+    eligibility: EligibilityConfig
     report: ReportConfig
 
 

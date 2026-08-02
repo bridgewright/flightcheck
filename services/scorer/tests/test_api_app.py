@@ -304,7 +304,7 @@ def _seed_ready_package(db: FakeDatabase):
     return db.get_package(package.id)
 
 
-def test_session_flow_scores_report():
+def test_session_flow_scores_report(permissive_eligibility):
     db = FakeDatabase()
     package = _seed_ready_package(db)
     audio_path = f"packages/{package.id}/session-1.wav"
@@ -399,7 +399,7 @@ def test_complete_while_scoring_is_409_and_does_not_rescore():
     assert fake.calls == []          # no scoring job was enqueued
 
 
-def test_complete_after_scored_is_409_and_keeps_the_report():
+def test_complete_after_scored_is_409_and_keeps_the_report(permissive_eligibility):
     db = FakeDatabase()
     package = _seed_ready_package(db)
     audio_path = f"packages/{package.id}/session-1.wav"

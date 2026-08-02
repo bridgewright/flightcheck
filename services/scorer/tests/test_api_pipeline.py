@@ -229,7 +229,7 @@ def _seed_scorable_session(db: FakeDatabase, audio_path: str):
     return session
 
 
-def test_score_session_saves_scored_report():
+def test_score_session_saves_scored_report(permissive_eligibility):
     db = FakeDatabase()
     session = _seed_scorable_session(db, "packages/pkg-1/session-1.wav")
     storage = FakeStorage(recordings={"packages/pkg-1/session-1.wav": _wav_bytes()})
@@ -253,7 +253,7 @@ def test_score_session_saves_scored_report():
     )
 
 
-def test_judge_failure_still_leaves_the_transcript_persisted():
+def test_judge_failure_still_leaves_the_transcript_persisted(permissive_eligibility):
     # The transcript is saved immediately after the transcribe stage, BEFORE
     # any judge runs: the 20-minute interview is not repeatable, so a judge
     # failure must leave the transcript on the failed row.
@@ -277,7 +277,9 @@ def test_judge_failure_still_leaves_the_transcript_persisted():
     )
 
 
-def test_score_session_records_stage_progression_and_clears_on_completion():
+def test_score_session_records_stage_progression_and_clears_on_completion(
+    permissive_eligibility,
+):
     db = FakeDatabase()
     session = _seed_scorable_session(db, "packages/pkg-1/session-1.wav")
     storage = FakeStorage(recordings={"packages/pkg-1/session-1.wav": _wav_bytes()})
@@ -297,6 +299,58 @@ def test_score_session_records_stage_progression_and_clears_on_completion():
     # The terminal "scored" write clears the stage: a finished row never
     # keeps a stale in-progress marker.
     assert db.get_session(session.id).scoring_stage is None
+
+
+def test_insufficient_session_skips_judges_and_preserves_the_slot():
+    # F-04 with the REAL config: an 8-second recording is far below the
+    # 600s/5-turn/200-word floors, so the run must stop after transcription
+    # -- zero judge calls (the paid spend), no report, terminal status
+    # "insufficient" (retriable; the slot is not burned), transcript kept.
+    db = FakeDatabase()
+    session = _seed_scorable_session(db, "packages/pkg-1/session-1.wav")
+    storage = FakeStorage(recordings={"packages/pkg-1/session-1.wav": _wav_bytes()})
+    # Only the transcribe reply is scripted: any judge call would raise
+    # IndexError, so a clean return proves no judge ran.
+    fake = FakeGenAI([SEGMENTS_JSON])
+
+    result = score_session(session.id, db, storage, fake)
+
+    assert result is None
+    stored = db.get_session(session.id)
+    assert stored.status == "insufficient"
+    assert stored.report is None
+    assert stored.scoring_stage is None      # terminal write clears the stage
+    assert len(fake.calls) == 1              # transcription only, zero judges
+    transcript = db.get_transcript(session.id)
+    assert transcript is not None            # evidence survives the verdict
+
+
+def test_limited_session_scores_with_the_limited_marker(monkeypatch):
+    # F-04: above the hard floors but below the full-evidence bars, the
+    # session scores normally and the report carries eligibility="limited".
+    from scorer.config import load_product_config as real_load
+    cfg = real_load()
+    limited_cfg = cfg.model_copy(update={
+        "eligibility": cfg.eligibility.model_copy(update={
+            "min_duration_s": 0.0,
+            "min_candidate_turns": 0,
+            "min_candidate_words": 0,
+        })
+    })
+    monkeypatch.setattr(
+        "scorer.api.pipeline.load_product_config", lambda: limited_cfg
+    )
+    db = FakeDatabase()
+    session = _seed_scorable_session(db, "packages/pkg-1/session-1.wav")
+    storage = FakeStorage(recordings={"packages/pkg-1/session-1.wav": _wav_bytes()})
+    fake = FakeGenAI([SEGMENTS_JSON, *CONTENT_SCORES_JSONS, DELIVERY_JUDGE_JSON])
+
+    report = score_session(session.id, db, storage, fake)
+
+    assert report is not None
+    assert report.eligibility == "limited"
+    assert "limited evidence" in report.limits_note
+    assert db.get_session(session.id).status == "scored"
 
 
 def test_score_session_records_failure_and_reraises():

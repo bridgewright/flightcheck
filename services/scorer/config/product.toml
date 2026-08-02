@@ -17,6 +17,17 @@ silence_duration_ms = 900
 [delivery]
 fillers = ["uh", "um", "erm", "hmm", "you know", "i mean", "sort of", "kind of", "like"]
 
+[eligibility]
+# F-04 scoring-eligibility floors (defaults proposed 2026-08-03, DECISIONS
+# entry pending). Below any min_* floor the session ends "insufficient":
+# no judge spend, no report, slot preserved. At or above every min_* floor
+# but below any full_* bar, the report compiles with eligibility="limited".
+min_duration_s = 600.0
+min_candidate_turns = 5
+min_candidate_words = 200
+full_duration_s = 900.0
+full_candidate_words = 600
+
 [report]
 ready_overall = 4.0
 ready_min_dimension = 3.0

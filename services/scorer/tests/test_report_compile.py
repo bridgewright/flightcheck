@@ -177,6 +177,29 @@ def test_strengths_gaps_and_drills_reference_dimensions():
     assert "Structured answers" in report.next_drills[1]
 
 
+def test_limited_eligibility_marks_report_and_extends_limits_note():
+    # F-04: a 10-15 minute (or thin-content) session still scores, but the
+    # report carries the limited marker and the limits note says so.
+    report = compile_report(
+        "sess-1", _make_rubric(), _scores([4.0, 4.5, 3.5, 4.0, 4.0]),
+        _metrics(), _obs(), eligibility="limited",
+    )
+    assert report.eligibility == "limited"
+    assert report.limits_note.startswith(
+        "This verdict reflects alignment with rubric anchors"
+    )
+    assert "limited evidence" in report.limits_note
+
+
+def test_default_eligibility_is_scored_with_the_fixed_limits_note():
+    report = compile_report(
+        "sess-1", _make_rubric(), _scores([4.0, 4.5, 3.5, 4.0, 4.0]),
+        _metrics(), _obs(),
+    )
+    assert report.eligibility == "scored"
+    assert "limited evidence" not in report.limits_note
+
+
 def test_headline_names_verdict_and_weakest_dimension():
     # F-03: always populated, deterministic, one sentence about the
     # performance -- verdict phrase + the weakest dimension by score.
