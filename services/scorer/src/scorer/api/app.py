@@ -226,8 +226,12 @@ def create_app(db: Database, storage: Storage, client: GenAIClientLike) -> FastA
                 "index": row.index,
                 "status": row.status,
                 "created_at": row.created_at,
+                # Verdict + stage ride the summary (WP-D) so the archive can
+                # label every row without an N+1 of full-session GETs.
+                "scoring_stage": row.scoring_stage,
                 "report_available": row.report is not None,
                 "overall": row.report.overall_score if row.report is not None else None,
+                "verdict": row.report.verdict if row.report is not None else None,
             }
             for row in db.list_sessions(package_id)
         ]}

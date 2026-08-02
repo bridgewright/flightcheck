@@ -12,9 +12,13 @@ from scorer.api.app import create_app
 from scorer.api.pipeline import compile_package, score_session
 from scorer.schemas import (
     BarsAnchor,
+    DeliveryMetrics,
+    DimensionScore,
     QuestionSpec,
     Rubric,
     RubricDimension,
+    SessionReport,
+    SilenceEvent,
     SourceCitation,
 )
 from scorer.sessionplan.planner import plan_baseline_session
@@ -447,6 +451,40 @@ def _session_client(monkeypatch, db: FakeDatabase) -> TestClient:
     return TestClient(create_app(db, FakeStorage(), FakeGenAI([])))
 
 
+def _stored_report(session_id: str, *, verdict: str = "approaching",
+                   overall: float = 3.4) -> SessionReport:
+    """Compact stored report for listing/progress payload tests."""
+    return SessionReport(
+        session_id=session_id,
+        verdict=verdict,
+        overall_score=overall,
+        dimension_scores=[
+            DimensionScore(
+                dimension_key="structured-answers", score=3.4,
+                evidence_quotes=["I led the churn dashboard rollout"],
+                rationale="One clear example with thin surrounding detail."),
+            DimensionScore(
+                dimension_key="pacing-control", score=3.8,
+                evidence_quotes=["03:36-07:36 steady pace"],
+                rationale="Pace stays steady across the answer window."),
+        ],
+        delivery_metrics=DeliveryMetrics(
+            wpm_overall=141.0, wpm_timeline=[140.0, 142.0],
+            silence_events=[
+                SilenceEvent(start_s=62.0, duration_s=2.5),
+                SilenceEvent(start_s=240.0, duration_s=4.0),
+            ],
+            filler_count=4, filler_rate_per_min=1.2, f0_variance=700.0,
+            avg_response_latency_s=1.3),
+        delivery_observations=[],
+        strengths=["Names outcomes without prompting."],
+        gaps=["Answers stay at the summary level."],
+        next_drills=["Drill: add one quantified detail per answer."],
+        limits_note=("Scores reflect rubric agreement, "
+                     "not an admission prediction."),
+    )
+
+
 def test_create_session_resumes_planned_session_without_creating_row(monkeypatch):
     db = FakeDatabase()
     package = _ready_package(db)
@@ -527,12 +565,40 @@ def test_list_package_sessions_orders_and_shapes_payload(monkeypatch):
     assert response.status_code == 200
     assert response.json() == {"sessions": [
         {"id": first.id, "index": 1, "status": "planned",
-         "created_at": first.created_at,
-         "report_available": False, "overall": None},
+         "created_at": first.created_at, "scoring_stage": None,
+         "report_available": False, "overall": None, "verdict": None},
         {"id": second.id, "index": 2, "status": "scored",
-         "created_at": second.created_at,
-         "report_available": False, "overall": None},
+         "created_at": second.created_at, "scoring_stage": None,
+         "report_available": False, "overall": None, "verdict": None},
     ]}
+
+
+def test_list_package_sessions_carries_verdict_and_scoring_stage(monkeypatch):
+    # WP-D: the archive renders verdicts and in-flight stages straight from
+    # the summary — without these fields it would need an N+1 of full GETs.
+    db = FakeDatabase()
+    package = _ready_package(db)
+    scoring = db.create_session(package.id, 1, plan_baseline_session(package.rubric))
+    db.set_session_status(scoring.id, "scoring")
+    db.set_scoring_stage(scoring.id, "content-judge")
+    scored = db.create_session(package.id, 2, plan_baseline_session(package.rubric))
+    db.save_report(scored.id, _stored_report(scored.id))
+    client = _session_client(monkeypatch, db)
+
+    response = client.get(
+        f"/api/packages/{package.id}/sessions", headers=API_HEADERS
+    )
+
+    assert response.status_code == 200
+    first, second = response.json()["sessions"]
+    assert first["status"] == "scoring"
+    assert first["scoring_stage"] == "content-judge"
+    assert first["verdict"] is None
+    assert second["status"] == "scored"
+    assert second["scoring_stage"] is None
+    assert second["verdict"] == "approaching"
+    assert second["overall"] == 3.4
+    assert second["report_available"] is True
 
 
 def test_list_package_sessions_returns_404_and_requires_auth(monkeypatch):
