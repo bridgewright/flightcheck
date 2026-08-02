@@ -194,3 +194,101 @@ Format per entry: Context · Options · Choice · Why · Rejected because · Rev
   tab mid-answer often enough that the 8 s self-heal reads as Morgan
   ignoring them (F-13 metrics would show a spike of suspend-resume lines
   followed by candidate re-asks).
+
+## 012 — canonical URLs are login-scoped ids; token links demoted to claim addresses (2026-08-03)
+
+- **Decision:** the app's canonical URLs move to login-scoped, id-based
+  routes — `/sessions/[id]`, `/sessions/[id]/room`, `/progress`, `/rubric`,
+  `/packages`, `/settings`, with `/home` resolving an active package.
+  `/p/[token]` is demoted to a claim/redirect address: it binds an unclaimed
+  package to the first signed-in account, bounces an owner to the id routes,
+  and answers a foreign owner with a real HTTP 403 page. Old token report
+  and session URLs redirect to the new routes.
+- **Why:** transcripts and voice replay now ride these pages, and a
+  capability token in a URL leaks through browser history, pasted links,
+  and referrer headers — the wrong risk profile for pages carrying a
+  person's recorded voice. Cross-package screens (the archive, progress,
+  settings) cannot be expressed under `/p/` at all. And payments (F-10)
+  will retire loose tokens for provisioning anyway, so the migration only
+  gets more expensive: today eight packages exist — this is the cheapest
+  window there will ever be.
+- **Rejected — keep token-capability URLs:** cannot express per-user
+  screens, and every new page would widen the leak surface.
+- **Rejected — run both URL spaces:** strictly more complexity — two
+  authorization models forever, and every future screen decides twice.
+- **Revisit when:** F-10 provisioning design, which decides how a paid
+  package first meets its owner.
+
+## 013 — transcripts persist before judging; audio and transcript retained (2026-08-03)
+
+- **Decision:** the verbatim `TranscriptSegment` list is persisted to
+  `sessions.transcript` (jsonb) immediately after transcription and
+  *before* any judging — a session whose scoring later fails keeps its
+  record. It is served only by a dedicated transcript endpoint, never on
+  the hot session row (list and detail polls must not carry 25–60 KB they
+  do not render). Raw audio and transcript are retained privately: they
+  power scoring and the replay/proof-of-fairness surface ("this is what
+  was scored — nothing else"). No automatic deletion yet.
+- **Why:** the transcript viewer requires it. Until now the pipeline
+  computed the transcript and discarded it, so showing one would have
+  meant a fresh Gemini transcription call per view — paying repeatedly
+  for an artifact the product already produced once.
+- **Rejected — keep discarding:** the viewer is impossible, and
+  regeneration costs a judge-model call per session per view.
+- **Rejected — storage-bucket JSON files:** a second data path beside the
+  database with no queryability, for data that is already row-shaped.
+- **Revisit when:** a retention/deletion policy must be decided before
+  payments open (F-10) or when account deletion ships — whichever comes
+  first.
+
+## 014 — scoring eligibility floors: below them, zero judge calls (2026-08-03)
+
+- **Decision:** a session is scored only when duration ≥ 600 s AND
+  candidate turns ≥ 5 AND candidate words ≥ 200. Any floor missed → zero
+  judge calls, no report, terminal status `insufficient`, and the slot
+  stays retriable (consistent with the guard-ended slot policy). Between
+  the floors and the full-evidence bars (900 s duration, 600 candidate
+  words) the report is marked `limited` and its limits note says so.
+  Thresholds live in `config/product.toml` `[eligibility]`, not in code.
+  Duration ground truth is the wav file itself, not transcript timestamps.
+- **Why:** honest verdicts need evidence. A real interviewer who saw four
+  minutes would say "we did not see enough" — not produce a number and
+  stand behind it. Numbers from thin evidence would be a guess wearing a
+  verdict's clothes, and the honest-verdict policy is the product.
+- **Rejected — score everything:** dishonest verdicts from thin evidence.
+- **Rejected — LLM-judged sufficiency:** spends judge money to decide
+  whether to spend judge money; deterministic floors are free, auditable,
+  and explainable to the user in one sentence.
+- **Revisit when:** a real-usage duration distribution exists (F-13) to
+  check the floors against how sessions actually run.
+
+## 015 — the rubric page conceals the question bank (2026-08-03)
+
+- **Decision:** `/rubric` shows dimensions, weights, signals, and BARS
+  anchors — the bar itself — but never `question_bank`.
+- **Why:** knowing the bar is preparation; knowing the exact probes is
+  leakage. A candidate who rehearses the literal questions gets a verdict
+  about their rehearsal, not their readiness — which corrupts the honest
+  verdict that is the product's core promise. Fresh topics per session
+  only mean something if the bank stays sealed.
+- **Rejected — full transparency:** it reads as generous but quietly
+  destroys the thing being sold; a "Ready" earned against known questions
+  is a courtesy pass with extra steps.
+- **Revisit when:** a separate practice mode ever splits rehearsal from
+  assessment — rehearsal surfaces could then show questions openly.
+
+## 016 — report headline is compile-side deterministic this batch (2026-08-03)
+
+- **Decision:** the report's one-line headline is synthesized
+  deterministically at compile time — verdict phrase plus the weakest
+  dimension, language-linted, ≤ 120 chars. Judge prompts are untouched.
+  The per-dimension `strengths`/`weaknesses` fields ship as empty defaults,
+  pending a judge-authored pass validated at an eval gate.
+- **Why:** evals run once per release gate (the API-cost rule), so a
+  judge-prompt change made mid-batch would surface a regression at the
+  gate — after the work, at the worst time. Deterministic synthesis is
+  unit-testable today and cannot degrade the judges it does not touch.
+- **Rejected — judge-authored headline in this batch:** an unvalidated
+  prompt change riding a 40-commit batch, checkable only at the gate.
+- **Revisit when:** the next eval-gated release — the judge-authored
+  headline and the strengths/weaknesses pass go through it together.

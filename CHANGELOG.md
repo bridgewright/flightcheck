@@ -2,6 +2,45 @@
 
 ## [Unreleased]
 
+### Added — the complete webapp
+- The app now lives at login-scoped addresses with a persistent top
+  navigation: Home · Sessions · Progress · Role & Rubric section tabs, a
+  package switcher, and an account menu. Package links (`/p/…`) became
+  claim addresses — they bind an unclaimed package to the first signed-in
+  account and redirect; a package owned by a different account gets a real
+  403 page; old token report links redirect to the new session addresses
+  (DECISIONS 012).
+- Sessions archive: every session as one honest row — number, date, status
+  or verdict, overall score, and movement against your previous scored
+  session. Failed and insufficient rows offer a retry; neither burns the
+  slot.
+- Session detail: the report with per-dimension deltas vs your previous
+  scored session, a verbatim transcript viewer (the judge's delivery
+  observations inlined at their timestamps), and audio replay of the exact
+  recording that was scored — timestamps seek the player. Transcripts are
+  persisted for every new session, saved right after transcription so even
+  failed sessions keep their record; sessions from before this honestly
+  show "transcript unavailable" (DECISIONS 013).
+- Progress screen: verdict and overall trajectory across the package,
+  per-dimension trend rows, delivery trends (pace, fillers), and a
+  recurring-focus callout computed by fixed rules — instrumentation, not
+  badges.
+- Rubric page: the bar made visible — your role's dimensions, weights,
+  signals, and score anchors, shown before you ever sit a session. The
+  question bank is deliberately withheld: rehearsing the exact probes
+  would corrupt the verdict's honesty (DECISIONS 015).
+- Scoring eligibility gate: a session below the evidence floor is not
+  scored at all — no judge calls, no numbers, an honest "not enough
+  evidence" state, and the slot stays available. A short-but-scorable
+  session is scored and labeled as limited evidence (DECISIONS 014).
+- Reports open with a one-line headline: the verdict and the dimension
+  holding it back (DECISIONS 016).
+- Packages overview with minimal cards and switch-in-place. Creating a
+  package now requires sign-in, and packages are born bound to their
+  creator — no unclaimed window.
+- Settings: account details, a microphone check, an honest note about
+  recordings and data, and sign-out.
+
 ### Added — accounts, landing, home (v0.4 core)
 - Sign-in with Google or a passwordless email link (Supabase Auth). No
   passwords exist anywhere in the product. Interviews now require sign-in;
@@ -128,6 +167,14 @@
   `semantic_vad` by measured bake-off (semantic_vad never committed complete
   test answers and interrupted an 8 s thinking pause at ~4.4 s).
 - DECISIONS 010: rubric reuse for identical JDs.
+- DECISIONS 012: canonical URLs are login-scoped ids; token links demoted
+  to claim/redirect addresses.
+- DECISIONS 013: transcripts persist before judging; audio and transcript
+  retained privately, retention policy due before payments.
+- DECISIONS 014: scoring eligibility floors — below them, zero judge calls
+  and the slot survives.
+- DECISIONS 015: the rubric page conceals the question bank.
+- DECISIONS 016: report headline is compile-side deterministic this batch.
 
 ## [0.2.0] — 2026-08-01
 

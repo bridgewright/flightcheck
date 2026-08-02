@@ -57,6 +57,15 @@ Changes to targets are recorded here with date and reason — never silently.
 > original v0.2 line bundled payments; that part remains governed by
 > DECISIONS 008 (payments no earlier than v0.5).
 
+> 2026-08-03: the complete-webapp batch fills v0.4's account shell with the
+> full screen inventory — home, sessions archive, session detail with
+> verbatim transcript and audio replay, progress trends, rubric (the bar
+> made visible; the question bank deliberately withheld), packages
+> overview, and settings. All screens live behind login-scoped URLs, with
+> token links demoted to claim/redirect addresses, and scoring gains an
+> eligibility gate: sessions below the evidence floor are not scored and
+> do not burn the slot. Details: DECISIONS 012–016.
+
 ## Non-goals (v1)
 
 Case-interview exhibits and calculation grading; L1-specific pronunciation curriculum; interviewer difficulty dial; LinkedIn scraping (official PDF export instead); any STT→LLM→TTS cascade — permanently out, not deferred: transcription destroys the delivery signal this product sells.
