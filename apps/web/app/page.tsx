@@ -8,7 +8,11 @@ import { getViewer } from "@/lib/viewer";
 // says so plainly rather than dangling a play button that does nothing.
 const DEMO_VIDEO_URL: string | null = null;
 
-const FEATURES = [
+const FEATURES: {
+  title: string;
+  detail: string;
+  link?: { href: string; label: string };
+}[] = [
   {
     title: "A rubric from your actual JD",
     detail: "Not generic questions — the bar this role really interviews against.",
@@ -20,6 +24,7 @@ const FEATURES = [
   {
     title: "Honest verdicts",
     detail: "Ready or not yet — and exactly what to fix first.",
+    link: { href: "/sample-report", label: "See a real report →" },
   },
 ];
 
@@ -77,6 +82,13 @@ export default async function LandingPage() {
               See pricing
             </Link>
           </div>
+          {viewer ? (
+            <p className="mt-6 text-sm">
+              <Link href="/home" className="underline underline-offset-4">
+                You&apos;re signed in — go to your home →
+              </Link>
+            </p>
+          ) : null}
         </section>
         <section className="grid w-full divide-y divide-neutral-200 border-y border-neutral-200 sm:grid-cols-3 sm:divide-x sm:divide-y-0 dark:divide-neutral-800 dark:border-neutral-800">
           {FEATURES.map((feature) => (
@@ -85,6 +97,14 @@ export default async function LandingPage() {
               <span className="text-sm text-neutral-600 dark:text-neutral-400">
                 {feature.detail}
               </span>
+              {feature.link ? (
+                <Link
+                  href={feature.link.href}
+                  className="mt-2.5 block text-sm underline underline-offset-4"
+                >
+                  {feature.link.label}
+                </Link>
+              ) : null}
             </div>
           ))}
         </section>
