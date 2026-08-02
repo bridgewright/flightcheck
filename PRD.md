@@ -44,6 +44,18 @@ Changes to targets are recorded here with date and reason — never silently.
 - **v0.1 (2026-08-09):** full loop, single session — intake (JD + resume + LinkedIn PDF) → rubric (shown to user before the interview) → one 20-min S2S session → dual-channel score → report. Live deployed URL; sample report public, no signup.
 - **v0.2 (2026-08-16):** 6-session package state (evidence map, asked-questions, recurring weaknesses, delivery profile) → session orchestrator → payments (merchant-of-record) → usage metrics.
 - **v1.0 (2026-08-21):** Ready-verdict calibration, demo video, launch notes, unit economics published.
+- **v0.4 (added 2026-08-02):** accounts — sign-in with Google or a
+  passwordless email link; interviews require sign-in (no anonymous
+  sessions, including tests). Public landing page with a demo video, a
+  logged-in home (session list, next-session entry, readiness), a pricing
+  screen (UI only — payment-provider integration stays with payments,
+  DECISIONS 008), and the 6-session package quota enforced end to end.
+
+> 2026-08-02: v0.4 scope added above — accounts move ahead of payments
+> because login-gated interviews protect session integrity and per-session
+> cost, and the dashboard is what makes a 6-session package usable. The
+> original v0.2 line bundled payments; that part remains governed by
+> DECISIONS 008 (payments no earlier than v0.5).
 
 ## Non-goals (v1)
 
