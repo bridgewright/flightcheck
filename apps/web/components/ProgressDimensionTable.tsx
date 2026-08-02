@@ -1,0 +1,116 @@
+import type { DimensionMeta } from "@/components/progress-view";
+import {
+  formatSigned,
+  humanizeDimensionKey,
+  SCORE_MAX,
+} from "@/components/progress-view";
+import type { DimensionTrend, TrendPoint } from "@/lib/progress";
+
+// One bar per scored session: height is the score normalized to the 1..5
+// rubric scale, drawn with plain CSS on a fixed track. The number itself is
+// in the title and the sr-only text — the bars are the shape, not the data.
+function BarDot({ point }: { point: TrendPoint }) {
+  const pct = Math.min(Math.max(point.score / SCORE_MAX, 0), 1) * 100;
+  return (
+    <span
+      className="flex h-8 w-2 items-end overflow-hidden rounded-sm bg-neutral-100 dark:bg-neutral-800"
+      title={`Session ${point.index}: ${point.score.toFixed(1)}`}
+    >
+      <span
+        aria-hidden="true"
+        className="w-full rounded-sm bg-neutral-700 dark:bg-neutral-300"
+        style={{ height: `${pct}%` }}
+      />
+      <span className="sr-only">
+        Session {point.index}: {point.score.toFixed(1)}.
+      </span>
+    </span>
+  );
+}
+
+const CHANNEL_TAGS = { content: "Content", delivery: "Delivery" } as const;
+
+/** Per-dimension score trend: name, channel, one bar per scored session,
+ * the latest score, and net movement since the first scored session. */
+export default function ProgressDimensionTable({
+  trends,
+  meta,
+}: {
+  trends: DimensionTrend[];
+  meta: Record<string, DimensionMeta>;
+}) {
+  if (trends.length === 0) {
+    return null;
+  }
+  return (
+    <section>
+      <h2 className="mb-2.5 text-xs font-semibold tracking-wide text-neutral-500 uppercase">
+        Dimension trends
+      </h2>
+      <div className="overflow-x-auto">
+        <table className="w-full text-sm">
+          <thead>
+            <tr className="border-b border-neutral-200 text-left text-xs text-neutral-500 dark:border-neutral-800">
+              <th scope="col" className="py-2 pr-3 font-medium">
+                Dimension
+              </th>
+              <th scope="col" className="py-2 pr-3 font-medium">
+                Trend
+              </th>
+              <th scope="col" className="py-2 pr-3 text-right font-medium">
+                Latest
+              </th>
+              <th scope="col" className="py-2 text-right font-medium">
+                Net
+              </th>
+            </tr>
+          </thead>
+          <tbody>
+            {trends.map((trend) => {
+              const dimension = meta[trend.dimension_key];
+              const latest = trend.points[trend.points.length - 1];
+              return (
+                <tr
+                  key={trend.dimension_key}
+                  className="border-b border-neutral-200 dark:border-neutral-800"
+                >
+                  <th scope="row" className="py-2.5 pr-3 text-left font-normal">
+                    <span className="font-medium">
+                      {dimension?.name ?? humanizeDimensionKey(trend.dimension_key)}
+                    </span>
+                    {dimension?.channel ? (
+                      <span className="ml-2 text-[10px] font-semibold tracking-wide text-neutral-500 uppercase">
+                        {CHANNEL_TAGS[dimension.channel]}
+                      </span>
+                    ) : null}
+                  </th>
+                  <td className="py-2.5 pr-3">
+                    <span className="flex items-end gap-1">
+                      {trend.points.map((point) => (
+                        <BarDot key={point.session_id} point={point} />
+                      ))}
+                    </span>
+                  </td>
+                  <td className="py-2.5 pr-3 text-right font-semibold tabular-nums">
+                    {latest ? latest.score.toFixed(1) : "—"}
+                  </td>
+                  <td className="py-2.5 text-right tabular-nums">
+                    {trend.points.length >= 2 ? (
+                      formatSigned(trend.net)
+                    ) : (
+                      <span className="text-neutral-500">—</span>
+                    )}
+                  </td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
+      <p className="mt-1.5 text-[11px] text-neutral-500">
+        Net is the latest score minus the first scored session&apos;s, on the
+        rubric&apos;s 1–{SCORE_MAX} scale.
+      </p>
+    </section>
+  );
+}
