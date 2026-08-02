@@ -3,6 +3,8 @@
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
 
+import MicCheck from "./MicCheck";
+
 import { MAX_RECORDING_BYTES } from "../lib/realtime";
 import {
   CONNECTION_LOST_MESSAGE,
@@ -50,8 +52,13 @@ interface SessionRoomProps {
   sessionId: string;
   packageId: string;
   sessionIndex: number;
-  /** Package access token — the v0.1 credential every privileged call carries. */
-  token: string;
+  /**
+   * Legacy package access token (the v0.1 credential). When present it rides
+   * the privileged calls; when absent those routes authorize the signed-in
+   * viewer instead. The recording-upload sign route still requires it, so
+   * server wrappers keep forwarding it until that route accepts viewer auth.
+   */
+  token?: string;
   reportHref: string;
 }
 
@@ -65,8 +72,6 @@ export default function SessionRoom({
   const router = useRouter();
   const [phase, setPhase] = useState<Phase>("ready");
   const [error, setError] = useState<RoomError | null>(null);
-  const [micReady, setMicReady] = useState(false);
-  const [micLevel, setMicLevel] = useState(0);
   const [elapsedS, setElapsedS] = useState(0);
   const [hearing, setHearing] = useState(false);
   const [confirmingEnd, setConfirmingEnd] = useState(false);
@@ -81,7 +86,6 @@ export default function SessionRoom({
   const startedAtRef = useRef(0);
   const tickerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const hearingTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const meterRafRef = useRef(0);
   const endingRef = useRef(false);
   const connectingRef = useRef(false); // re-entry guard for start()
   const dcRef = useRef<RTCDataChannel | null>(null);
@@ -104,47 +108,6 @@ export default function SessionRoom({
   const messageArrivedRef = useRef(false);
   const responseRequestedRef = useRef(false);
   const responseDoneRef = useRef(false);
-
-  // --- Ready screen: mic check ------------------------------------------
-  const enableMic = useCallback(async () => {
-    setError(null);
-    try {
-      // Echo cancellation is non-negotiable: without it the interviewer's
-      // own voice re-enters the mic and trips server VAD mid-answer — the
-      // exact failure the webroom lab harness was built to eliminate.
-      const stream = await navigator.mediaDevices.getUserMedia({
-        audio: { echoCancellation: true, noiseSuppression: true },
-      });
-      micStreamRef.current = stream;
-      const ctx = new AudioContext();
-      audioCtxRef.current = ctx;
-      // Level meter: the candidate sees the mic actually picking them up
-      // before committing to a 20-minute session.
-      const analyser = ctx.createAnalyser();
-      analyser.fftSize = 512;
-      ctx.createMediaStreamSource(stream).connect(analyser);
-      const data = new Uint8Array(analyser.frequencyBinCount);
-      const loop = () => {
-        analyser.getByteTimeDomainData(data);
-        let peak = 0;
-        for (const v of data) {
-          peak = Math.max(peak, Math.abs(v - 128) / 128);
-        }
-        setMicLevel(peak);
-        meterRafRef.current = requestAnimationFrame(loop);
-      };
-      meterRafRef.current = requestAnimationFrame(loop);
-      setMicReady(true);
-    } catch {
-      setError({
-        kind: "mic",
-        message:
-          "Microphone access was denied or failed. The interview cannot " +
-          "run without a microphone — allow access in the browser prompt " +
-          "(or the address-bar site settings) and try again.",
-      });
-    }
-  }, []);
 
   // --- Recording teardown (awaits the final MediaRecorder chunk) --------
   const stopRecorder = useCallback(
@@ -274,14 +237,37 @@ export default function SessionRoom({
     // double-mint the secret and corrupt chunksRef mid-recording.
     if (connectingRef.current) return;
     connectingRef.current = true;
-    const micStream = micStreamRef.current;
-    const audioCtx = audioCtxRef.current;
-    if (!micStream || !audioCtx) {
-      connectingRef.current = false;
-      return;
-    }
     setError(null);
     setPhase("connecting");
+    // The session acquires its own stream instead of reusing the MicCheck
+    // one: the device check releases its stream the moment its UI is done,
+    // and the session's constraints are stricter. Echo cancellation is
+    // non-negotiable: without it the interviewer's own voice re-enters the
+    // mic and trips server VAD mid-answer — the exact failure the webroom
+    // lab harness was built to eliminate.
+    let micStream = micStreamRef.current;
+    let audioCtx = audioCtxRef.current;
+    if (!micStream || !audioCtx) {
+      try {
+        micStream = await navigator.mediaDevices.getUserMedia({
+          audio: { echoCancellation: true, noiseSuppression: true },
+        });
+        micStreamRef.current = micStream;
+        audioCtx = new AudioContext();
+        audioCtxRef.current = audioCtx;
+      } catch {
+        connectingRef.current = false;
+        setPhase("ready");
+        setError({
+          kind: "mic",
+          message:
+            "Microphone access was denied or failed. The interview cannot " +
+            "run without a microphone — allow access in the browser prompt " +
+            "(or the address-bar site settings) and try again.",
+        });
+        return;
+      }
+    }
     try {
       const secretRes = await fetch("/api/realtime-secret", {
         method: "POST",
@@ -337,19 +323,13 @@ export default function SessionRoom({
       const dc = pc.createDataChannel("oai-events");
       dcRef.current = dc;
       dc.addEventListener("open", () => {
-        // The mic-check level meter is gone from the UI once the room is
-        // live: stop its rAF loop instead of re-rendering ~60fps for the
-        // whole interview (it would also outlive the mic tracks).
-        if (meterRafRef.current) {
-          cancelAnimationFrame(meterRafRef.current);
-          meterRafRef.current = 0;
-        }
         // Recorder starts at data-channel open — session start — so the
         // file timeline matches the interview timeline and scoring
         // timestamps (transcript start_s, observations at_s) line up.
-        // Diagnostic mic level (independent of the pre-session meter, whose
-        // rAF loop stops here): lets the [silence] diag line show whether a
-        // committed turn had real acoustic energy behind it.
+        // Diagnostic mic level (independent of MicCheck's meter, which owns
+        // its own stream and is long gone by now): lets the [silence] diag
+        // line show whether a committed turn had real acoustic energy
+        // behind it.
         const micAnalyser = audioCtx.createAnalyser();
         micAnalyser.fftSize = 512;
         audioCtx.createMediaStreamSource(micStream).connect(micAnalyser);
@@ -590,7 +570,6 @@ export default function SessionRoom({
   // --- Unmount cleanup ---------------------------------------------------
   useEffect(
     () => () => {
-      if (meterRafRef.current) cancelAnimationFrame(meterRafRef.current);
       if (hearingTimeoutRef.current) clearTimeout(hearingTimeoutRef.current);
       pcRef.current?.close();
       micStreamRef.current?.getTracks().forEach((t) => t.stop());
@@ -611,36 +590,22 @@ export default function SessionRoom({
             interviewer&apos;s voice out of your microphone, so your turns
             are detected cleanly.
           </p>
-          {!micReady && (
-            <button
-              type="button"
-              onClick={() => void enableMic()}
-              className="mt-6 rounded-lg border border-current px-5 py-3"
-            >
-              Enable microphone
-            </button>
-          )}
-          {micReady && (
-            <div className="mt-6">
-              <div className="h-2 w-full rounded bg-neutral-200 dark:bg-neutral-800">
-                <div
-                  className="h-2 rounded bg-green-600 transition-[width] duration-75"
-                  style={{ width: `${Math.min(100, micLevel * 100)}%` }}
-                />
-              </div>
-              <p className="mt-2 text-sm text-neutral-500">
-                Say a few words — the bar should move. When it does, you are
-                ready.
-              </p>
-              <button
-                type="button"
-                onClick={() => void start()}
-                className="mt-6 rounded-lg border border-current px-5 py-3"
-              >
-                Start interview
-              </button>
+          {/* Device check (shared MicCheck): confirm the mic picks you up
+              before committing to a 20-minute session. It holds its own
+              stream; the session acquires its own in start(). */}
+          <div className="mt-6 rounded-lg border border-neutral-300 p-4 dark:border-neutral-700">
+            <h2 className="text-sm font-medium">Microphone check</h2>
+            <div className="mt-3">
+              <MicCheck />
             </div>
-          )}
+          </div>
+          <button
+            type="button"
+            onClick={() => void start()}
+            className="mt-6 rounded-lg border border-current px-5 py-3"
+          >
+            Start interview
+          </button>
           {error && (error.kind === "mic" || error.kind === "connect") && (
             <div className="mt-6 rounded-lg border border-red-600 p-4">
               <p className="font-medium text-red-600">
@@ -651,9 +616,7 @@ export default function SessionRoom({
               <p className="mt-1 text-sm">{error.message}</p>
               <button
                 type="button"
-                onClick={() =>
-                  error.kind === "mic" ? void enableMic() : void start()
-                }
+                onClick={() => void start()}
                 className="mt-3 rounded-lg border border-current px-4 py-2"
               >
                 Try again
