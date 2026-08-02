@@ -612,6 +612,91 @@ def test_list_package_sessions_returns_404_and_requires_auth(monkeypatch):
     assert unauthorized.status_code == 401
 
 
+def test_progress_unknown_package_is_404_and_requires_auth(monkeypatch):
+    db = FakeDatabase()
+    client = _session_client(monkeypatch, db)
+
+    missing = client.get("/api/packages/missing/progress", headers=API_HEADERS)
+    unauthorized = client.get("/api/packages/missing/progress")
+
+    assert missing.status_code == 404
+    assert unauthorized.status_code == 401
+
+
+def test_progress_shapes_scored_and_unscored_sessions(monkeypatch):
+    # WP-C: one entry per session, ascending index, from ONE list call.
+    # Trend fields are null/[] until a report exists; silence stats are
+    # reduced worker-side so the web never re-derives them per render.
+    db = FakeDatabase()
+    package = _ready_package(db)
+    scored = db.create_session(package.id, 1, plan_baseline_session(package.rubric))
+    db.save_report(scored.id, _stored_report(scored.id))
+    planned = db.create_session(package.id, 2, plan_baseline_session(package.rubric))
+    client = _session_client(monkeypatch, db)
+
+    response = client.get(
+        f"/api/packages/{package.id}/progress", headers=API_HEADERS
+    )
+
+    assert response.status_code == 200
+    assert response.json() == {
+        "package_id": package.id,
+        "total_sessions": 6,
+        "sessions": [
+            {
+                "session_id": scored.id,
+                "index": 1,
+                "created_at": scored.created_at,
+                "status": "scored",
+                "verdict": "approaching",
+                "overall": 3.4,
+                "dimension_scores": [
+                    {"dimension_key": "structured-answers", "score": 3.4},
+                    {"dimension_key": "pacing-control", "score": 3.8},
+                ],
+                "wpm_overall": 141.0,
+                "filler_rate_per_min": 1.2,
+                "silence": {"count": 2, "total_s": 6.5, "longest_s": 4.0},
+                "gaps": ["Answers stay at the summary level."],
+            },
+            {
+                "session_id": planned.id,
+                "index": 2,
+                "created_at": planned.created_at,
+                "status": "planned",
+                "verdict": None,
+                "overall": None,
+                "dimension_scores": [],
+                "wpm_overall": None,
+                "filler_rate_per_min": None,
+                "silence": None,
+                "gaps": [],
+            },
+        ],
+    }
+
+
+def test_progress_with_zero_silence_events_reduces_to_zeros(monkeypatch):
+    # max() over an empty event list must reduce to 0.0, never raise.
+    db = FakeDatabase()
+    package = _ready_package(db)
+    session = db.create_session(package.id, 1, plan_baseline_session(package.rubric))
+    report = _stored_report(session.id)
+    report = report.model_copy(update={
+        "delivery_metrics": report.delivery_metrics.model_copy(
+            update={"silence_events": []})
+    })
+    db.save_report(session.id, report)
+    client = _session_client(monkeypatch, db)
+
+    response = client.get(
+        f"/api/packages/{package.id}/progress", headers=API_HEADERS
+    )
+
+    (entry,) = response.json()["sessions"]
+    assert entry["silence"] == {"count": 0, "total_s": 0.0, "longest_s": 0.0}
+
+
 def test_list_user_packages_newest_first_with_usage(monkeypatch):
     db = FakeDatabase()
     older = _ready_package(db, total_sessions=2, user_id="user-1")

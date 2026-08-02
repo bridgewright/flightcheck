@@ -236,6 +236,62 @@ def create_app(db: Database, storage: Storage, client: GenAIClientLike) -> FastA
             for row in db.list_sessions(package_id)
         ]}
 
+    @api.get("/packages/{package_id}/progress")
+    def get_package_progress(package_id: str) -> dict:
+        """Per-session trend feed (WP-C): pure assembly over ONE list call.
+
+        Slimmed on purpose -- rationale and evidence stay on the session
+        detail; this feed carries only what trend math needs. Every row rides
+        along regardless of status (the UI decides how unscored attempts
+        appear on the timeline); score fields are null/[] until a report
+        exists. Silence stats are reduced here so no client re-derives them.
+        """
+        try:
+            package = db.get_package(package_id)
+        except KeyError as exc:
+            raise HTTPException(status_code=404, detail="package not found") from exc
+        entries = []
+        for row in db.list_sessions(package_id):
+            report = row.report
+            silence = None
+            if report is not None:
+                events = report.delivery_metrics.silence_events
+                # Rounded so JSON never carries float-sum dust.
+                silence = {
+                    "count": len(events),
+                    "total_s": round(sum(e.duration_s for e in events), 2),
+                    "longest_s": round(
+                        max((e.duration_s for e in events), default=0.0), 2
+                    ),
+                }
+            entries.append({
+                "session_id": row.id,
+                "index": row.index,
+                "created_at": row.created_at,
+                "status": row.status,
+                "verdict": report.verdict if report is not None else None,
+                "overall": report.overall_score if report is not None else None,
+                "dimension_scores": [
+                    {"dimension_key": s.dimension_key, "score": s.score}
+                    for s in (report.dimension_scores if report is not None else [])
+                ],
+                "wpm_overall": (
+                    report.delivery_metrics.wpm_overall
+                    if report is not None else None
+                ),
+                "filler_rate_per_min": (
+                    report.delivery_metrics.filler_rate_per_min
+                    if report is not None else None
+                ),
+                "silence": silence,
+                "gaps": list(report.gaps) if report is not None else [],
+            })
+        return {
+            "package_id": package_id,
+            "total_sessions": package.total_sessions,
+            "sessions": entries,
+        }
+
     @api.get("/users/{user_id}/packages")
     def list_user_packages(user_id: str) -> dict:
         return {"packages": [
