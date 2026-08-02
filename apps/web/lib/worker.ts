@@ -169,6 +169,18 @@ export function packageOwnerId(pkg: PackageRow): string | null {
   return (pkg as PackageRow & { user_id?: string | null }).user_id ?? null;
 }
 
+/** How many sessions the package owes, defaulting to the one package size the
+ * product sells. Same story as packageOwnerId: packages.total_sessions arrives
+ * with F-07 (`not null default 6`) ahead of the shared PackageRow type. */
+export const DEFAULT_TOTAL_SESSIONS = 6;
+
+export function packageTotalSessions(pkg: PackageRow): number {
+  const total = (pkg as PackageRow & { total_sessions?: unknown }).total_sessions;
+  return typeof total === "number" && Number.isInteger(total) && total > 0
+    ? total
+    : DEFAULT_TOTAL_SESSIONS;
+}
+
 // --- Token capability checks -------------------------------------------
 //
 // The package access token IS the v0.1 security model: the privileged web

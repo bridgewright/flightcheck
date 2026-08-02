@@ -12,6 +12,7 @@ import {
   listPackagesForUser,
   listSessions,
   packageOwnerId,
+  packageTotalSessions,
   workerFetch,
 } from "@/lib/worker";
 import type { PackageRow } from "@/lib/types";
@@ -278,6 +279,17 @@ describe("packageOwnerId", () => {
   it("reports null when the worker predates the ownership column", () => {
     const pkg = { id: "pkg-1" } as unknown as PackageRow;
     expect(packageOwnerId(pkg)).toBeNull();
+  });
+});
+
+describe("packageTotalSessions", () => {
+  it("uses the size the worker reports", () => {
+    expect(packageTotalSessions({ total_sessions: 3 } as unknown as PackageRow)).toBe(3);
+  });
+
+  it("falls back to the package size the product sells", () => {
+    expect(packageTotalSessions({} as unknown as PackageRow)).toBe(6);
+    expect(packageTotalSessions({ total_sessions: 0 } as unknown as PackageRow)).toBe(6);
   });
 });
 

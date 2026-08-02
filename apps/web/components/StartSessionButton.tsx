@@ -42,11 +42,11 @@ export default function StartSessionButton({
         type="button"
         onClick={start}
         disabled={starting}
-        className="self-start rounded-md bg-neutral-900 px-6 py-3 font-medium text-white disabled:opacity-50 dark:bg-white dark:text-neutral-900"
+        className="self-start rounded-[10px] bg-coral px-5 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-[#c96a4a] disabled:opacity-50"
       >
         {starting ? "Preparing your session…" : "Start session"}
       </button>
-      {error ? <p className="text-sm text-red-600">{error}</p> : null}
+      {error ? <p className="text-sm text-coral">{error}</p> : null}
     </div>
   );
 }
