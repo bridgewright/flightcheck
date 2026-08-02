@@ -44,11 +44,14 @@ line-length = 100
 select = ["E", "F", "I", "UP", "RUF", "BLE"]
 
 [tool.ruff.lint.isort]
-known-first-party = ["scorer", "fakes"]
+known-first-party = ["scorer", "fakes", "backfill_transcripts"]
 
 [tool.pytest.ini_options]
 asyncio_mode = "auto"
 testpaths = ["tests"]
+# tools/ holds manual operator scripts (not part of the scorer package);
+# on the path so their offline pieces stay unit-testable.
+pythonpath = ["tools"]
 
 [build-system]
 requires = ["hatchling"]
