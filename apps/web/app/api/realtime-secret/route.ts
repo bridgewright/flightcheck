@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 
-import { authorizeSession } from "@/lib/worker";
+import { getViewer } from "@/lib/viewer";
+import { authorizeSession, authorizeViewerSession } from "@/lib/worker";
 
 import { clientSecretRequestBody } from "../../../lib/realtime";
 
@@ -13,6 +14,13 @@ const OPENAI_CLIENT_SECRETS_URL =
 // is scoped to the minted session). The interviewer instructions are
 // re-fetched from the worker here — never accepted from the client — so the
 // browser can neither read nor tamper with them.
+//
+// Authorization runs BEFORE any OpenAI call, with one of two credentials:
+// - Legacy capability: the package access token in the body (the v0.1
+//   model). Still honored so token links keep working until F-10 retires
+//   loose tokens.
+// - Viewer ownership: no token, but a signed-in account that owns the
+//   session's package — the canonical path for the id-routed session room.
 export async function POST(request: Request) {
   let body: { sessionId?: unknown; token?: unknown };
   try {
@@ -26,24 +34,37 @@ export async function POST(request: Request) {
       { status: 400 },
     );
   }
-  if (typeof body.token !== "string" || body.token === "") {
-    return NextResponse.json({ error: "token is required" }, { status: 400 });
+  const token = typeof body.token === "string" && body.token !== "" ? body.token : null;
+  let instructions: string | undefined;
+  if (token !== null) {
+    const access = await authorizeSession(token, body.sessionId);
+    if (!access.ok) {
+      console.error(`realtime-secret: authorizeSession failed (status ${access.status})`);
+      return NextResponse.json(
+        access.status === 403
+          ? { error: "access denied" }
+          : { error: "worker session lookup failed" },
+        { status: access.status },
+      );
+    }
+    instructions = access.value.session.interviewer_instructions;
+  } else {
+    const viewer = await getViewer();
+    if (!viewer) {
+      return NextResponse.json({ error: "sign in first" }, { status: 401 });
+    }
+    const access = await authorizeViewerSession(viewer, body.sessionId);
+    if (!access.ok) {
+      console.error(`realtime-secret: authorizeViewerSession failed (status ${access.status})`);
+      return NextResponse.json(
+        access.status === 403
+          ? { error: "access denied" }
+          : { error: "worker session lookup failed" },
+        { status: access.status },
+      );
+    }
+    instructions = access.value.session.interviewer_instructions;
   }
-  // Capability check BEFORE any OpenAI call: the package access token is the
-  // v0.1 security model, so the caller must hold the token of the package
-  // that owns this session. authorizeSession also url-encodes the ids on the
-  // worker paths and returns the session payload, instructions included.
-  const access = await authorizeSession(body.token, body.sessionId);
-  if (!access.ok) {
-    console.error(`realtime-secret: authorizeSession failed (status ${access.status})`);
-    return NextResponse.json(
-      access.status === 403
-        ? { error: "access denied" }
-        : { error: "worker session lookup failed" },
-      { status: access.status },
-    );
-  }
-  const instructions = access.value.session.interviewer_instructions;
   if (typeof instructions !== "string" || instructions === "") {
     console.error("realtime-secret: worker session payload has no interviewer instructions");
     return NextResponse.json(
