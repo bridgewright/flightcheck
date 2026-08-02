@@ -1,6 +1,6 @@
 // Pure formatting helpers for session reports. Kept JSX-free so vitest can
 // exercise them without a React transform.
-import type { TimestampedObservation, Verdict } from "@/lib/types";
+import type { SessionStatus, TimestampedObservation, Verdict } from "@/lib/types";
 
 export const VERDICT_LABELS: Record<Verdict, string> = {
   not_ready: "Not yet ready",
@@ -19,6 +19,56 @@ const VERDICT_CLASSES: Record<Verdict, string> = {
 
 export function verdictClasses(verdict: Verdict): string {
   return VERDICT_CLASSES[verdict];
+}
+
+// The same red/amber/green language as the verdict box, at pill size — the
+// archive rows and detail chips speak one color vocabulary.
+const VERDICT_PILL_CLASSES: Record<Verdict, string> = {
+  not_ready: "bg-red-100 text-red-900 dark:bg-red-950 dark:text-red-200",
+  approaching:
+    "bg-amber-100 text-amber-900 dark:bg-amber-950 dark:text-amber-200",
+  ready: "bg-green-100 text-green-900 dark:bg-green-950 dark:text-green-200",
+};
+
+export function verdictPillClasses(verdict: Verdict): string {
+  return VERDICT_PILL_CLASSES[verdict];
+}
+
+/**
+ * A score delta for display: "+0.4", "-0.3", or "0.0". Sign follows the
+ * ROUNDED value, so a delta that displays as 0.0 never carries a misleading
+ * "+" or "-".
+ */
+export function formatDelta(delta: number): string {
+  const rounded = delta.toFixed(1);
+  if (rounded === "0.0" || rounded === "-0.0") {
+    return "0.0";
+  }
+  return delta > 0 ? `+${rounded}` : rounded;
+}
+
+/**
+ * Per-row overall delta vs the PREVIOUS SCORED session, keyed by session id.
+ * Rows without a delta (the first scored session, and anything unscored) are
+ * simply absent. Unscored rows never break the chain — the comparison is
+ * always against the last session that produced a number.
+ */
+export function overallDeltas(
+  sessions: {
+    id: string;
+    index: number;
+    status: SessionStatus;
+    overall: number | null;
+  }[],
+): Map<string, number> {
+  const deltas = new Map<string, number>();
+  const scored = sessions
+    .filter((s) => s.status === "scored" && s.overall !== null)
+    .sort((a, b) => a.index - b.index);
+  for (let i = 1; i < scored.length; i++) {
+    deltas.set(scored[i].id, (scored[i].overall as number) - (scored[i - 1].overall as number));
+  }
+  return deltas;
 }
 
 export function formatTimestamp(atS: number): string {
