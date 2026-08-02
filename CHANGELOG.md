@@ -20,10 +20,16 @@
   unfinished session (a connection-guard ending never burns the slot),
   next-index creation, and honest "package exhausted" copy. Two new worker
   routes list a package's sessions and a user's packages.
-- Night visual identity across every screen: dark-only palette, serif
-  greetings, amber progress lights, coral primary actions — the aviation
-  identity lives in the visuals (journey strip, readiness dial, ticket
-  structure) while the copy stays plain.
+- The interviewer is locked to English: whatever language the candidate
+  answers in, the interviewer replies in English — one warm invitation
+  back the first time, no comment after that, and a plain ask-again if an
+  answer wasn't understandable. The English session is the training.
+- All v0.4 screens ship in the product's plain neutral baseline
+  (light/dark adaptive). A branded visual identity was prototyped
+  (night/aviation direction) and deliberately shelved: features first,
+  design applied across the whole app in one dedicated pass later.
+- Google sign-in is hidden behind a flag until the OAuth provider is
+  configured; email sign-in links are the live method.
 
 ### Added — the client owns all conversational timing
 - Silence machinery: with `create_response: false` the server commits turns
