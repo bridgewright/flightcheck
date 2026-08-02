@@ -1,9 +1,8 @@
 import Link from "next/link";
 
-import TopBar from "@/components/TopBar";
+import Shell from "@/components/Shell";
+import { LABEL, PRIMARY_BUTTON } from "@/lib/ui";
 import { getViewer } from "@/lib/viewer";
-
-const LABEL = "text-[10px] font-semibold tracking-wide text-neutral-500 uppercase";
 
 const INCLUDED = [
   "6 live sessions with your interviewer, ~20 minutes each",
@@ -16,9 +15,8 @@ const INCLUDED = [
 export default async function PricingPage() {
   const viewer = await getViewer();
   return (
-    <>
-      <TopBar viewer={viewer} />
-      <main className="mx-auto flex w-full max-w-xl flex-col items-center px-6 pt-14 pb-16">
+    <Shell viewer={viewer}>
+      <div className="flex flex-col items-center pt-4">
         <h1 className="text-center text-2xl font-bold tracking-tight text-balance">
           One package per job description.
         </h1>
@@ -43,15 +41,12 @@ export default async function PricingPage() {
                 </li>
               ))}
             </ul>
-            <Link
-              href="/checkout"
-              className="rounded-md bg-neutral-900 px-5 py-3 text-center text-sm font-medium text-white dark:bg-white dark:text-neutral-900"
-            >
+            <Link href="/checkout" className={`${PRIMARY_BUTTON} text-center`}>
               Continue to payment
             </Link>
           </div>
         </article>
-      </main>
-    </>
+      </div>
+    </Shell>
   );
 }

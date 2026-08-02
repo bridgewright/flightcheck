@@ -5,34 +5,17 @@ import PollRefresh from "@/components/PollRefresh";
 import ReadinessGauge from "@/components/ReadinessGauge";
 import SessionList from "@/components/SessionList";
 import SessionTicket from "@/components/SessionTicket";
-import TopBar from "@/components/TopBar";
+import Shell from "@/components/Shell";
 import type { VerdictLine } from "@/lib/home";
 import { greetingName, journeyLegs, nextSessionNumber, verdictLine } from "@/lib/home";
 import type { Verdict } from "@/lib/types";
+import { PRIMARY_BUTTON } from "@/lib/ui";
 import type { Viewer } from "@/lib/viewer";
 import { getViewer } from "@/lib/viewer";
 import type { PackageSummary, SessionSummary } from "@/lib/worker";
 import { getPackageByToken, getSession, listPackagesForUser, listSessions } from "@/lib/worker";
 
 export const dynamic = "force-dynamic";
-
-const PRIMARY_BUTTON =
-  "rounded-md bg-neutral-900 px-5 py-2.5 text-sm font-medium text-white dark:bg-white dark:text-neutral-900";
-
-function Shell({
-  viewer,
-  children,
-}: {
-  viewer: Viewer | null;
-  children: React.ReactNode;
-}) {
-  return (
-    <>
-      <TopBar viewer={viewer} />
-      <main className="mx-auto w-full max-w-2xl px-6 pt-10 pb-12">{children}</main>
-    </>
-  );
-}
 
 // Normally the proxy guard redirects a signed-out visitor to /login before this
 // renders. This is the fallback for when it does not — a page that quietly

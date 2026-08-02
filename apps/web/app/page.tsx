@@ -1,6 +1,6 @@
 import Link from "next/link";
 
-import TopBar from "@/components/TopBar";
+import Shell from "@/components/Shell";
 import { getViewer } from "@/lib/viewer";
 
 // The 90-second staged session capture is not recorded yet. Set this to the
@@ -52,10 +52,8 @@ function DemoVideo() {
 export default async function LandingPage() {
   const viewer = await getViewer();
   return (
-    <>
-      <TopBar viewer={viewer} />
-      <main className="flex flex-col">
-        <section className="mx-auto flex w-full max-w-3xl flex-col px-6 pt-16 pb-14 text-center">
+    <Shell viewer={viewer} width="wide">
+      <section className="mx-auto flex w-full max-w-3xl flex-col pt-6 pb-14 text-center">
           <h1 className="text-3xl font-bold tracking-tight text-balance md:text-5xl">
             Would you pass the interview <em>today?</em>
           </h1>
@@ -80,7 +78,7 @@ export default async function LandingPage() {
             </Link>
           </div>
         </section>
-        <section className="mx-auto grid w-full max-w-5xl divide-y divide-neutral-200 border-y border-neutral-200 sm:grid-cols-3 sm:divide-x sm:divide-y-0 dark:divide-neutral-800 dark:border-neutral-800">
+        <section className="grid w-full divide-y divide-neutral-200 border-y border-neutral-200 sm:grid-cols-3 sm:divide-x sm:divide-y-0 dark:divide-neutral-800 dark:border-neutral-800">
           {FEATURES.map((feature) => (
             <div key={feature.title} className="px-6 py-6">
               <b className="mb-1.5 block font-semibold">{feature.title}</b>
@@ -90,7 +88,6 @@ export default async function LandingPage() {
             </div>
           ))}
         </section>
-      </main>
-    </>
+    </Shell>
   );
 }

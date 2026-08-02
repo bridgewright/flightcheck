@@ -3,6 +3,8 @@
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 
+import { PRIMARY_BUTTON } from "@/lib/ui";
+
 export default function StartSessionButton({
   packageId,
   token,
@@ -42,7 +44,7 @@ export default function StartSessionButton({
         type="button"
         onClick={start}
         disabled={starting}
-        className="self-start rounded-md bg-neutral-900 px-5 py-2.5 text-sm font-medium text-white disabled:opacity-50 dark:bg-white dark:text-neutral-900"
+        className={`${PRIMARY_BUTTON} self-start`}
       >
         {starting ? "Preparing your session…" : "Start session"}
       </button>

@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 
 import type { CreatePackageBody } from "@/lib/types";
+import { PRIMARY_BUTTON } from "@/lib/ui";
 
 function fileToBase64(file: File): Promise<string> {
   return new Promise((resolve, reject) => {
@@ -138,7 +139,7 @@ export default function NewPackagePage() {
         <button
           type="submit"
           disabled={submitting}
-          className="self-start rounded-md bg-neutral-900 px-6 py-3 font-medium text-white disabled:opacity-50 dark:bg-white dark:text-neutral-900"
+          className={`${PRIMARY_BUTTON} self-start`}
         >
           {submitting ? "Creating your package…" : "Compile my interview package"}
         </button>

@@ -1,9 +1,8 @@
 import Link from "next/link";
 
-import TopBar from "@/components/TopBar";
+import Shell from "@/components/Shell";
+import { LABEL, PRIMARY_BUTTON } from "@/lib/ui";
 import { getViewer } from "@/lib/viewer";
-
-const LABEL = "text-[10px] font-semibold tracking-wide text-neutral-500 uppercase";
 
 // UI only. No PSP, no card fields, no order record — the payments feature
 // wires those up, and pretending otherwise here would collect details this
@@ -11,9 +10,8 @@ const LABEL = "text-[10px] font-semibold tracking-wide text-neutral-500 uppercas
 export default async function CheckoutPage() {
   const viewer = await getViewer();
   return (
-    <>
-      <TopBar viewer={viewer} />
-      <main className="mx-auto flex w-full max-w-md flex-col px-6 pt-14 pb-16">
+    <Shell viewer={viewer}>
+      <div className="mx-auto flex w-full max-w-md flex-col pt-4">
         <h1 className="text-2xl font-bold tracking-tight text-balance">
           Payments aren&apos;t open yet.
         </h1>
@@ -32,17 +30,14 @@ export default async function CheckoutPage() {
           </p>
         </section>
         <div className="mt-7 flex flex-wrap items-center gap-4">
-          <Link
-            href="/new"
-            className="rounded-md bg-neutral-900 px-5 py-2.5 text-sm font-medium text-white dark:bg-white dark:text-neutral-900"
-          >
+          <Link href="/new" className={PRIMARY_BUTTON}>
             Start with a job description
           </Link>
           <Link href="/pricing" className="text-sm underline underline-offset-4">
             Back to pricing
           </Link>
         </div>
-      </main>
-    </>
+      </div>
+    </Shell>
   );
 }

@@ -1,10 +1,9 @@
 import type { ReactNode } from "react";
 
 import type { VerdictLine } from "@/lib/home";
-
 // The one object on the page: what you do next, and the sentence from last
 // time that says why.
-const LABEL = "text-[10px] font-semibold tracking-wide text-neutral-500 uppercase";
+import { LABEL } from "@/lib/ui";
 
 function pad(n: number): string {
   return String(n).padStart(2, "0");

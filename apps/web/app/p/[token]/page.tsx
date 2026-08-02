@@ -6,11 +6,11 @@ import PollRefresh from "@/components/PollRefresh";
 import ReadinessGauge from "@/components/ReadinessGauge";
 import SessionList from "@/components/SessionList";
 import SessionTicket from "@/components/SessionTicket";
+import Shell from "@/components/Shell";
 import StartSessionButton from "@/components/StartSessionButton";
-import TopBar from "@/components/TopBar";
 import { journeyLegs, nextSessionNumber, verdictLine } from "@/lib/home";
 import type { PackageRow, Rubric, Verdict } from "@/lib/types";
-import type { Viewer } from "@/lib/viewer";
+import { PRIMARY_BUTTON } from "@/lib/ui";
 import { getViewer } from "@/lib/viewer";
 import type { SessionSummary } from "@/lib/worker";
 import {
@@ -22,21 +22,6 @@ import {
 } from "@/lib/worker";
 
 export const dynamic = "force-dynamic";
-
-function Shell({
-  viewer,
-  children,
-}: {
-  viewer: Viewer | null;
-  children: React.ReactNode;
-}) {
-  return (
-    <>
-      <TopBar viewer={viewer} />
-      <main className="mx-auto w-full max-w-2xl px-6 pt-10 pb-12">{children}</main>
-    </>
-  );
-}
 
 /**
  * Claims the package for the signed-in viewer the first time they open its
@@ -186,10 +171,7 @@ export default async function PackagePage({
         verdict={outcome.headline}
         action={
           next === null ? (
-            <Link
-              href="/pricing"
-              className="rounded-md bg-neutral-900 px-5 py-2.5 text-sm font-medium text-white dark:bg-white dark:text-neutral-900"
-            >
+            <Link href="/pricing" className={PRIMARY_BUTTON}>
               See pricing
             </Link>
           ) : (
