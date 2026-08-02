@@ -66,6 +66,15 @@ describe("POST /auth/signout", () => {
     expect(location.pathname).toBe("/");
   });
 
+  it("rejects a backslash next value that WHATWG parsing sends off-origin", async () => {
+    // new URL("/\\evil.example/phish", base) resolves to http://evil.example
+    // because the URL parser treats "\" as "/" for http(s).
+    const res = await POST(formPost({ next: "/\\evil.example/phish" }));
+    const location = new URL(res.headers.get("location") ?? "");
+    expect(location.origin).toBe("http://web.test");
+    expect(location.pathname).toBe("/");
+  });
+
   it("rejects an empty next value", async () => {
     const res = await POST(formPost({ next: "" }));
     expect(new URL(res.headers.get("location") ?? "").pathname).toBe("/");
