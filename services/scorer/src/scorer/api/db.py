@@ -27,6 +27,8 @@ class PackageRow(BaseModel):
     jd_text: str
     candidate_profile: CandidateProfile | None
     rubric: Rubric | None
+    user_id: str | None = None
+    total_sessions: int = 6
 
 
 class SessionRow(BaseModel):
@@ -54,6 +56,10 @@ class Database(Protocol):
         ...
 
     def get_package_by_token(self, access_token: str) -> PackageRow:
+        ...
+
+    def list_packages_by_user(self, user_id: str) -> list[PackageRow]:
+        """A user's packages, newest first; [] when the user has none."""
         ...
 
     def set_package_profile(self, package_id: str, profile: CandidateProfile) -> None:
@@ -130,6 +136,8 @@ def _to_package_row(data: dict) -> PackageRow:
             if data.get("rubric") is not None
             else None
         ),
+        user_id=data.get("user_id"),
+        total_sessions=data.get("total_sessions", 6),
     )
 
 
@@ -185,6 +193,12 @@ class SupabaseDatabase:
             raise KeyError(access_token)
         return _to_package_row(data[0])
 
+    def list_packages_by_user(self, user_id: str) -> list[PackageRow]:
+        data = (self._client.table("packages").select("*")
+                .eq("user_id", user_id).order("created_at", desc=True)
+                .execute().data)
+        return [_to_package_row(row) for row in data]
+
     def set_package_profile(self, package_id: str, profile: CandidateProfile) -> None:
         data = (self._client.table("packages")
                 .update({"candidate_profile": profile.model_dump(mode="json")})
@@ -237,8 +251,11 @@ class SupabaseDatabase:
         return _to_session_row(data[0])
 
     def list_sessions(self, package_id: str) -> list[SessionRow]:
-        data = (self._client.table("sessions").select("*")
-                .eq("package_id", package_id).execute().data)
+        query = (self._client.table("sessions").select("*")
+                 .eq("package_id", package_id))
+        if hasattr(query, "order"):
+            query = query.order("index")
+        data = query.execute().data
         # Sorted here (not in SQL) so every backend orders identically.
         return sorted((_to_session_row(d) for d in data), key=lambda r: r.index)
 

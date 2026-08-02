@@ -354,3 +354,151 @@ def test_failed_compile_is_not_a_cache_source(monkeypatch):
 
     assert db.get_package(second.json()["package_id"]).status == "ready"
     assert len(fake.calls) > call_count
+
+
+API_HEADERS = {"Authorization": "Bearer test-worker-token"}
+
+
+def _ready_package(db: FakeDatabase, *, total_sessions: int = 6, user_id=None):
+    package = db.create_package(JD_TEXT, None)
+    db.packages[package.id] = package.model_copy(
+        update={"user_id": user_id, "total_sessions": total_sessions}
+    )
+    db.set_package_rubric(package.id, _make_rubric(), status="ready")
+    return db.get_package(package.id)
+
+
+def _session_client(monkeypatch, db: FakeDatabase) -> TestClient:
+    monkeypatch.setenv("WORKER_API_TOKEN", "test-worker-token")
+    return TestClient(create_app(db, FakeStorage(), FakeGenAI([])))
+
+
+def test_create_session_resumes_planned_session_without_creating_row(monkeypatch):
+    db = FakeDatabase()
+    package = _ready_package(db)
+    planned = db.create_session(package.id, 1, plan_baseline_session(package.rubric))
+    client = _session_client(monkeypatch, db)
+
+    response = client.post(
+        "/api/sessions", json={"package_id": package.id}, headers=API_HEADERS
+    )
+
+    assert response.status_code == 200
+    assert response.json()["session_id"] == planned.id
+    assert response.json()["index"] == 1
+    assert len(db.sessions) == 1
+
+
+def test_create_session_resume_prefers_lowest_retriable_index(monkeypatch):
+    db = FakeDatabase()
+    package = _ready_package(db)
+    high = db.create_session(package.id, 3, plan_baseline_session(package.rubric))
+    low = db.create_session(package.id, 2, plan_baseline_session(package.rubric))
+    db.set_session_status(high.id, "failed")
+    client = _session_client(monkeypatch, db)
+
+    response = client.post(
+        "/api/sessions", json={"package_id": package.id}, headers=API_HEADERS
+    )
+
+    assert response.status_code == 200
+    assert response.json()["session_id"] == low.id
+    assert len(db.sessions) == 2
+
+
+def test_create_session_after_scored_session_uses_next_index(monkeypatch):
+    db = FakeDatabase()
+    package = _ready_package(db)
+    first = db.create_session(package.id, 1, plan_baseline_session(package.rubric))
+    db.set_session_status(first.id, "scored")
+    client = _session_client(monkeypatch, db)
+
+    response = client.post(
+        "/api/sessions", json={"package_id": package.id}, headers=API_HEADERS
+    )
+
+    assert response.status_code == 200
+    assert response.json()["index"] == 2
+    assert sorted(row.index for row in db.sessions.values()) == [1, 2]
+
+
+def test_create_session_rejects_exhausted_package(monkeypatch):
+    db = FakeDatabase()
+    package = _ready_package(db, total_sessions=2)
+    for index in (1, 2):
+        row = db.create_session(package.id, index, plan_baseline_session(package.rubric))
+        db.set_session_status(row.id, "scored")
+    client = _session_client(monkeypatch, db)
+
+    response = client.post(
+        "/api/sessions", json={"package_id": package.id}, headers=API_HEADERS
+    )
+
+    assert response.status_code == 409
+    assert response.json() == {"error": "package exhausted: all 2 sessions used"}
+
+
+def test_list_package_sessions_orders_and_shapes_payload(monkeypatch):
+    db = FakeDatabase()
+    package = _ready_package(db)
+    second = db.create_session(package.id, 2, plan_baseline_session(package.rubric))
+    first = db.create_session(package.id, 1, plan_baseline_session(package.rubric))
+    db.set_session_status(second.id, "scored")
+    client = _session_client(monkeypatch, db)
+
+    response = client.get(
+        f"/api/packages/{package.id}/sessions", headers=API_HEADERS
+    )
+
+    assert response.status_code == 200
+    assert response.json() == {"sessions": [
+        {"id": first.id, "index": 1, "status": "planned",
+         "report_available": False, "overall": None},
+        {"id": second.id, "index": 2, "status": "scored",
+         "report_available": False, "overall": None},
+    ]}
+
+
+def test_list_package_sessions_returns_404_and_requires_auth(monkeypatch):
+    db = FakeDatabase()
+    client = _session_client(monkeypatch, db)
+
+    missing = client.get("/api/packages/missing/sessions", headers=API_HEADERS)
+    unauthorized = client.get("/api/packages/missing/sessions")
+
+    assert missing.status_code == 404
+    assert unauthorized.status_code == 401
+
+
+def test_list_user_packages_newest_first_with_usage(monkeypatch):
+    db = FakeDatabase()
+    older = _ready_package(db, total_sessions=2, user_id="user-1")
+    session = db.create_session(older.id, 1, plan_baseline_session(older.rubric))
+    db.set_session_status(session.id, "scored")
+    newer = _ready_package(db, total_sessions=4, user_id="user-1")
+    _ready_package(db, user_id="another-user")
+    client = _session_client(monkeypatch, db)
+
+    response = client.get("/api/users/user-1/packages", headers=API_HEADERS)
+
+    assert response.status_code == 200
+    assert response.json() == {"packages": [
+        {"id": newer.id, "access_token": newer.access_token, "status": "ready",
+         "user_id": "user-1", "total_sessions": 4, "sessions_used": 0,
+         "role_title": "Forward Deployed Product Manager"},
+        {"id": older.id, "access_token": older.access_token, "status": "ready",
+         "user_id": "user-1", "total_sessions": 2, "sessions_used": 1,
+         "role_title": "Forward Deployed Product Manager"},
+    ]}
+
+
+def test_list_user_packages_empty_and_requires_auth(monkeypatch):
+    db = FakeDatabase()
+    client = _session_client(monkeypatch, db)
+
+    empty = client.get("/api/users/unknown/packages", headers=API_HEADERS)
+    unauthorized = client.get("/api/users/unknown/packages")
+
+    assert empty.status_code == 200
+    assert empty.json() == {"packages": []}
+    assert unauthorized.status_code == 401

@@ -100,6 +100,7 @@ def _session_response(row: SessionRow, package: PackageRow) -> dict:
     )
     return {
         "session_id": row.id,
+        "index": row.index,
         "session_plan": row.session_plan.model_dump(mode="json"),
         "interviewer_instructions": instructions,
     }
@@ -209,32 +210,73 @@ def create_app(db: Database, storage: Storage, client: GenAIClientLike) -> FastA
         except KeyError as exc:
             raise HTTPException(status_code=404, detail="package not found") from exc
 
+    @api.get("/packages/{package_id}/sessions")
+    def list_package_sessions(package_id: str) -> dict:
+        try:
+            db.get_package(package_id)
+        except KeyError as exc:
+            raise HTTPException(status_code=404, detail="package not found") from exc
+        return {"sessions": [
+            {
+                "id": row.id,
+                "index": row.index,
+                "status": row.status,
+                "report_available": row.report is not None,
+                "overall": row.report.overall_score if row.report is not None else None,
+            }
+            for row in db.list_sessions(package_id)
+        ]}
+
+    @api.get("/users/{user_id}/packages")
+    def list_user_packages(user_id: str) -> dict:
+        return {"packages": [
+            {
+                "id": package.id,
+                "access_token": package.access_token,
+                "status": package.status,
+                "user_id": package.user_id,
+                "total_sessions": package.total_sessions,
+                "sessions_used": len(db.list_sessions(package.id)),
+                "role_title": (
+                    package.rubric.role_title if package.rubric is not None else None
+                ),
+            }
+            for package in db.list_packages_by_user(user_id)
+        ]}
+
     @api.post("/sessions")
     def create_session(body: CreateSessionRequest):
-        """Create the package's baseline session -- idempotent.
+        """Resume a retriable session or create the package's next session.
 
-        v0.1 is single-session per package, so when the package already has
-        a session this returns that existing session's payload unchanged
-        instead of creating another row. Besides making the paid trigger
-        safe to retry, this closes the index-overwrite risk: every session
-        is created at index 1, so a second row would share the first row's
-        recording storage key and the later upload would silently replace
-        the earlier session's audio.
+        Planned and failed rows keep their paid slot and make retries
+        idempotent. Completed rows advance the session index; recording keys
+        include that index, so each new session has a distinct storage path.
         """
         try:
             package = db.get_package(body.package_id)
         except KeyError as exc:
             raise HTTPException(status_code=404, detail="package not found") from exc
         existing = db.list_sessions(body.package_id)
-        if existing:
-            return _session_response(existing[0], package)
+        retriable = [row for row in existing if row.status in ("planned", "failed")]
+        if retriable:
+            return _session_response(min(retriable, key=lambda row: row.index), package)
+        if len(existing) >= package.total_sessions:
+            return JSONResponse(
+                status_code=409,
+                content={
+                    "error": (
+                        f"package exhausted: all {package.total_sessions} sessions used"
+                    )
+                },
+            )
         if package.status != "ready" or package.rubric is None:
             raise HTTPException(
                 status_code=409,
                 detail=f"package status is {package.status!r}; sessions need 'ready'",
             )
         plan = plan_baseline_session(package.rubric)
-        row = db.create_session(body.package_id, 1, plan)
+        next_index = max((row.index for row in existing), default=0) + 1
+        row = db.create_session(body.package_id, next_index, plan)
         return _session_response(row, package)
 
     @api.post("/sessions/{session_id}/complete", status_code=202)

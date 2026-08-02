@@ -180,6 +180,8 @@ class FakeDatabase:
             jd_text=jd_text,
             candidate_profile=None,
             rubric=None,
+            user_id=None,
+            total_sessions=6,
         )
         self.packages[row.id] = row
         self.jd_urls[row.id] = jd_url
@@ -193,6 +195,12 @@ class FakeDatabase:
             if row.access_token == access_token:
                 return row
         raise KeyError(access_token)
+
+    def list_packages_by_user(self, user_id: str) -> list[PackageRow]:
+        return [
+            row for row in reversed(list(self.packages.values()))
+            if row.user_id == user_id
+        ]
 
     def set_package_profile(self, package_id: str, profile: CandidateProfile) -> None:
         row = self.packages[package_id]
