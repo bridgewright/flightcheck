@@ -249,8 +249,8 @@ def create_app(db: Database, storage: Storage, client: GenAIClientLike) -> FastA
     def create_session(body: CreateSessionRequest):
         """Resume a retriable session or create the package's next session.
 
-        Planned and failed rows keep their paid slot and make retries
-        idempotent. Completed rows advance the session index; recording keys
+        Planned, failed, and insufficient rows keep their paid slot and make
+        retries idempotent. Completed rows advance the session index; recording keys
         include that index, so each new session has a distinct storage path.
         """
         try:
@@ -258,7 +258,10 @@ def create_app(db: Database, storage: Storage, client: GenAIClientLike) -> FastA
         except KeyError as exc:
             raise HTTPException(status_code=404, detail="package not found") from exc
         existing = db.list_sessions(body.package_id)
-        retriable = [row for row in existing if row.status in ("planned", "failed")]
+        retriable = [
+            row for row in existing
+            if row.status in ("planned", "failed", "insufficient")
+        ]
         if retriable:
             return _session_response(min(retriable, key=lambda row: row.index), package)
         if len(existing) >= package.total_sessions:

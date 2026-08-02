@@ -37,7 +37,10 @@ class SessionRow(BaseModel):
     id: str
     package_id: str
     index: int
-    status: str                       # "planned" -> "scoring" -> "scored" | "failed"
+    # "planned" -> "scoring" -> "scored" | "failed" | "insufficient".
+    # "insufficient" (F-04) is terminal like "failed" and just as retriable:
+    # the slot is preserved and create_session resumes the row.
+    status: str
     scoring_stage: str | None = None  # coarse progress while "scoring", else None
     session_plan: SessionPlan | None
     audio_path: str | None
@@ -94,8 +97,9 @@ class Database(Protocol):
 
     def set_session_status(self, session_id: str, status: str,
                            audio_path: str | None = None) -> None:
-        """Terminal statuses ("scored"/"failed") also clear scoring_stage to
-        None in the same write -- a finished row never keeps a stale stage."""
+        """Terminal statuses ("scored"/"failed"/"insufficient") also clear
+        scoring_stage to None in the same write -- a finished row never
+        keeps a stale stage."""
         ...
 
     def set_scoring_stage(self, session_id: str, stage: str) -> None:
@@ -264,7 +268,7 @@ class SupabaseDatabase:
     def set_session_status(self, session_id: str, status: str,
                            audio_path: str | None = None) -> None:
         payload: dict[str, str | None] = {"status": status}
-        if status in ("scored", "failed"):
+        if status in ("scored", "failed", "insufficient"):
             # Clearing rides the SAME update as the terminal status write so
             # a finished row can never be observed with a stale stage.
             payload["scoring_stage"] = None

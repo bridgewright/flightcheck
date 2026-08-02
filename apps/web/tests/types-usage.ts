@@ -81,6 +81,8 @@ const plan: SessionPlan = {
 const report: SessionReport = {
   session_id: "sess-check",
   verdict: "approaching",
+  headline: "Approaching: structure is there, composure under pressure is not.",
+  eligibility: "scored",
   overall_score: 3.4,
   dimension_scores: [
     {
@@ -88,6 +90,8 @@ const report: SessionReport = {
       score: 3.5,
       evidence_quotes: ["My recommendation was to cut the experiment early."],
       rationale: "Leads with a conclusion in two of three answers.",
+      strengths: ["Leads with the recommendation before the evidence."],
+      weaknesses: ["Supporting evidence arrives unevenly after the claim."],
     },
   ],
   delivery_metrics: {

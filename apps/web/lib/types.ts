@@ -86,13 +86,25 @@ export interface DimensionScore {
   score: number;
   evidence_quotes: string[];
   rationale: string;
+  // F-03: what worked / what held the score down, per dimension. The worker
+  // serializes defaults ([]) for reports stored before the fields existed.
+  strengths: string[];
+  weaknesses: string[];
 }
 
 export type Verdict = "not_ready" | "approaching" | "ready";
 
+// F-04: how much evidence backed the numbers. "limited" = 10-15 min session;
+// below the floor no report exists at all (session status "insufficient").
+export type ReportEligibility = "scored" | "limited";
+
 export interface SessionReport {
   session_id: string;
   verdict: Verdict;
+  // F-03: one-sentence takeaway, <= 120 chars; "" on reports stored before
+  // the field existed (renderers fall back to the verdict phrase).
+  headline: string;
+  eligibility: ReportEligibility;
   overall_score: number;
   dimension_scores: DimensionScore[];
   delivery_metrics: DeliveryMetrics;
@@ -114,7 +126,15 @@ export interface PackageRow {
   rubric: Rubric | null;
 }
 
-export type SessionStatus = "planned" | "scoring" | "scored" | "failed";
+// "insufficient" (F-04) is terminal like "failed" and just as retriable:
+// the session ended below the evidence floor, no report exists, and the
+// slot is preserved for another attempt.
+export type SessionStatus =
+  | "planned"
+  | "scoring"
+  | "scored"
+  | "failed"
+  | "insufficient";
 
 export interface SessionRow {
   id: string;

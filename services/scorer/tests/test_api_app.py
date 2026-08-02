@@ -448,6 +448,25 @@ def test_complete_after_failed_is_202_so_a_retry_still_works():
     assert db.get_session(session_id).status == "failed"   # job failed again
 
 
+def test_create_session_resumes_an_insufficient_row():
+    # "insufficient" is terminal but retriable, exactly like "failed": the
+    # slot is preserved (F-04 policy), so create_session hands the same row
+    # back instead of burning the next index.
+    db = FakeDatabase()
+    package = _seed_ready_package(db)
+    client, _ = _client(FakeGenAI([]), db=db)
+    session_id = client.post(
+        "/api/sessions", json={"package_id": package.id}, headers=AUTH
+    ).json()["session_id"]
+    db.set_session_status(session_id, "insufficient")
+
+    again = client.post("/api/sessions", json={"package_id": package.id}, headers=AUTH)
+
+    assert again.status_code == 200
+    assert again.json()["session_id"] == session_id
+    assert len(db.sessions) == 1                     # no new row was created
+
+
 def test_session_for_unready_package_is_409():
     db = FakeDatabase()
     package = db.create_package(JD_TEXT, None)   # status "compiling"

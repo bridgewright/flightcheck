@@ -156,6 +156,10 @@ class DimensionScore(BaseModel):
     score: float                      # 1.0-5.0
     evidence_quotes: list[str]        # verbatim quotes (content) / timestamps (delivery)
     rationale: str
+    # F-03: what worked / what held the score down, per dimension. Defaults
+    # keep every report stored before the fields existed validating.
+    strengths: list[str] = []
+    weaknesses: list[str] = []
 
 
 class SessionReport(BaseModel):
@@ -163,6 +167,14 @@ class SessionReport(BaseModel):
 
     session_id: str
     verdict: Literal["not_ready", "approaching", "ready"]
+    # F-03: one-sentence takeaway, <= 120 chars; "" on reports stored before
+    # the field existed (renderers fall back to the verdict phrase).
+    headline: str = ""
+    # F-04: how much evidence backed the numbers. "scored" = full session;
+    # "limited" = 10-15 min, numbers stand but carry a limited-evidence
+    # marker. Sessions below the floor never get a report at all -- they end
+    # as status "insufficient" instead, so no third literal value here.
+    eligibility: Literal["scored", "limited"] = "scored"
     overall_score: float              # weighted by rubric dimension weights
     dimension_scores: list[DimensionScore]   # one per rubric dimension (both channels)
     delivery_metrics: DeliveryMetrics

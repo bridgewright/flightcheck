@@ -15,13 +15,22 @@ function sessions(...pairs: [number, JourneySession["status"]][]): JourneySessio
 }
 
 function dimensionScore(key: string, score: number): DimensionScore {
-  return { dimension_key: key, score, evidence_quotes: [], rationale: "" };
+  return {
+    dimension_key: key,
+    score,
+    evidence_quotes: [],
+    rationale: "",
+    strengths: [],
+    weaknesses: [],
+  };
 }
 
 function report(verdict: Verdict, dimensionScores: DimensionScore[]): SessionReport {
   return {
     session_id: "sess-1",
     verdict,
+    headline: "",
+    eligibility: "scored",
     overall_score: 3.4,
     dimension_scores: dimensionScores,
     delivery_metrics: {
@@ -83,6 +92,25 @@ describe("journeyLegs", () => {
     ]);
   });
 
+  it("points at an insufficient session because its slot is resumed", () => {
+    expect(journeyLegs(sessions([1, "scored"], [2, "insufficient"]), 6)).toEqual([
+      "done",
+      "next",
+      "todo",
+      "todo",
+      "todo",
+      "todo",
+    ]);
+  });
+
+  it("fills the dot of an insufficient session that is not the resume target", () => {
+    // The attempt happened -- only the evidence fell short -- so the leg is
+    // "done" once a lower slot is the resume target, mirroring "failed".
+    expect(
+      journeyLegs(sessions([1, "failed"], [2, "insufficient"]), 6),
+    ).toEqual(["next", "done", "todo", "todo", "todo", "todo"]);
+  });
+
   it("still fills the dot of a failed session that is not the resume target", () => {
     // The planned slot at index 1 is resumed first, so the failed session at
     // index 2 reads as an attempt that happened.
@@ -133,6 +161,12 @@ describe("nextSessionNumber", () => {
 
   it("resumes a failed session because its slot is preserved", () => {
     expect(nextSessionNumber(sessions([1, "failed"], [2, "scored"]), 6)).toBe(1);
+  });
+
+  it("resumes an insufficient session exactly like a failed one", () => {
+    expect(
+      nextSessionNumber(sessions([1, "insufficient"], [2, "scored"]), 6),
+    ).toBe(1);
   });
 
   it("resumes the lowest resumable slot when several are open", () => {

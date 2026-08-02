@@ -256,7 +256,7 @@ class FakeDatabase:
                            audio_path: str | None = None) -> None:
         row = self.sessions[session_id]
         update: dict[str, object] = {"status": status}
-        if status in ("scored", "failed"):
+        if status in ("scored", "failed", "insufficient"):
             # Mirrors SupabaseDatabase: terminal status writes clear the
             # in-progress stage marker in the same write.
             update["scoring_stage"] = None

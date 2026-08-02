@@ -2,7 +2,7 @@
 import pytest
 from pydantic import ValidationError
 
-from scorer.schemas import Rubric, SourceCitation
+from scorer.schemas import Rubric, SessionReport, SourceCitation
 
 CITATION = {
     "url": "https://example.com/interview-guide",
@@ -113,3 +113,48 @@ def test_rubric_without_delivery_dimension_rejected():
 def test_models_forbid_extra_fields():
     with pytest.raises(ValidationError):
         SourceCitation.model_validate({**CITATION, "rank": 1})
+
+
+def _stored_report_payload() -> dict:
+    """A report exactly as stored before the F-03/F-04 fields existed."""
+    return {
+        "session_id": "sess-1",
+        "verdict": "approaching",
+        "overall_score": 3.4,
+        "dimension_scores": [{
+            "dimension_key": "structured-answers",
+            "score": 3.5,
+            "evidence_quotes": ["My recommendation was to cut it early."],
+            "rationale": "Leads with a conclusion in two of three answers.",
+        }],
+        "delivery_metrics": {
+            "wpm_overall": 128.4,
+            "wpm_timeline": [121.0, 133.5],
+            "silence_events": [],
+            "filler_count": 3,
+            "filler_rate_per_min": 0.8,
+            "f0_variance": None,
+            "avg_response_latency_s": None,
+        },
+        "delivery_observations": [],
+        "strengths": [],
+        "gaps": [],
+        "next_drills": [],
+        "limits_note": "Honest-limits boilerplate.",
+    }
+
+
+def test_stored_reports_predating_f03_f04_fields_still_validate():
+    # The new fields are defaults-only: every report stored before they
+    # existed must keep validating and read back with the defaults.
+    report = SessionReport.model_validate(_stored_report_payload())
+    assert report.headline == ""
+    assert report.eligibility == "scored"
+    assert report.dimension_scores[0].strengths == []
+    assert report.dimension_scores[0].weaknesses == []
+
+
+def test_report_eligibility_rejects_unknown_marker():
+    payload = {**_stored_report_payload(), "eligibility": "partial"}
+    with pytest.raises(ValidationError):
+        SessionReport.model_validate(payload)

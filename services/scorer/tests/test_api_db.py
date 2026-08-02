@@ -251,11 +251,14 @@ def test_fake_terminal_status_writes_clear_scoring_stage():
     # A non-terminal status write keeps the in-progress marker...
     db.set_session_status(session.id, "scoring")
     assert db.get_session(session.id).scoring_stage == "download"
-    # ...while "failed", "scored", and save_report all clear it.
+    # ...while "failed", "scored", "insufficient", and save_report all clear it.
     db.set_session_status(session.id, "failed")
     assert db.get_session(session.id).scoring_stage is None
     db.set_scoring_stage(session.id, "compile")
     db.set_session_status(session.id, "scored")
+    assert db.get_session(session.id).scoring_stage is None
+    db.set_scoring_stage(session.id, "compile")
+    db.set_session_status(session.id, "insufficient")
     assert db.get_session(session.id).scoring_stage is None
     db.set_scoring_stage(session.id, "compile")
     db.save_report(session.id, _report(session.id))
@@ -417,12 +420,14 @@ def test_supabase_terminal_status_clears_scoring_stage_in_same_update():
     # Clearing rides the SAME update as the terminal status write so a
     # finished row can never be observed with a stale in-progress stage
     # (house rule pinned by save_report's report+status single update).
-    stub = StubSupabase([[{"id": "sess-1"}], [{"id": "sess-1"}]])
+    stub = StubSupabase([[{"id": "sess-1"}], [{"id": "sess-1"}], [{"id": "sess-1"}]])
     db = SupabaseDatabase(stub)
     db.set_session_status("sess-1", "failed")
     db.set_session_status("sess-1", "scored")
+    db.set_session_status("sess-1", "insufficient")
     assert stub.log[0]["update"] == {"status": "failed", "scoring_stage": None}
     assert stub.log[1]["update"] == {"status": "scored", "scoring_stage": None}
+    assert stub.log[2]["update"] == {"status": "insufficient", "scoring_stage": None}
 
 
 @pytest.mark.parametrize("call", [

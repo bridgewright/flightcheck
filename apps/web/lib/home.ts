@@ -15,19 +15,23 @@ export interface JourneySession {
 export type JourneyLeg = "done" | "next" | "todo";
 
 // A session that was started but never scored keeps its slot: the worker's
-// create_session resumes a "planned" or "failed" row rather than burning a
-// new one, so the strip must point at that slot instead of the one after it.
+// create_session resumes a "planned", "failed", or "insufficient" row rather
+// than burning a new one, so the strip must point at that slot instead of
+// the one after it.
 const RESUMABLE: ReadonlySet<SessionStatus> = new Set<SessionStatus>([
   "planned",
   "failed",
+  "insufficient",
 ]);
 
-// An attempt the user actually made. "failed" belongs here too — the session
-// happened, only the scoring of it did not.
+// An attempt the user actually made. "failed" and "insufficient" belong here
+// too — the session happened; only the scoring (or the evidence for it)
+// did not.
 const ATTEMPTED: ReadonlySet<SessionStatus> = new Set<SessionStatus>([
   "scoring",
   "scored",
   "failed",
+  "insufficient",
 ]);
 
 // Rows numbered outside the package's own range cannot be drawn on a strip of
