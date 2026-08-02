@@ -49,6 +49,10 @@ class CreatePackageRequest(BaseModel):
     resume_pdf_b64: str | None = None
     linkedin_text: str | None = None
     linkedin_pdf_b64: str | None = None
+    # Packages are born bound: the auth-gated /new route sends the creating
+    # account's id so new rows never go through an unclaimed phase. Optional
+    # because the legacy claim-by-token flow still creates unbound packages.
+    user_id: str | None = None
 
 
 class CreateSessionRequest(BaseModel):
@@ -177,7 +181,7 @@ def create_app(db: Database, storage: Storage, client: GenAIClientLike) -> FastA
         linkedin_text = body.linkedin_text
         if linkedin_text is None and body.linkedin_pdf_b64 is not None:
             linkedin_text = extract_pdf_text(base64.b64decode(body.linkedin_pdf_b64))
-        row = db.create_package(jd_text, body.jd_url)
+        row = db.create_package(jd_text, body.jd_url, user_id=body.user_id)
         cached = (
             db.find_ready_rubric_by_jd(jd_text)
             if resume_text is None and linkedin_text is None

@@ -180,7 +180,8 @@ class FakeDatabase:
         self._package_seq = 0
         self._session_seq = 0
 
-    def create_package(self, jd_text: str, jd_url: str | None) -> PackageRow:
+    def create_package(self, jd_text: str, jd_url: str | None,
+                       user_id: str | None = None) -> PackageRow:
         self._package_seq += 1
         row = PackageRow(
             id=f"pkg-{self._package_seq}",
@@ -189,7 +190,7 @@ class FakeDatabase:
             jd_text=jd_text,
             candidate_profile=None,
             rubric=None,
-            user_id=None,
+            user_id=user_id,
             total_sessions=6,
         )
         self.packages[row.id] = row

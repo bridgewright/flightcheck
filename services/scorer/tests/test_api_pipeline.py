@@ -338,6 +338,51 @@ def test_same_jd_reuses_rubric_without_recompile(monkeypatch):
     assert len(fake.calls) == call_count
 
 
+def test_create_package_binds_user_id_when_given(monkeypatch):
+    # Packages are born bound: the auth-gated /new route sends the creating
+    # account's id, so the row never goes through an unclaimed phase.
+    monkeypatch.setenv("WORKER_API_TOKEN", "test-worker-token")
+    db = FakeDatabase()
+    fake = FakeGenAI(_package_responses()[1:])
+    client = _package_client(fake, db)
+
+    response = _post_package(client, {"jd_text": JD_TEXT, "user_id": "user-7"})
+
+    assert response.status_code == 202
+    assert db.get_package(response.json()["package_id"]).user_id == "user-7"
+
+
+def test_create_package_without_user_id_stays_unbound(monkeypatch):
+    monkeypatch.setenv("WORKER_API_TOKEN", "test-worker-token")
+    db = FakeDatabase()
+    fake = FakeGenAI(_package_responses()[1:])
+    client = _package_client(fake, db)
+
+    response = _post_package(client, {"jd_text": JD_TEXT})
+
+    assert response.status_code == 202
+    assert db.get_package(response.json()["package_id"]).user_id is None
+
+
+def test_rubric_cache_reuse_keeps_the_new_package_bound(monkeypatch):
+    # A second account posting the same JD gets the cached rubric copied in,
+    # but the new row must belong to that account, not inherit the source
+    # package's binding.
+    monkeypatch.setenv("WORKER_API_TOKEN", "test-worker-token")
+    db = FakeDatabase()
+    fake = FakeGenAI(_package_responses()[1:])
+    client = _package_client(fake, db)
+
+    _post_package(client, {"jd_text": JD_TEXT, "user_id": "user-1"})
+    call_count = len(fake.calls)
+    second = _post_package(client, {"jd_text": JD_TEXT, "user_id": "user-2"})
+
+    second_row = db.get_package(second.json()["package_id"])
+    assert second_row.status == "ready"
+    assert second_row.user_id == "user-2"
+    assert len(fake.calls) == call_count   # cache hit: no new compile calls
+
+
 def test_different_jd_still_compiles(monkeypatch):
     monkeypatch.setenv("WORKER_API_TOKEN", "test-worker-token")
     db = FakeDatabase()

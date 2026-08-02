@@ -155,6 +155,17 @@ def test_ids_and_tokens_increment_deterministically():
     assert db.jd_urls[b.id] == "https://jobs.example.com/b"
 
 
+def test_fake_create_package_stores_user_id():
+    # Packages are born bound (auth-gated /new): the creating account's id
+    # rides the insert; omitting it keeps the legacy unbound shape.
+    db = FakeDatabase()
+    unbound = db.create_package("jd text", None)
+    bound = db.create_package("jd text", None, user_id="user-1")
+    assert unbound.user_id is None
+    assert bound.user_id == "user-1"
+    assert db.list_packages_by_user("user-1") == [bound]
+
+
 def test_get_package_by_token_and_missing_lookups_raise_keyerror():
     db = FakeDatabase()
     row = db.create_package("jd text", None)
@@ -379,6 +390,19 @@ def test_supabase_create_package_inserts_and_maps():
     assert len(payload["access_token"]) >= 32
     assert row.id == "11111111-1111-1111-1111-111111111111"
     assert row.status == "compiling"
+
+
+def test_supabase_create_package_inserts_user_id():
+    stub = StubSupabase([[_package_data(user_id="user-1")]])
+    row = SupabaseDatabase(stub).create_package("jd text", None, user_id="user-1")
+    assert stub.log[0]["insert"]["user_id"] == "user-1"
+    assert row.user_id == "user-1"
+
+
+def test_supabase_create_package_defaults_user_id_to_null():
+    stub = StubSupabase([[_package_data()]])
+    SupabaseDatabase(stub).create_package("jd text", None)
+    assert stub.log[0]["insert"]["user_id"] is None
 
 
 def test_supabase_get_package_maps_jsonb_to_models():

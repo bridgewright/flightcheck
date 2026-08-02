@@ -68,7 +68,11 @@ class Database(Protocol):
     """Persistence seam the pipeline consumes (Task 12); SupabaseDatabase
     implements it, FakeDatabase (tests/fakes.py) fakes it."""
 
-    def create_package(self, jd_text: str, jd_url: str | None) -> PackageRow:
+    def create_package(self, jd_text: str, jd_url: str | None,
+                       user_id: str | None = None) -> PackageRow:
+        """Insert a "compiling" package. user_id binds the row to the creating
+        account at birth (auth-gated /new); None keeps the legacy unbound
+        shape for callers that still claim by token."""
         ...
 
     def get_package(self, package_id: str) -> PackageRow:
@@ -203,12 +207,14 @@ class SupabaseDatabase:
     def __init__(self, client: Client):
         self._client = client
 
-    def create_package(self, jd_text: str, jd_url: str | None) -> PackageRow:
+    def create_package(self, jd_text: str, jd_url: str | None,
+                       user_id: str | None = None) -> PackageRow:
         payload = {
             "access_token": secrets.token_urlsafe(24),
             "status": "compiling",
             "jd_text": jd_text,
             "jd_url": jd_url,
+            "user_id": user_id,
         }
         data = self._client.table("packages").insert(payload).execute().data
         return _to_package_row(data[0])
