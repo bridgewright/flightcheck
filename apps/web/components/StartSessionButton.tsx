@@ -8,9 +8,12 @@ import { PRIMARY_BUTTON } from "@/lib/ui";
 export default function StartSessionButton({
   packageId,
   token,
+  label = "Start session",
 }: {
   packageId: string;
   token: string;
+  /** The CTA wording — pages that know the session number say so. */
+  label?: string;
 }) {
   const router = useRouter();
   const [starting, setStarting] = useState(false);
@@ -31,7 +34,9 @@ export default function StartSessionButton({
       if (!response.ok || !data.session_id) {
         throw new Error(data.error ?? `request failed (${response.status})`);
       }
-      router.push(`/p/${token}/session/${data.session_id}`);
+      // Straight into the room: the session was just created on purpose, so
+      // an interstitial page would only restate the button the user pressed.
+      router.push(`/sessions/${data.session_id}/room`);
     } catch (err) {
       setError(err instanceof Error ? err.message : "request failed");
       setStarting(false);
@@ -46,7 +51,7 @@ export default function StartSessionButton({
         disabled={starting}
         className={`${PRIMARY_BUTTON} self-start`}
       >
-        {starting ? "Preparing your session…" : "Start session"}
+        {starting ? "Preparing your session…" : label}
       </button>
       {error ? <p className="text-sm text-red-600">{error}</p> : null}
     </div>

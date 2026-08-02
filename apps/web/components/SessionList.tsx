@@ -45,12 +45,15 @@ function Outcome({ session }: { session: SessionSummary }) {
   );
 }
 
+// `token` is accepted but unused: the rows moved from the token report URLs
+// to the login-scoped /sessions/[id] routes, and the one remaining caller
+// outside this track still passes it. Drop the prop once /p/[token] becomes
+// a pure claim/redirect route.
 export default function SessionList({
   sessions,
-  token,
 }: {
   sessions: SessionSummary[];
-  token: string;
+  token?: string;
 }) {
   const newestFirst = [...sessions].sort((a, b) => b.index - a.index);
   return (
@@ -67,27 +70,28 @@ export default function SessionList({
           {newestFirst.map((session) => {
             const when = formatSessionDate(session.created_at);
             return (
-              <li
-                key={session.id}
-                className="grid grid-cols-[36px_1fr_auto_auto] items-center gap-3.5 border-b border-neutral-200 py-3 text-sm dark:border-neutral-800"
-              >
-                <span className="text-xs text-neutral-500 tabular-nums">
-                  {String(session.index).padStart(2, "0")}
-                </span>
-                <span className="text-neutral-600 dark:text-neutral-400">
-                  {when ?? ""}
-                </span>
-                <Outcome session={session} />
-                {session.report_available ? (
-                  <Link
-                    href={`/p/${token}/report/${session.id}`}
-                    className="text-xs underline underline-offset-4"
-                  >
-                    Report
-                  </Link>
-                ) : (
-                  <span />
-                )}
+              // The whole row is the link: the detail page has an honest
+              // state for every status, not only scored ones.
+              <li key={session.id} className="border-b border-neutral-200 dark:border-neutral-800">
+                <Link
+                  href={`/sessions/${session.id}`}
+                  className="grid grid-cols-[36px_1fr_auto_auto] items-center gap-3.5 py-3 text-sm hover:bg-neutral-50 dark:hover:bg-neutral-900"
+                >
+                  <span className="text-xs text-neutral-500 tabular-nums">
+                    {String(session.index).padStart(2, "0")}
+                  </span>
+                  <span className="text-neutral-600 dark:text-neutral-400">
+                    {when ?? ""}
+                  </span>
+                  <Outcome session={session} />
+                  {session.report_available ? (
+                    <span className="text-xs underline underline-offset-4">
+                      Report
+                    </span>
+                  ) : (
+                    <span />
+                  )}
+                </Link>
               </li>
             );
           })}

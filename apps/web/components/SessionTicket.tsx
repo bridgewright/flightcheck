@@ -1,6 +1,7 @@
 import type { ReactNode } from "react";
 
 import type { VerdictLine } from "@/lib/home";
+import { exhaustedSessionsLine } from "@/lib/home";
 // The one object on the page: what you do next, and the sentence from last
 // time that says why.
 import { LABEL } from "@/lib/ui";
@@ -27,12 +28,15 @@ export default function SessionTicket({
   sessionNumber,
   totalSessions,
   verdict = null,
+  stageLine = null,
   action = null,
 }: {
   /** null once every session in the package has been used. */
   sessionNumber: number | null;
   totalSessions: number;
   verdict?: VerdictLine | null;
+  /** lib/home.scoringStageLine's sentence while a session is being scored. */
+  stageLine?: string | null;
   action?: ReactNode;
 }) {
   const exhausted = sessionNumber === null;
@@ -48,7 +52,7 @@ export default function SessionTicket({
               </div>
             </div>
             <Rule live={false}>
-              All six sessions of this package are used. A new package covers a new
+              {exhaustedSessionsLine(totalSessions)} A new package covers a new
               JD — or the same one again.
             </Rule>
           </>
@@ -89,6 +93,10 @@ export default function SessionTicket({
             )}
           </>
         )}
+        {/* Rendered in the exhausted state too: the final session of a
+            package scores after its slot count hits the quota, and that is
+            exactly when the user is watching for this line. */}
+        {stageLine ? <Rule live>{stageLine}</Rule> : null}
         {action ? (
           <div className="flex flex-wrap items-center gap-3.5">
             {action}
