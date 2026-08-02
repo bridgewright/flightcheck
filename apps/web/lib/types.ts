@@ -121,6 +121,11 @@ export interface PackageRow {
   id: string;
   access_token: string;
   status: PackageStatus;
+  // The owning account; null while the package is unclaimed (the first
+  // authenticated visitor binds it).
+  user_id: string | null;
+  // How many sessions the package owes (`not null default 6` in the DB).
+  total_sessions: number;
   jd_text: string;
   candidate_profile: CandidateProfile | null;
   rubric: Rubric | null;
@@ -145,6 +150,19 @@ export interface SessionRow {
   session_plan: SessionPlan | null;
   audio_path: string | null;
   report: SessionReport | null;
+  // Rows created before the column existed omit it; render without a date
+  // rather than inventing one.
+  created_at?: string | null;
+}
+
+// One turn of the verbatim session transcript (scorer schemas.TranscriptSegment),
+// saved by the worker right after the transcribe stage — failed sessions keep
+// their transcripts too. Text is verbatim: fillers and repeats preserved.
+export interface TranscriptSegment {
+  start_s: number;
+  end_s: number;
+  speaker: "interviewer" | "candidate";
+  text: string;
 }
 
 export interface CreatePackageBody {
@@ -154,6 +172,9 @@ export interface CreatePackageBody {
   resume_pdf_b64?: string;
   linkedin_text?: string;
   linkedin_pdf_b64?: string;
+  // Packages are born bound: /new is auth-gated, so the creating account's
+  // id rides along and the package never goes through an unclaimed phase.
+  user_id?: string;
 }
 
 export interface CreateSessionResponse {

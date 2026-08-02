@@ -10,6 +10,8 @@ import type {
   PackageStatus,
   SessionRow,
   SessionStatus,
+  TranscriptSegment,
+  Verdict,
 } from "@/lib/types";
 
 export async function workerFetch(path: string, init: RequestInit = {}): Promise<Response> {
@@ -124,6 +126,11 @@ export interface SessionSummary {
   status: SessionStatus;
   report_available: boolean;
   overall: number | null;
+  // Null until the report exists — the archive shows verdicts inline without
+  // an N+1 of full-session GETs.
+  verdict: Verdict | null;
+  // Coarse worker progress while "scoring", else null (mirrors SessionRow).
+  scoring_stage: string | null;
   // Older rows predate the column, so the list renders without a date rather
   // than inventing one.
   created_at?: string | null;
@@ -157,25 +164,94 @@ export async function listPackagesForUser(userId: string): Promise<PackageSummar
   return body.packages ?? [];
 }
 
+// --- Transcript ----------------------------------------------------------
+
+/**
+ * The verbatim transcript of a session, or null when none is stored.
+ *
+ * Null is the honest pre-batch state: sessions scored before transcripts were
+ * persisted exist but have nothing to show ("transcript unavailable" in the
+ * UI). An unknown session id is an error (the worker 404s), never null.
+ * Deliberately a separate endpoint: transcripts run 25-60KB and must not ride
+ * the hot session-row polls.
+ */
+export async function getSessionTranscript(
+  sessionId: string,
+): Promise<TranscriptSegment[] | null> {
+  const path = `/api/sessions/${encodeURIComponent(sessionId)}/transcript`;
+  const body = await workerJson<{
+    session_id: string;
+    segments?: TranscriptSegment[] | null;
+  }>(`GET ${path}`, await workerFetch(path));
+  return body.segments ?? null;
+}
+
+// --- Progress ------------------------------------------------------------
+//
+// GET /api/packages/{id}/progress is the spine of the progress screen and the
+// session-detail deltas: one entry per session, ascending index, slimmed on
+// purpose. Full rationale/evidence stays on the session detail; the trend
+// feed carries only what trend math needs (lib/progress.ts consumes this).
+
+export interface ProgressDimensionScore {
+  dimension_key: string;
+  score: number;
+}
+
+// Aggregated from the report's silence_events server-side; null when the
+// session has no report (planned/scoring/failed/insufficient).
+export interface SilenceStats {
+  count: number;
+  total_s: number;
+  longest_s: number;
+}
+
+export interface SessionProgressEntry {
+  session_id: string;
+  index: number;
+  created_at: string | null;
+  status: SessionStatus;
+  verdict: Verdict | null;
+  overall: number | null;
+  // Empty when the session has no report. Keys are comparable only within a
+  // package — every session shares the package's rubric.
+  dimension_scores: ProgressDimensionScore[];
+  wpm_overall: number | null;
+  filler_rate_per_min: number | null;
+  silence: SilenceStats | null;
+  // The report's gaps[] verbatim; [] when no report exists.
+  gaps: string[];
+}
+
+export interface PackageProgress {
+  package_id: string;
+  // Ascending session index, every row regardless of status — the UI decides
+  // how unscored attempts appear on the timeline.
+  sessions: SessionProgressEntry[];
+}
+
+export async function getPackageProgress(packageId: string): Promise<PackageProgress> {
+  const path = `/api/packages/${encodeURIComponent(packageId)}/progress`;
+  return workerJson(`GET ${path}`, await workerFetch(path));
+}
+
 /**
  * The account a package belongs to, or null while it is still unclaimed.
  *
- * packages.user_id arrives with F-07 and is not yet declared on
- * lib/types.PackageRow, which the session room and report page share. Reading
- * it through one accessor keeps the cast in a single documented place until
- * that type catches up.
+ * PackageRow declares user_id now, but rows serialized by an older worker may
+ * omit the key at runtime — the accessor normalizes that to null in one place.
  */
 export function packageOwnerId(pkg: PackageRow): string | null {
-  return (pkg as PackageRow & { user_id?: string | null }).user_id ?? null;
+  return pkg.user_id ?? null;
 }
 
 /** How many sessions the package owes, defaulting to the one package size the
- * product sells. Same story as packageOwnerId: packages.total_sessions arrives
- * with F-07 (`not null default 6`) ahead of the shared PackageRow type. */
+ * product sells. The runtime guard stays because rows serialized by an older
+ * worker may omit the column even though PackageRow now declares it. */
 export const DEFAULT_TOTAL_SESSIONS = 6;
 
 export function packageTotalSessions(pkg: PackageRow): number {
-  const total = (pkg as PackageRow & { total_sessions?: unknown }).total_sessions;
+  const total: unknown = pkg.total_sessions;
   return typeof total === "number" && Number.isInteger(total) && total > 0
     ? total
     : DEFAULT_TOTAL_SESSIONS;
@@ -233,4 +309,39 @@ export async function authorizeSession(
     return { ok: false, status: 403 };
   }
   return { ok: true, value: { pkg: pkg.value, session } };
+}
+
+/**
+ * Account-based session authorization for the id-routed screens
+ * (/sessions/[id] and friends): the viewer may see a session iff one of the
+ * packages bound to their account owns it. The matching PackageSummary rides
+ * along because every caller needs package context (role title, session
+ * quota) anyway.
+ *
+ * Same denial discipline as the token checks: unknown session ids and
+ * foreign-owned sessions both map to 403 without revealing which, and a
+ * worker outage maps to 502 so it is never misreported as a denial. The
+ * viewer parameter is structural ({ id }) so this module never depends on
+ * the auth stack — lib/viewer.Viewer satisfies it.
+ */
+export async function authorizeViewerSession(
+  viewer: { id: string },
+  sessionId: string,
+): Promise<Authorized<{ session: SessionWithInstructions; pkg: PackageSummary }>> {
+  const res = await workerFetch(`/api/sessions/${encodeURIComponent(sessionId)}`);
+  if (!res.ok) {
+    return { ok: false, status: res.status === 404 ? 403 : 502 };
+  }
+  const session = (await res.json()) as SessionWithInstructions;
+  let packages: PackageSummary[];
+  try {
+    packages = await listPackagesForUser(viewer.id);
+  } catch {
+    return { ok: false, status: 502 };
+  }
+  const pkg = packages.find((candidate) => candidate.id === session.package_id);
+  if (pkg === undefined) {
+    return { ok: false, status: 403 };
+  }
+  return { ok: true, value: { session, pkg } };
 }

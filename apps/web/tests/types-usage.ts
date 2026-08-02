@@ -9,6 +9,7 @@ import type {
   SessionPlan,
   SessionReport,
   SessionRow,
+  TranscriptSegment,
 } from "@/lib/types";
 
 const rubric: Rubric = {
@@ -122,6 +123,8 @@ const pkg: PackageRow = {
   id: "pkg-check",
   access_token: "tok-check",
   status: "ready",
+  user_id: "user-check",
+  total_sessions: 6,
   jd_text: "We are hiring a Senior Product Analyst.",
   candidate_profile: {
     name: "Alex Example",
@@ -143,11 +146,18 @@ const session: SessionRow = {
   session_plan: plan,
   audio_path: "packages/pkg-check/session-1.webm",
   report,
+  created_at: "2026-08-01T09:00:00Z",
 };
+
+const transcript: TranscriptSegment[] = [
+  { start_s: 0.0, end_s: 4.2, speaker: "interviewer", text: "Walk me through it." },
+  { start_s: 4.6, end_s: 21.9, speaker: "candidate", text: "Uh, my recommendation was..." },
+];
 
 const createBody: CreatePackageBody = {
   jd_text: "We are hiring a Senior Product Analyst.",
   resume_pdf_b64: "JVBERi0xLjQ=",
+  user_id: "user-check",
 };
 
 const createSessionResponse: CreateSessionResponse = {
@@ -156,4 +166,13 @@ const createSessionResponse: CreateSessionResponse = {
   interviewer_instructions: "You are Morgan, a senior hiring manager.",
 };
 
-export const __checked = [rubric, plan, report, pkg, session, createBody, createSessionResponse] as const;
+export const __checked = [
+  rubric,
+  plan,
+  report,
+  pkg,
+  session,
+  transcript,
+  createBody,
+  createSessionResponse,
+] as const;
