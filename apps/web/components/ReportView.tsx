@@ -1,4 +1,5 @@
 import {
+  formatDelta,
   formatLatency,
   formatTimestamp,
   topObservations,
@@ -7,6 +8,7 @@ import {
 } from "@/lib/report-format";
 import type {
   Channel,
+  DeliveryMetrics,
   Rubric,
   SessionReport,
   TimestampedObservation,
@@ -17,6 +19,17 @@ import type {
 // disclosure away, so nothing is lost and the page needs no client JS.
 const MAX_QUOTES = 4;
 const MAX_TIMELINE = 5;
+
+// One badge for every surface that renders a judge-vs-measurement
+// disagreement (observations timeline here, transcript inline notes in
+// TranscriptView) — the conflict must look identical wherever it appears.
+export function DspConflictBadge() {
+  return (
+    <span className="ml-2 rounded bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-900 dark:bg-amber-950 dark:text-amber-200">
+      DSP conflict — differs from measured audio metrics
+    </span>
+  );
+}
 
 function ObservationItem({
   observation,
@@ -30,11 +43,7 @@ function ObservationItem({
       </span>
       <span>
         {observation.note}
-        {observation.conflicts_with_dsp ? (
-          <span className="ml-2 rounded bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-900 dark:bg-amber-950 dark:text-amber-200">
-            DSP conflict — differs from measured audio metrics
-          </span>
-        ) : null}
+        {observation.conflicts_with_dsp ? <DspConflictBadge /> : null}
       </span>
     </li>
   );
@@ -54,154 +63,196 @@ export function dimensionMetaFromRubric(rubric: Rubric): DimensionMeta[] {
   }));
 }
 
-export default function ReportView({
+// The report is rendered as exported sections so the session detail page can
+// interleave other material (the transcript, the audio replay) between them
+// without duplicating any of this. The default export composes them in the
+// classic order for pages that want the whole report as one block.
+
+export function ReportDimensionCards({
   report,
   dimensions,
+  previous,
 }: {
   report: SessionReport;
   dimensions: DimensionMeta[];
+  /** The previous scored session's scores by dimension key. When a key is
+   * present, the card shows its delta — comparable because every session in
+   * a package shares the rubric. */
+  previous?: Record<string, number>;
 }) {
   const metaByKey = new Map(dimensions.map((d) => [d.key, d]));
-  const metrics = report.delivery_metrics;
   return (
-    <div className="flex flex-col gap-10">
-      <section className={`rounded-lg border p-6 ${verdictClasses(report.verdict)}`}>
-        <p className="text-sm uppercase tracking-wide">Verdict</p>
-        <p className="text-3xl font-bold">
-          {VERDICT_LABELS[report.verdict]}
-          <span className="ml-3 text-xl font-medium">
-            {report.overall_score.toFixed(2)} / 5
-          </span>
-        </p>
-        <p className="mt-3 text-sm">{report.limits_note}</p>
-      </section>
-
-      <section className="flex flex-col gap-4">
-        <h2 className="text-xl font-semibold">Dimension scores</h2>
-        {/* One card per dimension: the score, the judge's written rationale
-            (why this score — previously computed but never rendered), and
-            the candidate's own verified words as quotes. */}
-        {report.dimension_scores.map((score) => {
-          const meta = metaByKey.get(score.dimension_key);
-          return (
-            <article
-              key={score.dimension_key}
-              className="rounded-lg border border-neutral-200 p-5 dark:border-neutral-800"
-            >
-              <header className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
-                <h3 className="text-base font-semibold">
-                  {meta?.name ?? score.dimension_key}
-                </h3>
-                <span className="rounded bg-neutral-100 px-2 py-0.5 text-xs uppercase tracking-wide text-neutral-600 dark:bg-neutral-900 dark:text-neutral-400">
-                  {meta?.channel ?? "—"}
+    <section className="flex flex-col gap-4">
+      <h2 className="text-xl font-semibold">Dimension scores</h2>
+      {/* One card per dimension: the score, the judge's written rationale
+          (why this score), and the candidate's own verified words as quotes. */}
+      {report.dimension_scores.map((score) => {
+        const meta = metaByKey.get(score.dimension_key);
+        const before = previous?.[score.dimension_key];
+        return (
+          <article
+            key={score.dimension_key}
+            className="rounded-lg border border-neutral-200 p-5 dark:border-neutral-800"
+          >
+            <header className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
+              <h3 className="text-base font-semibold">
+                {meta?.name ?? score.dimension_key}
+              </h3>
+              <span className="rounded bg-neutral-100 px-2 py-0.5 text-xs uppercase tracking-wide text-neutral-600 dark:bg-neutral-900 dark:text-neutral-400">
+                {meta?.channel ?? "—"}
+              </span>
+              <span className="ml-auto text-lg font-semibold tabular-nums">
+                {score.score.toFixed(1)}
+                <span className="text-sm font-normal text-neutral-500">
+                  {" "}
+                  / 5
                 </span>
-                <span className="ml-auto text-lg font-semibold tabular-nums">
-                  {score.score.toFixed(1)}
-                  <span className="text-sm font-normal text-neutral-500">
-                    {" "}
-                    / 5
-                  </span>
+              </span>
+              {before !== undefined ? (
+                <span className="text-xs tabular-nums text-neutral-500">
+                  {formatDelta(score.score - before)} vs last scored
                 </span>
-              </header>
-              <p className="mt-3 text-sm leading-relaxed text-neutral-700 dark:text-neutral-300">
-                {score.rationale}
-              </p>
-              {score.evidence_quotes.length > 0 && (
-                <div className="mt-4 flex flex-col gap-2">
-                  <p className="text-xs uppercase tracking-wide text-neutral-500">
-                    What you actually said
-                  </p>
-                  {score.evidence_quotes.slice(0, MAX_QUOTES).map((quote) => (
-                    <blockquote
-                      key={quote}
-                      className="border-l-2 border-neutral-300 pl-3 text-sm italic text-neutral-600 dark:border-neutral-700 dark:text-neutral-400"
-                    >
-                      &ldquo;{quote}&rdquo;
-                    </blockquote>
-                  ))}
-                  {score.evidence_quotes.length > MAX_QUOTES && (
-                    <details>
-                      <summary className="cursor-pointer text-xs text-neutral-500 underline underline-offset-4">
-                        Show {score.evidence_quotes.length - MAX_QUOTES} more
-                        quotes
-                      </summary>
-                      <div className="mt-2 flex flex-col gap-2">
-                        {score.evidence_quotes
-                          .slice(MAX_QUOTES)
-                          .map((quote) => (
-                            <blockquote
-                              key={quote}
-                              className="border-l-2 border-neutral-300 pl-3 text-sm italic text-neutral-600 dark:border-neutral-700 dark:text-neutral-400"
-                            >
-                              &ldquo;{quote}&rdquo;
-                            </blockquote>
-                          ))}
-                      </div>
-                    </details>
-                  )}
-                </div>
-              )}
-            </article>
-          );
-        })}
-      </section>
+              ) : null}
+            </header>
+            <p className="mt-3 text-sm leading-relaxed text-neutral-700 dark:text-neutral-300">
+              {score.rationale}
+            </p>
+            {(score.strengths.length > 0 || score.weaknesses.length > 0) && (
+              <div className="mt-4 grid gap-4 sm:grid-cols-2">
+                {score.strengths.length > 0 && (
+                  <div>
+                    <p className="text-xs uppercase tracking-wide text-neutral-500">
+                      What worked
+                    </p>
+                    <ul className="mt-1.5 list-disc pl-5 text-sm text-neutral-700 dark:text-neutral-300">
+                      {score.strengths.map((item) => (
+                        <li key={item}>{item}</li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+                {score.weaknesses.length > 0 && (
+                  <div>
+                    <p className="text-xs uppercase tracking-wide text-neutral-500">
+                      What held the score down
+                    </p>
+                    <ul className="mt-1.5 list-disc pl-5 text-sm text-neutral-700 dark:text-neutral-300">
+                      {score.weaknesses.map((item) => (
+                        <li key={item}>{item}</li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+              </div>
+            )}
+            {score.evidence_quotes.length > 0 && (
+              <div className="mt-4 flex flex-col gap-2">
+                <p className="text-xs uppercase tracking-wide text-neutral-500">
+                  What you actually said
+                </p>
+                {score.evidence_quotes.slice(0, MAX_QUOTES).map((quote) => (
+                  <blockquote
+                    key={quote}
+                    className="border-l-2 border-neutral-300 pl-3 text-sm italic text-neutral-600 dark:border-neutral-700 dark:text-neutral-400"
+                  >
+                    &ldquo;{quote}&rdquo;
+                  </blockquote>
+                ))}
+                {score.evidence_quotes.length > MAX_QUOTES && (
+                  <details>
+                    <summary className="cursor-pointer text-xs text-neutral-500 underline underline-offset-4">
+                      Show {score.evidence_quotes.length - MAX_QUOTES} more
+                      quotes
+                    </summary>
+                    <div className="mt-2 flex flex-col gap-2">
+                      {score.evidence_quotes.slice(MAX_QUOTES).map((quote) => (
+                        <blockquote
+                          key={quote}
+                          className="border-l-2 border-neutral-300 pl-3 text-sm italic text-neutral-600 dark:border-neutral-700 dark:text-neutral-400"
+                        >
+                          &ldquo;{quote}&rdquo;
+                        </blockquote>
+                      ))}
+                    </div>
+                  </details>
+                )}
+              </div>
+            )}
+          </article>
+        );
+      })}
+    </section>
+  );
+}
 
-      <section className="flex flex-col gap-3">
-        <h2 className="text-xl font-semibold">Delivery metrics</h2>
-        <dl className="grid grid-cols-2 gap-4 sm:grid-cols-4">
-          <div className="rounded-md border border-neutral-200 p-4 dark:border-neutral-800">
-            <dt className="text-sm text-neutral-500">Pace</dt>
-            <dd className="text-2xl font-semibold">{Math.round(metrics.wpm_overall)} WPM</dd>
-          </div>
-          <div className="rounded-md border border-neutral-200 p-4 dark:border-neutral-800">
-            <dt className="text-sm text-neutral-500">Fillers</dt>
-            <dd className="text-2xl font-semibold">
-              {metrics.filler_rate_per_min.toFixed(1)} / min
-            </dd>
-          </div>
-          <div className="rounded-md border border-neutral-200 p-4 dark:border-neutral-800">
-            <dt className="text-sm text-neutral-500">Silences &ge; 1s</dt>
-            <dd className="text-2xl font-semibold">{metrics.silence_events.length}</dd>
-          </div>
-          <div className="rounded-md border border-neutral-200 p-4 dark:border-neutral-800">
-            <dt className="text-sm text-neutral-500">Avg response latency</dt>
-            <dd className="text-2xl font-semibold">
-              {formatLatency(metrics.avg_response_latency_s)}
-            </dd>
-          </div>
-        </dl>
-      </section>
+export function ReportDeliveryMetrics({ metrics }: { metrics: DeliveryMetrics }) {
+  return (
+    <section className="flex flex-col gap-3">
+      <h2 className="text-xl font-semibold">Delivery metrics</h2>
+      <dl className="grid grid-cols-2 gap-4 sm:grid-cols-4">
+        <div className="rounded-md border border-neutral-200 p-4 dark:border-neutral-800">
+          <dt className="text-sm text-neutral-500">Pace</dt>
+          <dd className="text-2xl font-semibold">{Math.round(metrics.wpm_overall)} WPM</dd>
+        </div>
+        <div className="rounded-md border border-neutral-200 p-4 dark:border-neutral-800">
+          <dt className="text-sm text-neutral-500">Fillers</dt>
+          <dd className="text-2xl font-semibold">
+            {metrics.filler_rate_per_min.toFixed(1)} / min
+          </dd>
+        </div>
+        <div className="rounded-md border border-neutral-200 p-4 dark:border-neutral-800">
+          <dt className="text-sm text-neutral-500">Silences &ge; 1s</dt>
+          <dd className="text-2xl font-semibold">{metrics.silence_events.length}</dd>
+        </div>
+        <div className="rounded-md border border-neutral-200 p-4 dark:border-neutral-800">
+          <dt className="text-sm text-neutral-500">Avg response latency</dt>
+          <dd className="text-2xl font-semibold">
+            {formatLatency(metrics.avg_response_latency_s)}
+          </dd>
+        </div>
+      </dl>
+    </section>
+  );
+}
 
-      <section className="flex flex-col gap-3">
-        <h2 className="text-xl font-semibold">Observations timeline</h2>
-        <ol className="flex flex-col gap-3">
-          {topObservations(report.delivery_observations, MAX_TIMELINE).map(
-            (observation) => (
+export function ReportObservations({
+  observations,
+}: {
+  observations: TimestampedObservation[];
+}) {
+  return (
+    <section className="flex flex-col gap-3">
+      <h2 className="text-xl font-semibold">Observations timeline</h2>
+      <ol className="flex flex-col gap-3">
+        {topObservations(observations, MAX_TIMELINE).map((observation) => (
+          <ObservationItem
+            key={`${observation.at_s}-${observation.kind}`}
+            observation={observation}
+          />
+        ))}
+      </ol>
+      {observations.length > MAX_TIMELINE && (
+        <details>
+          <summary className="cursor-pointer text-xs text-neutral-500 underline underline-offset-4">
+            Show the full timeline ({observations.length} observations)
+          </summary>
+          <ol className="mt-3 flex flex-col gap-3">
+            {observations.map((observation) => (
               <ObservationItem
-                key={`${observation.at_s}-${observation.kind}`}
+                key={`full-${observation.at_s}-${observation.kind}`}
                 observation={observation}
               />
-            ),
-          )}
-        </ol>
-        {report.delivery_observations.length > MAX_TIMELINE && (
-          <details>
-            <summary className="cursor-pointer text-xs text-neutral-500 underline underline-offset-4">
-              Show the full timeline (
-              {report.delivery_observations.length} observations)
-            </summary>
-            <ol className="mt-3 flex flex-col gap-3">
-              {report.delivery_observations.map((observation) => (
-                <ObservationItem
-                  key={`full-${observation.at_s}-${observation.kind}`}
-                  observation={observation}
-                />
-              ))}
-            </ol>
-          </details>
-        )}
-      </section>
+            ))}
+          </ol>
+        </details>
+      )}
+    </section>
+  );
+}
 
+export function ReportOutcomes({ report }: { report: SessionReport }) {
+  return (
+    <>
       <section className="grid gap-8 sm:grid-cols-2">
         <div className="flex flex-col gap-3">
           <h2 className="text-xl font-semibold">Strengths</h2>
@@ -229,6 +280,42 @@ export default function ReportView({
           ))}
         </ol>
       </section>
+    </>
+  );
+}
+
+export default function ReportView({
+  report,
+  dimensions,
+  previous,
+}: {
+  report: SessionReport;
+  dimensions: DimensionMeta[];
+  previous?: Record<string, number>;
+}) {
+  return (
+    <div className="flex flex-col gap-10">
+      <section className={`rounded-lg border p-6 ${verdictClasses(report.verdict)}`}>
+        <p className="text-sm uppercase tracking-wide">Verdict</p>
+        <p className="text-3xl font-bold">
+          {VERDICT_LABELS[report.verdict]}
+          <span className="ml-3 text-xl font-medium">
+            {report.overall_score.toFixed(2)} / 5
+          </span>
+        </p>
+        {/* F-03 headline; reports stored before the field carry "". */}
+        {report.headline ? <p className="mt-2 text-base">{report.headline}</p> : null}
+        <p className="mt-3 text-sm">{report.limits_note}</p>
+      </section>
+
+      <ReportDimensionCards
+        report={report}
+        dimensions={dimensions}
+        previous={previous}
+      />
+      <ReportDeliveryMetrics metrics={report.delivery_metrics} />
+      <ReportObservations observations={report.delivery_observations} />
+      <ReportOutcomes report={report} />
     </div>
   );
 }
