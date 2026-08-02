@@ -24,7 +24,7 @@ export default async function PricingPage() {
         </h1>
         {/* The package is the same object the dashboard hands back: one ticket,
             one job description, six sessions on it. */}
-        <article className="mt-7 grid w-full max-w-[430px] grid-cols-[1fr_84px] overflow-hidden rounded-[14px] border border-[#2c3a5e] bg-[linear-gradient(175deg,var(--color-night-2)_0%,#131b33_100%)] shadow-[0_2px_6px_rgba(0,0,0,.35),0_18px_48px_rgba(0,0,0,.45)] sm:grid-cols-[1fr_96px]">
+        <article className="mt-7 grid w-full max-w-[470px] grid-cols-[1fr_84px] overflow-hidden rounded-[14px] border border-[#2c3a5e] bg-[linear-gradient(175deg,var(--color-night-2)_0%,#131b33_100%)] shadow-[0_2px_6px_rgba(0,0,0,.35),0_18px_48px_rgba(0,0,0,.45)] sm:grid-cols-[1fr_96px]">
           <div className="flex flex-col gap-4 px-[22px] py-5">
             <div>
               <div className={LABEL}>Interview package · 30 days</div>
@@ -50,7 +50,10 @@ export default async function PricingPage() {
               Continue to payment
             </Link>
           </div>
-          <div className="flex flex-col items-center justify-between gap-4 border-l-2 border-dashed border-faint bg-night-1 px-3 py-4">
+          {/* Centred rather than spread: this card is twice the height of the
+              session ticket, and pinning the label and barcode to the ends
+              leaves a long empty channel between them. */}
+          <div className="flex flex-col items-center justify-center gap-4 border-l-2 border-dashed border-faint bg-night-1 px-3 py-4">
             <span className={LABEL}>Package</span>
             <span
               aria-hidden="true"

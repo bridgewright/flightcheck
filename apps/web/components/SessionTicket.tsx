@@ -45,7 +45,7 @@ export default function SessionTicket({
             <div>
               <div className={LABEL}>Package complete</div>
               <div className="font-data text-[21px] font-bold">
-                {pad(totalSessions)} of {pad(totalSessions)} used
+                {totalSessions} of {totalSessions} used
               </div>
             </div>
             <Rule live={false}>

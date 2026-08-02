@@ -3,11 +3,16 @@ import type { Verdict } from "@/lib/types";
 const MAX_SCORE = 5;
 const SWEEP_DEGREES = 180;
 
-// The arc is drawn, then masked into a ring, so the hole is genuinely
-// transparent: the page behind it is a gradient, and a solid inner disc would
-// read as a slightly wrong shade sitting inside the dial.
-const RING_MASK =
-  "radial-gradient(circle at 50% 100%, transparent 0 66px, #000 66px)";
+// The arc is drawn as a full conic sweep, then masked down to the band between
+// the inner and outer radius. Masking rather than covering the middle with an
+// opaque disc: the page behind the dial is a gradient, and a flat disc would
+// read as a slightly wrong shade sitting inside it. The outer bound also
+// rounds the dial off — without it the gradient's square corners show.
+const OUTER_RADIUS = 75;
+const RING_WIDTH = 9;
+const RING_MASK = `radial-gradient(circle at 50% 100%, transparent 0 ${
+  OUTER_RADIUS - RING_WIDTH
+}px, #000 ${OUTER_RADIUS - RING_WIDTH}px ${OUTER_RADIUS}px, transparent ${OUTER_RADIUS}px)`;
 
 function caption(score: number | null, verdict: Verdict | null): string {
   if (score === null) {
