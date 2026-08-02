@@ -23,7 +23,13 @@ export default function ReadinessGauge({
       <h2 className="mb-2.5 text-xs font-semibold tracking-wide text-neutral-500 uppercase">
         Readiness
       </h2>
-      <div className="text-4xl font-bold tabular-nums">
+      {/* Muted when there is nothing to show: at this weight a bold em dash
+          reads as a filled bar rather than an absent score. */}
+      <div
+        className={`text-4xl font-bold tabular-nums ${
+          score === null ? "text-neutral-300 dark:text-neutral-700" : ""
+        }`}
+      >
         {score === null ? "—" : score.toFixed(1)}
       </div>
       <p
