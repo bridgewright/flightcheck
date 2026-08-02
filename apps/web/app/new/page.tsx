@@ -51,13 +51,21 @@ export default function NewPackagePage() {
         body: JSON.stringify(body),
       });
       const data = (await response.json()) as {
+        package_id?: string;
         access_token?: string;
         error?: string;
       };
-      if (!response.ok || !data.access_token) {
+      if (!response.ok || !data.package_id) {
         throw new Error(data.error ?? `request failed (${response.status})`);
       }
-      router.push(`/p/${data.access_token}`);
+      // Through /switch: it verifies ownership and pins this package as the
+      // active one (fc_pkg cookie), so /rubric — and every section screen
+      // after it — is already "about" the package that was just created.
+      // reveal=1 turns on the one-time "This is the bar." framing.
+      router.push(
+        `/switch?pkg=${encodeURIComponent(data.package_id)}` +
+          `&next=${encodeURIComponent("/rubric?reveal=1")}`,
+      );
     } catch (err) {
       setError(err instanceof Error ? err.message : "request failed");
       setSubmitting(false);
