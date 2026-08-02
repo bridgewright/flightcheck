@@ -14,7 +14,13 @@ from typing import Any
 from google.genai import types
 
 from scorer.api.db import PackageRow, SessionRow
-from scorer.schemas import CandidateProfile, Rubric, SessionPlan, SessionReport
+from scorer.schemas import (
+    CandidateProfile,
+    Rubric,
+    SessionPlan,
+    SessionReport,
+    TranscriptSegment,
+)
 
 
 class _FakeCandidate:
@@ -165,6 +171,9 @@ class FakeDatabase:
         self.packages: dict[str, PackageRow] = {}
         self.sessions: dict[str, SessionRow] = {}
         self.jd_urls: dict[str, str | None] = {}
+        # Transcript lives OFF the session row (mirrors the real adapter's
+        # explicit column lists): session_id -> stored segments.
+        self.transcripts: dict[str, list[TranscriptSegment]] = {}
         # Every successful set_scoring_stage call, in order, as
         # (session_id, stage) -- progression assertions read this.
         self.stage_writes: list[tuple[str, str]] = []
@@ -273,6 +282,17 @@ class FakeDatabase:
         row = self.sessions[session_id]
         self.sessions[session_id] = row.model_copy(
             update={"report": report, "status": "scored", "scoring_stage": None})
+
+    def save_transcript(self, session_id: str,
+                        segments: list[TranscriptSegment]) -> None:
+        if session_id not in self.sessions:
+            raise KeyError(session_id)   # mirrors the zero-row update
+        self.transcripts[session_id] = list(segments)
+
+    def get_transcript(self, session_id: str) -> list[TranscriptSegment] | None:
+        if session_id not in self.sessions:
+            raise KeyError(session_id)   # unknown session, not "no transcript"
+        return self.transcripts.get(session_id)
 
 
 class FakeStorage:

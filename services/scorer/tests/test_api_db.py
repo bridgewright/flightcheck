@@ -5,6 +5,7 @@ import pytest
 
 from fakes import FakeDatabase
 from scorer.api.db import (
+    SESSION_COLUMNS,
     Database,
     PackageRow,
     SessionRow,
@@ -18,6 +19,7 @@ from scorer.schemas import (
     Rubric,
     SessionPlan,
     SessionReport,
+    TranscriptSegment,
 )
 
 CITATION = {
@@ -120,6 +122,15 @@ def _report(session_id: str) -> SessionReport:
         limits_note=("Scores reflect agreement with the rubric, "
                      "not an admission prediction."),
     )
+
+
+def _segments() -> list[TranscriptSegment]:
+    return [
+        TranscriptSegment(start_s=0.0, end_s=1.8, speaker="interviewer",
+                          text="Walk me through a project you led end to end."),
+        TranscriptSegment(start_s=3.6, end_s=7.6, speaker="candidate",
+                          text="Um, I led the churn dashboard rollout."),
+    ]
 
 
 def test_fake_database_satisfies_protocol():
@@ -228,6 +239,27 @@ def test_save_report_stores_report_and_marks_scored():
     updated = db.get_session(session.id)
     assert updated.report == report
     assert updated.status == "scored"
+
+
+def test_fake_transcript_round_trip_and_none_when_unset():
+    # None = the session exists but has no stored transcript (the honest
+    # pre-batch state); a stored transcript round-trips unchanged.
+    db = FakeDatabase()
+    package = db.create_package("jd text", None)
+    session = db.create_session(package.id, 1, _plan())
+    assert db.get_transcript(session.id) is None
+    db.save_transcript(session.id, _segments())
+    assert db.get_transcript(session.id) == _segments()
+
+
+def test_fake_transcript_unknown_session_raises_keyerror():
+    # Registry-pinned: unknown ids raise KeyError in every implementation --
+    # "no transcript" (None) and "no session" (KeyError) stay distinct.
+    db = FakeDatabase()
+    with pytest.raises(KeyError):
+        db.save_transcript("missing-sess", _segments())
+    with pytest.raises(KeyError):
+        db.get_transcript("missing-sess")
 
 
 def test_fake_set_scoring_stage_updates_row_and_records_writes():
@@ -467,11 +499,75 @@ def test_supabase_list_sessions_filters_and_orders_by_index():
     rows = db.list_sessions("11111111-1111-1111-1111-111111111111")
     assert [(r.id, r.index) for r in rows] == [("sess-a", 1), ("sess-b", 2)]
     assert stub.log[0]["table"] == "sessions"
-    assert stub.log[0]["select"] == "*"
+    assert stub.log[0]["select"] == SESSION_COLUMNS
     assert stub.log[0]["eq"] == [
         ("package_id", "11111111-1111-1111-1111-111111111111")
     ]
     assert db.list_sessions("no-sessions-package") == []
+
+
+def test_session_columns_cover_every_row_field_except_transcript():
+    # Transcripts run 25-60KB per session; the hot session reads
+    # (get_session, list_sessions) fetch an explicit column list that never
+    # includes the transcript column. get_transcript is its only reader.
+    assert set(SESSION_COLUMNS.split(",")) == {
+        "id", "package_id", "index", "status", "scoring_stage",
+        "session_plan", "audio_path", "report", "created_at",
+    }
+
+
+def test_supabase_session_reads_never_select_the_transcript_column():
+    session_data = {
+        "id": "22222222-2222-2222-2222-222222222222",
+        "package_id": "11111111-1111-1111-1111-111111111111",
+        "index": 1,
+        "status": "planned",
+        "session_plan": _plan().model_dump(mode="json"),
+        "audio_path": None,
+        "report": None,
+        "created_at": "2026-07-26T00:00:00+00:00",
+    }
+    stub = StubSupabase([[session_data], [session_data]])
+    db = SupabaseDatabase(stub)
+    db.get_session(session_data["id"])
+    db.list_sessions(session_data["package_id"])
+    assert stub.log[0]["select"] == SESSION_COLUMNS
+    assert stub.log[1]["select"] == SESSION_COLUMNS
+
+
+def test_supabase_save_transcript_updates_jsonb():
+    stub = StubSupabase([[{"id": "sess-1"}]])
+    SupabaseDatabase(stub).save_transcript("sess-1", _segments())
+    call = stub.log[0]
+    assert call["table"] == "sessions"
+    assert call["update"] == {
+        "transcript": [seg.model_dump(mode="json") for seg in _segments()]
+    }
+    assert call["eq"] == [("id", "sess-1")]
+
+
+def test_supabase_get_transcript_selects_only_the_transcript_column():
+    stored = [seg.model_dump(mode="json") for seg in _segments()]
+    stub = StubSupabase([[{"transcript": stored}]])
+    segments = SupabaseDatabase(stub).get_transcript("sess-1")
+    assert segments == _segments()
+    assert stub.log[0]["table"] == "sessions"
+    assert stub.log[0]["select"] == "transcript"
+    assert stub.log[0]["eq"] == [("id", "sess-1")]
+
+
+def test_supabase_get_transcript_none_when_column_is_null():
+    stub = StubSupabase([[{"transcript": None}]])
+    assert SupabaseDatabase(stub).get_transcript("sess-1") is None
+
+
+def test_supabase_transcript_missing_session_raises_keyerror():
+    stub = StubSupabase([[], []])
+    db = SupabaseDatabase(stub)
+    with pytest.raises(KeyError):
+        db.get_transcript("missing-sess")
+    with pytest.raises(KeyError):
+        db.save_transcript("missing-sess", _segments())
 
 
 def test_supabase_session_round_trip_and_report_marks_scored():

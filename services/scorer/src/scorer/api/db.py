@@ -15,7 +15,22 @@ from pydantic import BaseModel, ConfigDict
 from supabase import Client, create_client
 
 from scorer.env import load_env, require_key
-from scorer.schemas import CandidateProfile, Rubric, SessionPlan, SessionReport
+from scorer.schemas import (
+    CandidateProfile,
+    Rubric,
+    SessionPlan,
+    SessionReport,
+    TranscriptSegment,
+)
+
+# Explicit column list for every hot session read (get_session,
+# list_sessions). The transcript column is deliberately absent: transcripts
+# run 25-60KB per session and must never ride the dashboard/status polls.
+# get_transcript is the only reader of that column, and it reads nothing else.
+SESSION_COLUMNS = (
+    "id,package_id,index,status,scoring_stage,session_plan,"
+    "audio_path,report,created_at"
+)
 
 
 class PackageRow(BaseModel):
@@ -109,6 +124,19 @@ class Database(Protocol):
         ...
 
     def save_report(self, session_id: str, report: SessionReport) -> None:
+        ...
+
+    def save_transcript(self, session_id: str,
+                        segments: list[TranscriptSegment]) -> None:
+        """Persist the verbatim transcript on the session row. Written right
+        after the transcribe stage so a later judge failure still leaves the
+        transcript on the failed row. Unknown session ids raise KeyError."""
+        ...
+
+    def get_transcript(self, session_id: str) -> list[TranscriptSegment] | None:
+        """The stored transcript, or None when the session exists but has no
+        transcript (sessions scored before transcripts were persisted).
+        Unknown session ids raise KeyError like every other lookup."""
         ...
 
 
@@ -250,14 +278,14 @@ class SupabaseDatabase:
         return _to_session_row(data[0])
 
     def get_session(self, session_id: str) -> SessionRow:
-        data = (self._client.table("sessions").select("*")
+        data = (self._client.table("sessions").select(SESSION_COLUMNS)
                 .eq("id", session_id).execute().data)
         if not data:
             raise KeyError(session_id)
         return _to_session_row(data[0])
 
     def list_sessions(self, package_id: str) -> list[SessionRow]:
-        query = (self._client.table("sessions").select("*")
+        query = (self._client.table("sessions").select(SESSION_COLUMNS)
                  .eq("package_id", package_id))
         if hasattr(query, "order"):
             query = query.order("index")
@@ -295,3 +323,23 @@ class SupabaseDatabase:
                 .eq("id", session_id).execute().data)
         if not data:
             raise KeyError(session_id)
+
+    def save_transcript(self, session_id: str,
+                        segments: list[TranscriptSegment]) -> None:
+        payload = {"transcript": [seg.model_dump(mode="json") for seg in segments]}
+        data = (self._client.table("sessions").update(payload)
+                .eq("id", session_id).execute().data)
+        if not data:
+            raise KeyError(session_id)
+
+    def get_transcript(self, session_id: str) -> list[TranscriptSegment] | None:
+        # Only the transcript column: this is the one read allowed to carry
+        # the 25-60KB payload, and it carries nothing else.
+        data = (self._client.table("sessions").select("transcript")
+                .eq("id", session_id).execute().data)
+        if not data:
+            raise KeyError(session_id)
+        raw = data[0].get("transcript")
+        if raw is None:
+            return None
+        return [TranscriptSegment.model_validate(item) for item in raw]
