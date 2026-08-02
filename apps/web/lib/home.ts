@@ -89,13 +89,23 @@ export function journeyLegs(
   });
 }
 
-// The gauge caption and the ticket both speak in the mockup's plain words
-// rather than lib/report-format's VERDICT_LABELS, which phrase the same
-// verdicts for the report page ("Not ready yet").
+// The dashboard speaks the product's fixed verdict vocabulary. Bare words
+// for inline use (package cards), sentence form for the ticket's verdict line.
+const VERDICT_WORDS: Record<Verdict, string> = {
+  not_ready: "Not yet ready",
+  approaching: "Approaching",
+  ready: "Ready",
+};
+
+/** "Not yet ready" / "Approaching" / "Ready" — the fixed wording, no period. */
+export function verdictPhrase(verdict: Verdict): string {
+  return VERDICT_WORDS[verdict];
+}
+
 const VERDICT_PHRASES: Record<Verdict, string> = {
-  not_ready: "Not yet ready.",
-  approaching: "Approaching.",
-  ready: "Ready.",
+  not_ready: `${VERDICT_WORDS.not_ready}.`,
+  approaching: `${VERDICT_WORDS.approaching}.`,
+  ready: `${VERDICT_WORDS.ready}.`,
 };
 
 export interface VerdictLine {
@@ -175,4 +185,109 @@ export function formatSessionDate(iso: string | null | undefined): string | null
   }
   const at = new Date(iso);
   return Number.isNaN(at.getTime()) ? null : SESSION_DATE_FORMAT.format(at);
+}
+
+// --- Navigation ----------------------------------------------------------
+
+/**
+ * The cookie GET /switch writes and every cross-package screen reads — the
+ * "fc_pkg" hint lib/active-package.resolveActivePackage takes as its cookie
+ * argument. One constant so the route and its readers cannot drift.
+ */
+export const ACTIVE_PACKAGE_COOKIE = "fc_pkg";
+
+export interface NavTab {
+  href: "/home" | "/sessions" | "/progress" | "/rubric";
+  label: string;
+}
+
+/** The four signed-in sections, in display order. */
+export const NAV_TABS: readonly NavTab[] = [
+  { href: "/home", label: "Home" },
+  { href: "/sessions", label: "Sessions" },
+  { href: "/progress", label: "Progress" },
+  { href: "/rubric", label: "Role & Rubric" },
+];
+
+/**
+ * Which section tab a pathname belongs to, or null when none does. Matching
+ * is per path segment ("/sessions/abc" is Sessions; "/sessionsabc" is not),
+ * so a section stays underlined on its own detail pages and nowhere else.
+ */
+export function activeNavTab(
+  path: string | null | undefined,
+): NavTab["href"] | null {
+  if (!path) {
+    return null;
+  }
+  const tab = NAV_TABS.find(
+    (candidate) =>
+      path === candidate.href || path.startsWith(`${candidate.href}/`),
+  );
+  return tab?.href ?? null;
+}
+
+/**
+ * The link a package-switcher entry navigates through: GET /switch validates
+ * ownership, sets the active-package cookie, and bounces back to `nextPath`.
+ * Both values are user-influenced, so both are encoded.
+ */
+export function switchHref(packageId: string, nextPath: string): string {
+  return `/switch?pkg=${encodeURIComponent(packageId)}&next=${encodeURIComponent(nextPath)}`;
+}
+
+// --- Scoring progress ----------------------------------------------------
+
+/** The slice of a session summary the stage line needs — the worker's richer
+ * summaries satisfy it structurally. */
+export interface StageSession {
+  index: number;
+  status: SessionStatus;
+  scoring_stage: string | null;
+}
+
+// Human phrasings of the worker's coarse pipeline stages
+// (services/scorer pipeline.py sets these exact tokens). A stage this map
+// does not know renders as the generic line — raw internal tokens are not UI
+// copy.
+const STAGE_PHRASES: Record<string, string> = {
+  download: "fetching your recording",
+  transcribe: "transcribing your answers",
+  "delivery-metrics": "measuring delivery",
+  "content-judge": "scoring content",
+  "delivery-judge": "scoring delivery",
+  compile: "writing your report",
+};
+
+/**
+ * One sentence about the session currently being scored, or null when none
+ * is. The newest scoring session wins if several are in flight.
+ */
+export function scoringStageLine(sessions: StageSession[]): string | null {
+  const scoring = sessions
+    .filter((session) => session.status === "scoring")
+    .sort((a, b) => b.index - a.index)[0];
+  if (!scoring) {
+    return null;
+  }
+  const base = `Session ${String(scoring.index).padStart(2, "0")} is being scored`;
+  const phrase =
+    scoring.scoring_stage === null
+      ? undefined
+      : STAGE_PHRASES[scoring.scoring_stage];
+  return phrase === undefined ? `${base}.` : `${base} — ${phrase}.`;
+}
+
+/**
+ * The verdict of the newest session that has one, or null before any does.
+ * Sessions without a report carry verdict null, so a newer unscored attempt
+ * never hides an older verdict.
+ */
+export function latestVerdict(
+  sessions: { index: number; verdict: Verdict | null }[],
+): Verdict | null {
+  const latest = sessions
+    .filter((session) => session.verdict !== null)
+    .sort((a, b) => b.index - a.index)[0];
+  return latest?.verdict ?? null;
 }

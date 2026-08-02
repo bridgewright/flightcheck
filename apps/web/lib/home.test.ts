@@ -1,11 +1,17 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  NAV_TABS,
+  activeNavTab,
   formatSessionDate,
   greetingName,
   journeyLegs,
+  latestVerdict,
   nextSessionNumber,
+  scoringStageLine,
+  switchHref,
   verdictLine,
+  verdictPhrase,
 } from "@/lib/home";
 import type { JourneySession } from "@/lib/home";
 import type { DimensionScore, SessionReport, Verdict } from "@/lib/types";
@@ -276,5 +282,155 @@ describe("formatSessionDate", () => {
 
   it("ignores an unparseable timestamp", () => {
     expect(formatSessionDate("not a date")).toBeNull();
+  });
+});
+
+describe("activeNavTab", () => {
+  it("matches each section root exactly", () => {
+    expect(activeNavTab("/home")).toBe("/home");
+    expect(activeNavTab("/sessions")).toBe("/sessions");
+    expect(activeNavTab("/progress")).toBe("/progress");
+    expect(activeNavTab("/rubric")).toBe("/rubric");
+  });
+
+  it("keeps the section tab active on its detail pages", () => {
+    expect(activeNavTab("/sessions/sess-1")).toBe("/sessions");
+    expect(activeNavTab("/sessions/sess-1/room")).toBe("/sessions");
+  });
+
+  it("activates nothing on non-section pages", () => {
+    expect(activeNavTab("/")).toBeNull();
+    expect(activeNavTab("/packages")).toBeNull();
+    expect(activeNavTab("/settings")).toBeNull();
+    expect(activeNavTab(null)).toBeNull();
+    expect(activeNavTab(undefined)).toBeNull();
+  });
+
+  it("requires a segment boundary, not a string prefix", () => {
+    expect(activeNavTab("/homework")).toBeNull();
+    expect(activeNavTab("/sessionsabc")).toBeNull();
+  });
+
+  it("covers exactly the four sections, Home first", () => {
+    expect(NAV_TABS.map((tab) => tab.label)).toEqual([
+      "Home",
+      "Sessions",
+      "Progress",
+      "Role & Rubric",
+    ]);
+  });
+});
+
+describe("switchHref", () => {
+  it("builds the /switch link with both parameters encoded", () => {
+    expect(switchHref("pkg-1", "/home")).toBe("/switch?pkg=pkg-1&next=%2Fhome");
+  });
+
+  it("survives ids and paths with reserved characters", () => {
+    expect(switchHref("pkg&1", "/home?pkg=x")).toBe(
+      "/switch?pkg=pkg%261&next=%2Fhome%3Fpkg%3Dx",
+    );
+  });
+});
+
+function stageSession(
+  index: number,
+  status: JourneySession["status"],
+  scoring_stage: string | null = null,
+) {
+  return { index, status, scoring_stage };
+}
+
+describe("scoringStageLine", () => {
+  it("says nothing when no session is being scored", () => {
+    expect(scoringStageLine([])).toBeNull();
+    expect(
+      scoringStageLine([stageSession(1, "scored"), stageSession(2, "planned")]),
+    ).toBeNull();
+  });
+
+  it("names the session and the stage the worker reported", () => {
+    expect(
+      scoringStageLine([
+        stageSession(1, "scored"),
+        stageSession(2, "scoring", "content-judge"),
+      ]),
+    ).toBe("Session 02 is being scored — scoring content.");
+  });
+
+  it("translates every coarse worker stage", () => {
+    const lines = [
+      "download",
+      "transcribe",
+      "delivery-metrics",
+      "content-judge",
+      "delivery-judge",
+      "compile",
+    ].map((stage) => scoringStageLine([stageSession(3, "scoring", stage)]));
+    expect(lines).toEqual([
+      "Session 03 is being scored — fetching your recording.",
+      "Session 03 is being scored — transcribing your answers.",
+      "Session 03 is being scored — measuring delivery.",
+      "Session 03 is being scored — scoring content.",
+      "Session 03 is being scored — scoring delivery.",
+      "Session 03 is being scored — writing your report.",
+    ]);
+  });
+
+  it("stays generic when the stage is missing or unknown", () => {
+    // Raw internal stage tokens must never leak into UI copy.
+    expect(scoringStageLine([stageSession(2, "scoring")])).toBe(
+      "Session 02 is being scored.",
+    );
+    expect(scoringStageLine([stageSession(2, "scoring", "some-new-stage")])).toBe(
+      "Session 02 is being scored.",
+    );
+  });
+
+  it("reports the newest scoring session when several exist", () => {
+    expect(
+      scoringStageLine([
+        stageSession(1, "scoring", "transcribe"),
+        stageSession(2, "scoring", "compile"),
+      ]),
+    ).toBe("Session 02 is being scored — writing your report.");
+  });
+});
+
+function verdictSession(index: number, verdict: Verdict | null) {
+  return { index, verdict };
+}
+
+describe("latestVerdict", () => {
+  it("has no verdict before any scored session", () => {
+    expect(latestVerdict([])).toBeNull();
+    expect(latestVerdict([verdictSession(1, null)])).toBeNull();
+  });
+
+  it("returns the newest session's verdict", () => {
+    expect(
+      latestVerdict([
+        verdictSession(1, "not_ready"),
+        verdictSession(2, "approaching"),
+      ]),
+    ).toBe("approaching");
+  });
+
+  it("skips newer sessions that carry no verdict yet", () => {
+    expect(
+      latestVerdict([
+        verdictSession(1, "not_ready"),
+        verdictSession(2, "approaching"),
+        verdictSession(3, null),
+      ]),
+    ).toBe("approaching");
+  });
+});
+
+describe("verdictPhrase", () => {
+  it("speaks the three verdicts in the product's fixed words", () => {
+    expect(verdictPhrase("not_ready")).toBe("Not yet ready");
+    expect(verdictPhrase("approaching")).toBe("Approaching");
+    expect(verdictPhrase("ready")).toBe("Ready");
   });
 });
