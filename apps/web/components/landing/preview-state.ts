@@ -1,5 +1,7 @@
 import type { Channel, RubricPreview, RubricPreviewDimension } from "@/lib/types";
 
+import { PREVIEW_WIDGET } from "./copy";
+
 // The judgment behind the landing rubric preview, kept out of the component
 // so it can be tested without a DOM. The component below it is then only
 // markup and a fetch.
@@ -59,7 +61,9 @@ export function orderedDimensions(
 
 /** The two channels, named the way the report names them. */
 export function channelLabel(channel: Channel): string {
-  return channel === "delivery" ? "How you say it" : "What you say";
+  return channel === "delivery"
+    ? PREVIEW_WIDGET.deliveryChannel
+    : PREVIEW_WIDGET.contentChannel;
 }
 
 /**

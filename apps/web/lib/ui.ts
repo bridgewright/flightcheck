@@ -90,6 +90,27 @@ export const METER_TRACK =
   "h-1.5 w-full overflow-hidden rounded-full bg-neutral-200 dark:bg-neutral-800";
 export const METER_FILL = "h-full rounded-full bg-neutral-900 dark:bg-white";
 
+// --- Framed screens ------------------------------------------------------
+//
+// Product screenshots are the proof layer of a features section, and framed
+// ones read as product while raw crops read as stock art. Chrome first, then
+// the capture.
+
+export const SCREEN_FRAME =
+  "overflow-hidden rounded-md border border-neutral-300 dark:border-neutral-700";
+export const SCREEN_CHROME =
+  "flex items-center gap-1.5 border-b border-neutral-200 bg-neutral-100 px-3 py-2 dark:border-neutral-800 dark:bg-neutral-900";
+export const SCREEN_DOT = "size-2 rounded-full bg-neutral-300 dark:bg-neutral-700";
+export const SCREEN_BODY = "aspect-video w-full bg-neutral-50 dark:bg-neutral-900";
+
+// A hatch that cannot be mistaken for a product screenshot. currentColor
+// keeps it legible in both themes without a variant, and it is a CSS value
+// rather than a utility class so Tailwind cannot silently drop it.
+export const PLACEHOLDER_HATCH =
+  "repeating-linear-gradient(45deg, transparent, transparent 10px," +
+  " color-mix(in srgb, currentColor 9%, transparent) 10px," +
+  " color-mix(in srgb, currentColor 9%, transparent) 20px)";
+
 // --- Rhythm --------------------------------------------------------------
 
 // Vertical space between landing blocks. Scroll sections read as two-to-three

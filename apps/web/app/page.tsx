@@ -1,101 +1,87 @@
+import type { Metadata } from "next";
 import Link from "next/link";
 
+import CtaRow from "@/components/landing/CtaRow";
+import Faq from "@/components/landing/Faq";
+import Hero from "@/components/landing/Hero";
+import HowItWorks from "@/components/landing/HowItWorks";
+import PricingBlock from "@/components/landing/PricingBlock";
+import Section from "@/components/landing/Section";
+import Showcase from "@/components/landing/Showcase";
+import { CLOSING } from "@/components/landing/copy";
 import Shell from "@/components/Shell";
+import { LINK, MUTED } from "@/lib/ui";
 import { getViewer } from "@/lib/viewer";
+import { publicMetadata } from "./site";
 
-const FEATURES: {
-  title: string;
-  detail: string;
-  link?: { href: string; label: string };
-}[] = [
-  {
-    title: "A rubric from your actual JD",
-    detail: "Not generic questions — the bar this role really interviews against.",
-  },
-  {
-    title: "Voice, not text",
-    detail: "Real speech both ways. Your delivery is scored from raw audio.",
-  },
-  {
-    title: "Honest verdicts",
-    detail: "Ready or not yet — and exactly what to fix first.",
-    link: { href: "/sample-report", label: "See a real report →" },
-  },
-];
+// The landing page (F-46). Screen parity with what the market's top three
+// actually ship, minus everything in the dossier's AVOID list.
+//
+// The order is the argument: the hero shows the bar for YOUR job before
+// asking for anything, how-it-works explains the loop, the screenshots prove
+// it exists, the price is itemized inline rather than hidden behind a click,
+// and the FAQ answers the six objections on the page instead of in a policy
+// link. Every block re-offers one CTA with the trial microcopy under it.
+//
+// All prose lives in components/landing/copy.ts, where the register test can
+// hold it to honest and calm; every number comes from lib/pricing.ts and
+// app/legal/policy.ts through the same module.
 
-// The same capture the README opens with (docs/demo.gif, copied into public/
-// so the app serves its own asset): intake, the cited rubric, the session
-// room, the report verdict. Plain <img> on purpose — next/image would route
-// the file through the optimizer, which drops GIF animation. width/height are
-// the file's real pixels (not 16:9), so the browser reserves the right box
-// and the frames are never cropped.
-function DemoClip() {
-  return (
-    // eslint-disable-next-line @next/next/no-img-element
-    <img
-      className="h-auto w-full rounded-md border border-neutral-300 dark:border-neutral-700"
-      src="/demo.gif"
-      alt="flightcheck demo: paste a JD, preview the cited rubric, take the voice interview, read the honest report"
-      width={960}
-      height={450}
-    />
-  );
-}
+export const metadata: Metadata = publicMetadata({
+  path: "/",
+  title: "flightcheck — would you pass the interview today?",
+  description:
+    "Paste the job description you're facing. A live interviewer holds you to " +
+    "that role's real bar, in English, out loud, and tells you honestly what " +
+    "is still missing.",
+});
 
 export default async function LandingPage() {
   const viewer = await getViewer();
   return (
     <Shell viewer={viewer} width="wide">
-      <section className="mx-auto flex w-full max-w-3xl flex-col pt-6 pb-14 text-center">
-          <h1 className="text-3xl font-bold tracking-tight text-balance md:text-5xl">
-            Would you pass the interview <em>today?</em>
-          </h1>
-          <p className="mx-auto mt-4 mb-8 max-w-xl text-neutral-600 dark:text-neutral-400">
-            Paste the job description you&apos;re facing. A live interviewer holds you
-            to that role&apos;s real bar — in English, out loud — and tells you honestly
-            what&apos;s still missing. Repeat until you&apos;d pass.
+      <Hero />
+
+      {viewer ? (
+        <p className="pb-2 text-sm">
+          <Link href="/home" className={LINK}>
+            You are signed in — go to your home
+          </Link>
+        </p>
+      ) : null}
+
+      <Section heading="How it works">
+        <HowItWorks />
+      </Section>
+
+      <Section heading="What you actually get">
+        <Showcase />
+        <div className="mt-10">
+          <CtaRow label={CLOSING.cta} />
+        </div>
+      </Section>
+
+      <Section heading="One package per job description">
+        <div className="flex flex-col items-start gap-8 lg:flex-row lg:items-center">
+          <PricingBlock />
+          <p className={`${MUTED} max-w-sm text-sm leading-relaxed`}>
+            {CLOSING.body}
           </p>
-          <DemoClip />
-          <div className="mt-8 flex flex-wrap justify-center gap-3">
-            <Link
-              href="/login"
-              className="rounded-md bg-neutral-900 px-6 py-3 font-medium text-white dark:bg-white dark:text-neutral-900"
-            >
-              Sign in and try it
-            </Link>
-            <Link
-              href="/pricing"
-              className="rounded-md border border-neutral-300 px-6 py-3 font-medium dark:border-neutral-700"
-            >
-              See pricing
-            </Link>
-          </div>
-          {viewer ? (
-            <p className="mt-6 text-sm">
-              <Link href="/home" className="underline underline-offset-4">
-                You&apos;re signed in — go to your home →
-              </Link>
-            </p>
-          ) : null}
-        </section>
-        <section className="grid w-full divide-y divide-neutral-200 border-y border-neutral-200 sm:grid-cols-3 sm:divide-x sm:divide-y-0 dark:divide-neutral-800 dark:border-neutral-800">
-          {FEATURES.map((feature) => (
-            <div key={feature.title} className="px-6 py-6">
-              <b className="mb-1.5 block font-semibold">{feature.title}</b>
-              <span className="text-sm text-neutral-600 dark:text-neutral-400">
-                {feature.detail}
-              </span>
-              {feature.link ? (
-                <Link
-                  href={feature.link.href}
-                  className="mt-2.5 block text-sm underline underline-offset-4"
-                >
-                  {feature.link.label}
-                </Link>
-              ) : null}
-            </div>
-          ))}
-        </section>
+        </div>
+      </Section>
+
+      <Section heading="Questions people ask before paying">
+        <Faq />
+      </Section>
+
+      <Section>
+        <div className="flex flex-col items-center gap-5 text-center">
+          <h2 className="text-2xl font-bold tracking-tight text-balance">
+            {CLOSING.heading}
+          </h2>
+          <CtaRow label={CLOSING.cta} align="center" />
+        </div>
+      </Section>
     </Shell>
   );
 }

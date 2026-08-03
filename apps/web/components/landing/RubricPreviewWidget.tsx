@@ -21,6 +21,7 @@ import {
   SUBTLE,
 } from "@/lib/ui";
 
+import { PREVIEW_WIDGET, TRIAL_MICROCOPY, tooShortHint } from "./copy";
 import type { PreviewState } from "./preview-state";
 import {
   asPreview,
@@ -36,14 +37,17 @@ import {
 // This is the whole argument for the product made in fifteen seconds, and it
 // is competitive white space — no candidate-side product shows the rubric
 // before signup. It is deliberately partial: dimensions and weights, no
-// question bank, no anchors, no session, nothing stored. The line under the
-// result says so plainly rather than implying the visitor has seen it all.
+// question bank, no anchors, no session, nothing stored. The footnote says so
+// plainly rather than implying the visitor has seen it all.
 //
 // Every failure state is written as carefully as the success one, because a
 // stranger who pasted a JD and got a blank panel is gone. The sentence comes
 // from the server (one voice) and the affordance comes from the action the
 // refusal calls for: edit the paste, try again, or take the paid path, which
 // has no ceiling and no preview-sized length cap.
+//
+// All prose is in ./copy.ts, where tests/landing-copy-register.test.ts can
+// hold it to the same register as the rest of the page.
 
 const SIGN_IN_HREF = "/login?next=/new";
 
@@ -120,16 +124,19 @@ export default function RubricPreviewWidget() {
   }
 
   const trimmed = jdText.trim();
-  const tooShort = trimmed.length > 0 && trimmed.length < PREVIEW_JD_MIN_CHARS;
+  const missing = PREVIEW_JD_MIN_CHARS - trimmed.length;
   const tooLong = trimmed.length > PREVIEW_JD_MAX_CHARS;
   const compiling = state.kind === "compiling";
 
   return (
-    <section className={`${CARD} flex w-full flex-col gap-4 p-5`} aria-labelledby="preview-heading">
+    <section
+      className={`${CARD} flex w-full flex-col gap-4 p-5`}
+      aria-labelledby="preview-heading"
+    >
       <div>
-        <div className={LABEL}>Before you sign up</div>
+        <div className={LABEL}>{PREVIEW_WIDGET.eyebrow}</div>
         <h2 id="preview-heading" className="mt-1 font-semibold">
-          See the bar this job is scored against
+          {PREVIEW_WIDGET.heading}
         </h2>
       </div>
 
@@ -140,7 +147,7 @@ export default function RubricPreviewWidget() {
         <textarea
           id="jd-preview"
           className={`${FIELD} h-40 resize-y font-mono text-xs leading-relaxed`}
-          placeholder="Paste the job description you're applying to."
+          placeholder={PREVIEW_WIDGET.placeholder}
           value={jdText}
           onChange={(event) => setJdText(event.target.value)}
           disabled={compiling}
@@ -148,25 +155,21 @@ export default function RubricPreviewWidget() {
         <button
           type="submit"
           className={`${PRIMARY_BUTTON} w-full`}
-          disabled={compiling || trimmed.length < PREVIEW_JD_MIN_CHARS || tooLong}
+          disabled={compiling || missing > 0 || tooLong}
         >
-          {compiling ? "Compiling the bar…" : "Show me the bar"}
+          {compiling ? `${PREVIEW_WIDGET.submitting}…` : PREVIEW_WIDGET.submit}
         </button>
         <p className={FINE_PRINT} aria-live="polite">
-          {tooShort
-            ? `A bit more, please — ${PREVIEW_JD_MIN_CHARS - trimmed.length} more characters.`
+          {trimmed.length > 0 && missing > 0
+            ? tooShortHint(missing)
             : tooLong
-              ? "That is longer than the preview reads. Paste the role and requirements sections."
-              : "Free, no account, nothing saved."}
+              ? PREVIEW_WIDGET.tooLong
+              : PREVIEW_WIDGET.hint}
         </p>
       </form>
 
       <div aria-live="polite">
-        {state.kind === "compiling" ? (
-          <p className={`${MUTED} text-sm`}>
-            Reading the job description and weighing what it turns on…
-          </p>
-        ) : null}
+        {compiling ? <p className={`${MUTED} text-sm`}>{PREVIEW_WIDGET.compiling}</p> : null}
 
         {state.kind === "refused" ? (
           <div className={`${NOTICE} flex flex-col items-start gap-3`}>
@@ -177,12 +180,12 @@ export default function RubricPreviewWidget() {
                 className={PRIMARY_BUTTON}
                 onClick={() => void compile(trimmed)}
               >
-                Try again
+                {PREVIEW_WIDGET.retry}
               </button>
             ) : null}
             {state.refusal.action === "sign-in" ? (
               <Link href={SIGN_IN_HREF} className={PRIMARY_BUTTON}>
-                Sign in and compile it for real
+                {PREVIEW_WIDGET.signIn}
               </Link>
             ) : null}
           </div>
@@ -191,7 +194,7 @@ export default function RubricPreviewWidget() {
         {state.kind === "ready" ? (
           <div className="flex flex-col gap-4">
             <div>
-              <div className={LABEL}>Compiled bar</div>
+              <div className={LABEL}>{PREVIEW_WIDGET.resultLabel}</div>
               <p className="mt-1 font-semibold text-balance">
                 {state.preview.role_title}
                 {state.preview.company ? (
@@ -209,15 +212,12 @@ export default function RubricPreviewWidget() {
                 />
               ))}
             </ul>
-            <p className={`${MUTED} text-sm`}>
-              This is your bar. Sign in to face it.
-            </p>
+            <p className={`${MUTED} text-sm`}>{PREVIEW_WIDGET.verdictLine}</p>
             <Link href={SIGN_IN_HREF} className={`${CTA_BUTTON} w-full`}>
-              Sign in and start
+              {PREVIEW_WIDGET.cta}
             </Link>
             <p className={FINE_PRINT}>
-              First session free. No card. The full compile adds the questions,
-              the scoring anchors, and the sources behind each dimension.
+              {TRIAL_MICROCOPY} {PREVIEW_WIDGET.footnote}
             </p>
           </div>
         ) : null}
