@@ -84,6 +84,7 @@ class DeadLetterConfig(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     max_records: int
+    detail_max_chars: int
 
 
 class ResilienceConfig(BaseModel):

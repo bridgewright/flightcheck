@@ -64,3 +64,7 @@ memory_min_available_mb = 0.0
 # this is process memory: the durable record is the row's own "failed"
 # status plus the emitted log line.
 max_records = 200
+# Failure detail is truncated to this many characters. Long enough to
+# identify the failure, short enough that a pathological exception string
+# cannot fill the ring or the log line.
+detail_max_chars = 300

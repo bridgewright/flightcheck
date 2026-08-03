@@ -29,7 +29,7 @@ from scorer.promptsafe import fence
 from scorer.report.compile import compile_report
 from scorer.report.eligibility import check_eligibility
 from scorer.research.sweep import run_sweep
-from scorer.resilience import call_with_retry
+from scorer.resilience import call_with_retry, current_deadline
 from scorer.rubric.compiler import compile_rubric
 from scorer.rubric.corpus import load_corpus, load_fewshots
 from scorer.schemas import CandidateProfile, GenAIClientLike, SessionReport
@@ -47,8 +47,24 @@ def _set_session_status(db: Database, session_id: str, status: str,
 
 def _set_scoring_stage(db: Database, session_id: str, stage: str) -> None:
     """Stage write + touch: a long scoring run stays visibly alive."""
+    _check_deadline(stage)
     db.set_scoring_stage(session_id, stage)
     db.touch_updated_at("session", session_id)
+
+
+def _check_deadline(step: str) -> None:
+    """Stop the job here if its overall budget (F-37) is spent.
+
+    Called at every stage boundary, which is the only place a synchronous
+    pipeline can be stopped: an SDK call already in flight cannot be
+    interrupted. So the guarantee is that a job overruns by at most one
+    call's timeout, never by the sum of every remaining stage's. Outside a
+    background job there is no deadline bound and this is a no-op, which is
+    what keeps score_session directly callable from tests and tools.
+    """
+    deadline = current_deadline()
+    if deadline is not None:
+        deadline.check(step)
 
 
 class JdFacts(BaseModel):
@@ -122,6 +138,7 @@ def compile_package(
     (PackageRow does not store raw source documents).
     """
     try:
+        _check_deadline("intake")
         row = db.get_package(package_id)
         if resume_text is not None or linkedin_text is not None:
             profile = build_profile(resume_text, linkedin_text, client)
@@ -134,11 +151,15 @@ def compile_package(
         else:
             profile = _minimal_profile()
             db.set_package_profile(package_id, profile)
+        _check_deadline("jd-facts")
         facts = _extract_jd_facts(row.jd_text, client)
+        _check_deadline("corpus-sync")
         corpus_dir = storage.sync_corpus(_corpus_cache_dir())
         corpus = load_corpus(corpus_dir)
         fewshots = load_fewshots(corpus_dir / "fewshot")
+        _check_deadline("research-sweep")
         findings = run_sweep(row.jd_text, facts.role_title, facts.company, client)
+        _check_deadline("rubric-compile")
         rubric = compile_rubric(row.jd_text, profile, findings, corpus, fewshots, client)
         db.set_package_rubric(package_id, rubric, status="ready")
         db.touch_updated_at("package", package_id)
