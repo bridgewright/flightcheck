@@ -132,7 +132,7 @@ export const RECORDER_UNAVAILABLE_MESSAGE =
  * state inside the start gesture. Try-again first: the retry click is a
  * fresh gesture, which is exactly what a suspended AudioContext needs. */
 export const AUDIO_START_FAILURE_MESSAGE =
-  "The browser's audio system could not be started. Try again. If it " +
+  "The browser's audio system could not be started. Try again, and if it " +
   "keeps failing, reload the page.";
 
 /** How long the room waits for AudioContext.resume() before treating the
