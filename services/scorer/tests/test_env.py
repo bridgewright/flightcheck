@@ -26,10 +26,23 @@ def test_load_env_reads_the_dotenv_file(monkeypatch, tmp_path):
 
 
 def test_load_env_overrides_stale_shell_exports(monkeypatch, tmp_path):
-    """Verify .env is authoritative — overrides stale shell exports."""
+    """Verify .env is authoritative locally — overrides stale shell exports."""
+    monkeypatch.delenv("RAILWAY_ENVIRONMENT", raising=False)
     monkeypatch.setenv("PROBE_TEST_KEY", "from-shell-export")
     env_file = tmp_path / ".env"
     env_file.write_text("PROBE_TEST_KEY=from-dotenv\n")
     load_env(env_file)
     assert require_key("PROBE_TEST_KEY") == "from-dotenv"
+    monkeypatch.delenv("PROBE_TEST_KEY", raising=False)
+
+
+def test_load_env_never_overrides_platform_env_on_railway(monkeypatch, tmp_path):
+    """On Railway the platform's variables win — a .env in the image must not
+    shadow the dashboard's secrets."""
+    monkeypatch.setenv("RAILWAY_ENVIRONMENT", "production")
+    monkeypatch.setenv("PROBE_TEST_KEY", "from-railway")
+    env_file = tmp_path / ".env"
+    env_file.write_text("PROBE_TEST_KEY=from-dotenv\n")
+    load_env(env_file)
+    assert require_key("PROBE_TEST_KEY") == "from-railway"
     monkeypatch.delenv("PROBE_TEST_KEY", raising=False)

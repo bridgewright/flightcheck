@@ -15,9 +15,16 @@ ENV_PATH = Path(__file__).resolve().parents[2] / ".env"   # services/scorer/.env
 
 
 def load_env(path: Path | None = None) -> None:
-    """Load `services/scorer/.env` if present. .env is authoritative — override
-    stale shell exports so the harness's explicit config wins, not inherited env vars."""
-    load_dotenv(path or ENV_PATH, override=True)
+    """Load `services/scorer/.env` if present.
+
+    Locally .env is authoritative — override stale shell exports so the
+    harness's explicit config wins, not inherited env vars. On Railway the
+    platform's variables are authoritative instead: they are the deployment's
+    real secrets, and a .env that rides along in the image must never shadow
+    them (rotating a key in the dashboard has to actually take effect).
+    """
+    load_dotenv(path or ENV_PATH,
+                override="RAILWAY_ENVIRONMENT" not in os.environ)
 
 
 def require_key(name: str) -> str:
