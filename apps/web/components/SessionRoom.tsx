@@ -6,6 +6,14 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import BrowserGate from "./BrowserGate";
 import MicCheck from "./MicCheck";
 
+import {
+  ALARM_NOTICE,
+  CARD,
+  DANGER_BUTTON,
+  PRIMARY_BUTTON,
+  SECONDARY_BUTTON,
+} from "../lib/ui";
+
 import { MAX_RECORDING_BYTES } from "../lib/realtime";
 import {
   AUDIO_RESUME_TIMEOUT_MS,
@@ -711,7 +719,7 @@ export default function SessionRoom({
       {phase === "ready" && (
         <section>
           <h1 className="text-xl font-semibold">Interview session</h1>
-          <p className="mt-2 text-sm text-neutral-500">
+          <p className="mt-2 text-sm text-ink-faint">
             Headphones are strongly recommended: they keep the
             interviewer&apos;s voice out of your microphone, so your turns
             are detected cleanly.
@@ -723,25 +731,25 @@ export default function SessionRoom({
             {/* Device check (shared MicCheck): confirm the mic picks you up
                 before committing to a 20-minute session. It holds its own
                 stream; the session acquires its own in start(). */}
-            <div className="mt-6 rounded-lg border border-neutral-300 p-4 dark:border-neutral-700">
+            <div className={`${CARD} mt-6 p-4`}>
               <h2 className="text-sm font-medium">Microphone check</h2>
               <div className="mt-3">
                 <MicCheck />
               </div>
-              <p className="mt-3 text-sm text-neutral-500">
+              <p className="mt-3 text-sm text-ink-faint">
                 {RECORDING_DISCLOSURE}
               </p>
             </div>
             <button
               type="button"
               onClick={() => void start()}
-              className="mt-6 rounded-lg border border-current px-5 py-3"
+              className={`${PRIMARY_BUTTON} mt-6`}
             >
               Start interview
             </button>
             {error && error.kind !== "upload" && (
-              <div className="mt-6 rounded-lg border border-red-600 p-4">
-                <p className="font-medium text-red-600">
+              <div className={`${ALARM_NOTICE} mt-6`}>
+                <p className="font-medium">
                   {error.kind === "mic"
                     ? "Microphone unavailable"
                     : error.kind === "recorder"
@@ -752,7 +760,7 @@ export default function SessionRoom({
                 <button
                   type="button"
                   onClick={() => void start()}
-                  className="mt-3 rounded-lg border border-current px-4 py-2"
+                  className={`${SECONDARY_BUTTON} mt-3`}
                 >
                   Try again
                 </button>
@@ -763,7 +771,7 @@ export default function SessionRoom({
       )}
 
       {phase === "connecting" && (
-        <p className="text-neutral-500">
+        <p className="text-ink-faint">
           Connecting to your interviewer… Morgan speaks first — no need to
           say hello.
         </p>
@@ -771,24 +779,24 @@ export default function SessionRoom({
 
       {phase === "live" && (
         <section>
-          <div className="flex items-baseline gap-4 rounded-lg border border-neutral-300 p-4 dark:border-neutral-700">
+          <div className={`${CARD} flex items-baseline gap-4 p-4`}>
             <span className="text-2xl tabular-nums">
               {formatTimer(elapsedS)}
             </span>
-            <span className="text-sm text-neutral-500">
+            <span className="text-sm text-ink-faint">
               / {formatTimer(SESSION_BUDGET_S)} planned · hard stop at{" "}
               {formatTimer(HARD_CUT_S)}
             </span>
             <span
               className={`ml-auto text-sm ${
-                hearing ? "text-green-600" : "text-transparent"
+                hearing ? "text-ready" : "text-transparent"
               }`}
             >
               ● hearing you
             </span>
           </div>
           {elapsedS < 15 && (
-            <p className="mt-2 text-sm text-neutral-500">
+            <p className="mt-2 text-sm text-ink-faint">
               Morgan will greet you in a moment — you don&apos;t need to
               speak first.
             </p>
@@ -797,26 +805,26 @@ export default function SessionRoom({
             <button
               type="button"
               onClick={() => setConfirmingEnd(true)}
-              className="mt-6 rounded-lg border border-current px-5 py-3"
+              className={`${SECONDARY_BUTTON} mt-6`}
             >
               End interview
             </button>
           )}
           {confirmingEnd && (
-            <div className="mt-6 rounded-lg border border-neutral-300 p-4 dark:border-neutral-700">
+            <div className={`${CARD} mt-6 p-4`}>
               <p>End the interview and send it for scoring?</p>
               <div className="mt-3 flex gap-3">
                 <button
                   type="button"
                   onClick={() => void endSession()}
-                  className="rounded-lg border border-current px-4 py-2"
+                  className={DANGER_BUTTON}
                 >
                   Yes, end now
                 </button>
                 <button
                   type="button"
                   onClick={() => setConfirmingEnd(false)}
-                  className="rounded-lg border border-neutral-400 px-4 py-2 text-neutral-500"
+                  className={SECONDARY_BUTTON}
                 >
                   Keep going
                 </button>
@@ -827,17 +835,17 @@ export default function SessionRoom({
       )}
 
       {phase === "uploading" && !error && (
-        <p className="text-neutral-500">
+        <p className="text-ink-faint">
           Saving your recording and starting the scoring run…
         </p>
       )}
       {phase === "uploading" && error?.kind === "upload" && (
-        <div className="rounded-lg border border-red-600 p-4">
-          <p className="font-medium text-red-600">
+        <div className={ALARM_NOTICE}>
+          <p className="font-medium">
             Your recording is safe in this tab, but saving it failed
           </p>
           <p className="mt-1 text-sm">{error.message}</p>
-          <p className="mt-1 text-sm text-neutral-500">
+          <p className="mt-1 text-sm text-ink-faint">
             Do not close this tab — retry until the upload succeeds.
           </p>
           <button
@@ -845,7 +853,7 @@ export default function SessionRoom({
             onClick={() => {
               if (blobRef.current) void uploadAndComplete(blobRef.current);
             }}
-            className="mt-3 rounded-lg border border-current px-4 py-2"
+            className={`${PRIMARY_BUTTON} mt-3`}
           >
             Retry upload
           </button>
@@ -853,7 +861,7 @@ export default function SessionRoom({
       )}
 
       {phase === "done" && (
-        <p className="text-neutral-500">
+        <p className="text-ink-faint">
           Recording saved. Opening your report…
         </p>
       )}
@@ -861,12 +869,12 @@ export default function SessionRoom({
       {phase === "connection-lost" && (
         <section>
           <h1 className="text-xl font-semibold">Connection lost</h1>
-          <p className="mt-3 text-sm text-neutral-600">
+          <p className="mt-3 text-sm text-ink-muted">
             {CONNECTION_LOST_MESSAGE}
           </p>
           <button
             type="button"
-            className="mt-6 rounded-lg border border-current px-5 py-3"
+            className={`${PRIMARY_BUTTON} mt-6`}
             onClick={() => window.location.reload()}
           >
             Try again
