@@ -332,6 +332,10 @@ class StubTable:
         self._call.setdefault("eq", []).append((column, value))
         return self
 
+    def lt(self, column, value):
+        self._call["lt"] = (column, value)
+        return self
+
     def order(self, column, desc=False):
         self._call["order"] = (column, desc)
         return self
@@ -562,6 +566,7 @@ def test_session_columns_cover_every_row_field_except_transcript():
     assert set(SESSION_COLUMNS.split(",")) == {
         "id", "package_id", "index", "status", "scoring_stage",
         "session_plan", "audio_path", "report", "created_at",
+        "updated_at", "secret_mints",
     }
 
 

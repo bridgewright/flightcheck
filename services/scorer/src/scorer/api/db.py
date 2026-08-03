@@ -9,7 +9,8 @@ callers handle one exception type regardless of backend.
 from __future__ import annotations
 
 import secrets
-from typing import Protocol, runtime_checkable
+from datetime import UTC, datetime, timedelta
+from typing import Literal, Protocol, runtime_checkable
 
 from pydantic import BaseModel, ConfigDict
 from supabase import Client, create_client
@@ -29,8 +30,41 @@ from scorer.schemas import (
 # get_transcript is the only reader of that column, and it reads nothing else.
 SESSION_COLUMNS = (
     "id,package_id,index,status,scoring_stage,session_plan,"
-    "audio_path,report,created_at"
+    "audio_path,report,created_at,updated_at,secret_mints"
 )
+
+# Paid-package policy constants (v0.5): $49 unlocks the trial package to 6
+# sessions for 30 days from payment. The web mirrors these in lib/pricing.ts.
+PAID_TOTAL_SESSIONS = 6
+EXPIRY_DAYS = 30
+
+
+def _now_iso() -> str:
+    return datetime.now(UTC).isoformat()
+
+
+def expires_at_from(paid_at: str) -> str:
+    """Expiry timestamp EXPIRY_DAYS after paid_at (ISO in, ISO out).
+
+    Accepts both '+00:00' offsets and the 'Z' suffix Polar timestamps use.
+    """
+    return (datetime.fromisoformat(paid_at)
+            + timedelta(days=EXPIRY_DAYS)).isoformat()
+
+
+def _stale_cutoff_iso(older_than_s: float) -> str:
+    """The updated_at cutoff for stale-row listing: now - older_than_s."""
+    return (datetime.now(UTC)
+            - timedelta(seconds=older_than_s)).isoformat()
+
+
+def _table_for(kind: Literal["package", "session"]) -> str:
+    """touch_updated_at's kind -> table name; unknown kinds raise ValueError
+    in every backend so a typo fails loudly instead of touching nothing."""
+    tables = {"package": "packages", "session": "sessions"}
+    if kind not in tables:
+        raise ValueError(f"unknown touch kind: {kind!r}")
+    return tables[kind]
 
 
 class PackageRow(BaseModel):
@@ -44,6 +78,16 @@ class PackageRow(BaseModel):
     rubric: Rubric | None
     user_id: str | None = None
     total_sessions: int = 6
+    # v0.5 payments columns (migration 005). Defaults keep every row stored
+    # before the migration validating. is_trial marks the first package per
+    # account and NEVER flips back on payment — paid state is "paid_at is
+    # not None"; expires_at = paid_at + EXPIRY_DAYS; order_id links the
+    # provisioning order; updated_at feeds the stuck-state reaper.
+    is_trial: bool = False
+    paid_at: str | None = None
+    expires_at: str | None = None
+    order_id: str | None = None
+    updated_at: str | None = None
 
 
 class SessionRow(BaseModel):
@@ -60,6 +104,28 @@ class SessionRow(BaseModel):
     session_plan: SessionPlan | None
     audio_path: str | None
     report: SessionReport | None
+    created_at: str | None = None
+    # v0.5 (migration 005): updated_at feeds the stuck-state reaper;
+    # secret_mints counts realtime-secret mints for the per-session cap.
+    updated_at: str | None = None
+    secret_mints: int = 0
+
+
+class OrderRow(BaseModel):
+    """One Polar order (migration 005). id/created_at are DB-generated:
+    build the row with both None, insert_order returns them filled.
+    polar_order_id is UNIQUE — the webhook's idempotency key."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    id: str | None = None
+    user_id: str
+    package_id: str
+    polar_order_id: str
+    polar_checkout_id: str | None = None
+    amount_minor: int | None = None   # e.g. 4900 for $49.00
+    currency: str | None = None
+    status: str | None = None
     created_at: str | None = None
 
 
@@ -148,6 +214,71 @@ class Database(Protocol):
         Unknown session ids raise KeyError like every other lookup."""
         ...
 
+    # ------------------------------------------------ v0.5 payments surface
+
+    def insert_order(self, order: OrderRow) -> OrderRow:
+        """Insert an order and return it with DB-generated id/created_at
+        filled. polar_order_id is UNIQUE: a duplicate insert raises (the
+        adapter surfaces postgrest's error, the fake ValueError) — callers
+        guard with find_order_by_polar_id first."""
+        ...
+
+    def find_order_by_polar_id(self, polar_order_id: str) -> OrderRow | None:
+        """The order provisioned from this Polar order id, or None. An
+        existence probe (webhook idempotency), so absence is None, not
+        KeyError."""
+        ...
+
+    def list_orders_for_user(self, user_id: str) -> list[OrderRow]:
+        """A user's orders, newest first; [] when the user has none."""
+        ...
+
+    def set_package_paid(self, package_id: str, order_id: str,
+                         paid_at: str) -> None:
+        """Flip a package to paid: paid_at, expires_at = paid_at +
+        EXPIRY_DAYS, order_id, total_sessions = PAID_TOTAL_SESSIONS (and an
+        updated_at touch) in one write. Idempotent, first write wins: a
+        package whose paid_at is already set is left untouched, so webhook
+        replays can never move the expiry window. is_trial is NOT cleared —
+        paid state is "paid_at is not None". Unknown ids raise KeyError."""
+        ...
+
+    def touch_updated_at(self, kind: Literal["package", "session"],
+                         id: str) -> None:
+        """Stamp updated_at = now (UTC ISO) on a package or session row.
+        Track C calls this on every status write so the stuck-state reaper
+        can spot stalled rows. Unknown kind raises ValueError; unknown id
+        raises KeyError."""
+        ...
+
+    def increment_secret_mints(self, session_id: str) -> int:
+        """Add one realtime-secret mint to the session and return the NEW
+        count (a NULL pre-migration column counts as zero). Read-then-write,
+        not atomic: mint calls for one session arrive from one user's room,
+        so the cap tolerates the benign race. Unknown ids raise KeyError."""
+        ...
+
+    def list_stale_packages(self, status: str,
+                            older_than_s: float) -> list[PackageRow]:
+        """Packages in `status` whose updated_at is older than now -
+        older_than_s. Rows with updated_at NULL are excluded (SQL lt()
+        semantics); every post-batch status write touches updated_at, so
+        only pre-batch rows can hide that way."""
+        ...
+
+    def list_stale_sessions(self, status: str,
+                            older_than_s: float) -> list[SessionRow]:
+        """Sessions in `status` whose updated_at is older than now -
+        older_than_s; same NULL-exclusion contract as list_stale_packages."""
+        ...
+
+    def reset_package_for_compile(self, package_id: str) -> None:
+        """Return a package to "compiling" (+ updated_at touch) so the
+        compile can be retried. A pure state reset: the caller (Track C's
+        retry endpoint) owns the only-when-failed guard and the recompile
+        dispatch. Unknown ids raise KeyError."""
+        ...
+
 
 def create_supabase_client() -> Client:
     """Supabase client from services/scorer/.env (server-side service-role key).
@@ -180,6 +311,11 @@ def _to_package_row(data: dict) -> PackageRow:
         ),
         user_id=data.get("user_id"),
         total_sessions=data.get("total_sessions", 6),
+        is_trial=data.get("is_trial") or False,
+        paid_at=data.get("paid_at"),
+        expires_at=data.get("expires_at"),
+        order_id=data.get("order_id"),
+        updated_at=data.get("updated_at"),
     )
 
 
@@ -203,6 +339,23 @@ def _to_session_row(data: dict) -> SessionRow:
             if data.get("report") is not None
             else None
         ),
+        updated_at=data.get("updated_at"),
+        secret_mints=data.get("secret_mints") or 0,
+    )
+
+
+def _to_order_row(data: dict) -> OrderRow:
+    """orders row dict (PostgREST) -> OrderRow."""
+    return OrderRow(
+        id=data["id"],
+        user_id=data["user_id"],
+        package_id=data["package_id"],
+        polar_order_id=data["polar_order_id"],
+        polar_checkout_id=data.get("polar_checkout_id"),
+        amount_minor=data.get("amount_minor"),
+        currency=data.get("currency"),
+        status=data.get("status"),
+        created_at=data.get("created_at"),
     )
 
 
@@ -359,3 +512,88 @@ class SupabaseDatabase:
         if raw is None:
             return None
         return [TranscriptSegment.model_validate(item) for item in raw]
+
+    # ------------------------------------------------ v0.5 payments surface
+
+    def insert_order(self, order: OrderRow) -> OrderRow:
+        payload = order.model_dump(mode="json")
+        for column in ("id", "created_at"):
+            # DB-generated defaults: a None value never rides the insert.
+            if payload[column] is None:
+                payload.pop(column)
+        data = self._client.table("orders").insert(payload).execute().data
+        return _to_order_row(data[0])
+
+    def find_order_by_polar_id(self, polar_order_id: str) -> OrderRow | None:
+        data = (self._client.table("orders").select("*")
+                .eq("polar_order_id", polar_order_id).execute().data)
+        if not data:
+            return None
+        return _to_order_row(data[0])
+
+    def list_orders_for_user(self, user_id: str) -> list[OrderRow]:
+        data = (self._client.table("orders").select("*")
+                .eq("user_id", user_id).order("created_at", desc=True)
+                .execute().data)
+        return [_to_order_row(row) for row in data]
+
+    def set_package_paid(self, package_id: str, order_id: str,
+                         paid_at: str) -> None:
+        # First write wins: replayed webhooks must never move the expiry
+        # window, so an already-paid package is read and left untouched.
+        if self.get_package(package_id).paid_at is not None:
+            return
+        data = (self._client.table("packages")
+                .update({"paid_at": paid_at,
+                         "expires_at": expires_at_from(paid_at),
+                         "order_id": order_id,
+                         "total_sessions": PAID_TOTAL_SESSIONS,
+                         "updated_at": _now_iso()})
+                .eq("id", package_id).execute().data)
+        if not data:
+            raise KeyError(package_id)
+
+    def touch_updated_at(self, kind: Literal["package", "session"],
+                         id: str) -> None:
+        table = _table_for(kind)
+        data = (self._client.table(table)
+                .update({"updated_at": _now_iso()})
+                .eq("id", id).execute().data)
+        if not data:
+            raise KeyError(id)
+
+    def increment_secret_mints(self, session_id: str) -> int:
+        data = (self._client.table("sessions").select("secret_mints")
+                .eq("id", session_id).execute().data)
+        if not data:
+            raise KeyError(session_id)
+        count = (data[0].get("secret_mints") or 0) + 1
+        updated = (self._client.table("sessions")
+                   .update({"secret_mints": count})
+                   .eq("id", session_id).execute().data)
+        if not updated:
+            raise KeyError(session_id)
+        return count
+
+    def list_stale_packages(self, status: str,
+                            older_than_s: float) -> list[PackageRow]:
+        data = (self._client.table("packages").select("*")
+                .eq("status", status)
+                .lt("updated_at", _stale_cutoff_iso(older_than_s))
+                .execute().data)
+        return [_to_package_row(row) for row in data]
+
+    def list_stale_sessions(self, status: str,
+                            older_than_s: float) -> list[SessionRow]:
+        data = (self._client.table("sessions").select(SESSION_COLUMNS)
+                .eq("status", status)
+                .lt("updated_at", _stale_cutoff_iso(older_than_s))
+                .execute().data)
+        return [_to_session_row(row) for row in data]
+
+    def reset_package_for_compile(self, package_id: str) -> None:
+        data = (self._client.table("packages")
+                .update({"status": "compiling", "updated_at": _now_iso()})
+                .eq("id", package_id).execute().data)
+        if not data:
+            raise KeyError(package_id)

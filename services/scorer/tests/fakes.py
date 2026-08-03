@@ -8,12 +8,19 @@ Defined once here and reused by every task's tests (imported as
 from __future__ import annotations
 
 import threading
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
-from typing import Any
+from typing import Any, Literal
 
 from google.genai import types
 
-from scorer.api.db import PackageRow, SessionRow
+from scorer.api.db import (
+    PAID_TOTAL_SESSIONS,
+    OrderRow,
+    PackageRow,
+    SessionRow,
+    expires_at_from,
+)
 from scorer.schemas import (
     CandidateProfile,
     Rubric,
@@ -170,6 +177,7 @@ class FakeDatabase:
     def __init__(self):
         self.packages: dict[str, PackageRow] = {}
         self.sessions: dict[str, SessionRow] = {}
+        self.orders: dict[str, OrderRow] = {}
         self.jd_urls: dict[str, str | None] = {}
         # Transcript lives OFF the session row (mirrors the real adapter's
         # explicit column lists): session_id -> stored segments.
@@ -177,8 +185,18 @@ class FakeDatabase:
         # Every successful set_scoring_stage call, in order, as
         # (session_id, stage) -- progression assertions read this.
         self.stage_writes: list[tuple[str, str]] = []
+        # When set, used as "now" for updated_at touches and stale-row
+        # cutoffs so v0.5 tests can run against a frozen clock; None means
+        # real UTC now (mirrors production).
+        self.now_iso: str | None = None
         self._package_seq = 0
         self._session_seq = 0
+        self._order_seq = 0
+
+    def _now(self) -> datetime:
+        if self.now_iso is not None:
+            return datetime.fromisoformat(self.now_iso)
+        return datetime.now(UTC)
 
     def create_package(self, jd_text: str, jd_url: str | None,
                        user_id: str | None = None) -> PackageRow:
@@ -298,6 +316,92 @@ class FakeDatabase:
         if session_id not in self.sessions:
             raise KeyError(session_id)   # unknown session, not "no transcript"
         return self.transcripts.get(session_id)
+
+    # ------------------------------------------------ v0.5 payments surface
+
+    def insert_order(self, order: OrderRow) -> OrderRow:
+        # Mirrors orders.polar_order_id UNIQUE: the real adapter raises
+        # postgrest's error on a duplicate, the fake ValueError.
+        for existing in self.orders.values():
+            if existing.polar_order_id == order.polar_order_id:
+                raise ValueError(
+                    f"duplicate polar_order_id: {order.polar_order_id!r}")
+        self._order_seq += 1
+        stored = order.model_copy(update={
+            "id": f"order-{self._order_seq}",
+            "created_at": f"2026-08-03T00:00:{self._order_seq:02d}+00:00",
+        })
+        self.orders[stored.id] = stored
+        return stored
+
+    def find_order_by_polar_id(self, polar_order_id: str) -> OrderRow | None:
+        for row in self.orders.values():
+            if row.polar_order_id == polar_order_id:
+                return row
+        return None
+
+    def list_orders_for_user(self, user_id: str) -> list[OrderRow]:
+        return [
+            row for row in reversed(list(self.orders.values()))
+            if row.user_id == user_id
+        ]
+
+    def set_package_paid(self, package_id: str, order_id: str,
+                         paid_at: str) -> None:
+        row = self.packages[package_id]
+        if row.paid_at is not None:
+            return  # first write wins (mirrors SupabaseDatabase)
+        self.packages[package_id] = row.model_copy(update={
+            "paid_at": paid_at,
+            "expires_at": expires_at_from(paid_at),
+            "order_id": order_id,
+            "total_sessions": PAID_TOTAL_SESSIONS,
+            "updated_at": self._now().isoformat(),
+        })
+
+    def touch_updated_at(self, kind: Literal["package", "session"],
+                         id: str) -> None:
+        if kind not in ("package", "session"):
+            raise ValueError(f"unknown touch kind: {kind!r}")
+        stamp = self._now().isoformat()
+        if kind == "package":
+            self.packages[id] = self.packages[id].model_copy(
+                update={"updated_at": stamp})
+        else:
+            self.sessions[id] = self.sessions[id].model_copy(
+                update={"updated_at": stamp})
+
+    def increment_secret_mints(self, session_id: str) -> int:
+        row = self.sessions[session_id]
+        count = row.secret_mints + 1
+        self.sessions[session_id] = row.model_copy(
+            update={"secret_mints": count})
+        return count
+
+    def list_stale_packages(self, status: str,
+                            older_than_s: float) -> list[PackageRow]:
+        cutoff = self._now() - timedelta(seconds=older_than_s)
+        return [
+            row for row in self.packages.values()
+            if row.status == status and row.updated_at is not None
+            and datetime.fromisoformat(row.updated_at) < cutoff
+        ]
+
+    def list_stale_sessions(self, status: str,
+                            older_than_s: float) -> list[SessionRow]:
+        cutoff = self._now() - timedelta(seconds=older_than_s)
+        return [
+            row for row in self.sessions.values()
+            if row.status == status and row.updated_at is not None
+            and datetime.fromisoformat(row.updated_at) < cutoff
+        ]
+
+    def reset_package_for_compile(self, package_id: str) -> None:
+        row = self.packages[package_id]
+        self.packages[package_id] = row.model_copy(update={
+            "status": "compiling",
+            "updated_at": self._now().isoformat(),
+        })
 
 
 class FakeStorage:
