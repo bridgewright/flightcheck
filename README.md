@@ -6,8 +6,8 @@
 
 - **App:** https://flightcheck.vercel.app
 - **Sample report (no signup):** https://flightcheck.vercel.app/sample-report
-  — a real session run by the developer, with identifying details removed
-  (flightcheck has no external users yet)
+  — a real session run by the developer; flightcheck has no external users
+  yet, so no customer's session is on display here
 - **Price:** $49 per job description. The first package on an account is a
   trial with one scored session; $49 unlocks that same package — same JD,
   same rubric — to six 20-minute sessions, and a 30-day window starts at
@@ -17,7 +17,7 @@
 
 ![flightcheck demo: paste a JD, preview the cited rubric, take the voice interview, read the honest report](docs/demo.gif)
 
-*Captured at v0.2, four frames: intake, the compiled rubric with its weights
+*Captured at v0.1, four frames: intake, the compiled rubric with its weights
 and sources, the session-room clock, the report. Not in it — sign-in, pricing,
 checkout, the session archive, the progress screen, i.e. everything the
 signed-in app grew afterwards. It gets re-recorded when the visual pass lands.*
@@ -66,8 +66,9 @@ flowchart LR
    (not ready / approaching / ready), per-dimension evidence, delivery
    metrics, and concrete drills — honestly, including "not ready yet".
 
-Release notes: [v0.2](docs/releases/v0.2.md) · [v0.1](docs/releases/v0.1.md) — the two
-tagged releases before this one; v0.5 is the top section of [CHANGELOG.md](CHANGELOG.md).
+Release notes: [v0.5](docs/releases/v0.5.md) · [v0.2](docs/releases/v0.2.md) ·
+[v0.1](docs/releases/v0.1.md) — one per tag, also published on the
+[releases page](https://github.com/bridgewright/flightcheck/releases).
 Architecture detail (data flow, storage layout): [docs/architecture.md](docs/architecture.md).
 Deploy runbook: [docs/deploy.md](docs/deploy.md).
 

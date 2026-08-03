@@ -10,8 +10,9 @@ these patterns.
 
 **Update note, 2026-08-03.** Chapter 3 is new. Before it, no pattern had been
 added here since 2026-07-26 — a full release arc and 170+ commits, including
-everything payments and untrusted input taught. The v0.2 pass touched only
-the scope line above, which then claimed a currency the file did not have.
+everything payments and untrusted input taught. The v0.2 pass touched the scope
+line above and an appendix heading, nothing else — and the scope line then
+claimed a currency the file did not have.
 The v0.5 release audit caught that; the appendix below now carries the
 *status* of the v0.1 plans rather than their promises. (v0.3 and v0.4 were
 internal milestones, never tagged, folded into v0.5.0.)
@@ -269,7 +270,9 @@ supports a verdict at all.
   **zero** judge calls, save no report, and end in a terminal state that
   preserves the user's session slot so the attempt is retriable. Above every
   floor but below a full-evidence bar: score, but stamp the report `limited`
-  and have the report say in its own words which limit applied. Full
+  and say so on the report itself. (Ours prints one fixed sentence covering
+  every near miss; naming which floor was the close one is the obvious next
+  increment, not something the pattern already delivers.) Full
   evidence: score normally.
 - **Keep every threshold in config, never in code.** You will move them once
   you have watched real sessions; that must be a configuration change, not a

@@ -487,15 +487,16 @@ screen in the product.*
   cookie on an include-list matcher covering every signed-in surface plus
   `/api`, and redirects an unauthenticated page request to
   `/login?next=…`; the return path is validated by `safeNextPath` before
-  it is ever followed. Server code reads identity in exactly one place —
-  `getViewer()` in `apps/web/lib/supabase/server.ts`. The Google OAuth
+  it is ever followed. Screens and API routes read identity only
+  through `getViewer()` in `apps/web/lib/supabase/server.ts`; the proxy in
+  `apps/web/lib/supabase/middleware.ts` is the one other reader. The Google OAuth
   path is written, typechecked, and wired to the same callback, but ships
   **off** behind `GOOGLE_AUTH_ENABLED = false` in
   `apps/web/app/login/page.tsx`: the provider is not configured yet, and a
   button that dead-ends on a raw provider error page is worse than no
   button.
-- **Why:** 012 moved the canonical URL space to login-scoped ids, and ids
-  need an owner. A recorded voice, a transcript, and a paid entitlement all
+- **Why:** ids need an owner, and this landed first so that they could have
+  one — 012 moved the canonical URL space onto accounts the following day. A recorded voice, a transcript, and a paid entitlement all
   have to belong to somebody, and "belongs to whoever holds this token" is
   exactly what 012 rejected. Supabase Auth was already on the other side of
   the database, RLS, and the storage buckets; a separate provider would add

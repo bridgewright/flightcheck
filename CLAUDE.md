@@ -1,6 +1,6 @@
 # CLAUDE.md — how this repo is built
 
-This product is built AI-natively. A human sets direction, writes the track briefs, and owns every merge; AI agents write the code and perform the first-pass review. The agents are Claude Code sessions and the Codex CLI, chosen per track (DECISIONS 007). This file is the standing contract for any AI agent working here; `AGENTS.md` is the Codex-specific addendum and does not weaken anything below.
+This product is built AI-natively. A human sets direction, writes the track briefs, and owns every merge; AI agents write the code and perform the first-pass review. The agents are Claude Code sessions and the Codex CLI, chosen per track (DECISIONS 024, which superseded 007). This file is the standing contract for any AI agent working here; `AGENTS.md` is the Codex-specific addendum and does not weaken anything below.
 
 ## Non-negotiables
 
@@ -19,7 +19,7 @@ Four phases. The shape matters more than the tooling.
 1. **Foundations — sequential, on `main`.** Every file that more than one track will touch changes exactly once, up front: schemas, shared client functions, typed errors, pricing constants. Nothing parallel touches them afterwards. This is what makes non-negotiable 7 enforceable instead of aspirational.
 2. **Implementation — parallel tracks.** One agent per track, each in its own git worktree and branch, holding an explicit owned-file list and nothing outside it. TDD. Tracks never push and never merge.
 3. **Review — one adversarial reviewer agent per track, with fix authority.** It reads the track's diff against the brief that produced it, confirms or discards each suspicion, fixes what it confirms, and hands the integrator a named list of what it could not. This is the first-pass review; the human reads after it, not instead of it.
-4. **Integration — the human controller, alone.** Tracks are cherry-picked onto `main` in a fixed order, then the **full gate suite re-runs on the merged tree** (`apps/web`: test, typecheck, lint, build · `services/scorer`: `make test`, `make lint`). Per-track green is not combined green.
+4. **Integration — the human controller, alone.** Tracks are cherry-picked onto `main` in a fixed order, then the **full gate suite re-runs on the merged tree** (`apps/web`: test, typecheck, lint, build · `services/scorer`: `make test`, `make lint`, both from the repo root). Per-track green is not combined green.
 
 ## What the commit log proves, and what it doesn't
 

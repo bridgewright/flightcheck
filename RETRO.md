@@ -204,15 +204,17 @@ closed by deferring background-tab timer throttling (queued silence ticks
 machine-gunning scaffolds on refocus) to "the adversarial stability harness
 (next release)", on the argument that a sixth blind patch would repeat the
 cycle above. The argument held. The forecast did not. The harness landed
-**eleven minutes after this paragraph was committed** — `a317eb9` at 23:09,
-then `f258364`…`a7fcbb9` between 23:16 and 23:30 the same night — the
-throttling bug went in as its third pinned seed, and `2b4ea38` fixed it
+**seven minutes after this paragraph was committed, and the bug was fixed
+four minutes after that** — `a317eb9` at 23:09:04, `f258364` at 23:16:28,
+`2b4ea38` at 23:20:52, the rest through 23:30 the same night. The throttling
+bug went in as the harness's third pinned seed, and `2b4ea38` fixed it
 test-first: a tick measuring absence rather than silence (`SUSPEND_GAP_S`,
 2 s, read off a monotonic clock) is treated as a resume, so a candidate who
-steps away and comes back is met quietly. The seeded rounds also caught
-three faults no user had reached yet — the scaffold ladder restarting on
-leaked speaker echo, the response debounce measured from the wrong instant,
-and one tick that could ask the interviewer to speak twice. The wrong
+steps away and comes back is met quietly. The generated rounds also caught two
+clock faults no user had reached — the response debounce measured from the
+wrong instant, and one tick that could ask the interviewer to speak twice —
+and writing the seed scenarios exposed a third, pure-layer hole on its own:
+the scaffold ladder restarting on leaked speaker echo. The wrong
 sentence then stood here for two days and over a hundred commits, in a file
 whose whole claim is that it records what happened, while any reader could
 disprove it with one `git log`. It is corrected in place rather than deleted:
@@ -282,8 +284,8 @@ conic-gradient readiness dial, and a session card drawn as a boarding pass
 with a stub, a perforation and a barcode. The skin was dark-only, so
 `globals.css` made Tailwind's `dark:` variant unconditional — the app stopped
 honoring the reader's OS theme in order to hold one look. Seen rendered
-together, the identity was put on hold the same day and four commits took
-every screen back to plain neutrals (`75fab51`…`374f5ea`): the dial became a
+together, the identity was put on hold the same day and three commits took
+every screen back to plain neutrals (`75fab51`, `9f1f240`, `374f5ea`): the dial became a
 stat block, the ticket a bordered card, the strip three dots. The cost was
 thirteen files styled twice and a global `dark:` override that had to be
 unwound. The part worth recording is what it did *not* cost: no route,
@@ -304,8 +306,9 @@ time: the first package on an account is a trial with one scored session, and
 $49 unlocks that same package — same JD, same rubric — to six sessions with
 a 30-day window that starts at payment (DECISIONS 018/019; constants in
 `apps/web/lib/pricing.ts`, with a test pinning them). Two things triggered the
-reversal. DECISIONS 008 had rejected a free tier to protect verdict integrity
-back when there were no accounts; once quotas, rate limits, and per-account
+reversal. DECISIONS 008 had rejected a free tier on the ground that free usage does not
+validate willingness to pay and anchors the perceived price at zero, back when
+there were no accounts; once quotas, rate limits, and per-account
 caps were enforced worker-side, one free scored session became the cheapest
 honest demonstration of the only thing this product sells — a verdict. And a
 won-denominated price fits badly on a product whose entire audience is
