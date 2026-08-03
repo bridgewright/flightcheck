@@ -120,8 +120,21 @@ export function verifyWebhookSignature(input: {
   if (!secret.startsWith(SECRET_PREFIX)) {
     return { ok: false, reason: "bad-secret" };
   }
-  const key = Buffer.from(secret.slice(SECRET_PREFIX.length), "base64");
-  if (key.length === 0) {
+  // Key derivation candidates. The Standard Webhooks spec says the part after
+  // "whsec_" is base64-encoded key bytes — but Polar's own verifier feeds the
+  // secret STRING to the HMAC (their docs base64-wrap it only to satisfy the
+  // standardwebhooks library, which decodes it straight back). Real deliveries
+  // arrived signed with the literal-string key while the spec-decoded key
+  // rejected them, so we accept a signature under any derivation of the SAME
+  // secret: (a) spec — base64-decoded bytes after the prefix, (b) the full
+  // secret string as UTF-8 bytes, (c) the after-prefix part as UTF-8 bytes.
+  const afterPrefix = secret.slice(SECRET_PREFIX.length);
+  const keys = [
+    Buffer.from(afterPrefix, "base64"),
+    Buffer.from(secret, "utf-8"),
+    Buffer.from(afterPrefix, "utf-8"),
+  ].filter((key) => key.length > 0);
+  if (keys.length === 0) {
     return { ok: false, reason: "bad-secret" };
   }
   // Standard Webhooks timestamps are unix SECONDS, digits only. Number("")
@@ -134,19 +147,22 @@ export function verifyWebhookSignature(input: {
   if (Math.abs(nowS - timestamp) > WEBHOOK_TOLERANCE_S) {
     return { ok: false, reason: "stale-timestamp" };
   }
-  const expected = createHmac("sha256", key)
-    .update(`${webhookId}.${webhookTimestamp}.${rawBody}`)
-    .digest();
+  const signedContent = `${webhookId}.${webhookTimestamp}.${rawBody}`;
+  const expectations = keys.map((key) =>
+    createHmac("sha256", key).update(signedContent).digest(),
+  );
   for (const entry of webhookSignature.split(" ")) {
     const [version, encoded] = entry.split(",", 2);
     if (version !== "v1" || !encoded) {
       continue;
     }
     const candidate = Buffer.from(encoded, "base64");
-    // timingSafeEqual throws on length mismatch; a wrong-length MAC is just
-    // a non-match, never a crash in the webhook route.
-    if (candidate.length === expected.length && timingSafeEqual(candidate, expected)) {
-      return { ok: true };
+    for (const expected of expectations) {
+      // timingSafeEqual throws on length mismatch; a wrong-length MAC is just
+      // a non-match, never a crash in the webhook route.
+      if (candidate.length === expected.length && timingSafeEqual(candidate, expected)) {
+        return { ok: true };
+      }
     }
   }
   return { ok: false, reason: "no-match" };

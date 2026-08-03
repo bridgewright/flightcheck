@@ -126,6 +126,41 @@ describe("verifyWebhookSignature", () => {
     expect(verify()).toEqual({ ok: true });
   });
 
+  // Polar signs with the secret STRING as the HMAC key rather than the
+  // spec's base64-decoded bytes (observed on real production deliveries —
+  // the spec-only verifier 403'd every real order.paid). Both string
+  // derivations of the same secret must verify.
+  it("accepts a signature keyed on the full secret string (Polar's live behavior)", () => {
+    const mac = createHmac("sha256", Buffer.from(SECRET, "utf-8"))
+      .update(`msg_1.${FRESH_TS}.${BODY}`)
+      .digest("base64");
+    expect(verify({ webhookSignature: `v1,${mac}` })).toEqual({ ok: true });
+  });
+
+  it("accepts a signature keyed on the after-prefix secret string", () => {
+    const mac = createHmac("sha256", Buffer.from(SECRET.slice("whsec_".length), "utf-8"))
+      .update(`msg_1.${FRESH_TS}.${BODY}`)
+      .digest("base64");
+    expect(verify({ webhookSignature: `v1,${mac}` })).toEqual({ ok: true });
+  });
+
+  it("still rejects a signature keyed on a DIFFERENT secret in any derivation", () => {
+    const other = `whsec_${Buffer.from("some-other-key").toString("base64")}`;
+    for (const key of [
+      Buffer.from(other.slice("whsec_".length), "base64"),
+      Buffer.from(other, "utf-8"),
+      Buffer.from(other.slice("whsec_".length), "utf-8"),
+    ]) {
+      const mac = createHmac("sha256", key)
+        .update(`msg_1.${FRESH_TS}.${BODY}`)
+        .digest("base64");
+      expect(verify({ webhookSignature: `v1,${mac}` })).toEqual({
+        ok: false,
+        reason: "no-match",
+      });
+    }
+  });
+
   it("accepts when ANY space-separated v1 entry matches", () => {
     const good = sign(SECRET, "msg_1", FRESH_TS, BODY);
     expect(
