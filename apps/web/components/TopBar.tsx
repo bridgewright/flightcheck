@@ -39,7 +39,7 @@ const SUMMARY =
 
 function Chevron() {
   return (
-    <span aria-hidden="true" className="text-[9px] text-ink-faint">
+    <span aria-hidden="true" className="text-label text-ink-faint">
       ▼
     </span>
   );
@@ -57,7 +57,7 @@ function PackageSwitcher({
   const active = packages.find((pkg) => pkg.id === activeId) ?? packages[0];
   return (
     <details className="relative order-2">
-      <summary className={`${SUMMARY} rounded-field px-2 py-1 text-fine text-ink-muted hover:bg-paper-sunk`}>
+      <summary className={`${SUMMARY} rounded-control px-2 py-1 text-fine text-ink-muted hover:bg-paper-sunk`}>
         <span className="max-w-36 truncate sm:max-w-48">
           {packageDisplayTitle(active.role_title)}
         </span>

@@ -267,8 +267,14 @@ select:focus-visible {
  * document and put a horizontal scrollbar on the page; they are not needed,
  * because both gradient stops end well inside the box and the edges are
  * already transparent. `pointer-events: none` keeps it inert, and it never
- * lies under body text at a strength that touches contrast: the strongest
- * stop is 40% of a colour that is itself a pastel, over a paper ground.
+ * lies under body text at a strength that touches contrast.
+ *
+ * That last clause used to read "the strongest stop is 40%" and was wrong: the
+ * asset's strongest stop was 0.95, the strongest ground it actually painted
+ * measured #edcad8, and the hero subhead fell below AA at phone widths under
+ * it. The stops now top out at 0.6, which is a contrast budget with the
+ * arithmetic recorded in the asset itself, and tests/design-system.test.ts
+ * checks the ceiling rather than trusting this sentence.
  */
 .hero-bloom {
   position: absolute;

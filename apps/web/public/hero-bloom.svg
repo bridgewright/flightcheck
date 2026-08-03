@@ -33,9 +33,9 @@
   -->
   <defs>
     <radialGradient id="soft">
-      <stop offset="0%" stop-color="#edc9d8" stop-opacity="0.95" />
-      <stop offset="45%" stop-color="#edc9d8" stop-opacity="0.55" />
-      <stop offset="75%" stop-color="#edc9d8" stop-opacity="0.18" />
+      <stop offset="0%" stop-color="#edc9d8" stop-opacity="0.6" />
+      <stop offset="45%" stop-color="#edc9d8" stop-opacity="0.35" />
+      <stop offset="75%" stop-color="#edc9d8" stop-opacity="0.11" />
       <stop offset="100%" stop-color="#edc9d8" stop-opacity="0" />
     </radialGradient>
   </defs>

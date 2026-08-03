@@ -4,6 +4,8 @@ import { fileURLToPath } from "node:url";
 
 import { describe, expect, it } from "vitest";
 
+import { verdictPillClasses } from "@/lib/report-format";
+
 import { loadSampleReport } from "@/app/sample-report/sample-data";
 import type { DimensionScore, SessionReport, Verdict } from "@/lib/types";
 import {
@@ -346,5 +348,45 @@ describe("the gauge is one instrument on two screens", () => {
     expect(gauge).toContain("aria-label");
     expect(gauge).toContain("No session has been scored yet.");
     expect(gauge).toContain("Latest overall score ${score.toFixed(1)} out of ${MAX_SCORE}.");
+  });
+});
+
+describe("the verdict word reaches the screen", () => {
+  // Dropping red/amber/green was a decision, not a loss. What it changed is
+  // that the WORD is now load-bearing: report-format maps both not_ready and
+  // approaching to the same plain CHIP, so nothing but the text tells a reader
+  // which verdict they got. The Phase 4 review proved the suite stayed green
+  // with the report's verdict heading replaced by a static string and with the
+  // archive pill's word moved to sr-only.
+  const read = (path: string) =>
+    readFileSync(fileURLToPath(new URL(path, import.meta.url)), "utf8");
+
+  it.each([
+    ["../components/ReportView.tsx", "the report's own headline output"],
+    ["../app/sessions/page.tsx", "the archive row's verdict pill"],
+  ])("%s prints the verdict, visibly", (file, what) => {
+    const source = read(file);
+    expect(source, `${what} no longer renders VERDICT_LABELS`).toContain(
+      "VERDICT_LABELS[",
+    );
+    // Visibly: not tucked into a screen-reader-only element, which would leave
+    // two verdicts rendering as the same grey chip with no word.
+    const usages = source.split("VERDICT_LABELS[").slice(1);
+    for (const usage of usages) {
+      const enclosing = source.slice(
+        Math.max(0, source.indexOf(usage) - 320),
+        source.indexOf(usage),
+      );
+      expect(enclosing, `${what} hides the verdict from sighted readers`).not.toMatch(
+        /sr-only[^>]*>\s*$/,
+      );
+    }
+  });
+
+  it("gives not_ready and approaching no colour to fall back on", () => {
+    // States the dependency rather than assuming it: if these two ever differ
+    // again, the assertions above stop being the only thing protecting the
+    // distinction, and whoever changes it should see why they existed.
+    expect(verdictPillClasses("not_ready")).toBe(verdictPillClasses("approaching"));
   });
 });

@@ -27,7 +27,7 @@ function CellBody({ cell }: { cell: TrajectoryCell }) {
   }
   if (cell.status !== "scored") {
     return (
-      <div className="py-1 text-[11px] text-ink-faint">
+      <div className="py-1 text-fine text-ink-faint">
         {STATUS_WORDS[cell.status]}
       </div>
     );
@@ -41,7 +41,7 @@ function CellBody({ cell }: { cell: TrajectoryCell }) {
           cell.overall.toFixed(1)
         )}
       </div>
-      <div className="text-[11px] text-ink-muted">
+      <div className="text-fine text-ink-muted">
         {cell.verdict === null ? "Scored" : VERDICT_LABELS[cell.verdict]}
       </div>
     </>

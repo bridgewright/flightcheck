@@ -1,5 +1,7 @@
 import { describe, expect, it } from "vitest";
 
+import { PACKAGE_SESSIONS, PRICE_DISPLAY, TRIAL_SESSIONS } from "@/lib/pricing";
+
 import {
   NAV_TABS,
   activeNavTab,
@@ -558,8 +560,22 @@ describe("isUnpaid", () => {
 });
 
 describe("unlockCtaLabel", () => {
-  it("names the full session count and the price from lib/pricing", () => {
-    expect(unlockCtaLabel()).toBe("Unlock all 6 sessions for $49");
+  it("offers what is actually left, not the whole package", () => {
+    // This assertion used to pin "Unlock all 6 sessions for $49", and the
+    // label was false at the only moment it renders: the button appears once
+    // the trial session is spent, so one of the six is already gone. It also
+    // contradicted the sentence directly above it in the same card and the
+    // landing's own description of the offer.
+    expect(unlockCtaLabel()).toBe("Unlock the remaining 5 sessions for $49");
+  });
+
+  it("derives every number rather than carrying one", () => {
+    // The count and the price both come from lib/pricing, so a price change
+    // or a package resize cannot leave this button quoting the old offer.
+    const label = unlockCtaLabel();
+    expect(label).toContain(String(PACKAGE_SESSIONS - TRIAL_SESSIONS));
+    expect(label).toContain(PRICE_DISPLAY);
+    expect(label).not.toContain(String(PACKAGE_SESSIONS));
   });
 });
 

@@ -42,9 +42,17 @@
 // cubic-bezier(0.165, 0.84, 0.44, 1), and it animates nothing else on a
 // control. No scale on press, no shadow lift, no size change.
 //
-// The interaction itself is the quiet part: the reference draws a control's
-// label at 62% ink and takes it to full ink on hover, so a button is calm
-// until you approach it and then commits. That is the whole gesture.
+// The interaction itself is the quiet part: a control is calm until you
+// approach it and then commits. The reference does that with the label at 62%
+// ink, and copying the number was a mistake here: our ink and ground are not
+// its ink and ground, and ink/60 on paper measures 3.73:1 against a 4.5 bar
+// while field/60 measures 1.99:1 against a 3.0 one. A secondary button has no
+// fill, so that border is the only thing identifying it as a control, and it
+// cleared the bar only while hovered.
+//
+// The same gesture, in tokens that pass at rest: ink-muted (5.95:1) going to
+// ink, and field (3.53:1) going to ink. Quiet is a step down the ink ramp, not
+// a transparency.
 const EASE_UI = "ease-[cubic-bezier(0.165,0.84,0.44,1)]";
 const PRESS = `transition-[background-color,color,border-color,opacity] duration-300 ${EASE_UI}`;
 
@@ -67,10 +75,10 @@ export const CTA_BUTTON =
   `inline-flex items-center justify-center gap-2.5 rounded-control bg-ink px-5 py-2 text-center text-paper ${ACTION_LABEL} ${PRESS} hover:bg-ink-muted disabled:cursor-wait disabled:opacity-50`;
 
 export const SECONDARY_BUTTON =
-  `inline-flex items-center justify-center gap-2 rounded-control border border-field/60 px-4 py-2 text-ink/60 ${ACTION_LABEL} ${PRESS} hover:border-field hover:text-ink disabled:cursor-wait disabled:opacity-50`;
+  `inline-flex items-center justify-center gap-2 rounded-control border border-field px-4 py-2 text-ink-muted ${ACTION_LABEL} ${PRESS} hover:border-ink hover:text-ink disabled:cursor-wait disabled:opacity-50`;
 
 export const CTA_SECONDARY_BUTTON =
-  `inline-flex items-center justify-center gap-2.5 rounded-control border border-field/60 px-5 py-2 text-center text-ink/60 ${ACTION_LABEL} ${PRESS} hover:border-field hover:text-ink`;
+  `inline-flex items-center justify-center gap-2.5 rounded-control border border-field px-5 py-2 text-center text-ink-muted ${ACTION_LABEL} ${PRESS} hover:border-ink hover:text-ink`;
 
 /** A destructive confirmation. The one place alarm belongs on a control, and
  * it arrives at the confirmation rather than at the invitation. */
@@ -124,7 +132,11 @@ export const PROSE_WIDTH = "max-w-[68ch]";
 // three sections. Inside the signed-in app, where these are field labels
 // rather than decoration, the cap does not apply.
 
-const CHIP_SHELL =
+/** The chip's geometry and type, exported so a screen that needs a new tone
+ * composes one instead of hand-rolling the shell. Two screens hand-rolled it
+ * while this was private, and both dropped `font-mono` in the process, so the
+ * same failure state rendered in sans on one screen and mono on another. */
+export const CHIP_SHELL =
   "inline-flex items-center rounded-full px-2 py-0.5 font-mono text-label uppercase";
 
 /** A section label. The default. */

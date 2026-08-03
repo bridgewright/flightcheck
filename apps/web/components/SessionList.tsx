@@ -3,7 +3,7 @@ import Link from "next/link";
 import { formatSessionDate } from "@/lib/home";
 import type { SessionStatus } from "@/lib/types";
 import type { SessionSummary } from "@/lib/worker";
-import { CHIP, CHIP_BLUSH, EMPTY_RULE, LABEL, SCORE_NUMBER, TABLE_ROW } from "@/lib/ui";
+import { CHIP, CHIP_ALARM, CHIP_BLUSH, EMPTY_RULE, LABEL, SCORE_NUMBER, TABLE_ROW } from "@/lib/ui";
 
 // A session that is not scored yet still has something true to say about
 // itself. "failed" is shown, not hidden: the product's promise is the bar,
@@ -19,15 +19,15 @@ const PILLS: Record<SessionStatus, { label: string; className: string } | null> 
   },
   failed: {
     label: "Scoring failed",
-    className: "inline-flex rounded-full bg-alarm-wash px-2.5 py-1 text-label uppercase text-alarm",
+    className: CHIP_ALARM,
   },
   insufficient: {
     label: "Not scored: not enough evidence",
-    className: "inline-flex rounded-full bg-alarm-wash px-2.5 py-1 text-label uppercase text-alarm",
+    className: CHIP_ALARM,
   },
   failed_permanent: {
     label: "Closed, not scored",
-    className: "inline-flex rounded-full bg-alarm-wash px-2.5 py-1 text-label uppercase text-alarm",
+    className: CHIP_ALARM,
   },
   scored: null,
 };

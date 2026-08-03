@@ -6,7 +6,7 @@ import Hero from "@/components/landing/Hero";
 import HowItWorks from "@/components/landing/HowItWorks";
 import PricingBlock from "@/components/landing/PricingBlock";
 import Section from "@/components/landing/Section";
-import { CLOSING } from "@/components/landing/copy";
+import { CLOSING, HERO } from "@/components/landing/copy";
 import Shell from "@/components/Shell";
 import { LINK, PAGE_HEADING, SUBTLE } from "@/lib/ui";
 import { getViewer } from "@/lib/viewer";
@@ -38,10 +38,13 @@ export const metadata: Metadata = publicMetadata({
   // user-visible string: it is the browser tab, the search result, and the
   // link preview.
   title: "flightcheck: would you pass the interview today?",
-  description:
-    "Paste the job description you're facing. A live interviewer holds you to " +
-    "that role's real bar, in English, out loud, and tells you honestly what " +
-    "is still missing.",
+  // The hero's own words, not a second copy of them. This is the browser tab,
+  // the search result, and the link preview, and it used to say "a live
+  // interviewer holds you to that role's real bar". The hero dropped "live"
+  // deliberately (the interviewer is an AI and the FAQ says so; "live" invited
+  // the reader to imagine a person) and the description kept it, because the
+  // register test reaches copy.ts exports and not this file.
+  description: HERO.body,
 });
 
 export default async function LandingPage() {

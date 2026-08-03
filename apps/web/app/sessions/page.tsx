@@ -84,7 +84,7 @@ function VerdictCell({ session }: { session: SessionSummary }) {
     // summary's verdict column — the number still speaks below.
     return session.verdict ? (
       <span
-        className={`inline-flex rounded-full px-2.5 py-0.5 text-[11px] font-medium ${verdictPillClasses(session.verdict)}`}
+        className={verdictPillClasses(session.verdict)}
       >
         {VERDICT_LABELS[session.verdict]}
       </span>
@@ -97,7 +97,7 @@ function VerdictCell({ session }: { session: SessionSummary }) {
   return (
     <span className="inline-flex flex-col gap-1">
       <span
-        className={`inline-flex self-start rounded-full px-2.5 py-0.5 text-[11px] font-medium ${pill.className}`}
+        className={`${pill.className} self-start`}
       >
         {pill.label}
       </span>

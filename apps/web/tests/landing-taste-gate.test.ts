@@ -36,6 +36,16 @@ const files = [
 
 const words = (line: string) => line.split(/\s+/).filter(Boolean).length;
 
+/** Source with comments blanked out. A file that documents the pattern it is
+ * forbidden to contain must not fail on its own documentation, and this gate
+ * did exactly that on its first run. */
+const emitted = (source: string) =>
+  source
+    .replace(/\/\*[\s\S]*?\*\//g, (block) => block.replace(/[^\n]/g, " "))
+    .replace(/(^|[^:])\/\/[^\n]*/g, (match, before: string) =>
+      before + match.slice(before.length).replace(/./g, " "),
+    );
+
 describe("no dash pretends to be punctuation", () => {
   it("has files to check", () => {
     expect(files.length).toBeGreaterThan(0);
@@ -130,17 +140,34 @@ describe("the small uppercase labels are rationed", () => {
   it("numbers the steps with a numeral rather than a step label", () => {
     // "Step 1 / Step 2 / Step 3" is banned by name (taste-skill 9.F): the step
     // content is the label. The order is still the mechanic here, so it is
-    // carried by a serif numeral instead of an uppercase eyebrow.
-    const steps = read("components/landing/HowItWorks.tsx");
-    expect(steps).not.toMatch(/\bStep \{?/);
+    // carried by a numeral in a faint chip.
+    //
+    // This assertion was bypassable twice over and the Phase 4 review proved
+    // it: `/\bStep \{?/` is case-sensitive, so the literally banned string
+    // "STEP 1" slipped past, and `/\bLABEL\b/` matched only the token NAME,
+    // so inlining the token's class string evaded both this check and the
+    // eyebrow cap that counts the same word. The re-point that replaced a
+    // serif check with `not.toMatch(/uppercase/)` was worse than inert:
+    // uppercase on a rendered digit has no visual effect at all.
+    //
+    // So the checks below are about what a reader would see: no step word in
+    // any casing, and no uppercase micro-label above the steps however it is
+    // spelled, whether through the token or by hand.
+    const source = read("components/landing/HowItWorks.tsx");
+    // The token's own identifier is not a step label, so it is taken out
+    // before the word is looked for.
+    const steps = emitted(source).replace(/STEP_NUMERAL/g, "");
+    expect(steps).not.toMatch(/\bstep\s*\{?\s*\d|\bstep\s+\{index/i);
     expect(steps).not.toMatch(/\bLABEL\b/);
-    // The numeral lives in the STEP_NUMERAL token, so the check follows it
-    // there. It was a display-scale serif for one day; the reference draws
-    // this as a small mono numeral in a faint square chip, which is what the
-    // token is now. What matters for this rule is unchanged: the order is
-    // carried by a numeral, not by an uppercase "STEP 1" eyebrow.
-    expect(steps).toContain("STEP_NUMERAL");
+    // The inlined form of the same thing. LABEL is mono + uppercase + the
+    // label size; any two of those together above a step is the eyebrow
+    // returning under another name.
+    expect(steps).not.toMatch(/uppercase[^"'`]*text-label|text-label[^"'`]*uppercase/);
+
+    // And the numeral is still a numeral, from the token, at a size the
+    // reader can tell from a heading.
+    expect(source).toContain("STEP_NUMERAL");
     expect(STEP_NUMERAL).toContain("font-mono");
-    expect(STEP_NUMERAL).not.toMatch(/\buppercase\b/);
+    expect(STEP_NUMERAL).toContain("text-label");
   });
 });

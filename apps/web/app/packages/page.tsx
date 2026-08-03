@@ -15,7 +15,7 @@ import {
   verdictPhrase,
 } from "@/lib/home";
 import type { Verdict } from "@/lib/types";
-import { CARD, CHIP, CHIP_BLUSH, FINE_PRINT, PAGE_HEADING, PRIMARY_BUTTON, SECONDARY_BUTTON, SUB_HEADING, SUBTLE } from "@/lib/ui";
+import { CARD, CHIP, CHIP_ALARM, CHIP_BLUSH, CHIP_SHELL, FINE_PRINT, PAGE_HEADING, PRIMARY_BUTTON, SECONDARY_BUTTON, SUBTLE, SUB_HEADING } from "@/lib/ui";
 import type { Viewer } from "@/lib/viewer";
 import { getViewer } from "@/lib/viewer";
 import type { PackageSummary } from "@/lib/worker";
@@ -30,8 +30,8 @@ export const dynamic = "force-dynamic";
 const PILL_CLASSES: Record<PillTone, string> = {
   neutral: CHIP,
   wait: CHIP_BLUSH,
-  bad: "bg-alarm-wash text-alarm",
-  done: "bg-ink text-paper",
+  bad: CHIP_ALARM,
+  done: `${CHIP_SHELL} bg-ink text-paper`,
 };
 
 function SignedOut() {

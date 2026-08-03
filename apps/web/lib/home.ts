@@ -388,10 +388,22 @@ export function effectiveTotalSessions(
   return isUnpaid(pkg) ? TRIAL_SESSIONS : pkg.total_sessions;
 }
 
-/** The one unlock sentence, derived from lib/pricing so the button can never
- * disagree with the price page. */
+/**
+ * The one unlock sentence, derived from lib/pricing so the button can never
+ * disagree with the price page.
+ *
+ * It says "the rest", not "all six". This button renders in exactly one state,
+ * trial spent, so at the moment a reader sees it one of the six sessions is
+ * already gone. "Unlock all 6 sessions" read as a purchase promise the product
+ * would not keep, and it contradicted the sentence directly above it in the
+ * same card (SessionTicket: "The rest of this package unlocks with payment")
+ * and the landing ("The $49 unlock opens the rest of that same package").
+ *
+ * The count stays derived rather than dropped, because a reader deciding
+ * whether $49 is worth it needs to know how many sessions they are buying.
+ */
 export function unlockCtaLabel(): string {
-  return `Unlock all ${PACKAGE_SESSIONS} sessions for ${PRICE_DISPLAY}`;
+  return `Unlock the remaining ${PACKAGE_SESSIONS - TRIAL_SESSIONS} sessions for ${PRICE_DISPLAY}`;
 }
 
 /** Where the unlock CTA sends the user: checkout for this exact package. */
