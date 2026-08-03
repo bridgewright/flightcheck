@@ -45,7 +45,7 @@ line-length = 100
 select = ["E", "F", "I", "UP", "RUF", "BLE"]
 
 [tool.ruff.lint.isort]
-known-first-party = ["scorer", "fakes", "factories", "backfill_transcripts"]
+known-first-party = ["scorer", "fakes", "factories", "backfill_transcripts", "purge_user"]
 
 [tool.pytest.ini_options]
 asyncio_mode = "auto"

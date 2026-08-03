@@ -10,6 +10,8 @@ main() is thin and exercised manually (operator-run, never part of the app).
 from types import SimpleNamespace
 
 import pytest
+
+from fakes import FakeDatabase
 from purge_user import (
     build_parser,
     collect_purge_plan,
@@ -17,8 +19,6 @@ from purge_user import (
     execute_purge,
     match_user_id,
 )
-
-from fakes import FakeDatabase
 from scorer.api.db import OrderRow
 from scorer.schemas import QuestionSpec, SessionPlan
 
