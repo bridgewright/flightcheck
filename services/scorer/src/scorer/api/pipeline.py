@@ -163,7 +163,7 @@ def score_session(
     evidence below the scoring floors -- no judge calls, no report, returns
     None; the slot stays retriable), or "failed". On failure the exception is
     re-raised after recording status; the API layer wraps this in a
-    swallow-and-log background job (_score_session_job).
+    swallow-and-log background job (api/jobs.py score_session_job).
     """
     try:
         _set_session_status(db, session_id, "scoring")

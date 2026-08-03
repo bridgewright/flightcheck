@@ -1,0 +1,44 @@
+"""Operator routes: liveness and usage metrics.
+
+Two routers, because these two endpoints do not share a security posture:
+
+* build_public_router carries /healthz -- NOT under /api and NOT behind the
+  bearer token, which is what makes it usable as Railway's health check.
+  Moved from create_app unchanged; v0.6 Track C (F-36) makes it check what
+  it claims, because returning true unconditionally is a liveness lie that
+  once let a dead build keep serving.
+* build_router carries the /api endpoints, bearer-authed like every other:
+  GET /metrics/usage, wired here in Phase 0 answering 501 and implemented by
+  Track B (F-13) as session completion rate, p50 latencies, and package
+  burn-through aggregated from existing columns.
+"""
+from __future__ import annotations
+
+from fastapi import APIRouter
+
+from scorer.api.deps import Deps
+from scorer.api.responses import NotImplementedBody
+
+
+def build_router(deps: Deps) -> APIRouter:
+    router = APIRouter()
+
+    @router.get("/metrics/usage", status_code=501,
+                response_model=NotImplementedBody)
+    def usage_metrics() -> NotImplementedBody:
+        return NotImplementedBody(
+            error="usage metrics are not available yet",
+        )
+
+    return router
+
+
+def build_public_router(deps: Deps) -> APIRouter:
+    """The unauthenticated, unprefixed surface. One route, deliberately."""
+    router = APIRouter()
+
+    @router.get("/healthz")
+    def healthz() -> dict[str, bool]:
+        return {"ok": True}
+
+    return router
