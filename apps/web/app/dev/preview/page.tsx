@@ -109,7 +109,7 @@ const TRANSCRIPT: TranscriptSegment[] = [
     14,
     52,
     "candidate",
-    "Uh, first of all, I think I'll I'll do interview with our customer, because, uh, the most important thing is to map the whole customer service process — who do what, and when — before we talk about any model at all.",
+    "Uh, first of all, I think I'll I'll do interview with our customer, because, uh, the most important thing is to map the whole customer service process (who do what, and when) before we talk about any model at all.",
   ),
   seg(
     55,
@@ -121,7 +121,7 @@ const TRANSCRIPT: TranscriptSegment[] = [
     66,
     118,
     "candidate",
-    "So, after defining the whole process, uh, the next step is to define which data is stored in what system, and how they accumulate those kind of, uh, data. Then we look for the step where a human is reading, uh, reading transcripts one by one — that is where an LLM can evaluate the call quality at scale.",
+    "So, after defining the whole process, uh, the next step is to define which data is stored in what system, and how they accumulate those kind of, uh, data. Then we look for the step where a human is reading, uh, reading transcripts one by one. That is where an LLM can evaluate the call quality at scale.",
   ),
   seg(
     121,
@@ -133,13 +133,13 @@ const TRANSCRIPT: TranscriptSegment[] = [
     133,
     189,
     "candidate",
-    "Um, we used a subsidiary indicator — the score that the LLM model actually made based on the transcripts — and we, uh, we compared it against the QA team's own sampled reviews. When the two disagreed we read those calls together with the customer, and that was, uh, that was how we calibrated it.",
+    "Um, we used a subsidiary indicator (the score that the LLM model actually made based on the transcripts) and we, uh, we compared it against the QA team's own sampled reviews. When the two disagreed we read those calls together with the customer, and that was, uh, that was how we calibrated it.",
   ),
   seg(
     192,
     200,
     "interviewer",
-    "Good. Last one: what did that project cost you personally — what would you do differently?",
+    "Good. Last one: what did that project cost you personally, and what would you do differently?",
   ),
   seg(
     203,
@@ -208,7 +208,7 @@ export default function DevPreviewPage() {
         <h1 className="text-2xl font-bold tracking-tight">Component preview</h1>
         <p className="mt-2 text-sm text-ink-muted">
           Dev-only. Dashboard and report components rendered from checked-in
-          fixtures — no worker, no account, no live session. This route 404s in
+          fixtures: no worker, no account, no live session. This route 404s in
           production.
         </p>
       </header>
@@ -270,7 +270,7 @@ export default function DevPreviewPage() {
           segments={TRANSCRIPT}
           observations={OBSERVATIONS}
           audioUrl={null}
-          audioCaption="Your recording. This is what was scored — nothing else."
+          audioCaption="Your recording. This is what was scored. Nothing else."
         />
       </Section>
     </main>

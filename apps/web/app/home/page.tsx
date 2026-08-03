@@ -178,7 +178,7 @@ export default async function HomePage({
           <div className="flex flex-col gap-3 px-5 py-5">
             <div className={LABEL}>Compile failed</div>
             <p className="text-sm text-ink-muted">
-              The rubric for this package didn&apos;t compile — most often
+              The rubric for this package didn&apos;t compile, most often
               because the JD page couldn&apos;t be read. Retry the compile, or
               start over with the JD pasted as text.
             </p>

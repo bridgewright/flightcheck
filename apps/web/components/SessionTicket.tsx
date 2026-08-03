@@ -59,13 +59,13 @@ export default function SessionTicket({
             </div>
             {trial ? (
               <Rule live>
-                Your trial session is used. The rest of this package — same JD,
-                same rubric, fresh topics — unlocks with payment.
+                Your trial session is used. The rest of this package (same JD,
+                same rubric, fresh topics) unlocks with payment.
               </Rule>
             ) : (
               <Rule live={false}>
                 {exhaustedSessionsLine(totalSessions)} A new package covers a new
-                JD — or the same one again.
+                JD, or the same one again.
               </Rule>
             )}
           </>

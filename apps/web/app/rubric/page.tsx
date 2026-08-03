@@ -101,8 +101,8 @@ export default async function RubricPage({
           </h1>
           <p className="text-ink-muted">
             We are reading the JD, researching how this role actually
-            interviews, and compiling your rubric. This page refreshes itself
-            — usually 1&ndash;2 minutes.
+            interviews, and compiling your rubric. This page refreshes itself.
+            Compiling usually takes 1-2 minutes.
           </p>
         </div>
       </Shell>
@@ -124,7 +124,7 @@ export default async function RubricPage({
             We could not compile this package
           </h1>
           <p className="text-ink-muted">
-            Rubric compilation failed — most often because the JD page could
+            Rubric compilation failed, most often because the JD page could
             not be read. No charge, nothing saved.{" "}
             <Link href="/new" className={QUIET_LINK}>
               Try again
@@ -153,7 +153,7 @@ export default async function RubricPage({
         <div className="mb-8 border-b border-hairline pb-8">
           <p className="text-2xl font-bold tracking-tight">This is the bar.</p>
           <p className="mt-2 text-ink-muted">
-            Every session is scored against these dimensions — nothing else.
+            Every session is scored against these dimensions. Nothing else.
           </p>
         </div>
       ) : null}

@@ -270,7 +270,7 @@ function TrajectoryHeader({
         </p>
       ) : progressLoaded && previous === null ? (
         <p className="mt-2 text-sm">
-          Your first scored session — the baseline the next ones move against.
+          Your first scored session: the baseline the next ones move against.
         </p>
       ) : null}
       {/* In the limited state the banner above carries the limits note. */}
@@ -285,7 +285,7 @@ function audioCaption(state: SessionDetailState): string {
   switch (state) {
     case "scored":
     case "limited":
-      return "Your recording. This is what was scored — nothing else.";
+      return "Your recording. This is what was scored. Nothing else.";
     case "scoring":
       return "Your recording. Scoring runs against this exact audio.";
     default:
@@ -373,7 +373,7 @@ export default async function SessionDetailPage({
       audioCaption={audioCaption(state)}
       unavailableNote={
         transcriptFetchFailed
-          ? "Couldn't load the transcript right now — reload to try again."
+          ? "Couldn't load the transcript right now. Reload to try again."
           : "Transcript unavailable for this session."
       }
     />
@@ -432,15 +432,15 @@ export default async function SessionDetailPage({
   };
   const body: Record<Exclude<SessionDetailState, "scored" | "limited">, string> = {
     insufficient:
-      "This session ended before there was enough to score fairly. Numbers from partial evidence would be a guess, so there are none. The slot is preserved — run the session again when you're ready.",
+      "This session ended before there was enough to score fairly. Numbers from partial evidence would be a guess, so there are none. The slot is preserved; run the session again when you're ready.",
     not_started:
       "This session hasn't happened yet. Its slot is waiting for you.",
     scoring:
       "Transcription, delivery metrics, and dual-channel judging usually take a few minutes. This page refreshes itself.",
     failed:
-      "We could not score this session — most often an unreadable recording. We show failures instead of papering over them. The slot is preserved; run it again whenever you're ready.",
+      "We could not score this session, most often because the recording could not be read. We show failures instead of papering over them. The slot is preserved; run it again whenever you're ready.",
     closed:
-      "This session was retried several times without producing a scoreable result, so it is closed and the slot is spent. Whatever was saved — transcript, recording — stays available below.",
+      "This session was retried several times without producing a scoreable result, so it is closed and the slot is spent. Whatever was saved (transcript, recording) stays available below.",
   };
   const narrowState = state as Exclude<SessionDetailState, "scored" | "limited">;
   const stage = state === "scoring" ? scoringStageCopy(session.scoring_stage) : null;

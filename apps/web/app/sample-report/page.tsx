@@ -43,7 +43,7 @@ export default async function SampleReportPage() {
         <div className={`${DIVIDER} flex flex-col items-start gap-3 border-t pt-8`}>
           <p className={`${MUTED} text-sm`}>
             Every report is scored against a rubric compiled from the job description
-            you paste — not this one.
+            you paste, not this one.
           </p>
           <Link href="/new" className={PRIMARY_BUTTON}>
             Compile your own interview package

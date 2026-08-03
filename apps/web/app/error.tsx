@@ -14,7 +14,7 @@ export default function AppError({ reset }: { error: Error; reset: () => void })
         Something broke on our side.
       </h1>
       <p className="max-w-md text-sm text-ink-muted">
-        Reload the page — your sessions and reports are safe. If this keeps
+        Reload the page. Your sessions and reports are safe. If this keeps
         happening, it is a bug on our end, not something you did.
       </p>
       <button type="button" onClick={reset} className={PRIMARY_BUTTON}>

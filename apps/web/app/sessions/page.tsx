@@ -325,13 +325,13 @@ export default async function SessionsPage({
       <div className="mt-6">
         {activeSessions === null ? (
           <p className="text-sm text-ink-muted">
-            Couldn&apos;t load this package&apos;s sessions right now — this page
+            Couldn&apos;t load this package&apos;s sessions right now. This page
             retries by itself.
           </p>
         ) : activeSessions.length === 0 ? (
           <div className="flex flex-col items-start gap-4 py-6">
             <p className="text-sm text-ink-muted">
-              Nothing here yet — your first session appears the moment you finish
+              Nothing here yet. Your first session appears the moment you finish
               it.
             </p>
             <Link href="/home" className={PRIMARY_BUTTON}>

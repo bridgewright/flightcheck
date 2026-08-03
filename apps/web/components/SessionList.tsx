@@ -68,7 +68,7 @@ export default function SessionList({
       </h2>
       {newestFirst.length === 0 ? (
         <p className="text-sm text-ink-muted">
-          Nothing here yet — your first session appears the moment you finish it.
+          Nothing here yet. Your first session appears the moment you finish it.
         </p>
       ) : (
         <ul>

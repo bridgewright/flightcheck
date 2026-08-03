@@ -89,7 +89,7 @@ function LoginForm() {
         </h1>
         {searchParams.get("error") === "auth" && (
           <p className={`${ERROR_TEXT} mb-4`} role="alert">
-            That sign-in link didn&apos;t work — it may have expired. Try again.
+            That sign-in link didn&apos;t work; it may have expired. Try again.
           </p>
         )}
         {error && (
@@ -99,7 +99,7 @@ function LoginForm() {
         )}
         {sentAt !== null ? (
           <div className="flex flex-col gap-4">
-            <p>Check your email — we sent you a sign-in link.</p>
+            <p>Check your email. We sent you a sign-in link.</p>
             <p className={`${MUTED} text-sm`}>
               It can take a minute to arrive. If it isn&apos;t there, check
               your spam folder.

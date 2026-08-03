@@ -110,7 +110,7 @@ export default function ProgressDimensionTable({
       </div>
       <p className="mt-1.5 text-[11px] text-ink-faint">
         Net is the latest score minus the first scored session&apos;s, on the
-        rubric&apos;s 1–{SCORE_MAX} scale.
+        rubric&apos;s 1-{SCORE_MAX} scale.
       </p>
     </section>
   );
