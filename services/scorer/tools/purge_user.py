@@ -80,6 +80,10 @@ def match_user_id(users: Iterable[Any], email: str) -> str:
     account is the one mistake this tool must never make.
     """
     wanted = email.strip().lower()
+    if not wanted:
+        # An unset shell variable (--email "$EMAIL") must not silently match
+        # an email-less auth user -- refuse instead of guessing.
+        raise LookupError("--email is empty; pass a real address or --user-id")
     matches = [
         user for user in users
         if (getattr(user, "email", None) or "").strip().lower() == wanted

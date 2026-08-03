@@ -125,6 +125,16 @@ def test_match_user_id_refuses_an_unknown_email():
                       "missing@example.com")
 
 
+def test_match_user_id_refuses_an_empty_email():
+    # --email "$EMAIL" with an unset variable must not resolve to an
+    # email-less auth user -- that would purge an arbitrary wrong account.
+    users = [_user("u-noemail", None), _user("u-2", "real@example.com")]
+    with pytest.raises(LookupError, match="empty"):
+        match_user_id(users, "")
+    with pytest.raises(LookupError, match="empty"):
+        match_user_id(users, "   ")
+
+
 def test_match_user_id_refuses_an_ambiguous_email():
     users = [_user("u-1", "dup@example.com"), _user("u-2", "dup@example.com")]
     with pytest.raises(LookupError, match="matches 2"):
