@@ -1,8 +1,15 @@
-# Deploy runbook — flightcheck v0.1
+# Deploy runbook — flightcheck
 
 Three deploy units: `apps/web` on Vercel, `services/scorer` on Railway, Supabase for
 Postgres + Storage. This file lists **env var names only** — values live in each
 platform's secret store and are never written into the repo, logs, or docs.
+
+Sections 0–4 are the standing runbook, current as of **v0.5.0 (2026-08-03)**.
+Section 5 is the first-launch ritual, written in the tense it was run in for
+v0.1 and left that way — those steps happened. The one part of it that is not
+one-time is the anonymization checklist in §5.1.2: it re-runs whenever the
+public sample report is regenerated, and it now carries the record of the
+release where it was ticked without being satisfied.
 
 ## 0. Pre-deploy checklist
 
@@ -37,8 +44,9 @@ platform's secret store and are never written into the repo, logs, or docs.
 1. Create a project at supabase.com (pick a region close to the Railway worker).
    Note the project URL and the service-role key from Project Settings > API.
 2. SQL Editor: run every file in `docs/supabase/migrations/` in filename order
-   (`001_init.sql`, then `002_scoring_stage.sql` — added alongside the
-   scoring-stage feature — and so on): paste each file's full contents, run it,
+   — as of v0.5 that is `001_init.sql`, `002_scoring_stage.sql`,
+   `003_accounts_multisession.sql`, `004_session_transcript.sql`,
+   `005_payments_trial_expiry.sql`: paste each file's full contents, run it,
    confirm `Success. No rows returned`, then move to the next. Later migrations
    assume earlier ones already ran, so the order is not optional. `001_init.sql`
    creates the `packages` and `sessions` tables. When upgrading an existing
@@ -61,7 +69,14 @@ platform's secret store and are never written into the repo, logs, or docs.
    start command would silently omit the ffmpeg install.
 3. Build and start come from `services/scorer/nixpacks.toml` (nixpacks adds
    `ffmpeg` to the default Python toolchain; start command
-   `uv run python -m scorer.api.app`, which serves on `$PORT`).
+   `uv run python -m scorer.api.app`, which serves on `$PORT`). The same file
+   pins `NIXPACKS_UV_VERSION` — leave it pinned. On 2026-08-03 Railway's
+   builder briefly stopped supplying that variable, the install step became
+   the invalid `pip install uv==`, and **every** build failed while the last
+   good image kept serving: `/healthz` and the Railway dashboard both read
+   green while nothing shipped. A health check proves an image is
+   alive, not that it is the image you just built — after any deploy, confirm
+   the newest deployment itself reached SUCCESS.
 4. Variables (names only — set values in the Railway dashboard):
    - `OPENAI_API_KEY`
    - `GEMINI_API_KEY`
@@ -72,6 +87,11 @@ platform's secret store and are never written into the repo, logs, or docs.
    - `WORKER_API_TOKEN` — generate once with `openssl rand -hex 32`; the same
      value goes to Vercel below
    - optional: `SSL_CERT_FILE`
+   - optional: `SENTRY_DSN` — enables error monitoring. Unset is a clean no-op
+     (`scorer.observability.init_sentry`), and PII is off either way
+     (`send_default_pii=False`), so events carry ids and tracebacks but never
+     candidate text or tokens. If you do set it, error monitoring is a
+     subprocessor — the privacy policy already lists one.
    - **`SCORER_CORPUS_DIR` — do NOT set in production.** It is a local-dev
      bypass, not a cache: when set, the worker skips the `corpus` bucket sync
      entirely and reads that directory instead. On Railway it would silently
@@ -101,8 +121,27 @@ limits do not apply to the already-running container.
    - `SUPABASE_SERVICE_ROLE_KEY` (used by the recordings route to mint
      signed upload URLs for the private `recordings` bucket — the browser
      then PUTs the recording straight to Supabase Storage, so multi-megabyte
-     audio never passes through a Vercel function body limit)
+     audio never passes through a Vercel function body limit). The Polar
+     webhook route reads `SUPABASE_SECRET_KEY` first and falls back to this
+     name, so setting only this one is fine.
+   - `POLAR_ACCESS_TOKEN` and `POLAR_PRODUCT_ID` (v0.5 — server-side hosted
+     checkout creation). Absent or empty, `/checkout` renders the honest
+     "payments are not available right now" state and charges nothing; it
+     does not crash, so a missing value is easy to miss.
+   - `POLAR_WEBHOOK_SECRET` (v0.5 — verifies the `order.paid` webhook).
+     **Set this or payments provision nothing:** unset, the webhook route
+     answers 503 by design rather than trusting an unverified payload, so
+     checkout succeeds, the customer is charged, and no package unlocks.
 3. Deploy. Note the production URL.
+4. Point the Polar webhook at `https://<vercel-domain>/api/webhooks/polar` and
+   subscribe it to `order.paid`. Polar signs deliveries with the literal
+   secret **string**, not the base64-decoded bytes the Standard Webhooks spec
+   describes — the verifier accepts any derivation of the same secret for that
+   reason (`lib/polar.ts`, fixed at `84e3434`). Verify with a real delivery
+   from Polar, never with a payload signed by this repo's own code: a
+   locally-signed test proves only self-consistency, and that is exactly how
+   every real `order.paid` came to 403 in production while the tests were
+   green.
 
 ## 4. Smoke checklist (release-blocking)
 
@@ -127,11 +166,21 @@ limits do not apply to the already-running container.
       talks only to the Vercel origin, OpenAI's Realtime endpoints, and the
       Supabase Storage host (the signed-URL recording PUT — the signed URL is
       single-purpose and short-lived, not a stored secret).
+- [ ] `curl -s -o /dev/null -w "%{http_code}\n" https://<railway-domain>/openapi.json`
+      returns `404`, and so do `/docs` and `/redoc`. FastAPI publishes all
+      three unauthenticated by default; on this service they are off
+      (`create_app`). They were **on** in production from the worker's first
+      commit until the v0.5 release audit — bearer auth held on every `/api`
+      route, so nothing leaked, but the full schema of all fourteen paths,
+      request bodies included, was public.
 - [ ] **Kill switch noted** (cost/abuse incident on the public URL): pause the
       Railway worker service, or rotate `WORKER_API_TOKEN` on Railway only —
       either immediately stops all compile/scoring spend while the static
-      pages stay up. v0.1 has no per-user rate limiting; this is the
-      operator's containment lever.
+      pages stay up. Since v0.5 the worker also carries its own per-account
+      fixed-window limits and per-row attempt caps
+      (`services/scorer/config/product.toml`, `[limits]`), but those are
+      in-process and reset on deploy — they bound burst abuse, they are not
+      the containment lever. This is.
 
 ## 5. Post-deploy release steps (operator, release-blocking)
 
@@ -203,6 +252,28 @@ release.**
          public JD, so the JD company may stay; if any private
          application-target detail leaked into an answer, remove it.
    - [ ] Set `report.session_id` to `"sample-anon-001"`.
+
+   > **This checklist has failed once — recorded 2026-08-03.** The client
+   > reference box above was ticked at the v0.1 launch and was not actually
+   > satisfied. `apps/web/public/sample-report.json` — the fixture behind
+   > `/sample-report`, which is the no-signup surface the README sends every
+   > reviewer to — shipped with evidence quotes reading "one of my clients when
+   > I was in consulting firm", "we collected the whole data that the client
+   > was actually managing", and a judge rationale naming "a consulting firm".
+   > It stayed live in production from v0.1 until the v0.5 release audit found
+   > it; neutralized at `2ffd643`.
+   >
+   > What the box missed: no name and no employer string was in that file, so
+   > the name and employer greps in step 3 came back clean and the item read as
+   > done. The identifier was **relational** — a client existing at all places
+   > the speaker inside a client-serving firm, and the engagement detail
+   > narrows it further. Two working rules from it: this item cannot be
+   > discharged by grep, only by reading every evidence quote and rationale end
+   > to end and asking what the sentence implies about where the speaker
+   > worked; and the fixture is regenerated by step 1 from a live session, so
+   > passing once does not carry forward — the checklist runs again in full
+   > every time the sample is refreshed.
+
 3. Verify the scrub with greps for your real name, current employer, and every
    client name (expected: **no output** from each), for example:
 

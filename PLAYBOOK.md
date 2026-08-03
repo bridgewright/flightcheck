@@ -1,10 +1,20 @@
 # PLAYBOOK — reusable patterns from building flightcheck
 
-Patterns that survived contact with real APIs, real audio, and real eval
-numbers. Everything here is written from the shipped implementation (v0.1–v0.2) —
-file paths are real, numbers are from recorded runs, and anything not yet
-shipped is labeled as planned. See [RETRO.md](RETRO.md) for the failures that
-produced these patterns.
+Patterns that survived contact with real APIs, real audio, real money, and
+real eval numbers. Everything here is written from the shipped implementation
+through v0.5.0 — rubric compilation, raw-audio delivery scoring, the paid
+product, and the parallel process that builds them. File paths are real,
+numbers come from recorded runs, and anything unshipped is labeled unshipped
+rather than planned. See [RETRO.md](RETRO.md) for the failures that produced
+these patterns.
+
+**Update note, 2026-08-03.** Chapter 3 is new. Before it, no pattern had been
+added here since 2026-07-26 — a full release arc and 170+ commits, including
+everything payments and untrusted input taught. The v0.2 pass touched only
+the scope line above, which then claimed a currency the file did not have.
+The v0.5 release audit caught that; the appendix below now carries the
+*status* of the v0.1 plans rather than their promises. (v0.3 and v0.4 were
+internal milestones, never tagged, folded into v0.5.0.)
 
 ---
 
@@ -44,10 +54,12 @@ source (a research citation URL copied verbatim, or a private corpus doc as
 (`services/scorer/src/scorer/schemas.py`) is the gate of record — a
 citation-less dimension is a `ValidationError`, not a style issue.
 
-**Caveat (v0.1, disclosed in the release notes):** grounded-search citations
-are captured at compile time as Google grounding *redirect* URLs, which can
-expire. The citation title carries the publisher domain, so the source stays
-identifiable; resolving redirects to durable publisher URLs is planned.
+**Caveat, first disclosed at v0.1 and still open at v0.5:** grounded-search
+citations are captured at compile time as Google grounding *redirect* URLs,
+which can expire. The citation title carries the publisher domain, so the
+source stays identifiable. Resolving those redirects to durable publisher
+URLs was written up as near-term work at v0.1 and has not been done —
+`sweep.py` still stores the grounding chunk's `web.uri` verbatim.
 
 ### 1.2 BARS anchors: make the model score behavior, not impressions
 
@@ -60,21 +72,29 @@ then assign a number. This is what broke the judge's "coverage scoring"
 failure mode (see 1.4): impression scoring saturates; behavior-vs-anchor
 comparison discriminates.
 
-### 1.3 Private evidence corpus + few-shot re-injection
+### 1.3 Show the compiler the output you accept, not just the task you want
 
-The compiler prompt carries excerpts from a private corpus of interview
-evidence and up to two few-shot example rubrics
-(`services/scorer/src/scorer/rubric/corpus.py`; format documented in
-`services/scorer/corpus/README.md`). The few-shots are human-corrected
-`Rubric` JSON documents — compiled rubrics that a human reviewed and fixed,
-fed back as format-and-quality references.
+Give a compile prompt two things a general model does not have: domain
+evidence, and examples of output a human already signed off on. Load both
+from outside the repo at run time, so raising quality is a data change rather
+than a prompt edit — and so private material never becomes a commit. Cap the
+examples (two is enough to fix format and bar; more crowds out the task
+itself) and let the loader return empty rather than fail, so a checkout
+without the private material still runs.
 
-Honest scope note: the *mechanism* (corpus sync from a private bucket,
-few-shot loading and prompt injection) is shipped in v0.1; the correction
-*loop* is manual — an operator curates the corrected rubrics into the bucket.
-Making that a recurring flywheel is v0.2 work. The corpus content itself is
-never committed (workspace confidentiality rule; the public repo carries only
-the format README and one neutral example doc).
+Implementation: `services/scorer/src/scorer/rubric/corpus.py` reads corpus
+markdown and up to two few-shot `Rubric` JSON documents synced from a private
+bucket; the format is documented in `services/scorer/corpus/README.md`. The
+few-shots are human-corrected rubrics — compiled output a human reviewed and
+fixed, fed back as format-and-quality references. The corpus content itself
+is never committed (workspace confidentiality rule; the public repo carries
+only the format README and one neutral example doc).
+
+Honest scope note, restated 2026-08-03: the *mechanism* shipped in v0.1 and
+the correction *loop* is still manual — an operator curates corrected rubrics
+into the bucket by hand. The v0.1 text called automating that "v0.2 work"; it
+did not ship in v0.2 and is not scheduled now. Read it as a habit that
+depends on an operator, not as a flywheel.
 
 ### 1.4 The golden-triplet discrimination gate — and why it earned its keep
 
@@ -184,14 +204,179 @@ from the committed recording protocol, not committed audio.
 - Keep model IDs in config (`services/scorer/config/product.toml`) —
   providers drift, and the eval gate exists to catch drift before users do.
 
-### Appendix — v0.1 ship-status snapshot (historical record, not a pattern)
+---
 
-| | Status |
-| --- | --- |
-| Grounded sweep + cited BARS compile + validation gate | shipped |
-| Golden-triplet L1 gate with human blind-rank calibration | shipped (N=3 triplets) |
-| DSP + audio-judge dual layer with conflict flagging | shipped |
-| L3 controlled-triplet gate | shipped (2 triplets; DSP separability recorded, not yet baselined) |
-| Few-shot correction as a recurring flywheel | planned (v0.2 — mechanism shipped, loop manual) |
-| Durable publisher citation URLs (resolve grounding redirects) | planned (v0.2) |
-| Larger eval N, per-trial score recording for passing trials | planned (v0.2) |
+## Chapter 3 — Turning a pipeline into a paid product
+
+The problem: once the thing takes money, accepts text written by strangers,
+and is built by several agents at once, four assumptions break — that your own
+test suite defines correctness, that spending model tokens is always the right
+move, that input is data, and that a green branch is a green tree.
+
+### 3.1 Verify a payment webhook against a real delivery, never against a fixture you signed
+
+A fixture signed by your own code tests exactly one thing: that your verifier
+agrees with your reading of the spec. It cannot tell you whether the provider
+reads the spec the same way.
+
+- **Do not treat a payment webhook as verified until a real delivery from the
+  provider has been accepted in production.** A green unit suite is a
+  prerequisite, not the evidence. If no customer has paid yet, place the
+  order yourself and watch the delivery land.
+- **When the live signature disagrees with the published spec, do not pick a
+  side — accept any derivation of the same secret.** Compute the expected MAC
+  under every plausible key derivation and accept a match on any of them.
+  Security is unchanged, because every candidate key is a function of the one
+  shared secret: a payload signed with a different secret matches nothing in
+  any derivation, and a tampered body matches nothing either. Switching to
+  the other single reading would only move the outage.
+- **Fail closed on the way in.** No secret configured → refuse the request,
+  never process it; an order you cannot resolve to exactly one entitlement →
+  5xx, so the provider retries and the failure is visible in logs; a replay of
+  a verified event → safe, because provisioning dedupes on the provider's
+  order id rather than trusting delivery-once.
+- **Reject stale timestamps in both directions.** An old capture must not
+  replay, and a far-future stamp is only ever a forgery.
+
+What this cost here: flightcheck implemented Standard Webhooks exactly as
+published — secret is `whsec_` + base64 key bytes, signed content is
+`{id}.{timestamp}.{body}` — and every real `order.paid` delivery returned 403
+in production while a locally signed, spec-compliant payload verified green in
+the test suite. Polar feeds the secret *string* to the HMAC; its documentation
+base64-wraps it only to satisfy the standardwebhooks library, which decodes it
+straight back. The fix (`84e3434`, `apps/web/lib/polar.ts`) hashes under all
+three derivations — spec base64 bytes, the whole secret string, the
+after-prefix string — and a test asserts that a *different* secret is rejected
+under all three (`apps/web/lib/polar.test.ts`). Route behavior is in
+`apps/web/app/api/webhooks/polar/route.ts`.
+
+The delivery that exposed this was the project owner's own $49 order against
+production, refunded afterwards; flightcheck has no external customers. Had
+that order not been placed, the first person to find the bug would have been
+the first person to pay.
+
+### 3.2 Refuse to score what cannot be scored
+
+The instinct when a session comes back thin is to score it anyway and hedge
+the wording. Do the opposite: decide *before* spending whether the evidence
+supports a verdict at all.
+
+- **Gate model spend on evidence volume, measured from artifacts you already
+  have.** Duration, candidate turns, candidate words — a pure function over
+  the transcript and the recording length. No model call is needed to decide
+  whether to make model calls.
+- **Return a three-way verdict, not a boolean.** Below the floor: make
+  **zero** judge calls, save no report, and end in a terminal state that
+  preserves the user's session slot so the attempt is retriable. Above every
+  floor but below a full-evidence bar: score, but stamp the report `limited`
+  and have the report say in its own words which limit applied. Full
+  evidence: score normally.
+- **Keep every threshold in config, never in code.** You will move them once
+  you have watched real sessions; that must be a configuration change, not a
+  release.
+- **Apply the same discipline upward: batch external-eval spend to release
+  gates.** One run per gate with the result committed; a diagnostic re-run is
+  an exception you justify, not a habit.
+
+Implementation: `services/scorer/src/scorer/report/eligibility.py` (pure, no
+I/O), thresholds under `[eligibility]` in
+`services/scorer/config/product.toml`, called from
+`services/scorer/src/scorer/api/pipeline.py` ahead of every judge call;
+rationale in [DECISIONS.md](DECISIONS.md) #014. Honest limit: this gate has
+unit tests (`services/scorer/tests/test_eligibility.py`) and no eval-gate
+coverage — the release suites judge answers, they do not exercise the refusal
+path.
+
+The product argument and the cost argument are the same argument. A verdict
+drawn from a few minutes of speech is noise sold as signal, and the person
+paying for the verdict is the one who cannot tell.
+
+### 3.3 Fence untrusted text before you try to detect attacks on it
+
+Injection *detection* is a research problem; fencing is an afternoon. Ship the
+fence first, and say plainly that it is a floor.
+
+- **Wrap every user-controlled span in explicit markers**, preceded by one
+  standing note that the enclosed text is data and that instructions appearing
+  inside it are never followed.
+- **Neutralize the marker characters inside the fence.** Otherwise a payload
+  closes the fence from within and everything after it reads as prompt.
+  Replace them with lookalike characters so the text stays readable to the
+  model and to whoever debugs the prompt later.
+- **Strip invisible carriers at intake** — zero-width and bidi controls, BOM,
+  soft hyphen, HTML comments and tags. That is the payload no human reviewing
+  the source document can see.
+- **Flatten anything that must sit inline on an instruction line:** collapse
+  whitespace (a newline inside a resume "name" would otherwise open a fresh
+  prompt line) and cap the length.
+- **Do not touch the surrounding prompt wording while doing any of this.**
+  Judge prompts are eval-calibrated; fencing wraps data without editing
+  instructions. Then re-run the gate to show the wrapper moved nothing.
+
+Implementation: `services/scorer/src/scorer/promptsafe.py` (`fence`,
+`inline`, `strip_hidden_text`), applied at every prompt site that carries user
+text — rubric compiler, content judge, research sweep, session planner,
+profile intake — with `strip_hidden_text` at the API intake boundary in
+`services/scorer/src/scorer/api/app.py`. Stance and the deliberate split
+between fencing now and detection later are recorded in
+[DECISIONS.md](DECISIONS.md) #021.
+
+Honest limit: this is fencing and stripping only. There is no detection, and
+the unit tests (`services/scorer/tests/test_promptsafe.py`) prove the
+wrapper's behavior, not resistance to an attacker. The v0.5 gate re-ran layer
+1 with the fences in place and rubric discrimination held at 1.0
+([evals/reports/2026-08-03-v05-gate.md](evals/reports/2026-08-03-v05-gate.md)),
+which shows the fences did not degrade judging — it does not show they stop
+anything. An adversarial eval suite (F-11b) is scheduled for the next
+release; nothing here should be read as it having run.
+
+### 3.4 Carve file ownership, not features, to run tracks in parallel
+
+Parallel agents do not fail on merge conflicts. They fail when two tracks hold
+different beliefs about the same file. Cut the work so that cannot happen.
+
+- **Make the unit of a track an exclusive file list, not a feature.** If two
+  candidate tracks want the same file, they are one track, or the cut is
+  wrong.
+- **Land shared-file changes first, alone.** Schemas, config, shared clients,
+  pricing constants — change them once in a preceding standalone commit that
+  every track builds on, then never touch them in parallel work.
+- **One worktree and one branch per track. Tracks never merge and never
+  push.** Integration is one owner's job, in a fixed cherry-pick order.
+- **Re-run the full gate on the merged tree, and re-run the previous tag
+  before blaming the merge.** Per-track green is not combined green. When the
+  v0.2 merged tree failed rubric discrimination at 0.667 twice, a control
+  probe on the v0.1.0 checkout passed in the same window — which replaced "our
+  merge regressed the judge" with the finding that was actually true: an N=3
+  gate flickering on a boundary triplet
+  ([evals/reports/2026-08-01-v02-gate.md](evals/reports/2026-08-01-v02-gate.md)).
+- **Check commit identity at every integration.** Delegating to an external
+  CLI executor cost four separate authorship contaminations across this build,
+  each caught and corrected at cherry-pick; that correction is the only reason
+  the public history reads as a single author.
+
+The contract the tracks work under is public rather than folklore:
+[CLAUDE.md](CLAUDE.md) for how a release is built, [AGENTS.md](AGENTS.md) for
+the worktree, branch and no-push rules the delegated executor obeys.
+
+---
+
+## Appendix — ship-status snapshot (record, not a pattern)
+
+The right-hand column is the correction the v0.5 audit forced. Three rows that
+v0.1 labeled "planned (v0.2)" are still open two releases later; they are
+re-labeled rather than deleted, because quietly dropping your own promises is
+the failure mode this appendix exists to catch.
+
+| | At v0.1 (2026-07-26) | At v0.5 (2026-08-03) |
+| --- | --- | --- |
+| Grounded sweep + cited BARS compile + validation gate | shipped | shipped |
+| Golden-triplet L1 gate with human blind-rank calibration | shipped (N=3 triplets) | shipped, still N=3 |
+| DSP + audio-judge dual layer with conflict flagging | shipped | shipped |
+| L3 controlled-triplet gate | shipped (2 triplets; DSP separability recorded, not yet baselined) | unchanged — judge accuracy gated, DSP separability still not baselined |
+| Few-shot correction as a recurring flywheel | planned (v0.2 — mechanism shipped, loop manual) | **not shipped**; loop still manual, and no longer scheduled |
+| Durable publisher citation URLs (resolve grounding redirects) | planned (v0.2) | **not shipped** |
+| Larger eval N, per-trial score recording for passing trials | planned (v0.2) | **not shipped**; failing trials record their scores, passing trials still do not |
+| Scoring-eligibility gate ahead of judge spend (3.2) | — | shipped v0.5; unit-tested, no eval-gate coverage |
+| Delimiter fencing + hidden-text strip (3.3) | — | shipped v0.5; fencing only, no detection, no adversarial suite |
+| Payment webhook verified by a real production delivery (3.1) | — | verified 2026-08-03 on one real order — the owner's own, refunded |

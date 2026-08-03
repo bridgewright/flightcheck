@@ -77,6 +77,10 @@ Format per entry: Context · Options · Choice · Why · Rejected because · Rev
 
 ## 007 — Implementer bake-off: Claude subagent default, Codex validated reserve
 
+*Superseded by 024 (2026-08-03): the default flipped to Codex. The pilot
+measurement below stands as recorded; the "Rejected — Codex as default"
+line no longer describes practice.*
+
 - **Decision:** the default implementer for plan tasks stays a Claude
   subagent; the Codex dispatch path (`/delegate-codex`) is kept as a
   validated reserve, not retired. Re-test on design-open tasks in v0.2.
@@ -121,6 +125,18 @@ Format per entry: Context · Options · Choice · Why · Rejected because · Rev
 - **Revisit when:** real-usage metrics show sessions completing cleanly
   through the new arc (v0.2) and report quality lands (v0.3) — payments
   then leads the following version.
+- **Superseded in part (2026-08-03) — the version map above did not
+  survive contact.** What actually shipped: the v0.3 work (report quality)
+  and the v0.4 work (accounts, the complete signed-in webapp, session
+  history, progress) landed in production but were **never tagged** — they
+  are internal milestones folded into v0.5. Payments then shipped **as
+  v0.5**, not after it, and curriculum-lite moved to v0.6+. The tag line of
+  record is therefore v0.1.0 → v0.2.0 → v0.5.0; 0.3 and 0.4 are not being
+  tagged retroactively, because a tag invented after the fact is not a
+  release rhythm, it is a decoration. The entry's substance held — depth
+  before payments, and payments still shipped last — but the numbered plan
+  it published was wrong for two versions and is corrected here rather
+  than rewritten above.
 
 ## 009 — server_vad + create_response:false carries the silence machinery (2026-08-01)
 
@@ -169,6 +185,14 @@ Format per entry: Context · Options · Choice · Why · Rejected because · Rev
 - **Revisit when:** rubric compilation becomes fast enough (<10 s) that
   freshness beats reuse, or per-candidate rubric variation becomes a
   product feature.
+- **Narrowed (2026-08-03), once accounts existed (022):** reuse is
+  **same-account only** — `find_ready_rubric_by_jd(jd_text, user_id)`
+  matches the requesting user's own "ready" packages and nothing else, and
+  a request carrying no `user_id` never reuses at all. The rule as written
+  above matched globally, which would have copied the source package's
+  `candidate_profile` — one customer's own resume-derived name and
+  background — onto another customer's package. Same JD across two
+  accounts now pays for two compiles; that is the correct price.
 
 ## 011 — a commit pending across a suspension gap is dropped (2026-08-01)
 
@@ -218,6 +242,9 @@ Format per entry: Context · Options · Choice · Why · Rejected because · Rev
   authorization models forever, and every future screen decides twice.
 - **Revisit when:** F-10 provisioning design, which decides how a paid
   package first meets its owner.
+- **Revisit answered (2026-08-03):** F-10 shipped in 017. A paid package
+  meets its owner through their signed-in account; provisioning mints no
+  token. 012 holds unchanged.
 
 ## 013 — transcripts persist before judging; audio and transcript retained (2026-08-03)
 
@@ -240,6 +267,8 @@ Format per entry: Context · Options · Choice · Why · Rejected because · Rev
 - **Revisit when:** a retention/deletion policy must be decided before
   payments open (F-10) or when account deletion ships — whichever comes
   first.
+- **Revisit executed (2026-08-03):** 020 — retention, deletion, and refund
+  surfaces shipped with payments. Still no automatic deletion.
 
 ## 014 — scoring eligibility floors: below them, zero judge calls (2026-08-03)
 
@@ -249,8 +278,9 @@ Format per entry: Context · Options · Choice · Why · Rejected because · Rev
   stays retriable (consistent with the guard-ended slot policy). Between
   the floors and the full-evidence bars (900 s duration, 600 candidate
   words) the report is marked `limited` and its limits note says so.
-  Thresholds live in `config/product.toml` `[eligibility]`, not in code.
-  Duration ground truth is the wav file itself, not transcript timestamps.
+  Thresholds live in `services/scorer/config/product.toml` `[eligibility]`,
+  not in code. Duration ground truth is the wav file itself, not
+  transcript timestamps.
 - **Why:** honest verdicts need evidence. A real interviewer who saw four
   minutes would say "we did not see enough" — not produce a number and
   stand behind it. Numbers from thin evidence would be a guess wearing a
@@ -292,6 +322,14 @@ Format per entry: Context · Options · Choice · Why · Rejected because · Rev
   prompt change riding a 40-commit batch, checkable only at the gate.
 - **Revisit when:** the next eval-gated release — the judge-authored
   headline and the strengths/weaknesses pass go through it together.
+- **Revisit fired, not acted on (2026-08-03):** the v0.5 gate ran and
+  passed (`evals/reports/2026-08-03-v05-gate.md`), but the judge-authored
+  pass did not ride it. The headline is still synthesized deterministically
+  in `services/scorer/src/scorer/report/compile.py`, and
+  `DimensionScore.strengths`/`weaknesses` still ship as empty defaults.
+  Stated plainly because the gate does not cover it either: the v0.5 suites
+  measure rubric discrimination and the delivery judge, not report field
+  quality. Carried to the next eval-gated release.
 
 ## 017 — merchant of record: Polar, verified for a KR individual seller (2026-08-03)
 
@@ -318,20 +356,26 @@ Format per entry: Context · Options · Choice · Why · Rejected because · Rev
 - **Revisit when:** Polar's store review rejects the account; fees rise
   past ~10% effective; or payout reliability to KR proves poor in the
   first months of real settlement.
+- **Not as clean as this reads (2026-08-03):** the Standard Webhooks
+  verification Polar documents does not match how Polar's live deliveries
+  are actually signed — every real `order.paid` 403'd against a
+  spec-exact verifier. Recorded in full as 023. The provider choice
+  stands; the integration cost one production incident more than the
+  documentation implied it would.
 
 ## 018 — $49 single price and the trial-then-unlock package (2026-08-03)
 
 - **Decision:** pricing is **$49 USD everywhere**, from one constant
-  (`lib/pricing.ts`) with a pinning test; the ₩89,000 figure is retired
-  from every surface. The package model: the account's **first package is
-  a trial** carrying one free session; **$49 unlocks the SAME package** —
-  same JD, same rubric — to its full 6 sessions. One implementation
-  consequence is recorded openly: the worker's quota chokepoint keys on
-  `paid_at` alone, so **every unpaid package grants the 1-session trial
-  quota**, not just the account's first (`is_trial` marks records and
-  copy, never quota). A second JD therefore also gets one free session
-  before its $49 unlock. The exposure is bounded by the package cap
-  (10/account) and the per-user create rate limits.
+  (`apps/web/lib/pricing.ts`) with a pinning test; the ₩89,000 figure is
+  retired from every surface. The package model: the account's **first
+  package is a trial** carrying one free session; **$49 unlocks the SAME
+  package** — same JD, same rubric — to its full 6 sessions. One
+  implementation consequence is recorded openly: the worker's quota
+  chokepoint keys on `paid_at` alone, so **every unpaid package grants the
+  1-session trial quota**, not just the account's first (`is_trial` marks
+  records and copy, never quota). A second JD therefore also gets one free
+  session before its $49 unlock. The exposure is bounded by the package
+  cap (10/account) and the per-user create rate limits.
 - **Why:** this revises 008's stance that no free tier exists. What 008
   actually protected was verdict integrity and cost discipline before the
   webapp existed; with accounts, quotas, rate limits, and caps now
@@ -350,13 +394,13 @@ Format per entry: Context · Options · Choice · Why · Rejected because · Rev
   unpaid packages per account, sessions consumed, no conversions); or
   conversion data argues the trial should widen or narrow.
 
-## 019 — the 30-day window starts at payment and blocks only new starts (2026-08-03)
+## 019 — the 30-day window starts at payment and closes the interview room (2026-08-03)
 
 - **Decision:** `expires_at = paid_at + 30 days`, set once by the
-  idempotent payment flip (replays can never move it). Expiry blocks
-  **new session starts only** — a distinct `package-expired` refusal,
-  not the exhausted one — while reports, transcripts, and replays stay
-  readable forever. Trials (no `paid_at`) never expire.
+  idempotent payment flip (replays can never move it). Expiry closes
+  **every route into the interview room** — a distinct `package-expired`
+  refusal (410), not the exhausted one — while reports, transcripts, and
+  replays stay readable forever. Trials (no `paid_at`) never expire.
 - **Why:** the clock starts when money changes hands, not when a rubric
   compiles — anything else charges the user for compile time or shelf
   time. Keeping artifacts readable is the retention promise of 013; a
@@ -366,6 +410,23 @@ Format per entry: Context · Options · Choice · Why · Rejected because · Rev
 - **Rejected — full lockout at expiry:** simpler, dishonest.
 - **Revisit when:** real usage shows 30 days misfits the interview-prep
   arc (utilization data, F-13).
+- **Corrected (2026-08-03, same day):** this entry and its heading first
+  read "expiry blocks **new session starts only**". That understated the
+  blast radius of its own code. In the worker's `POST /sessions`
+  (`services/scorer/src/scorer/api/app.py`) the `is_expired` check runs
+  **before** the retriable-resume branch, so after expiry a *resume* is
+  refused too: a session already created and left `planned`, `failed`, or
+  `insufficient` cannot be picked back up. The endpoint's own docstring
+  says so — "410, resumes included". What genuinely stays open is every
+  read (report, transcript, replay) and the scoring of a session that was
+  already recorded: `POST /sessions/{id}/complete` carries no expiry check,
+  so a session in flight when the window closes still gets its report.
+  The sharp edge, stated rather than hidden: capacity unused at the
+  boundary is gone, including the slot a `failed` or `insufficient` row
+  would otherwise have handed back, and 020's refund window (14 days from
+  payment) does not reach day 30. A last-day failure has no in-product
+  remedy — only a support mail. Accepted for v0.5 as the price of a
+  bounded window; F-13 utilization data is what would reopen it.
 
 ## 020 — retention and deletion v0: policy page, mailto intake, operator purge (2026-08-03)
 
@@ -373,11 +434,12 @@ Format per entry: Context · Options · Choice · Why · Rejected because · Rev
   what is kept (recordings, transcripts, reports, orders — privately, for
   scoring and replay) and how deletion works today: a prefilled deletion
   email from settings, executed by the operator with
-  `tools/purge_user.py` (dry-run by default, rows + storage objects)
-  within a stated 7 days. The refund page states the honest-verdict rule:
-  the verdict itself is never refund grounds; technical failures refund
-  within 14 days. Legal copy renders its commercial numbers from
-  `lib/pricing.ts` — it cannot drift from the product.
+  `services/scorer/tools/purge_user.py` (dry-run by default, rows +
+  storage objects) within a stated 7 days. The refund page states the
+  honest-verdict rule: the verdict itself is never refund grounds;
+  technical failures refund within 14 days. Legal copy renders its
+  commercial numbers from `apps/web/lib/pricing.ts` — it cannot drift from
+  the product.
 - **Why:** charging money without deletion, retention, and refund
   surfaces is trust debt at the exact moment trust is being asked for;
   a manual process honestly described beats a self-serve flow shipped
@@ -410,3 +472,159 @@ Format per entry: Context · Options · Choice · Why · Rejected because · Rev
   cheap half.
 - **Revisit when:** F-11b lands with the eval suite; or a live injection
   attempt is observed in transcripts.
+
+## 022 — accounts: Supabase Auth, passwordless email links, no passwords (2026-08-02)
+
+*Decided and shipped 2026-08-02; written down 2026-08-03, when the v0.5
+audit found that nothing in this log covered the change that gates every
+screen in the product.*
+
+- **Decision:** identity is Supabase Auth — the same service that already
+  holds the data (006). Sign-in is a **passwordless email link**
+  (`signInWithOtp`, then `/auth/callback` exchanges the code for a
+  session); **no password is ever collected, hashed, or stored**, so there
+  is none to leak, reset, or stuff. `apps/web/proxy.ts` refreshes the auth
+  cookie on an include-list matcher covering every signed-in surface plus
+  `/api`, and redirects an unauthenticated page request to
+  `/login?next=…`; the return path is validated by `safeNextPath` before
+  it is ever followed. Server code reads identity in exactly one place —
+  `getViewer()` in `apps/web/lib/supabase/server.ts`. The Google OAuth
+  path is written, typechecked, and wired to the same callback, but ships
+  **off** behind `GOOGLE_AUTH_ENABLED = false` in
+  `apps/web/app/login/page.tsx`: the provider is not configured yet, and a
+  button that dead-ends on a raw provider error page is worse than no
+  button.
+- **Why:** 012 moved the canonical URL space to login-scoped ids, and ids
+  need an owner. A recorded voice, a transcript, and a paid entitlement all
+  have to belong to somebody, and "belongs to whoever holds this token" is
+  exactly what 012 rejected. Supabase Auth was already on the other side of
+  the database, RLS, and the storage buckets; a separate provider would add
+  a second user table to reconcile with `packages.user_id` and every
+  storage path. Passwordless then deletes a whole liability class for one
+  honest dependency: email delivery becomes the only door into the account.
+  That cost is stated rather than hidden — a cooldown-gated resend on the
+  login page is the whole mitigation today.
+- **Rejected — email and password:** a credential store this product has
+  no use for. Hashing choices, reset flows, breach exposure, and support
+  load, bought for an audience whose entire relationship with the product
+  is one 30-day window.
+- **Rejected — a second auth service, or hand-rolled sessions:** two
+  identity systems to hold in sync with one `user_id` column, and every
+  future screen deciding twice which one is authoritative — the same
+  reason 012 refused to run two URL spaces.
+- **Rejected — shipping the Google button as it stood:** it was live and
+  broken; the OAuth redirect landed on a raw JSON error page because the
+  provider was never configured. Behind a flag, the code path stays
+  typechecked and enabling it later is one line rather than a rewrite.
+- **Revisit when:** the Google provider is configured (v0.6) and the flag
+  flips; or real-usage metrics show sign-in links failing to arrive, which
+  is the specific failure mode passwordless buys.
+
+## 023 — Polar webhook: accept any derivation of the SAME secret (2026-08-03)
+
+- **Decision:** `verifyWebhookSignature` (`apps/web/lib/polar.ts`) accepts
+  a `v1` MAC computed under **any of three derivations of the one
+  configured secret**: (a) the Standard Webhooks reading — base64-decoded
+  bytes after `whsec_`, (b) the whole secret string as UTF-8 bytes, (c) the
+  after-prefix string as UTF-8 bytes. Nothing else loosens. The signed
+  content is still `{webhook-id}.{webhook-timestamp}.{rawBody}` over the
+  **raw** body, the ±300 s tolerance is still enforced in both directions,
+  and the compare is still `timingSafeEqual`; in the webhook route a
+  missing secret is still a 503 that processes nothing, and any non-match
+  is still a 403 that provisions nothing. Committed at `84e3434`.
+- **Why:** the spec-exact implementation **403'd every real `order.paid`
+  delivery in production**, while a locally signed spec-compliant payload
+  verified green in the test suite. The test signed with our own code, so
+  all it ever proved was that we agreed with ourselves. Polar's own
+  verifier feeds the secret STRING to the HMAC; its docs base64-wrap the
+  secret only to satisfy the `standardwebhooks` library, which decodes it
+  straight back. The general lesson, and the reason this entry exists: **a
+  signature test that signs with your own code proves self-consistency,
+  not interoperability. A third-party signature scheme is verified only by
+  a real delivery.**
+- **The security bound, stated explicitly, because widening an accepted
+  signature space is the right thing to interrogate:** all three
+  derivations key on the SAME secret. The accepted set grows from one MAC
+  to three — and an attacker without the secret can compute none of them,
+  so it is three unguessable values instead of one, not a weaker check. A
+  tampered body, a signature under a *different* secret in any of the
+  three derivations, a stale or far-future timestamp, a non-`v1` scheme,
+  and a wrong-length MAC are all still rejected, each with its own test in
+  `apps/web/lib/polar.test.ts` — including "still rejects a signature
+  keyed on a DIFFERENT secret in any derivation". Not widened: the signed
+  content, the tolerance window, the constant-time compare, the
+  fail-closed default.
+- **Rejected — spec base64 only:** right against the document, wrong
+  against the provider. It rejected 100% of real deliveries; a verifier
+  that is correct in theory and refuses every authentic delivery is not a
+  verifier.
+- **Rejected — pinning to the literal-string key only:** hard-codes a
+  vendor bug as our contract and breaks silently the day Polar conforms,
+  with the failure mode "the customer paid and got nothing", found late.
+  Accepting all three survives Polar changing its behaviour in either
+  direction.
+- **Rejected — adopting the Polar SDK:** a dependency plus a second
+  secret-handling path for one HMAC. Recorded honestly rather than
+  defended: Polar's documented integration wraps the secret in base64
+  before handing it to the `standardwebhooks` library, so following that
+  path would most likely never have hit this at all. The hand-rolled
+  verifier cost a production failure and bought an exact understanding of
+  what is being checked. At one webhook that trade still reads right; at
+  ten it would not.
+- **What "verified in production" means here, precisely:** the only live
+  deliveries to date came from the project owner's own $49 order, placed
+  to prove checkout → webhook → provisioning end to end and then
+  self-refunded. There are no external customers and no external revenue.
+  So this was verified by exactly one authentic delivery — which is still
+  one more than any test suite could supply.
+- **Revisit when:** Polar's live deliveries begin verifying under the spec
+  derivation — evidence being a real delivery, never a documentation
+  change — at which point the extra derivations are dead code and should
+  be dropped; or a second webhook arrives, at which point a maintained SDK
+  beats several hand-rolled verifiers.
+
+## 024 — default track executor: Codex, with Claude on design-open tracks (2026-08-03)
+
+*Supersedes 007.*
+
+- **Decision:** the default executor for a new implementation track is
+  **Codex**, working in its own worktree and branch against a
+  self-contained brief, under the contract in `AGENTS.md`. A Claude session
+  takes a track only when the work needs judgment a brief cannot fully
+  specify — in-track design decisions, product-voice iteration, or
+  exploration that will not reduce to an enumerable owned-file list — and
+  the brief records the reason. The controlling session does not take
+  implementation tracks; it plans, reviews, cherry-picks, and runs the
+  release gates.
+- **Why:** 007 said in its own revisit condition that it had measured the
+  wrong dimension — shape-matched tasks measure execution discipline, not
+  design judgment. What settled it was not a rerun but a change in the
+  shape of the work. The v0.3–v0.5 arc ran as many independent tracks with
+  non-overlapping file ownership: work a brief can specify completely, and
+  mostly not design-open — the one dimension 007 named as the place the
+  executors might actually differ. Making Codex the default and assigning
+  a Claude session only where a brief runs out spends the scarcer
+  capability where it changes the outcome, instead of spreading it evenly
+  across work that is already fully specified.
+- **The friction 007 measured did not disappear; it is priced in.** The
+  delegated CLI executor set the wrong commit identity **four separate
+  times**, each caught and corrected at cherry-pick. That correction is the
+  only reason the public history carries one author. It is now a standing
+  step in integration rather than a recurring surprise.
+- **Rejected — leaving 007's default in place:** it had already stopped
+  being true. A decision log that misstates who writes the code is worse
+  than a missing entry, because a reader has no way to tell which of the
+  remaining entries are live.
+- **Rejected — a single executor for every track:** the assignment rule
+  exists because the failure modes differ. A brief that cannot be
+  completed without design calls does not improve by going to a faster
+  implementer; it needs an executor that can be handed the intent instead
+  of the file list.
+- **Recorded late, which is the defect this entry closes:** the directive
+  dates to 2026-08-01. Until 2026-08-03 the public log said the opposite,
+  across the whole arc it was wrong about. Found by the v0.5 release
+  audit, not by a reader — and a reader is who it would have misled.
+- **Revisit when:** a track review finds a quality gap that tracks to the
+  executor rather than to the brief; or commit-identity contamination
+  stops being reliably catchable at cherry-pick, at which point the ops
+  cost is no longer bounded.

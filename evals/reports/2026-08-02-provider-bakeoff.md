@@ -1,5 +1,13 @@
 # S2S Provider Bake-off — 2026-08-02
 
+_Dateline: `2026-08-02` is the milestone slot this report closes, not the day
+it was run. DECISIONS #002 was opened 2026-07-25 "resolves 2026-08-02", and
+the report generator (`scorer.bakeoff.report`) writes that filename. The runs,
+the decision, and this file's commit (`2beda15`) are all 2026-07-25 — eight
+days early. Every other file in `reports/` is named for the day it was
+committed; this one is the exception, and it keeps the slot name because the
+generator writes that path and several documents link it._
+
 Method: DECISIONS.md #002. Automated runs via `make bakeoff-*`; manual sessions per
 `evals/suites/bakeoff/manual_protocol.md`. Criteria ordered by lethality:
 stability > latency > interruption > persona > (scoring channel) audio discrimination.

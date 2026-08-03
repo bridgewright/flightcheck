@@ -11,6 +11,14 @@ block self-preference bias.
 Rubrics used here come from representative **public** JDs only — never the
 private application-target list (workspace rule R3).
 
+`rubric.json` therefore names the company from that public JD, and its
+`research_summary` — what the interview rewards and penalizes — is written by
+the product's rubric compiler from a public web research sweep. It is
+model-generated inference kept here as a test fixture: **not sourced from,
+endorsed by, or checked with the named company**, and not a claim about how
+that company actually interviews (its `citations` are the search provider's
+grounding-redirect URLs, which name no source domain on their face).
+
 ## Layout
 
 - `triplets/<dimension_key>-<n>.json` — TripletDoc: question + the three answers.

@@ -24,7 +24,10 @@ review, not in a failed build — cheap this time. The standing rule it left
 behind: for any pipeline, write down what information each stage *removes*,
 not just what it adds. Repo-wide consequence: "Native speech-to-speech only"
 is CLAUDE.md non-negotiable #2, and the scoring channel reads raw audio
-(`services/scorer/src/scorer/delivery/judge.py`).
+(`services/scorer/src/scorer/delivery/judge.py`). Counted honestly, though:
+this one is a near-miss, not a failure — nothing was built and nothing was
+thrown away — and a retro that files its saves next to its scars is grading
+itself generously.
 
 ## 2026-07-26 — The eval gate worked: judge accuracy 0.0 → 0.33 plateau → redesign → 1.0
 
@@ -196,8 +199,208 @@ architectural conclusion transferred, but two production-only behaviors
 chopping onset audio) only appeared live. Timing-sensitive decisions get a
 production-transport confirmation pass from now on.
 
-**Left deliberately unfixed:** background-tab timer throttling queues silence
-ticks and machine-guns scaffolds on refocus. It is the first seed scenario of
-the adversarial stability harness (next release) rather than tonight's sixth
-blind patch — a fix without a failing test would repeat the exact cycle this
-entry documents.
+**Left deliberately unfixed — corrected 2026-08-03.** This entry originally
+closed by deferring background-tab timer throttling (queued silence ticks
+machine-gunning scaffolds on refocus) to "the adversarial stability harness
+(next release)", on the argument that a sixth blind patch would repeat the
+cycle above. The argument held. The forecast did not. The harness landed
+**eleven minutes after this paragraph was committed** — `a317eb9` at 23:09,
+then `f258364`…`a7fcbb9` between 23:16 and 23:30 the same night — the
+throttling bug went in as its third pinned seed, and `2b4ea38` fixed it
+test-first: a tick measuring absence rather than silence (`SUSPEND_GAP_S`,
+2 s, read off a monotonic clock) is treated as a resume, so a candidate who
+steps away and comes back is met quietly. The seeded rounds also caught
+three faults no user had reached yet — the scaffold ladder restarting on
+leaked speaker echo, the response debounce measured from the wrong instant,
+and one tick that could ask the interviewer to speak twice. The wrong
+sentence then stood here for two days and over a hundred commits, in a file
+whose whole claim is that it records what happened, while any reader could
+disprove it with one `git log`. It is corrected in place rather than deleted:
+"next release" in a retrospective is a forecast wearing the clothes of a
+record, and this is the cleanest evidence of that we have. v0.2.0 had already
+been tagged at 16:46 that afternoon, so both the claim and its refutation
+ship inside v0.5.0.
+
+## 2026-08-03 — Taking money: three failures only production could show
+
+v0.5 is the payments release — hosted checkout, a signed webhook, a trial
+that unlocks. All of it went through an adversarial review pass and the full
+gate suite on the merged tree before it shipped. It then broke in three
+places, every one of them only in production, and each break is a different
+way of believing a green signal.
+
+**A signature test signed by your own code proves only that you are
+self-consistent.** Polar's webhooks follow Standard Webhooks, whose spec says
+the secret is `whsec_` + base64-encoded key *bytes* — so we decoded it, and a
+payload signed by our test helper verified against our verifier without a
+complaint. In production every real `order.paid` delivery returned 403 and
+provisioned nothing: Polar's own verifier feeds the secret **string** to the
+HMAC and base64-wraps it only to satisfy the library that decodes it straight
+back. `84e3434` now accepts a signature under any derivation of the *same*
+secret (spec bytes, the full string, the part after the prefix), so a live
+delivery matches while a tampered payload still matches nothing. The unit
+test was careful and structurally incapable of catching this, because both
+sides of it were ours. It is the 2026-07-26 fake-client lesson one layer
+further out: fakes prove your logic, live calls prove the contract, and a
+signature scheme is a contract with someone else's code. The test class that
+would have caught it — a real delivery captured once and replayed as a
+fixture — does not exist in this repo. Naming the gap is the honest state of
+it; it is also cheap to build now that a real delivery has been seen.
+
+**A health check proves something is alive at that address, not that it is
+the thing you just built.** Railway's builder stopped supplying
+`NIXPACKS_UV_VERSION`, so the worker image built `pip install uv==` — an
+invalid requirement — and every deploy from 08:51 failed while the 08:50
+image kept serving. `/healthz` was green, the platform dashboard was green,
+and for four hours nothing we pushed was actually running (`53bed4d` pins the
+version in `nixpacks.toml`). The habit that replaces the green check: after a
+deploy, read the new deployment's own build status, and ask the service
+something only the new build can answer. Liveness and identity are different
+questions, and a platform's implicit variables are someone else's release
+note.
+
+**In a streaming framework, a guard that runs during render can change the
+body but not the status line.** `/dev/preview` renders components from
+checked-in fixtures and must not exist in production, so it called
+`notFound()`. Statically prerendered, that ran at *build* time and the shell
+went out with HTTP 200 — safe content, lying status (`b7065b9`). Forcing the
+route dynamic moved the guard to request time, and it still answered 200,
+because the app-level `loading.tsx` flushes a shell before any page guard can
+set a status. Only a check in `proxy.ts`, which runs before render, made
+production return a real 404 (`4439313`). The general form: existence and
+authorization checks belong before the first byte, not inside the render that
+produces it. Neither failure mode is reachable in local development, where
+nothing is prerendered — the only instrument that sees this is a request
+against production.
+
+## 2026-08-03 — What was abandoned, and what delegation cost
+
+**A visual identity, built end to end and reverted the same day.** The v0.4
+screens shipped on a night/aviation skin: dark tokens and a gradient body
+(`86dcc5c`), a landing page rebuilt around runway lights (`c66daaf`), a
+conic-gradient readiness dial, and a session card drawn as a boarding pass
+with a stub, a perforation and a barcode. The skin was dark-only, so
+`globals.css` made Tailwind's `dark:` variant unconditional — the app stopped
+honoring the reader's OS theme in order to hold one look. Seen rendered
+together, the identity was put on hold the same day and four commits took
+every screen back to plain neutrals (`75fab51`…`374f5ea`): the dial became a
+stat block, the ticket a bordered card, the strip three dots. The cost was
+thirteen files styled twice and a global `dark:` override that had to be
+unwound. The part worth recording is what it did *not* cost: no route,
+string, or behavior changed, because the revert brief forbade touching them
+and confined the whole reversal to class strings and CSS tokens. The skin
+never appeared in a tagged release. That containment was luck once and is
+policy now — the identity returns as one dedicated design pass rather than as
+a skin threaded through feature work. One carry-forward is worth more than
+the skin was: Tailwind v4 silently drops unknown utilities instead of failing
+the build, so a green build is not evidence that a restyle is complete. Grep
+for dead tokens.
+
+**A price, and the package shape under it.** From the product definition
+onward one JD cost ₩89,000 for 30 days and six sessions; it was in `PRD.md`,
+on the pricing page, and on a v0.4 checkout stub that never took a payment.
+v0.5 retired it for **$49 USD**, and changed the package shape at the same
+time: the first package on an account is a trial with one scored session, and
+$49 unlocks that same package — same JD, same rubric — to six sessions with
+a 30-day window that starts at payment (DECISIONS 018/019; constants in
+`apps/web/lib/pricing.ts`, with a test pinning them). Two things triggered the
+reversal. DECISIONS 008 had rejected a free tier to protect verdict integrity
+back when there were no accounts; once quotas, rate limits, and per-account
+caps were enforced worker-side, one free scored session became the cheapest
+honest demonstration of the only thing this product sells — a verdict. And a
+won-denominated price fits badly on a product whose entire audience is
+applying to companies that think in dollars. The honest note on the reversal:
+the second reason needed none of the nine days it took, and the first only
+needed the accounts to exist — neither was waiting on evidence we did not
+already have.
+
+**Delegation is cheaper than doing the work yourself, and it is not free.**
+Most of this repo is built by dispatching self-contained briefs to parallel
+agent sessions, one worktree and branch each, with a human integrating. It
+works, and the bookkeeping tax is real: the delegated CLI executor set the
+wrong commit identity on its own branch **four separate times**, caught and
+corrected at cherry-pick each time. The public history shows a single author
+on every commit only because that check ran every time — it is normalization,
+not evidence of solo work, which is why `CLAUDE.md` now says so outright. Two
+lessons, one general and one specific. Automate the check you catch yourself
+doing by hand more than twice; this one is still a manual line on the merge
+checklist, which is exactly why it had to be run a fourth time. And when
+you delegate, own the metadata as deliberately as the diff — a work-sample
+repository whose commit trail is inconsistent about who wrote it is worth
+less than one with fewer commits.
+
+## 2026-08-03 — The ledger at the v0.5 tag
+
+**One order exists, and it is ours.** v0.5 ships payments, and exactly one
+$49 order has ever been placed: by the project owner, against the live
+product, to prove the path end to end — hosted checkout, signed webhook,
+provisioning, receipt — and then **self-refunded, with the receipt kept** as
+the record. That order is evidence the pipeline works. It is not a sale, not
+revenue, and not evidence that anybody wants this. As of this tag flightcheck
+has **zero external users and zero external paying customers**; every session
+that exists, including the one behind the public sample report, was run by
+the developer. The distinction matters more here than anywhere else in this
+file, because "first payment received" is precisely the sentence a portfolio
+repo wants to write and precisely the sentence that would be false. The PRD
+carries "paid packages ≥ 1" as a dated success metric, and as of v0.5 the
+instrument that measures it exists — the `orders` table, with receipts in
+settings. The only row in that table is ours. Counting it would be marking
+our own homework.
+
+**Code shipped ahead of the PRD, on the largest product change of the
+release.** `CLAUDE.md`'s first non-negotiable is PRD before code. On
+2026-08-03 the $49 price and the trial model landed in the code at `97ee0b4`
+(14:43, the scorer's paid/trial/expiry columns) and `6308211` (14:48,
+`lib/pricing.ts` plus the pricing and checkout pages), while `PRD.md` still
+read ₩89,000 until `aa282c2` at 15:53 — code preceded the PRD by about 65
+minutes on the one change that redefined what the product sells. The decision
+itself predates both commits and its options-and-rejections trail is logged
+(DECISIONS 018), so this is a sequencing failure rather than an undocumented
+one; that is the smaller version of the sin and still the sin. It is recorded
+here rather than tidied away, because the timestamps are in the log and a
+reviewer will find them. A rule the work reliably breaks is either the wrong
+rule or an unenforced one, and the honest response is to restate it at the
+granularity the work actually has — current at the tag, with the tag as the
+gate — not to quietly stop counting.
+
+**The version numbers admit a reorder.** The published plan (README,
+DECISIONS 008) was v0.3 report quality → v0.4 session history → v0.5
+curriculum-lite → then payments. What happened instead: the v0.3 and v0.4
+bundles — report quality, accounts, the complete signed-in webapp, session
+history, progress — were built, merged, and deployed but **never tagged**,
+and payments jumped the queue to become v0.5. Curriculum-lite has not shipped
+and moves past this tag (v0.6+). Tags and release notes are impression rule
+⑤, and we broke the rhythm for two versions by shipping faster than we
+published. The correction is one tag, v0.5.0, with 0.3 and 0.4 named for what
+they actually were — internal milestones folded into it — rather than a pair
+of backdated tags invented at release time to make the history look tidy.
+
+**Our own checklist had an item nobody ran.** `docs/deploy.md` carries a
+release-blocking anonymization checklist that bars client references
+"including indirect identifiers". The fixture behind `/sample-report` — the
+no-signup demo the README sends every reviewer to — carried a consulting
+engagement narrative in the candidate's answers, live in production since
+v0.1 and through two tags. It was found by this release's audit, not by the
+checklist that existed to find it, and neutralized at `2ffd643` with the
+caption now stating that identifying details were removed rather than the
+vaguer "anonymized". Two smaller ones came out of the same sweep: the favicon
+was still create-next-app's default, byte-identical since scaffold — a
+framework vendor's mark serving as the product's own on the tab of something
+we were about to charge for — and `AGENTS.md` published an absolute local
+path that disclosed the OS username and the existence of the private
+workspace above this repo. A checklist nobody is required to run is a
+document, not a control; the ones that hold here are the ones wired into a
+gate.
+
+**The gate that passed says less than it looks like it says.** The v0.5 eval
+gate passed on its first run, exit 0, rubric discrimination 1.0 and delivery
+judge 1.0 against unchanged 0.8 baselines
+([report](evals/reports/2026-08-03-v05-gate.md)). N is 3 triplets at layer 1
+and 2 clip triplets at layer 3, unchanged since v0.1, and one boundary case
+still decides the gate. It exercises the content and delivery judges and
+nothing else: the scoring-eligibility gate, report field quality, the package
+and payment lifecycle, and prompt-injection resistance beyond unit-tested
+fencing are all outside it, and the judge–human agreement (Cohen's κ) the PRD
+names as a v1.0 target has no instrument built yet. A green gate on a
+payments release is a statement about two judges. It is not a statement about
+the release.
