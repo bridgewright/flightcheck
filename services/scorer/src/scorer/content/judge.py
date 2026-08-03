@@ -30,6 +30,7 @@ from google.genai import errors as genai_errors
 from pydantic import BaseModel, ConfigDict, ValidationError
 
 from scorer.config import load_product_config
+from scorer.promptsafe import fence
 from scorer.schemas import (
     DimensionScore,
     GenAIClientLike,
@@ -120,8 +121,10 @@ def _build_prompt(
     return (
         f"You are scoring a mock interview for the role: {rubric.role_title}.\n"
         "Score ONLY the content dimensions listed below, using only the transcript.\n\n"
+        # F-11a: spoken words are user input too — a candidate can SAY an
+        # injection out loud; the transcript rides inside the data fence.
         "Transcript (timestamped, speaker-labeled):\n"
-        f"{_transcript_block(segments)}\n\n"
+        f"{fence('TRANSCRIPT', _transcript_block(segments))}\n\n"
         f"Content dimensions to score:\n\n{dims}\n\n"
         f"{_RULES}"
     )

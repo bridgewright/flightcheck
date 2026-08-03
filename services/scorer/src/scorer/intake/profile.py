@@ -8,6 +8,7 @@ from google.genai import types
 from pypdf import PdfReader
 
 from scorer.config import load_product_config
+from scorer.promptsafe import fence
 from scorer.schemas import CandidateProfile, GenAIClientLike
 
 _PROFILE_PROMPT = (
@@ -47,10 +48,12 @@ def build_profile(
         raise ValueError(
             "build_profile needs at least one of resume_text or linkedin_text")
     sections = [_PROFILE_PROMPT]
+    # F-11a: source documents are user-supplied — fenced as data.
     if resume_text is not None:
-        sections.append(f"## RESUME\n{resume_text}")
+        sections.append(f"## RESUME\n{fence('RESUME', resume_text)}")
     if linkedin_text is not None:
-        sections.append(f"## LINKEDIN PROFILE\n{linkedin_text}")
+        sections.append(
+            f"## LINKEDIN PROFILE\n{fence('LINKEDIN PROFILE', linkedin_text)}")
     product = load_product_config()
     response = client.models.generate_content(
         model=product.models.scorer,

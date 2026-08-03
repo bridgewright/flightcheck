@@ -16,6 +16,7 @@ from google.genai import types
 from pydantic import ValidationError
 
 from scorer.config import load_product_config
+from scorer.promptsafe import fence
 from scorer.rubric.corpus import CorpusDoc
 from scorer.schemas import CandidateProfile, GenAIClientLike, ResearchFindings, Rubric
 
@@ -113,8 +114,11 @@ def _build_prompt(jd_text: str, profile: CandidateProfile, findings: ResearchFin
     return (
         "You are compiling a behaviorally-anchored scoring rubric (BARS) for a mock\n"
         "interview coach. Ground every dimension in the sources below.\n\n"
-        f"## JOB DESCRIPTION\n{jd_text}\n\n"
-        f"## CANDIDATE PROFILE\n{_profile_block(profile)}\n\n"
+        # F-11a: JD and profile are user-supplied — fenced as data so a JD
+        # that ships its own "## STRICT RULES" block cannot outrank ours.
+        f"## JOB DESCRIPTION\n{fence('JOB DESCRIPTION', jd_text)}\n\n"
+        f"## CANDIDATE PROFILE\n"
+        f"{fence('CANDIDATE PROFILE', _profile_block(profile))}\n\n"
         f"## RESEARCH FINDINGS\n{_findings_block(findings)}\n\n"
         f"## CORPUS EXCERPTS\n{_corpus_block(corpus)}\n\n"
         "## EXAMPLE RUBRICS (format references; do not copy their content)\n"
@@ -132,6 +136,9 @@ def compile_rubric(jd_text: str, profile: CandidateProfile, findings: ResearchFi
         response_mime_type="application/json",
         response_schema=Rubric,
     )
+    # F-11a: the JD is truncated to a config length before it ever reaches
+    # the prompt — an unbounded JD is both spend and injection surface.
+    jd_text = jd_text[:product.limits.jd_compile_max_chars]
     prompt = _build_prompt(jd_text, profile, findings, corpus, fewshots)
     response = client.models.generate_content(
         model=product.models.scorer, contents=prompt, config=config)

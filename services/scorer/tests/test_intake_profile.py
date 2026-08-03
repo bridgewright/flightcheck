@@ -120,3 +120,14 @@ def test_build_profile_requires_at_least_one_source():
     with pytest.raises(ValueError):
         build_profile(None, None, fake)
     assert fake.calls == []
+
+
+def test_build_profile_fences_resume_and_linkedin_as_untrusted():
+    fake = FakeGenAI([json.dumps(PROFILE_JSON)])
+    build_profile(RESUME_TEXT, LINKEDIN_TEXT, fake)
+    contents = fake.calls[0]["contents"]
+    assert "<<<BEGIN UNTRUSTED RESUME>>>" in contents
+    assert "<<<END UNTRUSTED RESUME>>>" in contents
+    assert "<<<BEGIN UNTRUSTED LINKEDIN PROFILE>>>" in contents
+    assert contents.index(RESUME_TEXT) > contents.index(
+        "<<<BEGIN UNTRUSTED RESUME>>>")

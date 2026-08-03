@@ -15,6 +15,7 @@ import json
 from google.genai import types
 
 from scorer.config import load_product_config
+from scorer.promptsafe import fence
 from scorer.schemas import GenAIClientLike, ResearchFindings, SourceCitation
 
 _SNIPPET_MAX_CHARS = 300     # SourceCitation.snippet contract: <= 300 chars
@@ -108,8 +109,11 @@ def run_sweep(jd_text: str, role_title: str, company: str | None,
     prose_blocks: list[str] = []
     grounded_citations: list[SourceCitation] = []
     for query in queries:
+        # F-11a: the JD excerpt is user text — fenced as data.
         prompt = _GROUNDED_PROMPT.format(
-            query=query, jd_excerpt=jd_text[:_JD_EXCERPT_CHARS])
+            query=query,
+            jd_excerpt=fence("JOB DESCRIPTION EXCERPT",
+                             jd_text[:_JD_EXCERPT_CHARS]))
         response = client.models.generate_content(
             model=product.models.scorer,
             contents=prompt,

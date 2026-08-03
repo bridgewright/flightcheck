@@ -25,6 +25,7 @@ from scorer.content.transcribe import transcribe_verbatim
 from scorer.delivery.dsp import compute_delivery_metrics
 from scorer.delivery.judge import judge_delivery
 from scorer.intake.profile import build_profile
+from scorer.promptsafe import fence
 from scorer.report.compile import compile_report
 from scorer.report.eligibility import check_eligibility
 from scorer.research.sweep import run_sweep
@@ -73,7 +74,7 @@ _JD_FACTS_PROMPT = (
 def _extract_jd_facts(jd_text: str, client: GenAIClientLike) -> JdFacts:
     response = client.models.generate_content(
         model=load_product_config().models.scorer,
-        contents=_JD_FACTS_PROMPT + jd_text,
+        contents=_JD_FACTS_PROMPT + fence("JOB DESCRIPTION", jd_text),
         config=types.GenerateContentConfig(
             response_mime_type="application/json",
             response_schema=JdFacts,

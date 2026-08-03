@@ -522,3 +522,16 @@ def test_transient_backoff_does_not_spend_the_parse_retry(monkeypatch):
     assert sleeps == [1.0]
     seeds = [c["config"]["seed"] for c in _calls_for(fake, "structured-answers")]
     assert seeds == [7, 7, 7, 11, 13]
+
+
+def test_prompt_fences_the_transcript_as_untrusted():
+    # F-11a: the candidate can SAY an injection out loud; the transcript
+    # rides inside the untrusted fence while the judge's own rules stay
+    # outside it.
+    fake = FakeGenAI(keyed_texts=_happy_keyed_texts())
+    score_content(_make_rubric(), _make_segments(), fake)
+    prompt = fake.calls[0]["contents"]
+    begin = prompt.index("<<<BEGIN UNTRUSTED TRANSCRIPT>>>")
+    end = prompt.index("<<<END UNTRUSTED TRANSCRIPT>>>")
+    assert begin < prompt.index("CANDIDATE: I led the churn dashboard") < end
+    assert not begin < prompt.index("Scoring rules:") < end

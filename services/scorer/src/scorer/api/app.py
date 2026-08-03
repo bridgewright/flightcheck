@@ -47,6 +47,7 @@ from scorer.api.storage import Storage
 from scorer.config import load_product_config
 from scorer.intake.jd import JdFetchError, fetch_jd
 from scorer.intake.profile import extract_pdf_text
+from scorer.promptsafe import strip_hidden_text
 from scorer.schemas import CandidateProfile, GenAIClientLike
 from scorer.sessionplan.planner import (
     build_interviewer_instructions,
@@ -311,6 +312,11 @@ def create_app(db: Database, storage: Storage, client: GenAIClientLike) -> FastA
             raise HTTPException(
                 status_code=422, detail="one of jd_text or jd_url is required"
             )
+        # F-11a: hidden-payload carriers (HTML comments/tags, zero-width and
+        # bidi characters) are stripped from every intake text at this one
+        # chokepoint — the stored jd_text is the cleaned text, so prompts,
+        # dedup, and rubric-reuse all see the same version.
+        jd_text = strip_hidden_text(jd_text)
         if len(jd_text) > limits.jd_text_max_chars:
             # A fetched page can be over the cap too; same honest rejection.
             return JSONResponse(
@@ -321,9 +327,13 @@ def create_app(db: Database, storage: Storage, client: GenAIClientLike) -> FastA
         resume_text = body.resume_text
         if resume_text is None and body.resume_pdf_b64 is not None:
             resume_text = _extract_pdf_upload(body.resume_pdf_b64, "resume")
+        if resume_text is not None:
+            resume_text = strip_hidden_text(resume_text)
         linkedin_text = body.linkedin_text
         if linkedin_text is None and body.linkedin_pdf_b64 is not None:
             linkedin_text = _extract_pdf_upload(body.linkedin_pdf_b64, "LinkedIn")
+        if linkedin_text is not None:
+            linkedin_text = strip_hidden_text(linkedin_text)
         # Trial model (F-24): the account's FIRST package is the trial. The
         # flag is cosmetic-plus-records -- the money chokepoint is paid_at
         # (effective_total_sessions) -- but the web renders trial state from
