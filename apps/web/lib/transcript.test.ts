@@ -140,55 +140,37 @@ describe("deriveSessionDetailState", () => {
 
   it("maps a scored session with a full-evidence report to scored", () => {
     expect(
-      deriveSessionDetailState({ status: "scored", report: scored }, undefined),
+      deriveSessionDetailState({ status: "scored", report: scored }),
     ).toBe("scored");
   });
 
   it("maps a scored session with a limited-evidence report to limited", () => {
     expect(
-      deriveSessionDetailState({ status: "scored", report: limited }, undefined),
+      deriveSessionDetailState({ status: "scored", report: limited }),
     ).toBe("limited");
   });
 
   it("treats scored-without-report as still scoring (defensive)", () => {
     expect(
-      deriveSessionDetailState({ status: "scored", report: null }, undefined),
+      deriveSessionDetailState({ status: "scored", report: null }),
     ).toBe("scoring");
   });
 
   it("maps scoring, failed, and insufficient through unchanged", () => {
     expect(
-      deriveSessionDetailState({ status: "scoring", report: null }, undefined),
+      deriveSessionDetailState({ status: "scoring", report: null }),
     ).toBe("scoring");
     expect(
-      deriveSessionDetailState({ status: "failed", report: null }, undefined),
+      deriveSessionDetailState({ status: "failed", report: null }),
     ).toBe("failed");
     expect(
-      deriveSessionDetailState({ status: "insufficient", report: null }, undefined),
+      deriveSessionDetailState({ status: "insufficient", report: null }),
     ).toBe("insufficient");
   });
 
   it("maps a planned session to not_started", () => {
     expect(
-      deriveSessionDetailState({ status: "planned", report: null }, undefined),
-    ).toBe("not_started");
-  });
-
-  it("maps a planned session with ?ended=guard to guard_ended", () => {
-    expect(
-      deriveSessionDetailState({ status: "planned", report: null }, "guard"),
-    ).toBe("guard_ended");
-  });
-
-  it("ignores the guard param once the session moved past planned", () => {
-    expect(
-      deriveSessionDetailState({ status: "scoring", report: null }, "guard"),
-    ).toBe("scoring");
-  });
-
-  it("ignores a malformed (array) guard param", () => {
-    expect(
-      deriveSessionDetailState({ status: "planned", report: null }, ["guard"]),
+      deriveSessionDetailState({ status: "planned", report: null }),
     ).toBe("not_started");
   });
 });
@@ -256,14 +238,6 @@ describe("dimensionScoreMap", () => {
 describe("detailCta", () => {
   it("sends an unstarted slot into its own room", () => {
     expect(detailCta("not_started", "s-1", 3)).toEqual({
-      kind: "room",
-      sessionId: "s-1",
-      label: "Start this session",
-    });
-  });
-
-  it("sends a guard-ended slot back into its own room — the slot survived", () => {
-    expect(detailCta("guard_ended", "s-1", 3)).toEqual({
       kind: "room",
       sessionId: "s-1",
       label: "Start this session",

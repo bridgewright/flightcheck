@@ -95,12 +95,82 @@ function SignedOut({ sessionId }: { sessionId: string }) {
   );
 }
 
+// --- Icons (F-43) ---------------------------------------------------------
+//
+// Inline, no dependency, and deliberately drawn with stroke="currentColor"
+// and no colour class of their own: they inherit whatever the surrounding
+// text is, so the F-21 design pass re-points them by re-pointing type
+// colour rather than by re-authoring this file. All decorative — the
+// heading beside each one carries the meaning, so they are aria-hidden and
+// a screen reader never announces them.
+
+const ICON_PATHS = {
+  // A clock: work is in progress and will finish on its own.
+  clock: ["M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18Z", "M12 7.5V12l3.5 2"],
+  // A warning triangle: something broke and we are saying so.
+  alert: ["M12 4 21 19.5H3L12 4Z", "M12 10v4", "M12 16.5v.01"],
+  // A circle with a bar: attempted, but below the floor to score.
+  short: ["M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18Z", "M8 12h8"],
+  // A circle with a slash: retired, the door is closed.
+  closed: ["M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18Z", "M6.5 6.5 17.5 17.5"],
+  // A play outline: nothing has happened here yet, and it is yours to start.
+  play: ["M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18Z", "M10.5 8.5 16 12l-5.5 3.5V8.5Z"],
+  // A magnifier: we looked and found nothing under this address.
+  search: ["M11 4a7 7 0 1 0 0 14 7 7 0 0 0 0-14Z", "m16 16 4 4"],
+  // A crossed-out cloud: the service is briefly out of reach.
+  offline: [
+    "M7 18a4 4 0 0 1-.4-7.98A5.5 5.5 0 0 1 16.9 9.2 3.9 3.9 0 0 1 19 16.6",
+    "M4 4 20 20",
+  ],
+  // An arrow: this takes you somewhere.
+  arrow: ["M4.5 12h14", "m13.5 7 5 5-5 5"],
+} as const;
+
+function Icon({
+  name,
+  className = "size-5",
+}: {
+  name: keyof typeof ICON_PATHS;
+  className?: string;
+}) {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth={1.5}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+      focusable="false"
+      className={`shrink-0 ${className}`}
+    >
+      {ICON_PATHS[name].map((d) => (
+        <path key={d} d={d} />
+      ))}
+    </svg>
+  );
+}
+
+// Which glyph belongs to each state the page can render without a report.
+const STATE_ICONS: Record<
+  Exclude<SessionDetailState, "scored" | "limited">,
+  keyof typeof ICON_PATHS
+> = {
+  insufficient: "short",
+  not_started: "play",
+  scoring: "clock",
+  failed: "alert",
+  closed: "closed",
+};
+
 // Foreign-owned and nonexistent sessions get the SAME page: a session id is
 // not a capability, so the response must not reveal whether it exists.
 function NotFound({ viewer }: { viewer: Viewer }) {
   return (
     <Shell viewer={viewer}>
       <div className="flex flex-col items-center gap-4 py-16 text-center">
+        <Icon name="search" className="size-8 text-neutral-400" />
         <h1 className="text-2xl font-bold tracking-tight text-balance">
           Session not found
         </h1>
@@ -121,6 +191,7 @@ function Unreachable({ viewer }: { viewer: Viewer }) {
     <Shell viewer={viewer}>
       <PollRefresh intervalMs={5000} />
       <div className="flex flex-col items-center gap-3 py-16 text-center">
+        <Icon name="offline" className="size-8 text-neutral-400" />
         <h1 className="text-2xl font-bold tracking-tight text-balance">
           Can&apos;t reach this session right now.
         </h1>
@@ -156,8 +227,9 @@ function ContextLine({
 function CtaBlock({ href, label }: { href: string; label: string }) {
   return (
     <div className="border-t border-neutral-200 pt-8 dark:border-neutral-800">
-      <Link href={href} className={`${PRIMARY_BUTTON} inline-block`}>
+      <Link href={href} className={`${PRIMARY_BUTTON} inline-flex items-center gap-2`}>
         {label}
+        <Icon name="arrow" className="size-4" />
       </Link>
     </div>
   );
@@ -223,10 +295,8 @@ function audioCaption(state: SessionDetailState): string {
 
 export default async function SessionDetailPage({
   params,
-  searchParams,
 }: {
   params: Promise<{ id: string }>;
-  searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
 }) {
   const { id } = await params;
   const viewer = await getViewer();
@@ -244,12 +314,11 @@ export default async function SessionDetailPage({
   }
   const { session, pkg } = access.value;
 
-  const { ended } = await searchParams;
-  const state = deriveSessionDetailState(session, ended);
+  const state = deriveSessionDetailState(session);
 
   // A planned slot has nothing recorded, transcribed, or scored — skip the
   // fetches instead of asking three services for what cannot exist.
-  const attempted = state !== "not_started" && state !== "guard_ended";
+  const attempted = state !== "not_started";
 
   let segments: TranscriptSegment[] | null = null;
   let transcriptFetchFailed = false;
@@ -356,7 +425,6 @@ export default async function SessionDetailPage({
   // --- Non-report states ---------------------------------------------------
   const heading: Record<Exclude<SessionDetailState, "scored" | "limited">, string> = {
     insufficient: "Not scored — not enough evidence.",
-    guard_ended: "This session ended early.",
     not_started: "Not started — slot preserved.",
     scoring: "Scoring your session…",
     failed: "Scoring failed",
@@ -365,8 +433,6 @@ export default async function SessionDetailPage({
   const body: Record<Exclude<SessionDetailState, "scored" | "limited">, string> = {
     insufficient:
       "This session ended before there was enough to score fairly. Numbers from partial evidence would be a guess, so there are none. The slot is preserved — run the session again when you're ready.",
-    guard_ended:
-      "The session guard stopped this one before it could count. Nothing was scored and the slot is preserved — start again whenever you're ready.",
     not_started:
       "This session hasn't happened yet. Its slot is waiting for you.",
     scoring:
@@ -398,7 +464,8 @@ export default async function SessionDetailPage({
             total={pkg.total_sessions}
             date={date}
           />
-          <h1 className="text-2xl font-bold tracking-tight text-balance">
+          <h1 className="flex items-start gap-2.5 text-2xl font-bold tracking-tight text-balance">
+            <Icon name={STATE_ICONS[narrowState]} className="mt-1 size-6" />
             {heading[narrowState]}
           </h1>
           <p className="max-w-prose text-sm text-neutral-600 dark:text-neutral-400">

@@ -79,7 +79,6 @@ export function transcriptTimeline(
  * Which framing the session detail page renders. One value per honest state:
  * - scored / limited: a report exists (limited = 10-15 min evidence banner)
  * - insufficient: attempted, below the evidence floor — no numbers, ever
- * - guard_ended: the interviewer guard ended it; the slot is preserved
  * - not_started: a planned slot with nothing behind it yet
  * - scoring: the worker is mid-pipeline (poll; transcript may already exist)
  * - failed: scoring broke; whatever was saved (transcript) is still shown
@@ -88,7 +87,6 @@ export type SessionDetailState =
   | "scored"
   | "limited"
   | "insufficient"
-  | "guard_ended"
   | "not_started"
   | "scoring"
   | "failed"
@@ -96,18 +94,13 @@ export type SessionDetailState =
   // spent, no report will exist, and the room must not be offered again.
   | "closed";
 
-export function deriveSessionDetailState(
-  session: {
-    status: SessionStatus;
-    report: { eligibility: ReportEligibility } | null;
-  },
-  endedParam: string | string[] | null | undefined,
-): SessionDetailState {
+export function deriveSessionDetailState(session: {
+  status: SessionStatus;
+  report: { eligibility: ReportEligibility } | null;
+}): SessionDetailState {
   switch (session.status) {
     case "planned":
-      // The guard flag only means something on a slot that is still planned —
-      // once a session moved on, its real status outranks a stale query param.
-      return endedParam === "guard" ? "guard_ended" : "not_started";
+      return "not_started";
     case "scoring":
       return "scoring";
     case "failed":
@@ -178,7 +171,6 @@ export function detailCta(
 ): DetailCta {
   switch (state) {
     case "not_started":
-    case "guard_ended":
       return { kind: "room", sessionId, label: "Start this session" };
     case "failed":
     case "insufficient":
