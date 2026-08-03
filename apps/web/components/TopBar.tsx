@@ -192,7 +192,7 @@ export default async function TopBar({
 
   return (
     <header className={`border-b ${DIVIDER}`}>
-      <div className="mx-auto flex w-full max-w-5xl flex-wrap items-center gap-x-4 px-6">
+      <div className="mx-auto flex w-full max-w-shell flex-wrap items-center gap-x-4 px-6 sm:px-10 lg:px-16 xl:px-24">
         <Link href={viewer ? "/home" : "/"} className="order-1 py-4 text-lg">
           <span className="font-bold">flight</span>check
         </Link>

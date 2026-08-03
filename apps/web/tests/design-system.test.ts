@@ -251,18 +251,16 @@ describe("the shape rule", () => {
     expect(declaredCss).not.toMatch(/ambient-wash/);
   });
 
-  it("allows exactly one gradient, and it is the hero cloud", () => {
-    // A first reading of the reference concluded it had no background field,
-    // because scanning its computed styles found no CSS gradient. That was
-    // wrong: its hero carries a large pink cloud, drawn as an image rather
-    // than as CSS, which is why the scan missed it.
-    //
-    // So a gradient is allowed, once, for that one job. Anywhere else it is
-    // the AI-gradient tell, and the count is the thing worth pinning: a second
-    // rule that reaches for a gradient fails here rather than in review.
-    const gradientRules = declaredCss.match(/(?:radial|linear|conic)-gradient/g) ?? [];
-    expect(gradientRules.length, "more than the hero cloud uses a gradient").toBeLessThanOrEqual(2);
+  it("draws the hero cloud from an asset, and uses no CSS gradient at all", () => {
+    // The reference's cloud is an image, which is why scanning its computed
+    // styles for a gradient found nothing and an earlier pass here concluded
+    // it had no background field. Ours is an asset too, so the rule is the
+    // strict one: zero gradients in the stylesheet. A gradient appearing here
+    // later is the AI-gradient tell arriving, and it fails at CI.
+    const gradients = declaredCss.match(/(?:radial|linear|conic)-gradient/g) ?? [];
+    expect(gradients, "the stylesheet reached for a gradient").toEqual([]);
     expect(declaredCss).toMatch(/\.hero-bloom\s*\{/);
+    expect(declaredCss).toMatch(/hero-bloom\.svg/);
     expect(emitted).toContain("HERO_BLOOM");
 
     // It must not be able to draw its own edges, and it must not follow the

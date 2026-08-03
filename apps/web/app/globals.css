@@ -95,6 +95,16 @@
   --radius-control: 0.5rem; /* 7px at the 14px root */
   --radius-surface: 0.625rem; /* 8.75px */
 
+  /* --- Measure ---------------------------------------------------------
+     The reference runs its widest block at about 1300px, roughly four fifths
+     of a 1600 viewport. Ours was 896px, and the gap widened rather than
+     closed when the root dropped to 14px: a rem-based container shrinks with
+     the root, so making the type smaller made the page narrower at the same
+     time. These are the two measures the product has, and the shell, the top
+     bar, and the footer all take them from here. */
+  --container-shell: 92rem; /* about 1290px */
+  --container-reading: 46rem; /* long-form: reports, legal, settings */
+
   /* --- Depth ----------------------------------------------------------- */
   /* Group with whitespace, then a hairline, then a ground change, in that
      order. These exist for the few things that genuinely lift. Tinted with the
@@ -237,9 +247,10 @@ select:focus-visible {
  * as light and needed two mask utilities to hide its own edges.
  *
  * So this one is full-bleed and its edges fall off-screen, which is the
- * structural fix rather than a cosmetic one. Two overlapping ellipses at
- * different angles give the tapered, comet-like shape the reference has;
- * a single centred circle reads as a spotlight.
+ * structural fix rather than a cosmetic one, and the shape itself lives in
+ * public/hero-bloom.svg: three blurred ellipses at different angles. Layered
+ * CSS radial gradients were the first attempt and cannot make the taper,
+ * because a radial gradient is always symmetric about its own centre.
  *
  * It is `absolute`, not `fixed`: it belongs to the top of the document and
  * scrolls away with the hero. Fixed was the first attempt and it followed the
@@ -260,18 +271,12 @@ select:focus-visible {
   height: 78vh;
   z-index: -1;
   pointer-events: none;
-  background:
-    radial-gradient(
-      55% 42% at 62% 34%,
-      color-mix(in oklab, var(--color-bloom) 40%, transparent),
-      transparent 72%
-    ),
-    radial-gradient(
-      42% 30% at 30% 52%,
-      color-mix(in oklab, var(--color-bloom) 26%, transparent),
-      transparent 70%
-    );
+  background-image: url("/hero-bloom.svg");
+  background-repeat: no-repeat;
+  background-position: center top;
+  background-size: cover;
 }
+
 
 /* The landing's scroll-entry motion ships its hidden state in the server HTML:
    motion renders `initial` into the markup, so elements arrive at opacity 0

@@ -85,13 +85,25 @@ describe("the hero is one moment", () => {
     expect(TRIAL_MICROCOPY).toContain("free");
   });
 
-  it("shows a visual and asks the visitor for nothing", () => {
+  it("carries the claim alone, and asks the visitor for nothing", () => {
     const hero = read("components/landing/Hero.tsx");
-    // Text plus a gradient is not a hero (taste-skill 4.8), so there is a
-    // framed screen. And DECISIONS 030: what F-45 rolled back was a widget
-    // demanding input before the page had made its argument. A frame is proof,
-    // not a demand, and nothing here takes a keystroke.
-    expect(hero).toContain("ScreenFrame");
+
+    // Two things have now been put beside the claim and both came back out.
+    // F-45 was an interactive rubric preview, rolled back the same day
+    // (DECISIONS 030). A framed screenshot replaced it, argued for on
+    // taste-skill 4.8's "text plus a gradient is not a hero", and the user
+    // removed that too. So the rule is the user's rather than the skill's:
+    // the hero is words, a control, and the cloud behind them.
+    //
+    // This assertion is the thing that stops a third one appearing. It is
+    // deliberately about the shape of the hero, not about one component name.
+    expect(hero).not.toContain("ScreenFrame");
+    expect(hero).not.toMatch(/\bimg\b|<Image\b/);
+    // No side-by-side split: a second column is where the last two arrived.
+    expect(hero).not.toMatch(/\bgrid-cols-\d|\bcol-span-\d/);
+
+    // And still nothing that takes a keystroke, which is the DECISIONS 030
+    // half and the half that has never changed.
     expect(hero).not.toMatch(/<(?:textarea|input|form|button)\b/);
   });
 });

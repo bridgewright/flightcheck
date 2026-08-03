@@ -18,10 +18,10 @@ import type { PackageSummary } from "@/lib/worker";
 // resolves its own switcher state.
 const WIDTHS = {
   // The reading column most screens use.
-  "2xl": "max-w-2xl",
+  "2xl": "max-w-reading",
   // Matches the TopBar's own inner width, for screens with side-by-side or
   // full-bleed content (landing, tables).
-  wide: "max-w-5xl",
+  wide: "max-w-shell",
 } as const;
 
 export default function Shell({
@@ -49,14 +49,14 @@ export default function Shell({
       />
       {/* flex-1 pushes the footer to the viewport bottom on short pages —
           the root layout's body is already min-h-full flex-col. */}
-      <main className={`mx-auto w-full flex-1 ${WIDTHS[width]} px-6 pt-10 pb-12`}>
+      <main className={`mx-auto w-full flex-1 ${WIDTHS[width]} px-6 pt-10 pb-12 sm:px-10 lg:px-16 xl:px-24`}>
         {children}
       </main>
       {/* Quiet trust footer on every Shell page: the legal pages and a real
           person to write to. Links come from app/legal/policy.ts so the
           footer can never point at pages that do not exist. */}
       <footer className={`border-t ${DIVIDER}`}>
-        <div className="mx-auto flex w-full max-w-5xl flex-wrap items-center gap-x-5 gap-y-1 px-6 py-5 text-xs text-ink-faint">
+        <div className="mx-auto flex w-full max-w-shell flex-wrap items-center gap-x-5 gap-y-1 px-6 py-5 text-fine text-ink-faint sm:px-10 lg:px-16 xl:px-24">
           {LEGAL_LINKS.map((link) => (
             <Link
               key={link.href}
