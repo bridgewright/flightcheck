@@ -323,6 +323,20 @@ class Database(Protocol):
         ValueError. Reports and transcripts are columns on sessions and go
         with them.
         """
+    # -------------------------------------------------- v0.6 usage metrics
+
+    def list_recent_packages(self, limit: int) -> list[PackageRow]:
+        """The newest `limit` packages across every account, newest first.
+
+        Bounded by construction: F-13 aggregates a recent window, and an
+        unbounded scan would quietly become a full-table read as the
+        product grows. The bound is config (metrics.usage_scan_limit), so
+        widening the window is not a code change."""
+        ...
+
+    def list_recent_sessions(self, limit: int) -> list[SessionRow]:
+        """The newest `limit` sessions across every package, newest first;
+        same bound and the same reason."""
         ...
 
 
@@ -658,3 +672,16 @@ class SupabaseDatabase:
         data = (self._client.table(table).delete()
                 .in_("id", list(ids)).execute().data)
         return len(data or [])
+    # -------------------------------------------------- v0.6 usage metrics
+
+    def list_recent_packages(self, limit: int) -> list[PackageRow]:
+        data = (self._client.table("packages").select("*")
+                .order("created_at", desc=True).limit(limit)
+                .execute().data)
+        return [_to_package_row(row) for row in data]
+
+    def list_recent_sessions(self, limit: int) -> list[SessionRow]:
+        data = (self._client.table("sessions").select(SESSION_COLUMNS)
+                .order("created_at", desc=True).limit(limit)
+                .execute().data)
+        return [_to_session_row(row) for row in data]

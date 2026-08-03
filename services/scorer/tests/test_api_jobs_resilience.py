@@ -320,3 +320,38 @@ def test_a_row_the_pipeline_already_failed_is_not_rewritten(
     assert writes == [(session_id, "failed")], (
         "the wrapper must not double-write a status the pipeline already set"
     )
+
+
+# --------------------------------------------------------- scoring latency
+
+
+def test_a_successful_run_records_its_duration_for_the_usage_metrics(
+    monkeypatch, collaborators
+):
+    """F-13's p50 has no column behind it; the job is where it is sampled."""
+    from scorer.api.usage import reset_scoring_latency, scoring_latency
+
+    reset_scoring_latency()
+    monkeypatch.setattr(jobs_module, "score_session", lambda *_a: None)
+
+    score_session_job("sess-1", *collaborators)
+
+    assert scoring_latency().sample_size == 1
+    reset_scoring_latency()
+
+
+def test_a_failed_run_records_no_duration(monkeypatch, collaborators):
+    """A run that died is not a latency observation; it is a dead letter."""
+    from scorer.api.usage import reset_scoring_latency, scoring_latency
+
+    reset_scoring_latency()
+
+    def boom(*_args):
+        raise RuntimeError("scoring exploded")
+
+    monkeypatch.setattr(jobs_module, "score_session", boom)
+
+    score_session_job("sess-1", *collaborators)
+
+    assert scoring_latency().sample_size == 0
+    reset_scoring_latency()

@@ -96,18 +96,29 @@ def test_healthz_is_public_and_not_under_the_api_prefix(client):
 # --- the three endpoints wired ahead of their tracks ---------------------
 
 
-# DELETE /api/account left this list when Track A implemented it (F-34);
-# its contract now lives in tests/test_api_account.py, including the 401.
+# Still awaiting its track. DELETE /api/account (Track A, F-34) and
+# GET /api/metrics/usage (Track B, F-13) both landed and moved to WIRED
+# below -- the Phase 0 contract is that a stub is replaced, so a track
+# finishing its endpoint is expected to move its own row. Their fuller
+# contracts now live in tests/test_api_account.py and tests/test_api_usage.py.
 NOT_IMPLEMENTED = (
     ("POST", "/api/preview/rubric", {"json": {"jd_text": "We are hiring."}},
      "rubric preview is not available yet"),
-    ("GET", "/api/metrics/usage", {}, "usage metrics are not available yet"),
+)
+
+# Implemented. The auth posture and the path are still pinned here: what a
+# track may change is the body, never where the endpoint lives or who may
+# reach it.
+WIRED = (
+    ("DELETE", "/api/account", {"params": {"user_id": "user-1"}}),
+    ("POST", "/api/preview/rubric", {"json": {"jd_text": "We are hiring."}}),
+    ("GET", "/api/metrics/usage", {}),
 )
 
 
 @pytest.mark.parametrize(
     "method,path,kwargs,message", NOT_IMPLEMENTED,
-    ids=["preview-rubric", "metrics-usage"],
+    ids=["preview-rubric"],
 )
 def test_wired_endpoint_answers_501_with_an_honest_typed_body(
     client, method, path, kwargs, message
@@ -118,12 +129,10 @@ def test_wired_endpoint_answers_501_with_an_honest_typed_body(
 
 
 @pytest.mark.parametrize(
-    "method,path,kwargs,message", NOT_IMPLEMENTED,
-    ids=["preview-rubric", "metrics-usage"],
+    "method,path,kwargs", WIRED,
+    ids=["account-delete", "preview-rubric", "metrics-usage"],
 )
-def test_wired_endpoint_is_behind_the_bearer_token(
-    client, method, path, kwargs, message
-):
+def test_wired_endpoint_is_behind_the_bearer_token(client, method, path, kwargs):
     assert client.request(method, path, **kwargs).status_code == 401
 
 

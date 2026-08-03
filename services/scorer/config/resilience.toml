@@ -1,11 +1,12 @@
-# flightcheck v0.6 pipeline-resilience configuration (F-37).
+# flightcheck v0.6 worker-operations configuration (F-37, F-13).
 #
 # Loaded by scorer.resilience.load_resilience_config(). Separate from
 # product.toml on purpose, following the existing two-file precedent
-# (config/bakeoff.toml): these are worker survival limits, not product
-# terms, and they are tuned from operational evidence rather than from a
-# pricing decision. Every number below is a knob an operator can turn
-# without a code change -- that is the whole reason the file exists.
+# (config/bakeoff.toml): these are limits for keeping the worker alive
+# and knowing whether it is, not product terms, and they are tuned from
+# operational evidence rather than from a pricing decision. Every number
+# below is a knob an operator can turn without a code change -- that is
+# the whole reason the file exists.
 
 [retry]
 # Transient backoff for EVERY outbound model call. Before v0.6 exactly one
@@ -68,3 +69,13 @@ max_records = 200
 # identify the failure, short enough that a pathological exception string
 # cannot fill the ring or the log line.
 detail_max_chars = 300
+
+[metrics]
+# F-13. Scoring durations are sampled in process memory (there is no column
+# for them and this batch adds no migration), so the ring is small and its
+# published p50 always ships next to its sample size.
+scoring_latency_samples = 200
+# Rows the usage endpoint scans, newest first. Bounded so the endpoint can
+# never become a full-table read as the product grows; raise it when the
+# sample it produces stops covering the window an operator cares about.
+usage_scan_limit = 500

@@ -24,12 +24,47 @@ and not evidence of demand.** flightcheck has zero external paying customers.
 The PRD's paid-packages target excludes operator verification orders for
 exactly this reason, so this order cannot satisfy it.
 
-## What becomes measurable, and when
+## What v0.6 changed: measurable, not measured
 
-Nothing below can be reported today, because reporting it needs users and there
-are none. The instrumentation is F-13 (real-usage metrics), scheduled for v0.6.
-The metrics originally promised for v0.2 slipped with the payments timeline
-(DECISIONS #008); payments have now shipped and the metrics have not.
+Until v0.6 the three PRD success metrics could only be read by querying the
+database by hand. They now come off an endpoint, and a script renders them
+into a dated report in this directory:
+
+```
+GET /api/metrics/usage                      # worker, bearer-authed
+uv run python tools/usage_report.py --worker-url https://<worker>
+```
+
+**There is still no dated report here, and that is deliberate.** A report
+generated today would say N=1 and "self-test", which the paragraphs above
+already say. The first one lands with the first external pilot.
+
+## What the report is required to say
+
+The rule this directory has always followed — sample size next to every
+number, and plain words when the sample is the operator rather than customers
+— is now enforced by the generator rather than by whoever runs it:
+
+- every rate prints the counts it was computed from;
+- the number of distinct accounts is in the first line of the summary;
+- a one-account sample gets an explicit "these are self-test numbers, not
+  customer usage" banner, derived from the data, above the first table;
+- a metric the product does not instrument is printed as **not instrumented**
+  with the reason, never as a dash a reader may fill in.
+
+That last rule costs one of the three PRD metrics today. The PRD defines
+first-response latency as "user stops → interviewer speaks" and names
+`DeliveryMetrics.avg_response_latency_s` as its source, but that field
+measures the opposite direction — interviewer segment end → candidate segment
+start, i.e. how fast the *candidate* answers. It is a real number, so it is
+reported under its own name; the PRD's metric stays unreported until the
+session room measures it.
+
+Scoring latency is sampled in the worker process (there is no column for it,
+and v0.6 adds no migration for one), so its p50 always ships with its sample
+size and a note that it resets when the worker restarts.
+
+## State of each number at this tag
 
 | Number | State at the v0.5 tag |
 | --- | --- |
@@ -39,8 +74,8 @@ The metrics originally promised for v0.2 slipped with the payments timeline
 | Verdict distribution | Needs sessions from more than one person before a distribution means anything |
 | Per-session unit cost | Still not metered. The v0.1 notes promised it for v0.2 and it has not landed in v0.2, v0.3, v0.4 or v0.5; F-13 does not cover it either. The PRD carries published unit economics at v1.0 |
 
-When numbers do exist they get committed here with the sample size stated next
-to every one of them, following the rule the eval reports already follow:
+When numbers do exist they get committed here with the sample size stated
+next to every one of them, following the rule the eval reports already follow:
 numbers of record land with their provenance and caveats and are never
 paraphrased (`evals/reports/`). Small samples say that they are small.
 

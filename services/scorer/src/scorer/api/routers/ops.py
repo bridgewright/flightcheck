@@ -8,9 +8,9 @@ Two routers, because these two endpoints do not share a security posture:
   it claims, because returning true unconditionally is a liveness lie that
   once let a dead build keep serving.
 * build_router carries the /api endpoints, bearer-authed like every other:
-  GET /metrics/usage, wired here in Phase 0 answering 501 and implemented by
-  Track B (F-13) as session completion rate, p50 latencies, and package
-  burn-through aggregated from existing columns.
+  GET /metrics/usage (F-13) and GET /ops/dead-letters (F-37). Both answer
+  the operator's two standing questions -- how is the product being used,
+  and what broke -- without opening the database by hand.
 """
 from __future__ import annotations
 
@@ -20,7 +20,8 @@ from fastapi import APIRouter, Query
 
 from scorer.api.deadletter import default_log
 from scorer.api.deps import Deps
-from scorer.api.responses import NotImplementedBody
+from scorer.api.usage import UsageMetrics, compute_usage
+from scorer.resilience import load_resilience_config
 
 # One request cannot dump the whole ring: this is an operator endpoint, not
 # an export. The ceiling is the bound, the default is what fits on a screen.
@@ -30,12 +31,23 @@ _DEAD_LETTER_MAX_LIMIT = 200
 
 def build_router(deps: Deps) -> APIRouter:
     router = APIRouter()
+    db = deps.db
 
-    @router.get("/metrics/usage", status_code=501,
-                response_model=NotImplementedBody)
-    def usage_metrics() -> NotImplementedBody:
-        return NotImplementedBody(
-            error="usage metrics are not available yet",
+    @router.get("/metrics/usage")
+    def usage_metrics() -> UsageMetrics:
+        """The three PRD success metrics, aggregated from existing columns.
+
+        Every rate ships with the counts behind it and with
+        `distinct_users`, because "N=1 account" is the most important fact
+        about every number this product can currently produce, and the
+        repo's honesty rule (impression rule 7) turns on saying so. The
+        `notes` list carries the caveats in prose so a report generated
+        from this payload cannot accidentally drop them.
+        """
+        scan_limit = load_resilience_config().metrics.usage_scan_limit
+        return compute_usage(
+            db.list_recent_packages(scan_limit),
+            db.list_recent_sessions(scan_limit),
         )
 
     @router.get("/ops/dead-letters")

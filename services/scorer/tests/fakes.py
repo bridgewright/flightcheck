@@ -432,6 +432,15 @@ class FakeDatabase:
                     # they cannot outlive it here either.
                     self.transcripts.pop(row_id, None)
         return deleted
+    # -------------------------------------------------- v0.6 usage metrics
+
+    def list_recent_packages(self, limit: int) -> list[PackageRow]:
+        # Insertion order stands in for created_at (ids are sequential),
+        # mirroring the adapter's newest-first contract.
+        return list(reversed(list(self.packages.values())))[:limit]
+
+    def list_recent_sessions(self, limit: int) -> list[SessionRow]:
+        return list(reversed(list(self.sessions.values())))[:limit]
 
 
 class FakeStorage:

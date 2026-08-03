@@ -35,6 +35,7 @@ from __future__ import annotations
 
 import logging
 import threading
+import time
 
 from scorer.api.db import Database
 from scorer.api.deadletter import (
@@ -46,6 +47,7 @@ from scorer.api.deadletter import (
 )
 from scorer.api.pipeline import compile_package, score_session
 from scorer.api.storage import Storage
+from scorer.api.usage import scoring_latency
 from scorer.resilience import (
     ConcurrencySlot,
     DeadlineExceeded,
@@ -151,7 +153,13 @@ def score_session_job(
             config.memory_min_available_mb,
         )
         with _slot("scoring").acquire(), deadline_scope(config.deadline_s):
+            started = time.monotonic()
             score_session(session_id, db, storage, client)
+            # F-13: there is no column for a scoring run's duration and this
+            # batch adds no migration, so the p50 is sampled here, in
+            # process, and published with its sample size and a note saying
+            # it resets on restart.
+            scoring_latency().record(time.monotonic() - started)
     except Exception as exc:
         default_log().record("scoring", session_id, exc, reason=_reason_for(exc))
         _fail_session_if_unsettled(db, session_id)

@@ -87,6 +87,15 @@ class DeadLetterConfig(BaseModel):
     detail_max_chars: int
 
 
+class MetricsConfig(BaseModel):
+    """F-13 sampling bounds for the usage endpoint and its report."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    scoring_latency_samples: int
+    usage_scan_limit: int
+
+
 class ResilienceConfig(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
@@ -94,6 +103,7 @@ class ResilienceConfig(BaseModel):
     scoring: JobConfig
     compile: JobConfig
     deadletter: DeadLetterConfig
+    metrics: MetricsConfig
 
 
 def load_resilience_config() -> ResilienceConfig:
