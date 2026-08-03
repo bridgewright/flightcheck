@@ -1,0 +1,69 @@
+import { formatOrderAmount, formatOrderDate, orderStatusLabel } from "@/lib/home";
+import { LABEL } from "@/lib/ui";
+import type { OrderRow } from "@/lib/types";
+import { listOrders } from "@/lib/worker";
+
+// The receipts list: one row per Polar order, newest first (the worker's
+// GET /api/orders serializes them in that order already). Standalone by
+// design — the controller wires it into the settings page at integration;
+// nothing in this track imports it.
+//
+// Server component: orders ride the same bearer-authenticated worker channel
+// as everything else and never reach the browser as an API.
+
+function Row({ order }: { order: OrderRow }) {
+  return (
+    <tr className="border-t border-neutral-200 dark:border-neutral-800">
+      <td className="py-2.5 pr-4 whitespace-nowrap">
+        {formatOrderDate(order.created_at) ?? "—"}
+      </td>
+      <td className="py-2.5 pr-4 tabular-nums whitespace-nowrap">
+        {formatOrderAmount(order.amount_minor, order.currency)}
+      </td>
+      <td className="py-2.5 text-neutral-600 dark:text-neutral-400">
+        {orderStatusLabel(order.status)}
+      </td>
+    </tr>
+  );
+}
+
+export default async function OrderHistory({ userId }: { userId: string }) {
+  let orders: OrderRow[];
+  try {
+    orders = await listOrders(userId);
+  } catch {
+    return (
+      <p className="text-sm text-neutral-600 dark:text-neutral-400">
+        Your payment history can&apos;t be loaded right now. Nothing is lost —
+        try again in a moment.
+      </p>
+    );
+  }
+
+  if (orders.length === 0) {
+    return (
+      <p className="text-sm text-neutral-600 dark:text-neutral-400">
+        No payments yet. When you unlock a package, the receipt appears here.
+      </p>
+    );
+  }
+
+  return (
+    <div className="overflow-x-auto">
+      <table className="w-full text-left text-sm">
+        <thead>
+          <tr>
+            <th className={`${LABEL} py-1.5 pr-4 font-semibold`}>Date</th>
+            <th className={`${LABEL} py-1.5 pr-4 font-semibold`}>Amount</th>
+            <th className={`${LABEL} py-1.5 font-semibold`}>Status</th>
+          </tr>
+        </thead>
+        <tbody>
+          {orders.map((order) => (
+            <Row key={order.id} order={order} />
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+}
