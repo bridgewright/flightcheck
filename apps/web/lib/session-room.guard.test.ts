@@ -192,7 +192,7 @@ describe("CONNECTION_LOST_MESSAGE", () => {
   it("pins the honest copy, including the slot promise", () => {
     expect(CONNECTION_LOST_MESSAGE).toBe(
       "We hit a connection problem, so this session has to end here. " +
-        "It won't count against your package — please try again in a few minutes.",
+        "It won't count against your package. Please try again in a few minutes.",
     );
   });
 });

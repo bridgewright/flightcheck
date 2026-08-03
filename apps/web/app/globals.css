@@ -220,6 +220,28 @@ select:focus-visible {
     );
 }
 
+/* The landing's scroll-entry motion ships its hidden state in the server HTML:
+   motion renders `initial` into the markup, so 17 elements arrive at
+   `opacity: 0` and hydration is what reveals them. That is the right trade for
+   a reader who has JavaScript, because the alternative (gating the hidden
+   state on a hydration flag) flashes anything already on screen. Crawlers and
+   screen readers are unaffected, since opacity hides from neither.
+
+   But a browser with JavaScript off, or a page whose bundle simply fails to
+   arrive, would show a landing page that is blank with all of its text present
+   in the DOM. Measured on the served HTML rather than assumed.
+
+   `scripting: none` is the media query for exactly that reader, and an author
+   `!important` is what beats the inline style motion writes. Every animated
+   element carries `data-reveal` for this rule to find; a test holds the mark in
+   place so the hook cannot quietly disappear. */
+@media (scripting: none) {
+  [data-reveal] {
+    opacity: 1 !important;
+    transform: none !important;
+  }
+}
+
 /* Scroll-entry motion is driven by motion/react in client leaves, which
    handles prefers-reduced-motion through useReducedMotion. This is the
    backstop for transitions that never pass through a component: a CSS

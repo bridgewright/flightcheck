@@ -19,7 +19,7 @@ const read = (path: string) => readFileSync(join(webRoot, path), "utf8");
 describe("publicMetadata", () => {
   const meta = publicMetadata({
     path: "/pricing",
-    title: "Pricing — flightcheck",
+    title: "Pricing: flightcheck",
     description: "One package per job description.",
   });
 
@@ -33,9 +33,9 @@ describe("publicMetadata", () => {
   });
 
   it("carries the title and description into both card formats", () => {
-    expect(meta.title).toBe("Pricing — flightcheck");
-    expect(meta.openGraph?.title).toBe("Pricing — flightcheck");
-    expect(meta.twitter?.title).toBe("Pricing — flightcheck");
+    expect(meta.title).toBe("Pricing: flightcheck");
+    expect(meta.openGraph?.title).toBe("Pricing: flightcheck");
+    expect(meta.twitter?.title).toBe("Pricing: flightcheck");
     expect(meta.openGraph?.description).toBe("One package per job description.");
     expect(meta.twitter?.description).toBe("One package per job description.");
   });

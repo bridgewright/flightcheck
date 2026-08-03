@@ -4,6 +4,8 @@ import { fileURLToPath } from "node:url";
 
 import { describe, expect, it } from "vitest";
 
+import { STEP_NUMERAL } from "@/lib/ui";
+
 import { HERO, TRIAL_MICROCOPY } from "@/components/landing/copy";
 
 // The three F-21 landing rules that are measurable, kept as a gate rather than
@@ -120,6 +122,11 @@ describe("the small uppercase labels are rationed", () => {
     const steps = read("components/landing/HowItWorks.tsx");
     expect(steps).not.toMatch(/\bStep \{?/);
     expect(steps).not.toMatch(/\bLABEL\b/);
-    expect(steps).toContain("font-serif");
+    // The serif used to be a literal here. It moved into the STEP_NUMERAL
+    // token, so the check follows it: the file reaches for the token, and
+    // the token is the serif at display scale rather than a label size.
+    expect(steps).toContain("STEP_NUMERAL");
+    expect(STEP_NUMERAL).toContain("font-serif");
+    expect(STEP_NUMERAL).not.toMatch(/\btext-label\b/);
   });
 });

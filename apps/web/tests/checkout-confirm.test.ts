@@ -4,7 +4,7 @@ import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 
 // F-43's confirm step. Before this, the in-app unlock button went from
-// "Unlock all sessions — $49" straight to a hosted card form: a customer
+// "Unlock all sessions for $49" straight to a hosted card form: a customer
 // could pay without ever having been shown an itemized list of what they were
 // buying or the refund terms. That is the gap the checkout patterns worth
 // copying close, and it is the difference between a surprise and a chargeback.

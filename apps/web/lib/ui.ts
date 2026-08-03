@@ -103,6 +103,18 @@ export const MUTED = "text-ink-muted";
 export const SUBTLE = "text-sm text-ink-muted";
 export const FINE_PRINT = "text-fine text-ink-faint";
 
+/** The faint ink on its own, for the cases that need the colour without
+ * inheriting a size. Every other faint token bundles one, which is right for
+ * microcopy and wrong for anything display-scale. */
+export const FAINT = "text-ink-faint";
+
+/** A step number in a sequence, carrying the order the way an eyebrow used to.
+ * Display-scale serif so it reads as a numeral rather than as a label, and
+ * faint so it stays behind the step's own title. It exists as a token because
+ * the alternative was a three-class composition repeated at a call site, which
+ * is the exact drift this file was built to stop. */
+export const STEP_NUMERAL = "font-serif text-page text-ink-faint";
+
 /** The reading measure. Past about 68 characters the eye loses the line. */
 export const PROSE_WIDTH = "max-w-[68ch]";
 

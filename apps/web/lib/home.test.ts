@@ -668,7 +668,7 @@ describe("formatOrderAmount", () => {
     expect(formatOrderAmount(4900, "not-a-code")).toBe("49.00 NOT-A-CODE");
   });
 
-  it("shows an honest dash when the amount is unknown", () => {
+  it("returns null when the amount is unknown, so the cell can draw the absence", () => {
     expect(formatOrderAmount(null, "usd")).toBeNull();
   });
 });
@@ -685,7 +685,7 @@ describe("formatOrderDate", () => {
 });
 
 describe("orderStatusLabel", () => {
-  it("capitalizes the worker's status word and dashes the unknown", () => {
+  it("capitalizes the worker's status word and returns null for the unknown", () => {
     expect(orderStatusLabel("paid")).toBe("Paid");
     expect(orderStatusLabel("refunded")).toBe("Refunded");
     expect(orderStatusLabel(null)).toBeNull();

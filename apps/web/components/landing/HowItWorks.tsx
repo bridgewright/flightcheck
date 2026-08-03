@@ -1,6 +1,6 @@
 import Reveal from "@/components/motion/Reveal";
 import { ENTRY_STAGGER_SECONDS } from "@/components/motion/entry";
-import { MUTED, SUB_HEADING } from "@/lib/ui";
+import { MUTED, STEP_NUMERAL, SUB_HEADING } from "@/lib/ui";
 
 import { HOW_IT_WORKS } from "./copy";
 
@@ -36,7 +36,7 @@ export default function HowItWorks() {
             className="flex flex-col gap-2"
             delay={index * ENTRY_STAGGER_SECONDS}
           >
-            <span aria-hidden="true" className={`${MUTED} font-serif text-page`}>
+            <span aria-hidden="true" className={STEP_NUMERAL}>
               {index + 1}
             </span>
             <h3 className={SUB_HEADING}>{step.title}</h3>

@@ -458,7 +458,7 @@ export type GuardEndReason =
  * a fresh attempt. */
 export const CONNECTION_LOST_MESSAGE =
   "We hit a connection problem, so this session has to end here. " +
-  "It won't count against your package — please try again in a few minutes.";
+  "It won't count against your package. Please try again in a few minutes.";
 
 export interface ConnectionGuardState {
   /** Seconds spent continuously in ICE "disconnected". */
