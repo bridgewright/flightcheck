@@ -8,6 +8,7 @@ import {
   verdictPillClasses,
 } from "./report-format";
 import type { SessionStatus, TimestampedObservation } from "./types";
+import { CHIP, CHIP_READY } from "./ui";
 
 const obs = (
   at_s: number,
@@ -115,19 +116,22 @@ describe("overallDeltas", () => {
 });
 
 describe("verdictPillClasses", () => {
-  it("color-codes verdict pills like the verdict box", () => {
-    expect(verdictPillClasses("not_ready")).toContain("red");
-    expect(verdictPillClasses("approaching")).toContain("amber");
-    expect(verdictPillClasses("ready")).toContain("green");
+  it("marks Ready and leaves the other two plain", () => {
+    // This suite used to pin red / amber / green. The verdict is not a traffic
+    // light: rendering "Not yet ready" in red punishes exactly the reader this
+    // product is for, and colour-coded certainty is on the competitive
+    // dossier's AVOID list. Sage marks Ready because arriving is worth
+    // marking; what separates the other two on screen is the word, not a hue.
+    expect(verdictPillClasses("ready")).toBe(CHIP_READY);
+    expect(verdictPillClasses("approaching")).toBe(CHIP);
+    expect(verdictPillClasses("not_ready")).toBe(CHIP);
   });
 
-  it("gives each verdict a distinct pill style", () => {
-    const styles = new Set([
-      verdictPillClasses("not_ready"),
-      verdictPillClasses("approaching"),
-      verdictPillClasses("ready"),
-    ]);
-    expect(styles.size).toBe(3);
+  it("never paints a verdict with the alarm colour", () => {
+    // Alarm means the product failed, never that the reader scored low.
+    for (const verdict of ["not_ready", "approaching", "ready"] as const) {
+      expect(verdictPillClasses(verdict)).not.toContain("alarm");
+    }
   });
 });
 

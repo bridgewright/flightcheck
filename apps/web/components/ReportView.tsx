@@ -365,6 +365,65 @@ export function ReportOutcomes({ report }: { report: SessionReport }) {
   );
 }
 
+/**
+ * The verdict, at display scale, over the instrument that produced it.
+ *
+ * Exported because two screens show a verdict and they must not drift: this
+ * one and the session detail a paying customer reads after a session. That
+ * screen used to render its own coloured band, so the verdict-first
+ * typography and the gauge reached the public sample report and not the
+ * screen anyone actually pays for.
+ *
+ * `children` is where a caller adds what only it has. The session detail puts
+ * its comparison against the previous session there; the sample report has no
+ * previous session and passes nothing.
+ */
+export function ReportVerdict({
+  report,
+  dimensions,
+  showLimitsNote = true,
+  children,
+}: {
+  report: SessionReport;
+  dimensions: DimensionMeta[];
+  /** Off where the caller already shows the limits note in a banner above. */
+  showLimitsNote?: boolean;
+  children?: React.ReactNode;
+}) {
+  // Verdict first (design spec 7.1). What shipped before was a coloured band
+  // containing small text, which is the visual language of a form validation
+  // error rather than of a judgment: the verdict is the product's output and it
+  // is set at display scale, with the score beside it, the instrument that
+  // produced it underneath, and the caveat below rather than inside a box.
+  const reading = readVerdict(report, dimensions);
+  return (
+    <section className="flex flex-col gap-5">
+      <div className="flex flex-wrap items-baseline gap-x-4 gap-y-1">
+        <h2 className={report.verdict === "ready" ? VERDICT_READY : VERDICT_HEADING}>
+          {VERDICT_LABELS[report.verdict]}
+        </h2>
+        <p className={`${SCORE_NUMBER} text-page`}>
+          {report.overall_score.toFixed(2)}
+          <span className={SCORE_DENOMINATOR}> / {MAX_SCORE}</span>
+        </p>
+      </div>
+      {/* F-03 headline; reports stored before the field carry "". */}
+      {report.headline ? <p className={PROSE_WIDTH}>{report.headline}</p> : null}
+      <div className="max-w-md">
+        <ReadinessGauge
+          score={report.overall_score}
+          verdict={report.verdict}
+          reading={reading}
+        />
+      </div>
+      {children}
+      {showLimitsNote ? (
+        <p className={`${FINE_PRINT} ${PROSE_WIDTH}`}>{report.limits_note}</p>
+      ) : null}
+    </section>
+  );
+}
+
 export default function ReportView({
   report,
   dimensions,
@@ -374,39 +433,9 @@ export default function ReportView({
   dimensions: DimensionMeta[];
   previous?: Record<string, number>;
 }) {
-  // Verdict first (design spec 7.1). What shipped before was a coloured band
-  // containing small text, which is the visual language of a form validation
-  // error rather than of a judgment: the verdict is the product's output and it
-  // is set at display scale, with the score beside it, the instrument that
-  // produced it underneath, and the caveat below rather than inside a box.
-  const reading = readVerdict(report, dimensions);
   return (
     <div className="flex flex-col gap-10">
-      <section className="flex flex-col gap-5">
-        <div className="flex flex-wrap items-baseline gap-x-4 gap-y-1">
-          <h2
-            className={report.verdict === "ready" ? VERDICT_READY : VERDICT_HEADING}
-          >
-            {VERDICT_LABELS[report.verdict]}
-          </h2>
-          <p className={`${SCORE_NUMBER} text-page`}>
-            {report.overall_score.toFixed(2)}
-            <span className={SCORE_DENOMINATOR}> / {MAX_SCORE}</span>
-          </p>
-        </div>
-        {/* F-03 headline; reports stored before the field carry "". */}
-        {report.headline ? (
-          <p className={PROSE_WIDTH}>{report.headline}</p>
-        ) : null}
-        <div className="max-w-md">
-          <ReadinessGauge
-            score={report.overall_score}
-            verdict={report.verdict}
-            reading={reading}
-          />
-        </div>
-        <p className={`${FINE_PRINT} ${PROSE_WIDTH}`}>{report.limits_note}</p>
-      </section>
+      <ReportVerdict report={report} dimensions={dimensions} />
 
       <ReportDimensionCards
         report={report}

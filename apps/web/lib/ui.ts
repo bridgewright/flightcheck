@@ -139,6 +139,11 @@ export const CHIP = `${CHIP_SHELL} bg-paper-sunk text-ink-faint`;
 /** Arrived: the Ready verdict, and nothing else. */
 export const CHIP_READY = `${CHIP_SHELL} bg-ready-wash text-ready`;
 
+/** A failure that is ours: a session we could not score, a scoring run that
+ * closed without a result. Alarm belongs here because the product broke, not
+ * because the reader did badly. A low score never takes this. */
+export const CHIP_ALARM = `${CHIP_SHELL} bg-alarm-wash text-alarm`;
+
 /** A bare label with no pill, for field labels and table heads. */
 export const LABEL = "font-mono text-label uppercase text-ink-faint";
 

@@ -1,6 +1,7 @@
 // Pure formatting helpers for session reports. Kept JSX-free so vitest can
 // exercise them without a React transform.
 import type { SessionStatus, TimestampedObservation, Verdict } from "@/lib/types";
+import { CHIP, CHIP_ALARM, CHIP_BLUSH, CHIP_READY } from "@/lib/ui";
 
 export const VERDICT_LABELS: Record<Verdict, string> = {
   not_ready: "Not yet ready",
@@ -8,26 +9,21 @@ export const VERDICT_LABELS: Record<Verdict, string> = {
   ready: "Ready",
 };
 
-const VERDICT_CLASSES: Record<Verdict, string> = {
-  not_ready:
-    "border-red-300 bg-red-50 text-red-900 dark:border-red-800 dark:bg-red-950 dark:text-red-200",
-  approaching:
-    "border-amber-300 bg-amber-50 text-amber-900 dark:border-amber-800 dark:bg-amber-950 dark:text-amber-200",
-  ready:
-    "border-green-300 bg-green-50 text-green-900 dark:border-green-800 dark:bg-green-950 dark:text-green-200",
-};
-
-export function verdictClasses(verdict: Verdict): string {
-  return VERDICT_CLASSES[verdict];
-}
-
-// The same red/amber/green language as the verdict box, at pill size — the
-// archive rows and detail chips speak one color vocabulary.
+// The verdict at pill size, on the tokens.
+//
+// It used to be red / amber / green, matching a coloured verdict band that no
+// longer exists. Both are gone for the same reason: a verdict is not a traffic
+// light. Rendering "Not yet ready" in red punishes exactly the reader this
+// product is for, and colour-coded certainty is on the competitive dossier's
+// AVOID list because it is how exam-band products manufacture confidence they
+// have not earned.
+//
+// So sage marks Ready, because arriving is worth marking, and the other two
+// are plain. What separates them on the screen is the word.
 const VERDICT_PILL_CLASSES: Record<Verdict, string> = {
-  not_ready: "bg-red-100 text-red-900 dark:bg-red-950 dark:text-red-200",
-  approaching:
-    "bg-amber-100 text-amber-900 dark:bg-amber-950 dark:text-amber-200",
-  ready: "bg-green-100 text-green-900 dark:bg-green-950 dark:text-green-200",
+  not_ready: CHIP,
+  approaching: CHIP,
+  ready: CHIP_READY,
 };
 
 export function verdictPillClasses(verdict: Verdict): string {
@@ -80,26 +76,15 @@ const ARCHIVE_STATUS_PILLS: Record<
   SessionStatus,
   { label: string; className: string } | null
 > = {
-  planned: {
-    label: "Not started, slot preserved",
-    className:
-      "bg-neutral-100 text-neutral-600 dark:bg-neutral-800 dark:text-neutral-400",
-  },
-  scoring: {
-    label: "Scoring…",
-    className: "bg-amber-100 text-amber-900 dark:bg-amber-950 dark:text-amber-200",
-  },
-  failed: {
-    label: "Scoring failed",
-    className: "bg-red-100 text-red-900 dark:bg-red-950 dark:text-red-200",
-  },
-  failed_permanent: {
-    label: "Closed, not scored",
-    className: "bg-red-100 text-red-900 dark:bg-red-950 dark:text-red-200",
-  },
+  planned: { label: "Not started, slot preserved", className: CHIP },
+  // In progress, which is what blush marks everywhere in the product.
+  scoring: { label: "Scoring…", className: CHIP_BLUSH },
+  // These three are real failures of ours, which is the one job alarm has.
+  failed: { label: "Scoring failed", className: CHIP_ALARM },
+  failed_permanent: { label: "Closed, not scored", className: CHIP_ALARM },
   insufficient: {
     label: "Not scored: not enough evidence",
-    className: "bg-red-100 text-red-900 dark:bg-red-950 dark:text-red-200",
+    className: CHIP_ALARM,
   },
   scored: null,
 };

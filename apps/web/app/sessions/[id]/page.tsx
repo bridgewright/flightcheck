@@ -3,10 +3,12 @@ import Link from "next/link";
 
 import PollRefresh from "@/components/PollRefresh";
 import {
+  type DimensionMeta,
   ReportDeliveryMetrics,
   ReportDimensionCards,
   ReportObservations,
   ReportOutcomes,
+  ReportVerdict,
   dimensionMetaFromRubric,
 } from "@/components/ReportView";
 import Shell from "@/components/Shell";
@@ -15,8 +17,6 @@ import { formatSessionDate, nextSessionNumber } from "@/lib/home";
 import {
   formatDelta,
   scoringStageCopy,
-  VERDICT_LABELS,
-  verdictClasses,
 } from "@/lib/report-format";
 import {
   deriveSessionDetailState,
@@ -27,7 +27,7 @@ import {
   type SessionDetailState,
 } from "@/lib/transcript";
 import type { Rubric, SessionReport, TranscriptSegment } from "@/lib/types";
-import { DIVIDER, PRIMARY_BUTTON } from "@/lib/ui";
+import { DIVIDER, MUTED, PRIMARY_BUTTON } from "@/lib/ui";
 import type { Viewer } from "@/lib/viewer";
 import { getViewer } from "@/lib/viewer";
 import type { SessionProgressEntry } from "@/lib/worker";
@@ -239,11 +239,13 @@ function CtaBlock({ href, label }: { href: string; label: string }) {
 // scored session exists — how far this one moved against it.
 function TrajectoryHeader({
   report,
+  dimensions,
   state,
   previous,
   progressLoaded,
 }: {
   report: SessionReport;
+  dimensions: DimensionMeta[];
   state: "scored" | "limited";
   previous: SessionProgressEntry | null;
   progressLoaded: boolean;
@@ -252,32 +254,28 @@ function TrajectoryHeader({
     previous !== null && previous.overall !== null
       ? report.overall_score - previous.overall
       : null;
+  // The same block the sample report shows, from one component. This screen
+  // used to draw its own coloured band, so the verdict-first typography and
+  // the two-bar gauge landed on the page a stranger can browse and not on the
+  // page a paying customer reads after their session.
   return (
-    <section className={`rounded-surface border p-6 ${verdictClasses(report.verdict)}`}>
-      <p className="text-sm uppercase tracking-wide">Verdict</p>
-      <p className="text-3xl font-bold">
-        {VERDICT_LABELS[report.verdict]}
-        <span className="ml-3 text-xl font-medium">
-          {report.overall_score.toFixed(2)} / 5
-        </span>
-      </p>
-      {/* F-03 headline; reports stored before the field carry "". */}
-      {report.headline ? <p className="mt-2 text-base">{report.headline}</p> : null}
+    <ReportVerdict
+      report={report}
+      dimensions={dimensions}
+      // In the limited state the banner above already carries the note.
+      showLimitsNote={state === "scored"}
+    >
       {delta !== null && previous !== null ? (
-        <p className="mt-2 text-sm">
-          <span className="font-semibold tabular-nums">{formatDelta(delta)}</span>{" "}
-          overall vs session {previous.index}, your previous scored session.
+        <p className={`${MUTED} text-fine`}>
+          <span className="tabular-nums">{formatDelta(delta)}</span> overall vs
+          session {previous.index}, your previous scored session.
         </p>
       ) : progressLoaded && previous === null ? (
-        <p className="mt-2 text-sm">
+        <p className={`${MUTED} text-fine`}>
           Your first scored session: the baseline the next ones move against.
         </p>
       ) : null}
-      {/* In the limited state the banner above carries the limits note. */}
-      {state === "scored" ? (
-        <p className="mt-3 text-sm">{report.limits_note}</p>
-      ) : null}
-    </section>
+    </ReportVerdict>
   );
 }
 
@@ -401,6 +399,7 @@ export default async function SessionDetailPage({
             ) : null}
             <TrajectoryHeader
               report={report}
+              dimensions={dimensions}
               state={state}
               previous={previous}
               progressLoaded={entries !== null}
