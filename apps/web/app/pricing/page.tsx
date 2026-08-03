@@ -1,12 +1,12 @@
 import Link from "next/link";
 
 import Shell from "@/components/Shell";
-import { PRICE_DISPLAY } from "@/lib/pricing";
+import { EXPIRY_DAYS, PACKAGE_SESSIONS, PRICE_DISPLAY } from "@/lib/pricing";
 import { LABEL, PRIMARY_BUTTON } from "@/lib/ui";
 import { getViewer } from "@/lib/viewer";
 
 const INCLUDED = [
-  "6 live sessions with your interviewer, ~20 minutes each",
+  `${PACKAGE_SESSIONS} live sessions with your interviewer, ~20 minutes each`,
   "A rubric compiled from the actual JD you're facing",
   "Fresh topics every session — practice until you're ready",
   "Per-session reports: content and delivery, scored separately",
@@ -45,6 +45,14 @@ export default async function PricingPage() {
             <Link href="/checkout" className={`${PRIMARY_BUTTON} text-center`}>
               Continue to payment
             </Link>
+            {/* The trial model, stated where the price is: the charge is an
+                unlock of the package the trial already opened, not a second
+                product. */}
+            <p className="text-xs text-neutral-500">
+              Your first package starts as a free trial — one full session,
+              scored. The {PRICE_DISPLAY} unlock opens the remaining sessions
+              on that same package for {EXPIRY_DAYS} days.
+            </p>
           </div>
         </article>
       </div>
