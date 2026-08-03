@@ -56,6 +56,13 @@ EXEMPT = {
     # An operator harness run once per release gate, by hand, with the output
     # in front of them -- not a customer's job on a worker thread.
     "bakeoff/discrimination.py": "offline eval harness, not the product path",
+    # The one model call a stranger can trigger without an account. Retrying it
+    # would double the spend an anonymous visitor can force on the failure path
+    # -- the exact lever F-45's guards exist to hold shut -- so a bad reply
+    # degrades to the honest "did not come back in a shape we can show" state
+    # instead. No customer work is at risk: nothing is persisted and nobody has
+    # paid for a preview.
+    "api/preview.py": "unauthenticated pre-signup preview; retry amplifies spend",
 }
 
 
