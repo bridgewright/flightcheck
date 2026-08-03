@@ -31,15 +31,10 @@ export default async function SampleReportPage() {
   return (
     <Shell viewer={viewer}>
       <div className="flex flex-col gap-8">
-<<<<<<< HEAD
-        <div className="rounded-md border border-neutral-300 bg-neutral-50 p-4 text-sm dark:border-neutral-700 dark:bg-neutral-900">
+        <div className={NOTICE}>
           Sample report from a real session run by the developer. flightcheck
           has no external users yet, so no customer&rsquo;s session is on
           display here.
-=======
-        <div className={NOTICE}>
-          Sample report from a real practice session (anonymized).
->>>>>>> 2cee8d5 (fix(review): stop the landing selling what the product seals)
         </div>
         <h1 className={PAGE_HEADING}>
           What your report looks like
