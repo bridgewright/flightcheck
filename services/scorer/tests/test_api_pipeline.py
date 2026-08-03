@@ -563,10 +563,14 @@ def test_failed_compile_is_not_a_cache_source(monkeypatch):
 API_HEADERS = {"Authorization": "Bearer test-worker-token"}
 
 
-def _ready_package(db: FakeDatabase, *, total_sessions: int = 6, user_id=None):
+def _ready_package(db: FakeDatabase, *, total_sessions: int = 6, user_id=None,
+                   paid_at: str | None = None):
+    # paid_at unlocks the full total (v0.5: an unpaid package exposes ONE
+    # session); tests exercising multi-session behavior seed a paid package.
     package = db.create_package(JD_TEXT, None)
     db.packages[package.id] = package.model_copy(
-        update={"user_id": user_id, "total_sessions": total_sessions}
+        update={"user_id": user_id, "total_sessions": total_sessions,
+                "paid_at": paid_at}
     )
     db.set_package_rubric(package.id, _make_rubric(), status="ready")
     return db.get_package(package.id)
@@ -646,7 +650,7 @@ def test_create_session_resume_prefers_lowest_retriable_index(monkeypatch):
 
 def test_create_session_after_scored_session_uses_next_index(monkeypatch):
     db = FakeDatabase()
-    package = _ready_package(db)
+    package = _ready_package(db, paid_at="2026-08-03T00:00:00+00:00")
     first = db.create_session(package.id, 1, plan_baseline_session(package.rubric))
     db.set_session_status(first.id, "scored")
     client = _session_client(monkeypatch, db)
@@ -662,7 +666,8 @@ def test_create_session_after_scored_session_uses_next_index(monkeypatch):
 
 def test_create_session_rejects_exhausted_package(monkeypatch):
     db = FakeDatabase()
-    package = _ready_package(db, total_sessions=2)
+    package = _ready_package(db, total_sessions=2,
+                             paid_at="2026-08-03T00:00:00+00:00")
     for index in (1, 2):
         row = db.create_session(package.id, index, plan_baseline_session(package.rubric))
         db.set_session_status(row.id, "scored")
@@ -673,7 +678,8 @@ def test_create_session_rejects_exhausted_package(monkeypatch):
     )
 
     assert response.status_code == 409
-    assert response.json() == {"error": "package exhausted: all 2 sessions used"}
+    assert response.json() == {"error": "package exhausted: all 2 sessions used",
+                               "code": "package-exhausted"}
 
 
 def test_list_package_sessions_orders_and_shapes_payload(monkeypatch):
@@ -768,6 +774,9 @@ def test_progress_shapes_scored_and_unscored_sessions(monkeypatch):
     assert response.json() == {
         "package_id": package.id,
         "total_sessions": 6,
+        "is_trial": False,
+        "paid_at": None,
+        "expires_at": None,
         "sessions": [
             {
                 "session_id": scored.id,
@@ -838,10 +847,12 @@ def test_list_user_packages_newest_first_with_usage(monkeypatch):
     assert response.json() == {"packages": [
         {"id": newer.id, "access_token": newer.access_token, "status": "ready",
          "user_id": "user-1", "total_sessions": 4, "sessions_used": 0,
-         "role_title": "Forward Deployed Product Manager"},
+         "role_title": "Forward Deployed Product Manager",
+         "is_trial": False, "paid_at": None, "expires_at": None},
         {"id": older.id, "access_token": older.access_token, "status": "ready",
          "user_id": "user-1", "total_sessions": 2, "sessions_used": 1,
-         "role_title": "Forward Deployed Product Manager"},
+         "role_title": "Forward Deployed Product Manager",
+         "is_trial": False, "paid_at": None, "expires_at": None},
     ]}
 
 

@@ -28,7 +28,14 @@ from pydantic import BaseModel, ConfigDict
 
 from scorer.api.db import Database, PackageRow, SessionRow
 from scorer.api.pipeline import compile_package, score_session
+from scorer.api.quota import (
+    RETRIABLE_STATUSES,
+    effective_total_sessions,
+    is_expired,
+    sessions_used,
+)
 from scorer.api.storage import Storage
+from scorer.config import load_product_config
 from scorer.intake.jd import JdFetchError, fetch_jd
 from scorer.intake.profile import extract_pdf_text
 from scorer.schemas import CandidateProfile, GenAIClientLike
@@ -38,13 +45,6 @@ from scorer.sessionplan.planner import (
 )
 
 logger = logging.getLogger(__name__)
-
-# Crude ceiling on how many packages one account may create. Nothing else
-# bounds it, and every package costs a compile (~100-200 s of Gemini spend),
-# so one signed-in account could otherwise drain the budget on its own. Six
-# sessions per package makes 10 packages far more than any real candidate
-# runs; raising it is a support conversation, not a code change.
-MAX_PACKAGES_PER_USER = 10
 
 
 class CreatePackageRequest(BaseModel):
@@ -157,6 +157,7 @@ def _compile_package_job(
 def create_app(db: Database, storage: Storage, client: GenAIClientLike) -> FastAPI:
     app = FastAPI(title="flightcheck scorer worker")
     api = APIRouter(prefix="/api", dependencies=[Depends(_require_worker_token)])
+    limits = load_product_config().limits
 
     @app.get("/healthz")
     def healthz() -> dict[str, bool]:
@@ -166,14 +167,15 @@ def create_app(db: Database, storage: Storage, client: GenAIClientLike) -> FastA
     def create_package(body: CreatePackageRequest, background_tasks: BackgroundTasks):
         # Checked before any JD fetch or PDF decode: a request that cannot
         # produce a package must not first spend an outbound HTTP call on it.
-        # Unowned requests have no account to count and stay uncapped.
-        if (body.user_id is not None
-                and len(db.list_packages_by_user(body.user_id))
-                >= MAX_PACKAGES_PER_USER):
+        # Unowned requests have no account to count against the absolute cap.
+        owned = (db.list_packages_by_user(body.user_id)
+                 if body.user_id is not None else [])
+        if body.user_id is not None and len(owned) >= limits.max_packages_per_user:
             return JSONResponse(
                 status_code=429,
                 content={
-                    "error": "package limit reached — contact support to raise it"
+                    "error": "package limit reached — contact support to raise it",
+                    "code": "package-cap",
                 },
             )
         if body.jd_text is not None:
@@ -200,7 +202,17 @@ def create_app(db: Database, storage: Storage, client: GenAIClientLike) -> FastA
         linkedin_text = body.linkedin_text
         if linkedin_text is None and body.linkedin_pdf_b64 is not None:
             linkedin_text = extract_pdf_text(base64.b64decode(body.linkedin_pdf_b64))
-        row = db.create_package(jd_text, body.jd_url, user_id=body.user_id)
+        # Trial model (F-24): the account's FIRST package is the trial. The
+        # flag is cosmetic-plus-records -- the money chokepoint is paid_at
+        # (effective_total_sessions) -- but the web renders trial state from
+        # it, so it is set exactly once, at birth.
+        is_trial = body.user_id is not None and not owned
+        row = db.create_package(jd_text, body.jd_url, user_id=body.user_id,
+                                is_trial=is_trial)
+        # Born touched: if the compile dies before its first status write the
+        # stuck-state reaper must still see a clock on the row (NULL
+        # updated_at rows are invisible to it by contract).
+        db.touch_updated_at("package", row.id)
         cached = (
             db.find_ready_rubric_by_jd(jd_text, body.user_id)
             if resume_text is None and linkedin_text is None
@@ -215,6 +227,7 @@ def create_app(db: Database, storage: Storage, client: GenAIClientLike) -> FastA
             if profile is not None:
                 db.set_package_profile(row.id, profile)
             db.set_package_rubric(row.id, rubric, "ready")
+            db.touch_updated_at("package", row.id)
         else:
             background_tasks.add_task(
                 _compile_package_job,
@@ -309,6 +322,11 @@ def create_app(db: Database, storage: Storage, client: GenAIClientLike) -> FastA
         return {
             "package_id": package_id,
             "total_sessions": package.total_sessions,
+            # v0.5: the web derives the effective session count and expiry
+            # copy from these -- summaries must never force a full-row GET.
+            "is_trial": package.is_trial,
+            "paid_at": package.paid_at,
+            "expires_at": package.expires_at,
             "sessions": entries,
         }
 
@@ -321,10 +339,17 @@ def create_app(db: Database, storage: Storage, client: GenAIClientLike) -> FastA
                 "status": package.status,
                 "user_id": package.user_id,
                 "total_sessions": package.total_sessions,
-                "sessions_used": len(db.list_sessions(package.id)),
+                # Slot-consuming rows only: a failed/insufficient row keeps
+                # its slot, so counting it here made the UI claim a package
+                # was complete while the worker would still hand session N
+                # back (the "Complete pill + Start session 6" bug).
+                "sessions_used": sessions_used(db.list_sessions(package.id)),
                 "role_title": (
                     package.rubric.role_title if package.rubric is not None else None
                 ),
+                "is_trial": package.is_trial,
+                "paid_at": package.paid_at,
+                "expires_at": package.expires_at,
             }
             for package in db.list_packages_by_user(user_id)
         ]}
@@ -333,38 +358,59 @@ def create_app(db: Database, storage: Storage, client: GenAIClientLike) -> FastA
     def create_session(body: CreateSessionRequest):
         """Resume a retriable session or create the package's next session.
 
-        Planned, failed, and insufficient rows keep their paid slot and make
-        retries idempotent. Completed rows advance the session index; recording keys
-        include that index, so each new session has a distinct storage path.
+        The v0.5 quota chokepoint: an expired paid window rejects every new
+        start (410, resumes included -- reads stay open elsewhere); an unpaid
+        package exposes exactly one session (effective_total_sessions);
+        planned/failed/insufficient rows keep their paid slot and make
+        retries idempotent. Completed rows advance the session index;
+        recording keys include that index, so each new session has a
+        distinct storage path.
         """
         try:
             package = db.get_package(body.package_id)
         except KeyError as exc:
             raise HTTPException(status_code=404, detail="package not found") from exc
+        if is_expired(package):
+            return JSONResponse(
+                status_code=410,
+                content={
+                    "error": ("package expired: the 30-day session window has "
+                              "ended — reports and replays stay available"),
+                    "code": "package-expired",
+                },
+            )
         existing = db.list_sessions(body.package_id)
         retriable = [
-            row for row in existing
-            if row.status in ("planned", "failed", "insufficient")
+            row for row in existing if row.status in RETRIABLE_STATUSES
         ]
         if retriable:
             return _session_response(min(retriable, key=lambda row: row.index), package)
-        if len(existing) >= package.total_sessions:
+        total = effective_total_sessions(package)
+        if sessions_used(existing) >= total:
+            used_line = (
+                "the included session is used" if total == 1
+                else f"all {total} sessions used"
+            )
             return JSONResponse(
                 status_code=409,
                 content={
-                    "error": (
-                        f"package exhausted: all {package.total_sessions} sessions used"
-                    )
+                    "error": f"package exhausted: {used_line}",
+                    "code": "package-exhausted",
                 },
             )
         if package.status != "ready" or package.rubric is None:
-            raise HTTPException(
+            return JSONResponse(
                 status_code=409,
-                detail=f"package status is {package.status!r}; sessions need 'ready'",
+                content={
+                    "error": (f"package status is {package.status!r}; "
+                              "sessions need 'ready'"),
+                    "code": "package-not-ready",
+                },
             )
         plan = plan_baseline_session(package.rubric)
         next_index = max((row.index for row in existing), default=0) + 1
         row = db.create_session(body.package_id, next_index, plan)
+        db.touch_updated_at("session", row.id)
         return _session_response(row, package)
 
     @api.post("/sessions/{session_id}/complete", status_code=202)

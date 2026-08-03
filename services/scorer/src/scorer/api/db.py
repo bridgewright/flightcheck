@@ -135,10 +135,13 @@ class Database(Protocol):
     implements it, FakeDatabase (tests/fakes.py) fakes it."""
 
     def create_package(self, jd_text: str, jd_url: str | None,
-                       user_id: str | None = None) -> PackageRow:
+                       user_id: str | None = None,
+                       is_trial: bool = False) -> PackageRow:
         """Insert a "compiling" package. user_id binds the row to the creating
         account at birth (auth-gated /new); None keeps the legacy unbound
-        shape for callers that still claim by token."""
+        shape for callers that still claim by token. is_trial marks the
+        account's FIRST package (Track C computes it at the create
+        chokepoint; it never flips later -- paid state is paid_at)."""
         ...
 
     def get_package(self, package_id: str) -> PackageRow:
@@ -366,13 +369,15 @@ class SupabaseDatabase:
         self._client = client
 
     def create_package(self, jd_text: str, jd_url: str | None,
-                       user_id: str | None = None) -> PackageRow:
+                       user_id: str | None = None,
+                       is_trial: bool = False) -> PackageRow:
         payload = {
             "access_token": secrets.token_urlsafe(24),
             "status": "compiling",
             "jd_text": jd_text,
             "jd_url": jd_url,
             "user_id": user_id,
+            "is_trial": is_trial,
         }
         data = self._client.table("packages").insert(payload).execute().data
         return _to_package_row(data[0])

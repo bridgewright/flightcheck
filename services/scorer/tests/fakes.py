@@ -199,7 +199,8 @@ class FakeDatabase:
         return datetime.now(UTC)
 
     def create_package(self, jd_text: str, jd_url: str | None,
-                       user_id: str | None = None) -> PackageRow:
+                       user_id: str | None = None,
+                       is_trial: bool = False) -> PackageRow:
         self._package_seq += 1
         row = PackageRow(
             id=f"pkg-{self._package_seq}",
@@ -210,6 +211,7 @@ class FakeDatabase:
             rubric=None,
             user_id=user_id,
             total_sessions=6,
+            is_trial=is_trial,
         )
         self.packages[row.id] = row
         self.jd_urls[row.id] = jd_url
