@@ -1,5 +1,5 @@
 import MountReveal from "@/components/motion/MountReveal";
-import { AMBIENT_WASH, DISPLAY_HEADING, MUTED } from "@/lib/ui";
+import { DISPLAY_HEADING, HERO_BLOOM, MUTED } from "@/lib/ui";
 
 import CtaRow from "./CtaRow";
 import ScreenFrame from "./ScreenFrame";
@@ -31,31 +31,17 @@ import { HERO, HERO_SCREEN } from "./copy";
 
 export default function Hero() {
   return (
-    <div className="relative isolate pt-4 pb-4">
-      {/* The whole gradient allowance, half of it: one soft blush field behind
-          the top of the page (the other sits behind the closing block). It sits
-          outside the motion wrapper because a ground does not arrive, it is
-          already there.
-          Three things on this wrapper are load-bearing. The negative inset
-          cancels the shell's own padding so the field reaches the column's
-          edges and its top lands on the top bar's rule rather than 44px below
-          it. The masks fade it out at those edges: .ambient-wash is inset-0 with
-          its blush centred near the top, so an unmasked box ends in three hard
-          straight lines and reads as a stray rectangle rather than as light.
-          And -z-10 keeps it under the content once masking makes this wrapper
-          its own stacking context, which would otherwise lift it over the
-          claim. */}
-      <div
-        aria-hidden="true"
-        className="pointer-events-none absolute -z-10 -inset-x-6 -top-10 bottom-0 mask-x-from-80% mask-t-from-92%"
-      >
-        <span className={AMBIENT_WASH} />
-      </div>
-
-      <MountReveal className="grid grid-cols-1 items-center gap-10 md:grid-cols-12 md:gap-12">
-        <div className="flex flex-col gap-6 md:col-span-7">
+    <div className="pt-2 pb-4">
+      {/* The pink half of the reference's pastel language: a large soft cloud
+          behind the top of the page. Full-bleed and fixed, so it has no edges
+          to give itself away, which is what went wrong when this was a field
+          confined to the content column. The other half, the sky-blue label
+          chip, sits above each section heading. */}
+      <div aria-hidden="true" className={HERO_BLOOM} />
+      <MountReveal className="grid grid-cols-1 items-center gap-8 md:grid-cols-12 md:gap-12">
+        <div className="flex flex-col gap-5 md:col-span-7">
           <h1 className={DISPLAY_HEADING}>{HERO.heading}</h1>
-          <p className={`${MUTED} max-w-xl text-lg leading-relaxed`}>{HERO.body}</p>
+          <p className={`${MUTED} max-w-md`}>{HERO.body}</p>
           <CtaRow
             label={HERO.primaryCta}
             secondary={{ label: HERO.secondaryCta, href: "/sample-report" }}

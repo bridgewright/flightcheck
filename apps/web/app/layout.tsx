@@ -1,16 +1,18 @@
 import type { Metadata } from "next";
-import { Geist, Geist_Mono, Newsreader } from "next/font/google";
+import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import { SITE_URL } from "./site";
 
-// Two families, and the division between them is the design system's rather
-// than a preference: Newsreader carries display type and the verdict, Geist
-// carries UI, body, tables, and every number that has to line up in a column.
+// One family and its mono companion. The reference this design follows uses a
+// grotesque throughout with a semi-mono for labels and buttons, so Geist
+// carries everything a reader sees and Geist Mono carries the small uppercase
+// labels and the CTA text.
 //
-// Newsreader is a low-contrast text serif drawn for screens, which is what a
-// calm serif-adjacent editorial language asks for. It is loaded through
-// next/font so it is self-hosted and preloaded, with no render-blocking
-// request to a third party and no layout shift when it arrives.
+// A text serif (Newsreader) carried display type for one day and was removed
+// on 2026-08-04, after the reference turned out to use no serif anywhere.
+//
+// Loaded through next/font so both are self-hosted and preloaded, with no
+// render-blocking request to a third party and no shift when they arrive.
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -20,14 +22,6 @@ const geistSans = Geist({
 const geistMono = Geist_Mono({
   variable: "--font-geist-mono",
   subsets: ["latin"],
-});
-
-const newsreader = Newsreader({
-  variable: "--font-newsreader",
-  subsets: ["latin"],
-  // The two weights the type steps actually use. Naming them keeps the
-  // download to what ships rather than the whole variable range.
-  weight: ["400", "500"],
 });
 
 export const metadata: Metadata = {
@@ -48,7 +42,7 @@ export default function RootLayout({
   return (
     <html
       lang="en"
-      className={`${geistSans.variable} ${geistMono.variable} ${newsreader.variable} h-full antialiased`}
+      className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
     >
       <body className="min-h-full flex flex-col">{children}</body>
     </html>

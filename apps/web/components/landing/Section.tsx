@@ -1,6 +1,6 @@
 import Reveal from "@/components/motion/Reveal";
 import { ENTRY_STAGGER_SECONDS } from "@/components/motion/entry";
-import { AMBIENT_WASH, DIVIDER, SECTION_GAP, SECTION_HEADING } from "@/lib/ui";
+import { CHIP_SKY, DIVIDER, SECTION_GAP, SECTION_HEADING } from "@/lib/ui";
 
 // One scroll block. The market's polish bar is two-to-three viewport heights
 // per section and never denser, with a hairline between them instead of a
@@ -13,47 +13,38 @@ import { AMBIENT_WASH, DIVIDER, SECTION_GAP, SECTION_HEADING } from "@/lib/ui";
 //   a block entry inside another block entry doubles the travel and the reader
 //   sees motion for its own sake, which is the thing the budget exists to stop.
 //
-//   `wash`, for the closing block. The ambient field needs a positioned,
-//   isolated parent: without `isolate` a z-index of -1 escapes to the page
-//   background and the gradient disappears. Its wrapper is masked at the edges
-//   for the reason spelled out in Hero.tsx, which carries the page's other half
-//   of the same field. It starts a quarter of the way down because the blush in
-//   .ambient-wash is centred near the top of its own box, so a wrapper filling
-//   the section puts the light in the padding above the heading rather than
-//   behind it.
+// A `wash` prop lived here for one day and carried an ambient blush field
+// behind two blocks. It is gone: the reference puts its pastel in small label
+// chips, not behind the type, and a background field is invisible next to what
+// it was meant to reproduce while still costing a stacking context, two mask
+// utilities, and a rendering artifact at the wrapper's edges.
 
 export default function Section({
   id,
+  label,
   heading,
   bordered = true,
   revealBody = true,
-  wash = false,
   children,
 }: {
   id?: string;
+  /** The small sky-blue chip above the heading. Rationed: at most one per
+   * three sections, because an eyebrow above every section is the most
+   * recognisable AI-design tell there is. */
+  label?: string;
   heading?: string;
   bordered?: boolean;
   revealBody?: boolean;
-  wash?: boolean;
   children: React.ReactNode;
 }) {
   return (
     <section
       id={id}
-      className={`w-full ${SECTION_GAP} ${bordered ? `border-t ${DIVIDER}` : ""} ${
-        wash ? "relative isolate" : ""
-      }`}
+      className={`w-full ${SECTION_GAP} ${bordered ? `border-t ${DIVIDER}` : ""}`}
     >
-      {wash ? (
-        <div
-          aria-hidden="true"
-          className="pointer-events-none absolute -z-10 top-1/4 bottom-0 -inset-x-6 mask-x-from-80% mask-t-from-92%"
-        >
-          <span className={AMBIENT_WASH} />
-        </div>
-      ) : null}
       {heading ? (
-        <Reveal className="mb-8">
+        <Reveal className="mb-8 flex flex-col items-start gap-3">
+          {label ? <span className={CHIP_SKY}>{label}</span> : null}
           <h2 className={SECTION_HEADING}>{heading}</h2>
         </Reveal>
       ) : null}

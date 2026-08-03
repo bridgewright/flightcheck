@@ -5,16 +5,23 @@
 //
 // Every value here is the spec's, not a preference:
 //
-//   opacity 0 -> 1 with y 16 -> 0, because those are the two properties a
+//   opacity 0 -> 1 with y 12 -> 0, because those are the two properties a
 //   compositor can animate without touching layout. No top, no left, no width,
-//   no height, anywhere in this directory.
+//   no height, anywhere in this directory. Twelve pixels rather than sixteen:
+//   at a 14px root the whole page is smaller, and travel that was
+//   proportionate before now reads as a lurch.
 //
-//   0.5s on [0.16, 1, 0.3, 1]: a fast start that decelerates into place, which
-//   is what "arriving" looks like. Nothing overshoots, because bounce belongs
-//   to motion that follows a gesture carrying momentum and this product has
-//   none.
+//   0.3s, not 0.5s. Measured off the reference, which uses 0.3s for every
+//   transition it declares. A shorter entry reads as the page settling; a
+//   longer one reads as the page performing.
 //
-//   0.06s between siblings. Enough that the order is felt, short enough that
+//   cubic-bezier(0.25, 1, 0.5, 1) for transform and
+//   cubic-bezier(0.165, 0.84, 0.44, 1) for colour and opacity, which are the
+//   two curves the reference actually ships. Both decelerate into place.
+//   Nothing overshoots: bounce belongs to motion that follows a gesture
+//   carrying momentum, and this product has none.
+//
+//   0.05s between siblings. Enough that the order is felt, short enough that
 //   the fourth item does not keep the reader waiting.
 //
 //   once: true, amount: 0.25. A block rises the first time a quarter of it is
@@ -22,17 +29,21 @@
 //   page into a toy.
 
 /** The state a block enters from. */
-export const ENTRY_HIDDEN = { opacity: 0, y: 16 };
+export const ENTRY_HIDDEN = { opacity: 0, y: 12 };
 
 /** The state it settles into, and the only state a reduced-motion reader sees. */
 export const ENTRY_SHOWN = { opacity: 1, y: 0 };
 
-export const ENTRY_SECONDS = 0.5;
+export const ENTRY_SECONDS = 0.3;
 
 /** Between siblings in a group. */
-export const ENTRY_STAGGER_SECONDS = 0.06;
+export const ENTRY_STAGGER_SECONDS = 0.05;
 
-export const ENTRY_EASE: [number, number, number, number] = [0.16, 1, 0.3, 1];
+export const ENTRY_EASE: [number, number, number, number] = [0.25, 1, 0.5, 1];
+
+/** The reference's colour and opacity curve, for anything that fades
+ * without moving. Its transform curve is ENTRY_EASE above. */
+export const FADE_EASE: [number, number, number, number] = [0.165, 0.84, 0.44, 1];
 
 export const ENTRY_VIEWPORT = { once: true, amount: 0.25 };
 

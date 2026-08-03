@@ -3,7 +3,7 @@ import Link from "next/link";
 import { formatSessionDate } from "@/lib/home";
 import type { SessionStatus } from "@/lib/types";
 import type { SessionSummary } from "@/lib/worker";
-import { CHIP, CHIP_ACCENT, EMPTY_RULE, LABEL, TABLE_ROW } from "@/lib/ui";
+import { CHIP, CHIP_BLUSH, EMPTY_RULE, LABEL, TABLE_ROW } from "@/lib/ui";
 
 // A session that is not scored yet still has something true to say about
 // itself. "failed" is shown, not hidden: the product's promise is the bar,
@@ -15,7 +15,7 @@ const PILLS: Record<SessionStatus, { label: string; className: string } | null> 
   },
   scoring: {
     label: "Scoring…",
-    className: CHIP_ACCENT,
+    className: CHIP_BLUSH,
   },
   failed: {
     label: "Scoring failed",

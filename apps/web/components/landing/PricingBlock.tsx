@@ -53,7 +53,7 @@ export default function PricingBlock({
         </div>
         {/* Directly above the button, where the hesitation is. */}
         <p className={FINE_PRINT}>{PRICING.refundLine}</p>
-        <Link href={ctaHref} className={`${PRIMARY_BUTTON} text-center`}>
+        <Link href={ctaHref} className={`${PRIMARY_BUTTON} self-start`}>
           {ctaLabel}
         </Link>
         <p className={FINE_PRINT}>{PRICING.trialNote}</p>

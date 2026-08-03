@@ -122,11 +122,13 @@ describe("the small uppercase labels are rationed", () => {
     const steps = read("components/landing/HowItWorks.tsx");
     expect(steps).not.toMatch(/\bStep \{?/);
     expect(steps).not.toMatch(/\bLABEL\b/);
-    // The serif used to be a literal here. It moved into the STEP_NUMERAL
-    // token, so the check follows it: the file reaches for the token, and
-    // the token is the serif at display scale rather than a label size.
+    // The numeral lives in the STEP_NUMERAL token, so the check follows it
+    // there. It was a display-scale serif for one day; the reference draws
+    // this as a small mono numeral in a faint square chip, which is what the
+    // token is now. What matters for this rule is unchanged: the order is
+    // carried by a numeral, not by an uppercase "STEP 1" eyebrow.
     expect(steps).toContain("STEP_NUMERAL");
-    expect(STEP_NUMERAL).toContain("font-serif");
-    expect(STEP_NUMERAL).not.toMatch(/\btext-label\b/);
+    expect(STEP_NUMERAL).toContain("font-mono");
+    expect(STEP_NUMERAL).not.toMatch(/\buppercase\b/);
   });
 });

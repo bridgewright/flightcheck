@@ -2,14 +2,11 @@ import type { Metadata } from "next";
 import Link from "next/link";
 
 import CtaRow from "@/components/landing/CtaRow";
-import Faq from "@/components/landing/Faq";
 import Hero from "@/components/landing/Hero";
 import HowItWorks from "@/components/landing/HowItWorks";
 import PricingBlock from "@/components/landing/PricingBlock";
 import Section from "@/components/landing/Section";
-import Showcase from "@/components/landing/Showcase";
 import { CLOSING } from "@/components/landing/copy";
-import Reveal from "@/components/motion/Reveal";
 import Shell from "@/components/Shell";
 import { LINK, MUTED, PAGE_HEADING } from "@/lib/ui";
 import { getViewer } from "@/lib/viewer";
@@ -64,18 +61,11 @@ export default async function LandingPage() {
         </p>
       ) : null}
 
-      <Section heading="How it works" revealBody={false}>
+      <Section label="How it works" heading="Paste a job. Talk. Read the verdict." revealBody={false}>
         <HowItWorks />
       </Section>
 
-      <Section heading="What you actually get" revealBody={false}>
-        <Showcase />
-        <Reveal className="mt-10">
-          <CtaRow label={CLOSING.cta} />
-        </Reveal>
-      </Section>
-
-      <Section heading="One package per job description">
+      <Section label="Pricing" heading="One package per job description.">
         <div className="flex flex-col items-start gap-8 lg:flex-row lg:items-center">
           <PricingBlock />
           <p className={`${MUTED} max-w-sm text-sm leading-relaxed`}>
@@ -84,13 +74,7 @@ export default async function LandingPage() {
         </div>
       </Section>
 
-      <Section heading="Questions people ask before paying">
-        <Faq />
-      </Section>
-
-      {/* The second and last blush field. One behind the top of the page, one
-          behind the close, and no gradient anywhere else in the product. */}
-      <Section wash>
+      <Section>
         <div className="flex flex-col items-center gap-5 text-center">
           <h2 className={PAGE_HEADING}>{CLOSING.heading}</h2>
           <CtaRow label={CLOSING.cta} align="center" />

@@ -394,7 +394,7 @@ export default async function SessionDetailPage({
               date={date}
             />
             {state === "limited" ? (
-              <div className="rounded-surface border border-accent bg-accent-wash p-4 text-sm text-accent">
+              <div className="rounded-surface border border-hairline bg-blush p-3 text-fine text-ink">
                 <p className="font-semibold">Scored on limited evidence</p>
                 <p className="mt-1">{report.limits_note}</p>
               </div>

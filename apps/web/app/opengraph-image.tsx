@@ -32,10 +32,10 @@ export const contentType = "image/png";
 // product outside the token file; satori runs before Tailwind exists, so a
 // var() here would render as nothing. The Ready word takes the sage that
 // marks that one verdict everywhere else.
-const INK = "#221f1a";
-const MUTED_INK = "#5f5b52";
-const PAPER = "#faf9f5";
-const RULE = "#e4e1d7";
+const INK = "#3c2e2a";
+const MUTED_INK = "#6b5f59";
+const PAPER = "#fbfbf8";
+const RULE = "#e7e4dc";
 const READY = "#4a6b4f";
 
 const VERDICTS = ["Not yet ready", "Approaching", "Ready"];

@@ -123,6 +123,7 @@ describe("every public page ships a card", () => {
   const PAGE_FOR: Record<string, string> = {
     "/": "app/page.tsx",
     "/pricing": "app/pricing/page.tsx",
+    "/faq": "app/faq/page.tsx",
     "/sample-report": "app/sample-report/page.tsx",
     "/legal/terms": "app/legal/terms/page.tsx",
     "/legal/privacy": "app/legal/privacy/page.tsx",

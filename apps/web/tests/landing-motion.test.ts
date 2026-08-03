@@ -154,20 +154,27 @@ describe("the motion leaves animate transform and opacity only", () => {
 });
 
 describe("the entry budget holds the numbers the spec set", () => {
-  it("enters from transparent and 16px low, and settles at rest", () => {
-    expect(ENTRY_HIDDEN).toEqual({ opacity: 0, y: 16 });
+  it("enters from transparent and 12px low, and settles at rest", () => {
+    // Twelve rather than sixteen: at a 14px root the whole page is
+    // smaller, and travel that was proportionate before reads as a lurch.
+    expect(ENTRY_HIDDEN).toEqual({ opacity: 0, y: 12 });
     expect(ENTRY_SHOWN).toEqual({ opacity: 1, y: 0 });
   });
 
   it("decelerates rather than overshooting", () => {
     // Bounce is 0 everywhere in this product: there is no gesture carrying
     // momentum, so nothing has a reason to pass its target and come back.
-    expect(ENTRY_SECONDS).toBe(0.5);
-    expect(ENTRY_EASE).toEqual([0.16, 1, 0.3, 1]);
+    // 0.3s and cubic-bezier(0.25, 1, 0.5, 1) are the reference's own
+    // transform numbers, read off its computed styles. A longer entry
+    // reads as the page performing rather than settling.
+    expect(ENTRY_SECONDS).toBe(0.3);
+    expect(ENTRY_EASE).toEqual([0.25, 1, 0.5, 1]);
+    // The curve still decelerates: it ends flat and never exceeds 1.
+    expect(ENTRY_EASE[3]).toBe(1);
   });
 
   it("staggers siblings closely enough to read as one movement", () => {
-    expect(ENTRY_STAGGER_SECONDS).toBe(0.06);
+    expect(ENTRY_STAGGER_SECONDS).toBe(0.05);
   });
 
   it("plays once, on first sight, and then leaves the page alone", () => {
