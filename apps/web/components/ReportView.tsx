@@ -34,6 +34,7 @@ import {
   VERDICT_HEADING,
   VERDICT_READY,
 } from "@/lib/ui";
+import { splitRationale } from "@/lib/rationale";
 import { MAX_SCORE, readVerdict, weakestDimension } from "@/lib/verdict";
 
 // Trimmed-by-default display (user feedback, 2026-08-01): lead with the few
@@ -97,6 +98,27 @@ export function dimensionMetaFromRubric(rubric: Rubric): DimensionMeta[] {
 /** The rationale, the two verdict lists, and the quotes. Shared by both shapes
  * a dimension is drawn in, so promoting one to the lead changes its scale and
  * its surroundings and nothing about what it says. */
+/**
+ * The judge's finding, then the reasoning behind it.
+ *
+ * The lead sentence is emphasised because it is the finding; the split is
+ * positional and lib/rationale.ts explains why it is not semantic. The
+ * underline is deliberately quiet: an underline normally means a link, and a
+ * heavy rule under 200 characters of prose would both misread as clickable and
+ * emphasise so much that nothing stands out.
+ */
+function RationaleText({ rationale }: { rationale: string }) {
+  const { lead, rest } = splitRationale(rationale);
+  return (
+    <div className={`${PROSE_WIDTH} mt-3 flex flex-col gap-2`}>
+      <p className="font-medium text-ink underline decoration-hairline decoration-1 underline-offset-4">
+        {lead}
+      </p>
+      {rest ? <p className={MUTED}>{rest}</p> : null}
+    </div>
+  );
+}
+
 function DimensionBody({ score }: { score: DimensionScore }) {
   // F-03 fields are declared required, but reports serialized before the
   // fields existed (the checked-in sample fixture, cached JSON) omit them at
@@ -105,7 +127,7 @@ function DimensionBody({ score }: { score: DimensionScore }) {
   const weaknesses = score.weaknesses ?? [];
   return (
     <>
-      <p className={`${MUTED} ${PROSE_WIDTH} mt-3`}>{score.rationale}</p>
+      <RationaleText rationale={score.rationale} />
       {(strengths.length > 0 || weaknesses.length > 0) && (
         <div className="mt-4 grid gap-4 sm:grid-cols-2">
           {strengths.length > 0 && (
