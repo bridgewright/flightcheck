@@ -40,8 +40,8 @@ export default async function OrderHistory({ userId }: { userId: string }) {
   } catch {
     return (
       <p className={`text-sm ${MUTED}`}>
-        Your payment history can&apos;t be loaded right now. Nothing is lost —
-        try again in a moment.
+        Your payment history can&apos;t be loaded right now. Nothing is lost.
+        Try again in a moment.
       </p>
     );
   }

@@ -80,8 +80,8 @@ export default async function PackageClaimPage({
               This package is unavailable right now
             </h1>
             <p className="text-ink-muted">
-              The scoring service could not be reached. Nothing is lost —
-              reload in a moment.
+              The scoring service could not be reached. Nothing is lost. Reload
+              in a moment.
             </p>
           </div>
         </Shell>
@@ -133,7 +133,7 @@ export default async function PackageClaimPage({
               </h1>
               <p className="text-ink-muted">
                 The package could not be added to your account. Nothing is
-                lost — reload in a moment.
+                lost. Reload in a moment.
               </p>
             </div>
           </Shell>

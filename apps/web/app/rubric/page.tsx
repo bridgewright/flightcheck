@@ -59,7 +59,7 @@ export default async function RubricPage({
             Your rubric is unavailable right now
           </h1>
           <p className="text-ink-muted">
-            The scoring service could not be reached. Nothing is lost — reload
+            The scoring service could not be reached. Nothing is lost. Reload
             in a moment.
           </p>
         </div>

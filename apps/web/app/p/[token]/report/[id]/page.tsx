@@ -34,7 +34,7 @@ function WorkerUnreachable() {
       <PollRefresh intervalMs={5000} />
       <h1 className="text-2xl font-bold">Can&apos;t reach the scoring service</h1>
       <p className="text-ink-muted">
-        Your link is fine — the scoring service is briefly unreachable, most
+        Your link is fine. The scoring service is briefly unreachable, most
         often during a restart window. This page retries automatically; leave
         it open.
       </p>

@@ -49,8 +49,8 @@ export default async function SessionRoomPage({
         <main className="mx-auto max-w-2xl p-8">
           <h1 className="text-xl font-semibold">The room is unavailable right now</h1>
           <p className="mt-2 text-ink-faint">
-            The scoring service could not be reached. Nothing is lost —
-            reload in a moment.
+            The scoring service could not be reached. Nothing is lost. Reload
+            in a moment.
           </p>
         </main>
       );

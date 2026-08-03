@@ -64,7 +64,7 @@ function Unreachable({ viewer }: { viewer: Viewer }) {
           Can&apos;t reach your sessions right now.
         </h1>
         <p className="max-w-md text-sm text-ink-muted">
-          Your account is fine — the service that holds your packages is briefly
+          Your account is fine. The service that holds your packages is briefly
           unreachable, most often during a restart. This page retries by itself;
           leave it open.
         </p>

@@ -52,7 +52,7 @@ function Unreachable({ viewer }: { viewer: Viewer }) {
           Can&apos;t reach your progress right now.
         </h1>
         <p className="max-w-md text-sm text-ink-muted">
-          Your sessions are safe — the service that holds them is briefly
+          Your sessions are safe. The service that holds them is briefly
           unreachable, most often during a restart. This page retries by
           itself; leave it open.
         </p>
