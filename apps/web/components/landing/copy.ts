@@ -258,9 +258,10 @@ export const FAQ: FaqEntry[] = [
     // mentioned would contradict the product one click later.
     answer:
       "Either. Open speakers work — turn detection is built to survive the " +
-      "echo your speakers put back into the microphone, and nothing is gated " +
-      "on wearing anything. Headphones remove that echo at the source, so the " +
-      "session room recommends them; that is the whole of the difference.",
+      "echo your speakers put back into the microphone, and no part of the " +
+      "product is gated on headphones. Headphones remove that echo at the " +
+      "source, so the session room recommends them; that is the whole of the " +
+      "difference.",
   },
 ];
 
