@@ -6,6 +6,7 @@ import "server-only";
 import type {
   CreatePackageBody,
   CreateSessionResponse,
+  OrderRow,
   PackageRow,
   PackageStatus,
   SessionRow,
@@ -31,9 +32,51 @@ export async function workerFetch(path: string, init: RequestInit = {}): Promise
   return fetch(`${base.replace(/\/+$/, "")}${path}`, { ...init, headers, cache: "no-store" });
 }
 
+/**
+ * Typed failure for any non-2xx worker reply (v0.5).
+ *
+ * `status` is the HTTP status; `code` is the worker's machine-readable error
+ * code (the `code` key of its JSON error body — e.g. "package-exhausted",
+ * "package-expired", "mint-cap"), or "unknown" for endpoints that predate
+ * codes; `detail` is the human-readable `error`/`detail` string when the body
+ * carried one. The message keeps the pre-v0.5 shape
+ * ("worker {label} failed: {status}") — logs and tests pin it. Callers that
+ * want honest UI states (exhausted vs expired vs outage) switch on
+ * status/code instead of parsing the message.
+ */
+export class WorkerError extends Error {
+  readonly status: number;
+  readonly code: string;
+  readonly detail: string | null;
+
+  constructor(label: string, status: number, code: string, detail: string | null) {
+    super(`worker ${label} failed: ${status}`);
+    this.name = "WorkerError";
+    this.status = status;
+    this.code = code;
+    this.detail = detail;
+  }
+}
+
+async function workerError(label: string, response: Response): Promise<WorkerError> {
+  const body = (await response.json().catch(() => ({}))) as {
+    error?: unknown;
+    code?: unknown;
+    detail?: unknown;
+  };
+  const code = typeof body.code === "string" ? body.code : "unknown";
+  const detail =
+    typeof body.error === "string"
+      ? body.error
+      : typeof body.detail === "string"
+        ? body.detail
+        : null;
+  return new WorkerError(label, response.status, code, detail);
+}
+
 async function workerJson<T>(label: string, response: Response): Promise<T> {
   if (!response.ok) {
-    throw new Error(`worker ${label} failed: ${response.status}`);
+    throw await workerError(label, response);
   }
   return (await response.json()) as T;
 }
@@ -102,7 +145,7 @@ export async function completeSession(
     return "already-scored";
   }
   if (!response.ok) {
-    throw new Error(`worker POST ${path} failed: ${response.status}`);
+    throw await workerError(`POST ${path}`, response);
   }
   return "accepted";
 }
@@ -144,6 +187,12 @@ export interface PackageSummary {
   total_sessions: number;
   sessions_used: number;
   role_title: string | null;
+  // v0.5: exposed by the worker's summaries (Track C) so lists can render
+  // trial/paid/expiry state honestly. Optional because a pre-v0.5 worker
+  // omits them; treat absence like the defaults (not trial, unpaid).
+  is_trial?: boolean;
+  paid_at?: string | null;
+  expires_at?: string | null;
 }
 
 export async function listSessions(packageId: string): Promise<SessionSummary[]> {
@@ -162,6 +211,86 @@ export async function listPackagesForUser(userId: string): Promise<PackageSummar
     await workerFetch(path),
   );
   return body.packages ?? [];
+}
+
+// --- Payments (v0.5) -----------------------------------------------------
+//
+// Client half of the payments contract; Track C ships the worker endpoints.
+// The web NEVER talks to Polar's API from these helpers — the webhook route
+// verifies Polar's signature, then provisions through markPackagePaid over
+// the same bearer-authenticated worker channel as everything else.
+
+/**
+ * The order details the webhook forwards to the worker's
+ * POST /api/packages/{id}/paid. Field names mirror the orders table;
+ * paid_at is the payment timestamp from the Polar event (the 30-day expiry
+ * window starts there, not at webhook-processing time).
+ */
+export interface PaidOrderBody {
+  user_id: string;
+  polar_order_id: string;
+  polar_checkout_id?: string | null;
+  amount_minor?: number | null;
+  currency?: string | null;
+  status?: string | null;
+  paid_at: string;
+}
+
+/**
+ * Mark a package paid: the worker idempotently records the order and flips
+ * the package to its paid state (6 sessions, expiry 30 days from paid_at).
+ * Safe to call again for a replayed webhook — the worker dedupes on
+ * polar_order_id and never moves an existing expiry window.
+ */
+export async function markPackagePaid(
+  packageId: string,
+  order: PaidOrderBody,
+): Promise<void> {
+  const path = `/api/packages/${encodeURIComponent(packageId)}/paid`;
+  const response = await workerFetch(path, {
+    method: "POST",
+    body: JSON.stringify(order),
+  });
+  if (!response.ok) {
+    throw await workerError(`POST ${path}`, response);
+  }
+}
+
+/** A user's orders, newest first — the receipts list in OrderHistory. */
+export async function listOrders(userId: string): Promise<OrderRow[]> {
+  const path = `/api/orders?user_id=${encodeURIComponent(userId)}`;
+  const body = await workerJson<{ orders?: OrderRow[] }>(
+    `GET ${path}`,
+    await workerFetch(path),
+  );
+  return body.orders ?? [];
+}
+
+/**
+ * Ask the worker to retry a failed rubric compile. The worker refuses
+ * non-retryable states with a WorkerError the retry UI surfaces honestly.
+ */
+export async function retryCompile(packageId: string): Promise<void> {
+  const path = `/api/packages/${encodeURIComponent(packageId)}/compile-retry`;
+  const response = await workerFetch(path, { method: "POST" });
+  if (!response.ok) {
+    throw await workerError(`POST ${path}`, response);
+  }
+}
+
+/**
+ * Count one realtime-secret mint against the session's cap and return the
+ * new total. Above the cap the worker replies 429, which surfaces here as a
+ * WorkerError (status 429 + the worker's code) for the realtime-secret
+ * route to translate into honest copy.
+ */
+export async function incrementSecretMint(sessionId: string): Promise<number> {
+  const path = `/api/sessions/${encodeURIComponent(sessionId)}/secret-mint`;
+  const body = await workerJson<{ secret_mints: number }>(
+    `POST ${path}`,
+    await workerFetch(path, { method: "POST" }),
+  );
+  return body.secret_mints;
 }
 
 // --- Transcript ----------------------------------------------------------

@@ -129,6 +129,30 @@ export interface PackageRow {
   jd_text: string;
   candidate_profile: CandidateProfile | null;
   rubric: Rubric | null;
+  // v0.5 payments fields (migration 005). Optional because rows serialized
+  // by a pre-v0.5 worker omit them; render helpers must treat absence like
+  // the defaults (not trial, unpaid). is_trial marks the first package per
+  // account and stays true after payment — paid state is `paid_at != null`;
+  // expires_at = paid_at + 30 days; order_id links the provisioning order.
+  is_trial?: boolean;
+  paid_at?: string | null;
+  expires_at?: string | null;
+  order_id?: string | null;
+}
+
+// Mirror of scorer.api.db.OrderRow: one Polar order, as the worker's
+// GET /api/orders?user_id= serializes it. polar_order_id is the webhook's
+// idempotency key (UNIQUE in the DB).
+export interface OrderRow {
+  id: string;
+  user_id: string;
+  package_id: string;
+  polar_order_id: string;
+  polar_checkout_id: string | null;
+  amount_minor: number | null; // e.g. 4900 for $49.00
+  currency: string | null;
+  status: string | null;
+  created_at: string | null;
 }
 
 // "insufficient" (F-04) is terminal like "failed" and just as retriable:
@@ -153,6 +177,11 @@ export interface SessionRow {
   // Rows created before the column existed omit it; render without a date
   // rather than inventing one.
   created_at?: string | null;
+  // v0.5 (migration 005): worker-side reaper timestamp and realtime-secret
+  // mint counter. Serialized by the v0.5 worker (row model_dump); optional
+  // because older serializations omit them.
+  updated_at?: string | null;
+  secret_mints?: number;
 }
 
 // One turn of the verbatim session transcript (scorer schemas.TranscriptSegment),

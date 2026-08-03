@@ -1,6 +1,7 @@
 import Link from "next/link";
 
 import Shell from "@/components/Shell";
+import { PRICE_DISPLAY } from "@/lib/pricing";
 import { LABEL, PRIMARY_BUTTON } from "@/lib/ui";
 import { getViewer } from "@/lib/viewer";
 
@@ -27,7 +28,7 @@ export default async function PricingPage() {
             <div>
               <div className={LABEL}>Interview package · 30 days</div>
               <div className="mt-1 flex flex-wrap items-baseline gap-2.5">
-                <span className="text-3xl font-bold tabular-nums">₩89,000</span>
+                <span className="text-3xl font-bold tabular-nums">{PRICE_DISPLAY}</span>
                 <span className="text-sm text-neutral-600 dark:text-neutral-400">
                   per job description
                 </span>
