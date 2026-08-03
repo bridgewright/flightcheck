@@ -1,11 +1,28 @@
 // Pure helpers for the session room. No DOM, no network: everything here is
 // unit-testable, and the WebRTC plumbing in SessionRoom.tsx stays thin.
 
-/** Session budget shown to the candidate (global constraint: 20 minutes). */
-export const SESSION_BUDGET_S = 1200;
+// --- Session timing -------------------------------------------------------
+//
+// SINGLE SOURCE: services/scorer/config/product.toml, [session]. The client
+// owns the clock — this file shows the budget, injects the wrap-up notes,
+// and enforces the hard cut — so a change made only on the scorer side would
+// have had no effect on any interview. These constants mirror the TOML in
+// its own unit (minutes), and two gates fail if they ever disagree:
+// apps/web/tests/session-timing-ssot.test.ts and
+// services/scorer/tests/test_session_timing_ssot.py.
+// Change product.toml first; these follow.
 
-/** Hard cut (global constraint: 25 minutes) — the client auto-ends here. */
-export const HARD_CUT_S = 1500;
+/** [session] budget_minutes. */
+export const SESSION_BUDGET_MINUTES = 20;
+
+/** [session] hard_cut_minutes. */
+export const SESSION_HARD_CUT_MINUTES = 25;
+
+/** Session budget shown to the candidate. */
+export const SESSION_BUDGET_S = SESSION_BUDGET_MINUTES * 60;
+
+/** Hard cut — the client auto-ends here. */
+export const HARD_CUT_S = SESSION_HARD_CUT_MINUTES * 60;
 
 /** Format elapsed seconds as MM:SS with zero padding. */
 export function formatTimer(totalSeconds: number): string {

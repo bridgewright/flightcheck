@@ -86,6 +86,79 @@ server env only. The worker's own HTTP surface is closed by default: bearer
 auth on every `/api` route, `/healthz` the only public one, and FastAPI's
 interactive docs (`/docs`, `/redoc`, `/openapi.json`) disabled.
 
+## Configuration
+
+### Where a number lives
+
+`services/scorer/config/product.toml` is the single source for product
+constants — model ids, session timing, eligibility floors, guard caps,
+report thresholds. The rule is that a value appears once, and anything that
+needs it in a second language mirrors it under a gate.
+
+Session timing is the one value the browser must also know: the room shows
+the budget, injects the pacing notes, and enforces the hard cut, so the
+client owns the clock. `apps/web/lib/session-room.ts` therefore mirrors
+`[session] budget_minutes` and `hard_cut_minutes` — and two tests fail if
+the mirror drifts, one in each suite, because the suites run separately:
+
+- `apps/web/tests/session-timing-ssot.test.ts`
+- `services/scorer/tests/test_session_timing_ssot.py`
+
+Change `product.toml` first; the mirror follows in the same commit. Widening
+the full `product.toml` SSOT across the rest of the web app is v0.7.
+
+### Deploy-time environment validation
+
+`apps/web/lib/env.ts` lists every server variable a running deployment
+cannot serve without, and `next.config.ts` asserts them at build. A missing
+variable fails the Vercel build, so the previous build keeps serving — the
+alternative was a 500 on a live page, or a checkout that "can't open right
+now", discovered by a customer.
+
+The check runs when `VERCEL` is set (every Vercel build, production and
+preview) or when `FLIGHTCHECK_REQUIRE_ENV=1` is passed explicitly. A local
+`npm run build` is exempt on purpose: production secrets live in the
+deployment platform, never in the repo, so failing local builds would only
+teach people to skip the build. Error messages carry variable **names**
+only — build logs are readable by anyone with repository access.
+
+### Database migrations
+
+`docs/supabase/migrations/NNN_name.sql` is the ledger. There is no migration
+runner: the operator pastes each file into the Supabase SQL editor in
+filename order (`docs/deploy.md` §1.2). That makes the discipline the
+mechanism, so it is written down here rather than assumed:
+
+1. **One file per change, never edited after it has been applied.** A file
+   that has run against production is history. Corrections ship as the next
+   number.
+2. **Additive and idempotent only** — `add column if not exists`, new tables,
+   new indexes. No drops, no renames, no `not null` without a default. Both
+   the old and the new build serve traffic during a deploy window, so every
+   migration must be safe for a build that has never heard of it, and
+   re-running a file must be a no-op.
+3. **Apply before the build that needs it.** The worker assumes its columns
+   exist; the web build assumes the worker's payload shape. Order is
+   migration → worker deploy → web deploy.
+4. **Nullable means "not yet".** A column added ahead of the code that fills
+   it is null on every existing row, and the reader must treat null as
+   today's behaviour rather than as an error. `006_token_hygiene.sql` is the
+   worked example: a null `access_token_expires_at` means "no expiry", which
+   is exactly what shipped before the column existed.
+5. **Applied state is verified, not remembered.** Before tagging a release,
+   confirm the columns the release depends on actually exist:
+
+   ```sql
+   select table_name, column_name
+   from information_schema.columns
+   where table_schema = 'public'
+     and table_name in ('packages', 'sessions', 'orders')
+   order by table_name, ordinal_position;
+   ```
+
+   The release notes for each version name the migrations that version
+   requires, and that query is how the operator checks them off.
+
 ---
 
 *Re-headed for v0.5 on 2026-08-03. This file said "v0.1 system" and carried a
