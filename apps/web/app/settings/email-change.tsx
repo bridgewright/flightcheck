@@ -4,6 +4,7 @@ import { useState } from "react";
 
 import { emailChangeOutcome, validateNewEmail } from "@/lib/account";
 import { createClient } from "@/lib/supabase/client";
+import { ERROR_TEXT, FIELD, SECONDARY_BUTTON } from "@/lib/ui";
 
 // F-35: change the address you sign in with.
 //
@@ -58,13 +59,13 @@ export default function EmailChangeSection({
 
   return (
     <form onSubmit={submit} className="flex flex-col gap-3">
-      <p className="text-sm text-neutral-600 dark:text-neutral-400">
+      <p className="text-sm text-ink-muted">
         We send a confirmation link to the new address, and your current
         address may receive one too. The change takes effect only once every
         link we send has been opened — so a typo here cannot lock you out.
       </p>
       <label className="flex flex-col gap-2 text-sm">
-        <span className="text-neutral-600 dark:text-neutral-400">New email address</span>
+        <span className="text-ink-muted">New email address</span>
         <input
           type="email"
           value={typed}
@@ -73,23 +74,23 @@ export default function EmailChangeSection({
           autoComplete="email"
           placeholder="you@example.com"
           aria-label="New email address"
-          className="w-full max-w-sm rounded-md border border-neutral-300 px-3 py-1.5 text-sm dark:border-neutral-700"
+          className={`${FIELD} max-w-sm`}
         />
       </label>
       <button
         type="submit"
         disabled={pending || typed.trim() === ""}
-        className="self-start rounded-md border border-neutral-300 px-4 py-1.5 text-sm disabled:cursor-not-allowed disabled:opacity-50 dark:border-neutral-700"
+        className={`${SECONDARY_BUTTON} self-start`}
       >
         {pending ? "Sending…" : "Send confirmation link"}
       </button>
       {notice ? (
-        <p className="text-sm text-neutral-600 dark:text-neutral-400" role="status">
+        <p className="text-sm text-ink-muted" role="status">
           {notice}
         </p>
       ) : null}
       {error ? (
-        <p className="text-sm text-red-600 dark:text-red-400" role="alert">
+        <p className={ERROR_TEXT} role="alert">
           {error}
         </p>
       ) : null}

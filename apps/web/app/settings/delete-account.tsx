@@ -3,6 +3,7 @@
 import { useState } from "react";
 
 import { ACCOUNT_DELETION_REMOVES, deletionConfirmationMatches } from "@/lib/account";
+import { DANGER_BUTTON, ERROR_TEXT, FIELD, SECONDARY_BUTTON } from "@/lib/ui";
 
 // F-34: the delete-account section of /settings.
 //
@@ -80,10 +81,10 @@ export default function DeleteAccountSection({
   if (notice !== null) {
     return (
       <div className="flex flex-col gap-3">
-        <p className="text-sm text-neutral-600 dark:text-neutral-400">{notice}</p>
+        <p className="text-sm text-ink-muted">{notice}</p>
         <a
           href={supportHref}
-          className="self-start rounded-md border border-neutral-300 px-4 py-1.5 text-sm dark:border-neutral-700"
+          className={`${SECONDARY_BUTTON} self-start`}
         >
           Email support
         </a>
@@ -94,13 +95,13 @@ export default function DeleteAccountSection({
   if (accountEmail === null) {
     return (
       <div className="flex flex-col gap-3">
-        <p className="text-sm text-neutral-600 dark:text-neutral-400">
+        <p className="text-sm text-ink-muted">
           This account has no email address on record, so there is nothing to
           type as confirmation. Email support and we will delete it by hand.
         </p>
         <a
           href={supportHref}
-          className="self-start rounded-md border border-neutral-300 px-4 py-1.5 text-sm dark:border-neutral-700"
+          className={`${SECONDARY_BUTTON} self-start`}
         >
           Email support
         </a>
@@ -110,21 +111,21 @@ export default function DeleteAccountSection({
 
   return (
     <div className="flex flex-col gap-4">
-      <p className="text-sm text-neutral-600 dark:text-neutral-400">
+      <p className="text-sm text-ink-muted">
         Deleting your account removes, immediately and permanently:
       </p>
-      <ul className="flex list-disc flex-col gap-1 pl-5 text-sm text-neutral-600 dark:text-neutral-400">
+      <ul className="flex list-disc flex-col gap-1 pl-5 text-sm text-ink-muted">
         {ACCOUNT_DELETION_REMOVES.map((item) => (
           <li key={item}>{item}</li>
         ))}
       </ul>
-      <p className="text-sm text-neutral-600 dark:text-neutral-400">
+      <p className="text-sm text-ink-muted">
         There is no undo and no grace period. Days left on a paid package are
         not refunded — nothing survives to restore them to.
       </p>
       <label className="flex flex-col gap-2 text-sm">
-        <span className="text-neutral-600 dark:text-neutral-400">
-          Type <span className="font-medium text-neutral-900 dark:text-neutral-100">{accountEmail}</span>{" "}
+        <span className="text-ink-muted">
+          Type <span className="font-medium text-ink">{accountEmail}</span>{" "}
           to confirm.
         </span>
         <input
@@ -135,19 +136,19 @@ export default function DeleteAccountSection({
           autoComplete="off"
           spellCheck={false}
           aria-label="Type your account email to confirm deletion"
-          className="w-full max-w-sm rounded-md border border-neutral-300 px-3 py-1.5 text-sm dark:border-neutral-700"
+          className={`${FIELD} max-w-sm`}
         />
       </label>
       <button
         type="button"
         onClick={destroy}
         disabled={!armed || pending}
-        className="self-start rounded-md border border-red-300 px-4 py-1.5 text-sm text-red-700 disabled:cursor-not-allowed disabled:border-neutral-300 disabled:text-neutral-400 dark:border-red-800 dark:text-red-400 dark:disabled:border-neutral-700 dark:disabled:text-neutral-600"
+        className={`${DANGER_BUTTON} self-start disabled:border-hairline disabled:text-ink-faint`}
       >
         {pending ? "Deleting…" : "Delete my account and all of my data"}
       </button>
       {error ? (
-        <p className="text-sm text-red-600 dark:text-red-400" role="alert">
+        <p className={ERROR_TEXT} role="alert">
           {error}
         </p>
       ) : null}

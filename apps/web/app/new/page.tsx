@@ -4,7 +4,7 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 
 import type { CreatePackageBody } from "@/lib/types";
-import { PRIMARY_BUTTON } from "@/lib/ui";
+import { ERROR_TEXT, FIELD, PRIMARY_BUTTON } from "@/lib/ui";
 
 function fileToBase64(file: File): Promise<string> {
   return new Promise((resolve, reject) => {
@@ -85,7 +85,7 @@ export default function NewPackagePage() {
               value={jdUrl}
               onChange={(e) => setJdUrl(e.target.value)}
               placeholder="https://careers.example.com/jobs/1234"
-              className="rounded-md border border-neutral-300 px-3 py-2 dark:border-neutral-700 dark:bg-neutral-900"
+              className={FIELD}
             />
           </label>
           <label className="flex flex-col gap-1 text-sm">
@@ -95,7 +95,7 @@ export default function NewPackagePage() {
               onChange={(e) => setJdText(e.target.value)}
               rows={8}
               placeholder="Paste the full job description here."
-              className="rounded-md border border-neutral-300 px-3 py-2 dark:border-neutral-700 dark:bg-neutral-900"
+              className={FIELD}
             />
           </label>
         </fieldset>
@@ -115,13 +115,13 @@ export default function NewPackagePage() {
               value={resumeText}
               onChange={(e) => setResumeText(e.target.value)}
               rows={4}
-              className="rounded-md border border-neutral-300 px-3 py-2 dark:border-neutral-700 dark:bg-neutral-900"
+              className={FIELD}
             />
           </label>
         </fieldset>
         <fieldset className="flex flex-col gap-3">
           <legend className="mb-2 text-lg font-semibold">LinkedIn profile (optional)</legend>
-          <p className="text-sm text-neutral-500">
+          <p className="text-sm text-ink-faint">
             Export it from LinkedIn: open your profile, then <em>More &gt; Save to PDF</em>.
             Upload that PDF here.
           </p>
@@ -139,11 +139,11 @@ export default function NewPackagePage() {
               value={linkedinText}
               onChange={(e) => setLinkedinText(e.target.value)}
               rows={4}
-              className="rounded-md border border-neutral-300 px-3 py-2 dark:border-neutral-700 dark:bg-neutral-900"
+              className={FIELD}
             />
           </label>
         </fieldset>
-        {error ? <p className="text-sm text-red-600">{error}</p> : null}
+        {error ? <p className={ERROR_TEXT}>{error}</p> : null}
         <button
           type="submit"
           disabled={submitting}

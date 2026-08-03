@@ -4,7 +4,7 @@ import { deletionMailto } from "@/app/legal/policy";
 import MicCheck from "@/components/MicCheck";
 import OrderHistory from "@/components/OrderHistory";
 import Shell from "@/components/Shell";
-import { LABEL, PRIMARY_BUTTON } from "@/lib/ui";
+import { DIVIDER, LABEL, PRIMARY_BUTTON, SECONDARY_BUTTON } from "@/lib/ui";
 import { getViewer } from "@/lib/viewer";
 
 import DeleteAccountSection from "./delete-account";
@@ -47,7 +47,7 @@ function Section({
   children: React.ReactNode;
 }) {
   return (
-    <section className="border-t border-neutral-200 pt-6 dark:border-neutral-800">
+    <section className={`border-t pt-6 ${DIVIDER}`}>
       <h2 className={LABEL}>{label}</h2>
       <div className="mt-3 flex flex-col gap-3">{children}</div>
     </section>
@@ -67,7 +67,7 @@ export default async function SettingsPage() {
           <p className="text-sm">
             <span className="font-medium">{viewer.email ?? "No email on record"}</span>
           </p>
-          <p className="text-sm text-neutral-600 dark:text-neutral-400">
+          <p className="text-sm text-ink-muted">
             You sign in with a magic link sent to this address. Passwordless, always.
           </p>
         </Section>
@@ -81,7 +81,7 @@ export default async function SettingsPage() {
         </Section>
 
         <Section label="Audio check">
-          <p className="text-sm text-neutral-600 dark:text-neutral-400">
+          <p className="text-sm text-ink-muted">
             Your interviewer hears you through this microphone. Check it here before a
             session — speakers or headphones both work.
           </p>
@@ -89,7 +89,7 @@ export default async function SettingsPage() {
         </Section>
 
         <Section label="Data & recordings">
-          <p className="text-sm text-neutral-600 dark:text-neutral-400">
+          <p className="text-sm text-ink-muted">
             Your session recordings are kept in private storage, tied to your account.
             They exist so your delivery can be scored from the raw audio and so you can
             replay a session next to its report — nothing else. They are never public
@@ -108,7 +108,7 @@ export default async function SettingsPage() {
           <form action="/auth/signout" method="POST">
             <button
               type="submit"
-              className="rounded-md border border-neutral-300 px-4 py-1.5 text-sm dark:border-neutral-700"
+              className={SECONDARY_BUTTON}
             >
               Sign out
             </button>
