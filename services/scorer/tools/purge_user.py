@@ -1,21 +1,22 @@
-"""Purge one account's data -- the operator side of the v0.5 deletion policy.
+"""Purge one account's data -- the operator side of the deletion policy.
 
-Manual operator tool, never part of the app or the gates. Deletion v0.5 is
-a mailto intake on the web settings page plus this script: the customer
-emails support, the operator runs this against the identifier in the
-request. It removes every product row and blob tied to one user -- orders,
-sessions (reports and transcripts are columns on the session row), the
-packages themselves, and the recordings-bucket objects the sessions point
-at. The auth.users row is deleted afterwards in the Supabase dashboard
-(admin-scoped, one click); this tool owns the product data.
+Manual operator tool, never part of the app or the gates. Since v0.6 the
+customer can delete their own account from /settings (F-34); this script is
+what remains for the cases self-serve cannot reach -- a customer who has
+lost access to their mailbox, a support request that arrives by another
+route, or a cleanup the operator has to make from the outside.
 
-Only rows attributed to the user_id are purged: a package that was never
-claimed by an account (user_id null, token-only access) has no owner to
-match and is deliberately left alone.
+It deliberately does NOT own the deletion logic any more. Both paths call
+scorer.api.deletion, so "delete my account" cannot come to mean two
+different things depending on who clicked. What lives here is only the CLI:
+resolving an email to an auth user id, the dry-run default, and the
+Supabase wiring.
 
 Safety: dry run is the DEFAULT and prints the full plan; --execute is the
-explicit destructive switch; the tool refuses to run without exactly one
-of --user-id / --email.
+explicit destructive switch; the tool refuses to run without exactly one of
+--user-id / --email. The auth.users row is deleted afterwards in the
+Supabase dashboard (admin-scoped, one click); this tool owns the product
+data, exactly as the endpoint does.
 
 Usage (from services/scorer, env from .env):
     uv run python tools/purge_user.py --email person@example.com   # dry run
@@ -25,51 +26,14 @@ from __future__ import annotations
 
 import argparse
 from collections.abc import Iterable
-from dataclasses import dataclass, field
 from typing import Any
 
-from scorer.api.db import Database
-from scorer.api.storage import RECORDINGS_BUCKET
-
-
-@dataclass(frozen=True)
-class PurgePlan:
-    """Everything the purge would delete, collected before touching anything."""
-
-    user_id: str
-    package_ids: list[str] = field(default_factory=list)
-    session_ids: list[str] = field(default_factory=list)
-    order_ids: list[str] = field(default_factory=list)
-    recording_paths: list[str] = field(default_factory=list)
-
-    @property
-    def is_empty(self) -> bool:
-        return not (self.package_ids or self.session_ids or self.order_ids
-                    or self.recording_paths)
-
-
-def collect_purge_plan(db: Database, user_id: str) -> PurgePlan:
-    """Walk the user's packages -> sessions -> recordings, plus their orders.
-
-    Read-only over the Database protocol so it runs identically against the
-    fakes; execution is a separate, explicitly destructive step.
-    """
-    packages = db.list_packages_by_user(user_id)
-    session_ids: list[str] = []
-    recording_paths: list[str] = []
-    for package in packages:
-        for session in db.list_sessions(package.id):
-            session_ids.append(session.id)
-            if session.audio_path:
-                recording_paths.append(session.audio_path)
-    orders = db.list_orders_for_user(user_id)
-    return PurgePlan(
-        user_id=user_id,
-        package_ids=[package.id for package in packages],
-        session_ids=session_ids,
-        order_ids=[order.id for order in orders if order.id is not None],
-        recording_paths=recording_paths,
-    )
+from scorer.api.deletion import (
+    RecordingsNotDeleted,
+    collect_deletion_plan,
+    describe_plan,
+    execute_deletion,
+)
 
 
 def match_user_id(users: Iterable[Any], email: str) -> str:
@@ -95,42 +59,6 @@ def match_user_id(users: Iterable[Any], email: str) -> str:
             f"email {email!r} matches {len(matches)} auth users; "
             "re-run with --user-id instead")
     return matches[0].id
-
-
-def describe_plan(plan: PurgePlan) -> str:
-    """The dry-run report: every id and path the purge would delete."""
-    if plan.is_empty:
-        return f"Nothing to purge for user {plan.user_id}."
-    lines = [f"Would purge for user {plan.user_id}:"]
-    for label, items in (
-        ("package", plan.package_ids),
-        ("session", plan.session_ids),
-        ("order", plan.order_ids),
-        ("recording", plan.recording_paths),
-    ):
-        lines.append(f"  {len(items)} {label}(s)")
-        lines.extend(f"    {item}" for item in items)
-    return "\n".join(lines)
-
-
-def execute_purge(client: Any, plan: PurgePlan) -> None:
-    """Delete the plan: recordings bucket objects first, then rows child-first.
-
-    Recordings go first on purpose -- the session rows are the only index to
-    the bucket paths, so if object removal fails midway the rerun can still
-    find what is left. Rows then go child-first (orders, sessions, packages);
-    reports and transcripts are columns on sessions and vanish with them.
-    Every delete targets the plan's explicit id list, never a broad filter.
-    """
-    if plan.recording_paths:
-        client.storage.from_(RECORDINGS_BUCKET).remove(plan.recording_paths)
-    for table, ids in (
-        ("orders", plan.order_ids),
-        ("sessions", plan.session_ids),
-        ("packages", plan.package_ids),
-    ):
-        if ids:
-            client.table(table).delete().in_("id", ids).execute()
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -163,23 +91,37 @@ def main() -> None:
     args = build_parser().parse_args()
 
     from scorer.api.db import SupabaseDatabase, create_supabase_client
+    from scorer.api.storage import SupabaseStorage
     from scorer.env import load_env
 
     load_env()
     client = create_supabase_client()
     user_id = args.user_id or match_user_id(_iter_all_users(client), args.email)
-    plan = collect_purge_plan(SupabaseDatabase(client), user_id)
+    db = SupabaseDatabase(client)
+    storage = SupabaseStorage(client)
+    plan = collect_deletion_plan(db, user_id)
     print(describe_plan(plan))
     if plan.is_empty:
         return
     if not args.execute:
         print("Dry run: nothing deleted. Pass --execute to delete.")
         return
-    execute_purge(client, plan)
-    print(f"Purged user {user_id}: {len(plan.order_ids)} order(s), "
-          f"{len(plan.session_ids)} session(s), "
-          f"{len(plan.package_ids)} package(s), "
-          f"{len(plan.recording_paths)} recording(s). "
+    try:
+        outcome = execute_deletion(db, storage, plan)
+    except RecordingsNotDeleted as err:
+        # Recordings first, rows second, abort on failure: the account is
+        # untouched and the plan above is still exactly what a rerun will
+        # do. Print the keys -- unlike the HTTP path, the operator is the
+        # one who has to go look at them.
+        print(f"ABORTED: {err}")
+        for path in err.paths:
+            print(f"    {path}")
+        print("Nothing was deleted. Fix storage access and rerun.")
+        raise SystemExit(1) from err
+    print(f"Purged user {user_id}: {outcome.orders_deleted} order(s), "
+          f"{outcome.sessions_deleted} session(s), "
+          f"{outcome.packages_deleted} package(s), "
+          f"{outcome.recordings_deleted} recording(s). "
           "Delete the auth.users row in the Supabase dashboard to finish.")
 
 

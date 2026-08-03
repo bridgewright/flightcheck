@@ -96,9 +96,9 @@ def test_healthz_is_public_and_not_under_the_api_prefix(client):
 # --- the three endpoints wired ahead of their tracks ---------------------
 
 
+# DELETE /api/account left this list when Track A implemented it (F-34);
+# its contract now lives in tests/test_api_account.py, including the 401.
 NOT_IMPLEMENTED = (
-    ("DELETE", "/api/account", {"params": {"user_id": "user-1"}},
-     "account deletion is not available yet"),
     ("POST", "/api/preview/rubric", {"json": {"jd_text": "We are hiring."}},
      "rubric preview is not available yet"),
     ("GET", "/api/metrics/usage", {}, "usage metrics are not available yet"),
@@ -107,7 +107,7 @@ NOT_IMPLEMENTED = (
 
 @pytest.mark.parametrize(
     "method,path,kwargs,message", NOT_IMPLEMENTED,
-    ids=["account-delete", "preview-rubric", "metrics-usage"],
+    ids=["preview-rubric", "metrics-usage"],
 )
 def test_wired_endpoint_answers_501_with_an_honest_typed_body(
     client, method, path, kwargs, message
@@ -119,7 +119,7 @@ def test_wired_endpoint_answers_501_with_an_honest_typed_body(
 
 @pytest.mark.parametrize(
     "method,path,kwargs,message", NOT_IMPLEMENTED,
-    ids=["account-delete", "preview-rubric", "metrics-usage"],
+    ids=["preview-rubric", "metrics-usage"],
 )
 def test_wired_endpoint_is_behind_the_bearer_token(
     client, method, path, kwargs, message
