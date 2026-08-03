@@ -39,6 +39,13 @@ from scorer.sessionplan.planner import (
 
 logger = logging.getLogger(__name__)
 
+# Crude ceiling on how many packages one account may create. Nothing else
+# bounds it, and every package costs a compile (~100-200 s of Gemini spend),
+# so one signed-in account could otherwise drain the budget on its own. Six
+# sessions per package makes 10 packages far more than any real candidate
+# runs; raising it is a support conversation, not a code change.
+MAX_PACKAGES_PER_USER = 10
+
 
 class CreatePackageRequest(BaseModel):
     model_config = ConfigDict(extra="forbid")
@@ -157,6 +164,18 @@ def create_app(db: Database, storage: Storage, client: GenAIClientLike) -> FastA
 
     @api.post("/packages", status_code=202)
     def create_package(body: CreatePackageRequest, background_tasks: BackgroundTasks):
+        # Checked before any JD fetch or PDF decode: a request that cannot
+        # produce a package must not first spend an outbound HTTP call on it.
+        # Unowned requests have no account to count and stay uncapped.
+        if (body.user_id is not None
+                and len(db.list_packages_by_user(body.user_id))
+                >= MAX_PACKAGES_PER_USER):
+            return JSONResponse(
+                status_code=429,
+                content={
+                    "error": "package limit reached — contact support to raise it"
+                },
+            )
         if body.jd_text is not None:
             jd_text = body.jd_text
         elif body.jd_url is not None:

@@ -423,6 +423,51 @@ def test_create_package_without_user_id_stays_unbound(monkeypatch):
     assert db.get_package(response.json()["package_id"]).user_id is None
 
 
+def test_package_creation_stops_at_the_per_account_cap(monkeypatch):
+    monkeypatch.setenv("WORKER_API_TOKEN", "test-worker-token")
+    db = FakeDatabase()
+    fake = FakeGenAI([])       # a compile of any kind would raise IndexError
+    client = _package_client(fake, db)
+    for i in range(10):
+        db.create_package(f"{JD_TEXT} {i}", None, user_id="user-1")
+
+    response = _post_package(client, {"jd_text": JD_TEXT, "user_id": "user-1"})
+
+    assert response.status_code == 429
+    assert "limit" in response.json()["error"]
+    assert len(db.list_packages_by_user("user-1")) == 10   # nothing created
+
+
+def test_package_creation_below_the_cap_still_succeeds(monkeypatch):
+    monkeypatch.setenv("WORKER_API_TOKEN", "test-worker-token")
+    db = FakeDatabase()
+    fake = FakeGenAI(_package_responses()[1:])
+    client = _package_client(fake, db)
+    for i in range(9):
+        db.create_package(f"{JD_TEXT} {i}", None, user_id="user-1")
+
+    response = _post_package(client, {"jd_text": JD_TEXT, "user_id": "user-1"})
+
+    assert response.status_code == 202
+    assert len(db.list_packages_by_user("user-1")) == 10
+
+
+def test_unowned_package_creation_is_not_capped(monkeypatch):
+    # The cap counts one account's packages; an unowned request has no account
+    # to count, and the web app can no longer make one (package creation is
+    # auth-gated), so this path is left exactly as it was.
+    monkeypatch.setenv("WORKER_API_TOKEN", "test-worker-token")
+    db = FakeDatabase()
+    fake = FakeGenAI(_package_responses()[1:])
+    client = _package_client(fake, db)
+    for i in range(10):
+        db.create_package(f"{JD_TEXT} {i}", None)
+
+    response = _post_package(client, {"jd_text": JD_TEXT})
+
+    assert response.status_code == 202
+
+
 def test_another_account_never_reuses_a_cached_package(monkeypatch):
     # The cached row carries the source account's candidate_profile, which the
     # reuse path copies onto the new package -- and the live interviewer greets
