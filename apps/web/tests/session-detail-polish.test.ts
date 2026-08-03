@@ -4,6 +4,7 @@ import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 
 import { deriveSessionDetailState, detailCta } from "@/lib/transcript";
+import { SKELETON } from "@/lib/ui";
 
 // F-43 internal half: the session-detail loading skeleton, the icon pass, and
 // the removal of the dead guard_ended branch.
@@ -51,15 +52,25 @@ describe("the dead guard_ended branch is gone", () => {
 describe("session-detail loading skeleton", () => {
   it("follows the same skeleton conventions as the other loading files", () => {
     expect(loading).toContain('aria-busy="true"');
-    expect(loading).toContain("animate-pulse");
     expect(loading).toContain("sr-only");
+    // The pulse used to be a literal `animate-pulse` in this file. F-21 moved
+    // it into the SKELETON token, so asserting the literal here would now be
+    // asserting that this screen ignores the design system. The property is
+    // still pinned, one level down: this file reaches for the token, and the
+    // token still carries the pulse and a radius.
+    expect(loading).toContain("SKELETON");
+    expect(SKELETON).toContain("animate-pulse");
+    expect(SKELETON).toMatch(/\brounded-/);
   });
 
   it("draws the report anatomy, not the archive table it used to inherit", () => {
-    // The nearest ancestor was app/sessions/loading.tsx, a row of table bars —
-    // the wrong shape here, so the swap to content jumped.
+    // The nearest ancestor was app/sessions/loading.tsx, a row of table bars,
+    // which is the wrong shape here and made the swap to content jump.
     expect(loading).toContain("max-w-2xl");
-    expect(loading.match(/rounded-md|rounded-lg/g)?.length ?? 0).toBeGreaterThan(3);
+    // Four or more skeleton blocks: context line, verdict, dimensions,
+    // delivery, transcript. Counting token usages rather than radius literals
+    // survives a change to what the token's radius happens to be.
+    expect(loading.match(/\$\{SKELETON\}/g)?.length ?? 0).toBeGreaterThan(3);
   });
 });
 
