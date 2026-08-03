@@ -203,6 +203,43 @@ export interface TranscriptSegment {
   text: string;
 }
 
+// --- v0.6 ---------------------------------------------------------------
+
+// Mirror of scorer.api.routers.preview.PreviewDimension / RubricPreview: the
+// bar a JD compiles to, as the landing page shows it to someone who has not
+// signed up. What is absent is the point — no question bank, no BARS
+// anchors, no research summary, no citations, and nothing persisted server
+// side. Declared in Phase 0 so the preview endpoint and the web route cannot
+// drift; the field names match the worker's model exactly.
+export interface RubricPreviewDimension {
+  key: string;
+  name: string;
+  weight: number;
+  channel: Channel;
+}
+
+export interface RubricPreview {
+  role_title: string;
+  company: string | null;
+  dimensions: RubricPreviewDimension[];
+}
+
+// Mirror of the worker's GET /api/metrics/usage (F-13): the operator's
+// answer to "how many sessions completed, how fast, how much of the package
+// got used", aggregated from existing columns.
+//
+// sample_size is not decoration. Impression rule ⑦ turns on saying plainly
+// how many real sessions a number came from, and every consumer of this
+// shape has to be able to. Rates are 0-1; a p50 is null until there is
+// anything to take a median of.
+export interface UsageMetrics {
+  sample_size: number;
+  session_completion_rate: number;
+  p50_first_response_s: number | null;
+  p50_scoring_latency_s: number | null;
+  package_burn_through: number;
+}
+
 export interface CreatePackageBody {
   jd_text?: string;
   jd_url?: string;

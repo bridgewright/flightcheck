@@ -18,9 +18,11 @@ import type {
   OrderRow,
   PackageRow,
   PackageStatus,
+  RubricPreview,
   SessionRow,
   SessionStatus,
   TranscriptSegment,
+  UsageMetrics,
   Verdict,
 } from "@/lib/types";
 
@@ -334,6 +336,68 @@ export async function incrementSecretMint(sessionId: string): Promise<number> {
     await workerFetch(path, { method: "POST" }),
   );
   return body.secret_mints;
+}
+
+// --- v0.6 ----------------------------------------------------------------
+//
+// Client half of three endpoints Phase 0 wired and the v0.6 tracks
+// implement. All three surface failure the same way everything else here
+// does — the typed WorkerError, whose `code` is what callers switch on. That
+// is what lets the landing page tell "the preview is busy" apart from "the
+// worker is down" without parsing a message.
+
+/**
+ * Delete an account and every artifact of it (F-34).
+ *
+ * The id rides as a query parameter, not a body: DELETE bodies are handled
+ * unevenly by proxies and clients, and the id is not the secret here — the
+ * bearer token is. Resolves only when the worker reports the deletion done;
+ * anything else throws, so the caller never signs a user out of an account
+ * that still exists.
+ */
+export async function deleteAccount(userId: string): Promise<void> {
+  const path = `/api/account?user_id=${encodeURIComponent(userId)}`;
+  const response = await workerFetch(path, { method: "DELETE" });
+  if (!response.ok) {
+    // The message pins the endpoint, not the query string, so logs of a
+    // failing deletion do not accumulate user ids.
+    throw await workerError("DELETE /api/account", response);
+  }
+}
+
+/**
+ * Compile a JD into the preview of its bar (F-45), for a visitor who has
+ * not signed up.
+ *
+ * Deliberately cheaper than the real compile: dimensions and weights, no
+ * research sweep, no question bank, nothing persisted. The signal is not
+ * optional decoration — the widget fires while someone is still editing
+ * their JD, and an abandoned preview must stop costing a model call rather
+ * than race the next one.
+ */
+export async function previewRubric(
+  jdText: string,
+  signal?: AbortSignal,
+): Promise<RubricPreview> {
+  const path = "/api/preview/rubric";
+  const response = await workerFetch(path, {
+    method: "POST",
+    body: JSON.stringify({ jd_text: jdText }),
+    signal,
+  });
+  return workerJson(`POST ${path}`, response);
+}
+
+/**
+ * The operator's usage numbers (F-13): completion rate, p50 latencies, and
+ * package burn-through, aggregated by the worker from existing columns.
+ *
+ * sample_size rides along because no honest reading of these numbers is
+ * possible without it.
+ */
+export async function usageMetrics(): Promise<UsageMetrics> {
+  const path = "/api/metrics/usage";
+  return workerJson(`GET ${path}`, await workerFetch(path));
 }
 
 // --- Transcript ----------------------------------------------------------
