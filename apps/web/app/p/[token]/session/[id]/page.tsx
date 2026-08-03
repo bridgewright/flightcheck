@@ -18,7 +18,7 @@ export default async function LegacySessionPage({
     return (
       <main className="mx-auto max-w-2xl p-8">
         <h1 className="text-xl font-semibold">Session unavailable</h1>
-        <p className="mt-2 text-neutral-500">
+        <p className="mt-2 text-ink-faint">
           This session does not exist, is not part of this package, or the
           scoring service is unreachable. Go back to your home and start a
           new session.

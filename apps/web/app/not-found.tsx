@@ -11,7 +11,7 @@ export default function NotFound() {
       <h1 className="text-2xl font-bold tracking-tight text-balance">
         There is no page at this address.
       </h1>
-      <p className="max-w-md text-sm text-neutral-600 dark:text-neutral-400">
+      <p className="max-w-md text-sm text-ink-muted">
         The link may be wrong or the page may have moved. Your sessions and
         reports are unaffected.
       </p>

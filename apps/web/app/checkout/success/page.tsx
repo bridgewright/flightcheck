@@ -7,7 +7,7 @@ import Shell from "@/components/Shell";
 import { resolveActivePackage } from "@/lib/active-package";
 import { ACTIVE_PACKAGE_COOKIE } from "@/lib/home";
 import { EXPIRY_DAYS, PACKAGE_SESSIONS } from "@/lib/pricing";
-import { PRIMARY_BUTTON } from "@/lib/ui";
+import { PRIMARY_BUTTON, QUIET_LINK } from "@/lib/ui";
 import type { Viewer } from "@/lib/viewer";
 import { getViewer } from "@/lib/viewer";
 import type { PackageSummary } from "@/lib/worker";
@@ -34,11 +34,11 @@ function Confirming({ viewer }: { viewer: Viewer | null }) {
         <h1 className="text-2xl font-bold tracking-tight text-balance">
           Confirming your payment&hellip;
         </h1>
-        <p className="mt-3 text-neutral-600 dark:text-neutral-400">
+        <p className="mt-3 text-ink-muted">
           Polar is telling us about your payment now — usually a few seconds.
           This page updates by itself; there is nothing else to do.
         </p>
-        <p className="mt-2 text-sm text-neutral-600 dark:text-neutral-400">
+        <p className="mt-2 text-sm text-ink-muted">
           Taking longer than a minute? The confirmation sometimes lags the
           charge. Your payment is safe either way — leave this page open or
           come back later.
@@ -95,7 +95,7 @@ export default async function CheckoutSuccessPage({
         <h1 className="text-2xl font-bold tracking-tight text-balance">
           Payment confirmed.
         </h1>
-        <p className="mt-3 text-neutral-600 dark:text-neutral-400">
+        <p className="mt-3 text-ink-muted">
           All {PACKAGE_SESSIONS} sessions of this package are unlocked for the
           next {EXPIRY_DAYS} days — same job description, same rubric, fresh
           topics every session.
@@ -104,7 +104,7 @@ export default async function CheckoutSuccessPage({
           <Link href="/home" className={PRIMARY_BUTTON}>
             Start your next session
           </Link>
-          <Link href="/settings" className="text-sm underline underline-offset-4">
+          <Link href="/settings" className={`${QUIET_LINK} text-sm`}>
             Receipts
           </Link>
         </div>

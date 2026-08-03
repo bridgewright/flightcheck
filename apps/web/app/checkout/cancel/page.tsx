@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 
 import Shell from "@/components/Shell";
-import { PRIMARY_BUTTON } from "@/lib/ui";
+import { PRIMARY_BUTTON, QUIET_LINK } from "@/lib/ui";
 import { getViewer } from "@/lib/viewer";
 
 // Landing for a checkout the user backed out of. Two honest facts, no
@@ -22,7 +22,7 @@ export default async function CheckoutCancelPage() {
         <h1 className="text-2xl font-bold tracking-tight text-balance">
           Checkout canceled.
         </h1>
-        <p className="mt-3 text-neutral-600 dark:text-neutral-400">
+        <p className="mt-3 text-ink-muted">
           Nothing was charged. Your package is exactly as you left it — the
           trial session and every report stay available, and you can unlock
           the full package whenever it suits you.
@@ -31,7 +31,7 @@ export default async function CheckoutCancelPage() {
           <Link href="/pricing" className={PRIMARY_BUTTON}>
             Back to pricing
           </Link>
-          <Link href="/home" className="text-sm underline underline-offset-4">
+          <Link href="/home" className={`${QUIET_LINK} text-sm`}>
             Your sessions
           </Link>
         </div>

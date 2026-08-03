@@ -14,7 +14,7 @@ import {
   nextSessionNumber,
   unlockCtaLabel,
 } from "@/lib/home";
-import { PRIMARY_BUTTON } from "@/lib/ui";
+import { PRIMARY_BUTTON, QUIET_LINK } from "@/lib/ui";
 import { getViewer } from "@/lib/viewer";
 import type { SessionSummary } from "@/lib/worker";
 import {
@@ -58,7 +58,7 @@ export default async function RubricPage({
           <h1 className="text-2xl font-bold tracking-tight">
             Your rubric is unavailable right now
           </h1>
-          <p className="text-neutral-600 dark:text-neutral-400">
+          <p className="text-ink-muted">
             The scoring service could not be reached. Nothing is lost — reload
             in a moment.
           </p>
@@ -79,7 +79,7 @@ export default async function RubricPage({
       <Shell viewer={viewer}>
         <div className="flex flex-col items-start gap-4 py-16">
           <h1 className="text-2xl font-bold tracking-tight">No rubric yet</h1>
-          <p className="text-neutral-600 dark:text-neutral-400">
+          <p className="text-ink-muted">
             Paste the JD you are applying to and we compile the rubric your
             sessions are scored against.
           </p>
@@ -99,7 +99,7 @@ export default async function RubricPage({
           <h1 className="text-2xl font-bold tracking-tight">
             Compiling your rubric&hellip;
           </h1>
-          <p className="text-neutral-600 dark:text-neutral-400">
+          <p className="text-ink-muted">
             We are reading the JD, researching how this role actually
             interviews, and compiling your rubric. This page refreshes itself
             — usually 1&ndash;2 minutes.
@@ -123,10 +123,10 @@ export default async function RubricPage({
           <h1 className="text-2xl font-bold tracking-tight">
             We could not compile this package
           </h1>
-          <p className="text-neutral-600 dark:text-neutral-400">
+          <p className="text-ink-muted">
             Rubric compilation failed — most often because the JD page could
             not be read. No charge, nothing saved.{" "}
-            <Link href="/new" className="underline underline-offset-4">
+            <Link href="/new" className={QUIET_LINK}>
               Try again
             </Link>{" "}
             with the JD pasted as text instead of a URL.
@@ -150,9 +150,9 @@ export default async function RubricPage({
   return (
     <Shell viewer={viewer}>
       {reveal === "1" ? (
-        <div className="mb-8 border-b border-neutral-200 pb-8 dark:border-neutral-800">
+        <div className="mb-8 border-b border-hairline pb-8">
           <p className="text-2xl font-bold tracking-tight">This is the bar.</p>
-          <p className="mt-2 text-neutral-600 dark:text-neutral-400">
+          <p className="mt-2 text-ink-muted">
             Every session is scored against these dimensions — nothing else.
           </p>
         </div>
@@ -161,17 +161,17 @@ export default async function RubricPage({
       <h1 className="text-2xl font-bold tracking-tight text-balance">
         {rubric.role_title}
       </h1>
-      <p className="mt-1 mb-8 text-sm text-neutral-600 dark:text-neutral-400">
+      <p className="mt-1 mb-8 text-sm text-ink-muted">
         {rubric.company ? `${rubric.company} · ` : ""}compiled from your JD
       </p>
 
       <RubricView rubric={rubric} />
 
-      <div className="mt-10 flex flex-col gap-2 border-t border-neutral-200 pt-8 dark:border-neutral-800">
+      <div className="mt-10 flex flex-col gap-2 border-t border-hairline pt-8">
         {next === null ? (
           trial ? (
             <>
-              <p className="text-sm text-neutral-600 dark:text-neutral-400">
+              <p className="text-sm text-ink-muted">
                 Your trial session is used. The rest of this package scores
                 against this same rubric.
               </p>
@@ -184,7 +184,7 @@ export default async function RubricPage({
             </>
           ) : (
             <>
-              <p className="text-sm text-neutral-600 dark:text-neutral-400">
+              <p className="text-sm text-ink-muted">
                 All {total} sessions of this package are used.
               </p>
               <Link href="/pricing" className={`${PRIMARY_BUTTON} self-start`}>
@@ -194,7 +194,7 @@ export default async function RubricPage({
           )
         ) : (
           <>
-            <p className="text-sm text-neutral-600 dark:text-neutral-400">
+            <p className="text-sm text-ink-muted">
               Session {next} of {total} is next.
             </p>
             <StartSessionButton packageId={pkg.id} />

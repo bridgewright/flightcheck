@@ -15,7 +15,7 @@ import {
   verdictPhrase,
 } from "@/lib/home";
 import type { Verdict } from "@/lib/types";
-import { PRIMARY_BUTTON } from "@/lib/ui";
+import { CARD, CHIP, CHIP_ACCENT, PRIMARY_BUTTON, SECONDARY_BUTTON } from "@/lib/ui";
 import type { Viewer } from "@/lib/viewer";
 import { getViewer } from "@/lib/viewer";
 import type { PackageSummary } from "@/lib/worker";
@@ -28,11 +28,10 @@ export const dynamic = "force-dynamic";
 // only what distinguishes packages from each other and hands over to /switch.
 
 const PILL_CLASSES: Record<PillTone, string> = {
-  neutral:
-    "bg-neutral-100 text-neutral-600 dark:bg-neutral-800 dark:text-neutral-400",
-  wait: "bg-amber-100 text-amber-900 dark:bg-amber-950 dark:text-amber-200",
-  bad: "bg-red-100 text-red-900 dark:bg-red-950 dark:text-red-200",
-  done: "bg-neutral-900 text-white dark:bg-white dark:text-neutral-900",
+  neutral: CHIP,
+  wait: CHIP_ACCENT,
+  bad: "bg-alarm-wash text-alarm",
+  done: "bg-ink text-paper",
 };
 
 function SignedOut() {
@@ -60,7 +59,7 @@ function Unreachable({ viewer }: { viewer: Viewer }) {
         <h1 className="text-2xl font-bold tracking-tight text-balance">
           Can&apos;t reach your packages right now.
         </h1>
-        <p className="max-w-md text-sm text-neutral-600 dark:text-neutral-400">
+        <p className="max-w-md text-sm text-ink-muted">
           Your account is fine — the service that holds your packages is briefly
           unreachable, most often during a restart. This page retries by itself;
           leave it open.
@@ -77,7 +76,7 @@ function Empty({ viewer }: { viewer: Viewer }) {
         <h1 className="text-2xl font-bold tracking-tight text-balance">
           No packages yet.
         </h1>
-        <p className="max-w-md text-neutral-600 dark:text-neutral-400">
+        <p className="max-w-md text-ink-muted">
           Paste the job description you&apos;re applying to and your first session is
           ready in about two minutes.
         </p>
@@ -101,33 +100,33 @@ function PackageCard({
   const pill = packagePill(pkg.status, pkg.sessions_used, total);
   const expiry = expiryLine(pkg, new Date());
   return (
-    <li className="flex flex-col gap-3 rounded-md border border-neutral-300 p-5 dark:border-neutral-700">
+    <li className={`${CARD} flex flex-col gap-3 p-5`}>
       <div className="flex items-start justify-between gap-3">
         <h2 className="font-semibold text-balance">
           {packageDisplayTitle(pkg.role_title)}
         </h2>
         <span
-          className={`inline-flex shrink-0 rounded-full px-2.5 py-0.5 text-[11px] font-medium ${PILL_CLASSES[pill.tone]}`}
+          className={`${PILL_CLASSES[pill.tone]} shrink-0`}
         >
           {pill.label}
         </span>
       </div>
-      <p className="text-sm text-neutral-600 tabular-nums dark:text-neutral-400">
+      <p className="text-sm text-ink-muted tabular-nums">
         {pkg.sessions_used} of {total} sessions used
         {verdict !== null ? ` · Last verdict: ${verdictPhrase(verdict)}` : ""}
       </p>
       {expiry !== null ? (
-        <p className="text-xs text-neutral-500">{expiry}</p>
+        <p className="text-xs text-ink-faint">{expiry}</p>
       ) : null}
       <div className="flex flex-wrap items-center gap-3">
         <Link
           href={switchHref(pkg.id, "/home")}
-          className="self-start rounded-md border border-neutral-300 px-4 py-1.5 text-sm dark:border-neutral-700"
+          className={`${SECONDARY_BUTTON} self-start`}
         >
           Open
         </Link>
         {/* A failed compile is retryable (the worker re-queues the same JD);
-            the pill lives right where the red status is read. */}
+            the pill lives right where the alarm status is read. */}
         {pkg.status === "failed" ? (
           <RetryCompileButton packageId={pkg.id} action={retryCompileAction} />
         ) : null}

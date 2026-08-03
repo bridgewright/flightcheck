@@ -4,6 +4,7 @@ import { forbidden, redirect } from "next/navigation";
 
 import Shell from "@/components/Shell";
 import { claimAction } from "@/lib/package-claim";
+import { QUIET_LINK } from "@/lib/ui";
 import { getViewer } from "@/lib/viewer";
 import { authorizePackage, packageOwnerId } from "@/lib/worker";
 
@@ -78,7 +79,7 @@ export default async function PackageClaimPage({
             <h1 className="text-2xl font-bold tracking-tight">
               This package is unavailable right now
             </h1>
-            <p className="text-neutral-600 dark:text-neutral-400">
+            <p className="text-ink-muted">
               The scoring service could not be reached. Nothing is lost —
               reload in a moment.
             </p>
@@ -90,9 +91,9 @@ export default async function PackageClaimPage({
       <Shell viewer={viewer}>
         <div className="flex flex-col gap-3 py-16">
           <h1 className="text-2xl font-bold tracking-tight">Package not found</h1>
-          <p className="text-neutral-600 dark:text-neutral-400">
+          <p className="text-ink-muted">
             This link does not match any interview package. Check the URL, or{" "}
-            <Link href="/new" className="underline underline-offset-4">
+            <Link href="/new" className={QUIET_LINK}>
               start a new one
             </Link>
             .
@@ -130,7 +131,7 @@ export default async function PackageClaimPage({
               <h1 className="text-2xl font-bold tracking-tight">
                 This package is unavailable right now
               </h1>
-              <p className="text-neutral-600 dark:text-neutral-400">
+              <p className="text-ink-muted">
                 The package could not be added to your account. Nothing is
                 lost — reload in a moment.
               </p>

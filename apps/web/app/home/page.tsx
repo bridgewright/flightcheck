@@ -27,7 +27,7 @@ import {
   verdictLine,
 } from "@/lib/home";
 import type { Verdict } from "@/lib/types";
-import { LABEL, PRIMARY_BUTTON } from "@/lib/ui";
+import { CARD, DIVIDER, LABEL, PRIMARY_BUTTON, QUIET_LINK } from "@/lib/ui";
 import type { Viewer } from "@/lib/viewer";
 import { getViewer } from "@/lib/viewer";
 import type { PackageSummary, SessionSummary } from "@/lib/worker";
@@ -63,7 +63,7 @@ function Unreachable({ viewer }: { viewer: Viewer }) {
         <h1 className="text-2xl font-bold tracking-tight text-balance">
           Can&apos;t reach your sessions right now.
         </h1>
-        <p className="max-w-md text-sm text-neutral-600 dark:text-neutral-400">
+        <p className="max-w-md text-sm text-ink-muted">
           Your account is fine — the service that holds your packages is briefly
           unreachable, most often during a restart. This page retries by itself;
           leave it open.
@@ -80,7 +80,7 @@ function NoPackages({ viewer }: { viewer: Viewer }) {
         <h1 className="text-2xl font-bold tracking-tight text-balance">
           {greetingName(viewer.email)}
         </h1>
-        <p className="max-w-md text-neutral-600 dark:text-neutral-400">
+        <p className="max-w-md text-ink-muted">
           Paste the job description you&apos;re applying to and your first session is
           ready in about two minutes.
         </p>
@@ -171,27 +171,27 @@ export default async function HomePage({
         <h1 className="text-center text-2xl font-bold tracking-tight text-balance">
           {greetingName(viewer.email)}
         </h1>
-        <p className="mb-6 text-center text-sm text-neutral-600 dark:text-neutral-400">
+        <p className="mb-6 text-center text-sm text-ink-muted">
           {packageDisplayTitle(active.role_title)}
         </p>
-        <article className="rounded-md border border-neutral-300 dark:border-neutral-700">
+        <article className={CARD}>
           <div className="flex flex-col gap-3 px-5 py-5">
             <div className={LABEL}>Compile failed</div>
-            <p className="text-sm text-neutral-600 dark:text-neutral-400">
+            <p className="text-sm text-ink-muted">
               The rubric for this package didn&apos;t compile — most often
               because the JD page couldn&apos;t be read. Retry the compile, or
               start over with the JD pasted as text.
             </p>
             <div className="flex flex-wrap items-center gap-4">
               <RetryCompileButton packageId={active.id} action={retryCompileAction} />
-              <Link href="/new" className="text-sm underline underline-offset-4">
+              <Link href="/new" className={`${QUIET_LINK} text-sm`}>
                 Start over with a new JD
               </Link>
             </div>
           </div>
         </article>
-        <p className="mt-9 border-t border-neutral-200 pt-5 text-sm dark:border-neutral-800">
-          <Link href="/packages" className="underline underline-offset-4">
+        <p className={`mt-9 border-t pt-5 text-sm ${DIVIDER}`}>
+          <Link href="/packages" className={QUIET_LINK}>
             All packages
           </Link>
         </p>
@@ -219,13 +219,13 @@ export default async function HomePage({
         {greetingName(viewer.email)}
       </h1>
       <p
-        className={`${expiry === null ? "mb-6" : "mb-1.5"} text-center text-sm text-neutral-600 dark:text-neutral-400`}
+        className={`${expiry === null ? "mb-6" : "mb-1.5"} text-center text-sm text-ink-muted`}
       >
         {packageDisplayTitle(active.role_title)} · {done} of {total} sessions
         done
       </p>
       {expiry !== null ? (
-        <p className="mb-6 text-center text-xs text-neutral-500">{expiry}</p>
+        <p className="mb-6 text-center text-xs text-ink-faint">{expiry}</p>
       ) : null}
 
       <div className="mb-7">
@@ -267,8 +267,8 @@ export default async function HomePage({
 
       {/* The switcher in the TopBar replaced the old package list here; one
           quiet link remains for the overview screen. */}
-      <p className="mt-9 border-t border-neutral-200 pt-5 text-sm dark:border-neutral-800">
-        <Link href="/packages" className="underline underline-offset-4">
+      <p className={`mt-9 border-t pt-5 text-sm ${DIVIDER}`}>
+        <Link href="/packages" className={QUIET_LINK}>
           All packages
         </Link>
       </p>

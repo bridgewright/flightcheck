@@ -174,10 +174,10 @@ function Section({
   children: ReactNode;
 }) {
   return (
-    <section className="flex flex-col gap-5 border-t border-neutral-200 pt-8 dark:border-neutral-800">
+    <section className="flex flex-col gap-5 border-t border-hairline pt-8">
       <header>
         <h2 className="font-mono text-sm font-semibold">{title}</h2>
-        <p className="mt-1 text-xs text-neutral-500">{note}</p>
+        <p className="mt-1 text-xs text-ink-faint">{note}</p>
       </header>
       {children}
     </section>
@@ -206,7 +206,7 @@ export default function DevPreviewPage() {
     <main className="mx-auto flex max-w-3xl flex-col gap-10 px-6 py-10">
       <header>
         <h1 className="text-2xl font-bold tracking-tight">Component preview</h1>
-        <p className="mt-2 text-sm text-neutral-600 dark:text-neutral-400">
+        <p className="mt-2 text-sm text-ink-muted">
           Dev-only. Dashboard and report components rendered from checked-in
           fixtures — no worker, no account, no live session. This route 404s in
           production.
