@@ -57,6 +57,18 @@ class CorpusBucket(Protocol):
         ...
 
 
+class EmptyCorpusError(Exception):
+    """The corpus bucket held no documents, so no backup was written.
+
+    Raised instead of writing an empty directory with an empty manifest.
+    That artifact would sit in the backup folder looking exactly like a
+    real backup, and would restore nothing -- the worst possible outcome
+    for the one asset with no other copy. An empty bucket is either a
+    brand-new project or the disaster this tool exists for; both deserve to
+    stop the operator rather than print a reassuring line.
+    """
+
+
 @dataclass(frozen=True)
 class CorpusTransfer:
     """What a backup or a restore accounted for."""
@@ -106,7 +118,8 @@ def backup_corpus(bucket: CorpusBucket, dest: Path) -> CorpusTransfer:
     disk to mistake for a backup.
 
     `dest` must not exist. Reusing a directory would silently mix two
-    backups, and the manifest would describe neither.
+    backups, and the manifest would describe neither. An empty bucket
+    raises EmptyCorpusError rather than writing a decoy.
     """
     dest = Path(dest)
     if dest.exists():
@@ -114,7 +127,13 @@ def backup_corpus(bucket: CorpusBucket, dest: Path) -> CorpusTransfer:
             f"{dest} already exists; back up into a new directory so a "
             "partial overwrite cannot masquerade as a complete backup")
 
-    documents = {name: bucket.download(name) for name in corpus_entries(bucket)}
+    entries = corpus_entries(bucket)
+    if not entries:
+        raise EmptyCorpusError(
+            "the corpus bucket holds no documents; refusing to write an "
+            "empty directory that would look like a backup and restore "
+            "nothing")
+    documents = {name: bucket.download(name) for name in entries}
 
     dest.mkdir(parents=True)
     for name, body in documents.items():
@@ -222,13 +241,13 @@ def main() -> None:
 
     if args.command == "backup":
         dest = dated_backup_dir(Path(args.dest))
-        result = backup_corpus(bucket, dest)
-        if result.is_empty:
-            # An empty corpus bucket is either a brand-new project or the
-            # disaster this tool exists for. Never let it read as success.
-            print(f"WARNING: the {CORPUS_BUCKET} bucket is EMPTY. "
-                  f"Wrote {dest} with no documents in it.")
-            raise SystemExit(1)
+        try:
+            result = backup_corpus(bucket, dest)
+        except EmptyCorpusError as err:
+            # Never let this read as success: if the project is not brand
+            # new, this IS the incident.
+            print(f"ABORTED: the {CORPUS_BUCKET} bucket is EMPTY -- {err}")
+            raise SystemExit(1) from err
         print(f"Backed up {result.document_count} document(s), "
               f"{result.byte_count} bytes, to {dest}")
         print(f"Verify any time: cd {dest} && shasum -a 256 -c {MANIFEST_NAME}")

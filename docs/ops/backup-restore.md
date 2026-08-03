@@ -126,9 +126,10 @@ refuses to write into a directory that already exists, and it downloads
 everything before writing anything — a directory holding half the corpus
 under a manifest that vouches for it is worse than no backup at all.
 
-An empty bucket exits non-zero with a warning rather than writing a
-cheerful empty backup. If you see that and the project is not brand new,
-**stop and treat it as the incident**, not as a backup problem.
+An empty bucket aborts with a non-zero exit and writes nothing, rather than
+leaving an empty directory that would read as a backup six months from now.
+If you see that and the project is not brand new, **stop and treat it as the
+incident**, not as a backup problem.
 
 **Cadence: after every corpus edit, and before every release.** The corpus
 changes rarely and by hand, which is exactly the pattern that gets

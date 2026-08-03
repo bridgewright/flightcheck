@@ -17,13 +17,16 @@ manually (house pattern, matching test_purge_user.py).
 from __future__ import annotations
 
 import hashlib
+from pathlib import Path
 
 import pytest
 
 from backup_corpus import (
+    EmptyCorpusError,
     backup_corpus,
     build_parser,
     corpus_entries,
+    dated_backup_dir,
     manifest_lines,
     restore_corpus,
 )
@@ -157,11 +160,22 @@ def test_a_download_that_fails_aborts_loudly_rather_than_writing_a_short_backup(
     assert not (tmp_path / "corpus" / "MANIFEST.sha256").exists()
 
 
-def test_backing_up_an_empty_bucket_says_so_instead_of_writing_nothing_quietly(tmp_path):
-    result = backup_corpus(FakeBucket(), tmp_path / "corpus")
+def test_backing_up_an_empty_bucket_raises_instead_of_writing_a_decoy(tmp_path):
+    # An empty corpus bucket is either a brand-new project or the disaster
+    # this tool exists for. Writing `corpus-2026-08-03/` with an empty
+    # manifest into the backup folder would leave something that reads as a
+    # backup six months later and restores nothing.
+    with pytest.raises(EmptyCorpusError):
+        backup_corpus(FakeBucket(), tmp_path / "corpus")
 
-    assert result.document_count == 0
-    assert result.is_empty
+    assert not (tmp_path / "corpus").exists()
+
+
+def test_dated_backup_dir_sorts_and_never_collides():
+    from datetime import UTC, datetime
+
+    when = datetime(2026, 8, 3, 22, 15, tzinfo=UTC)
+    assert dated_backup_dir(Path("/backups"), when) == Path("/backups/corpus-2026-08-03")
 
 
 # --- restore ------------------------------------------------------------------
