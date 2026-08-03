@@ -9,7 +9,7 @@ import { resolveActivePackage } from "@/lib/active-package";
 import { ACTIVE_PACKAGE_COOKIE, packageDisplayTitle } from "@/lib/home";
 import { PolarConfigError, createCheckout } from "@/lib/polar";
 import { PRICE_DISPLAY } from "@/lib/pricing";
-import { LABEL, LINK, MUTED, PAGE_HEADING, PRIMARY_BUTTON } from "@/lib/ui";
+import { LABEL, LINK, MUTED, PAGE_HEADING, PRIMARY_BUTTON, SUB_HEADING, SUBTLE } from "@/lib/ui";
 import type { Viewer } from "@/lib/viewer";
 import { getViewer } from "@/lib/viewer";
 import type { PackageSummary } from "@/lib/worker";
@@ -73,14 +73,14 @@ function CheckoutUnavailable({
           Checkout can&apos;t open right now.
         </h1>
         <p className={`${MUTED} mt-3`}>{reason}</p>
-        <p className={`${MUTED} mt-2 text-sm`}>
+        <p className={`${SUBTLE} mt-2`}>
           Nothing was charged. Your package and its reports are unchanged.
         </p>
         <div className="mt-7 flex flex-wrap items-center gap-4">
           <Link href="/home" className={PRIMARY_BUTTON}>
             Back to your sessions
           </Link>
-          <Link href="/pricing" className={`${LINK} text-sm`}>
+          <Link href="/pricing" className={`${LINK} ${SUBTLE}`}>
             Pricing
           </Link>
         </div>
@@ -108,9 +108,9 @@ function ConfirmUnlock({
         </h1>
         <div className="mt-4">
           <div className={LABEL}>Job description</div>
-          <p className="mt-1 font-medium">{packageDisplayTitle(pkg.role_title)}</p>
+          <p className={`${SUB_HEADING} mt-1`}>{packageDisplayTitle(pkg.role_title)}</p>
         </div>
-        <p className={`${MUTED} mt-3 text-sm`}>
+        <p className={`${SUBTLE} mt-3`}>
           The payment lifts the session quota on this same package. Your rubric,
           your reports, and the sessions you have already used stay where they
           are.
@@ -121,7 +121,7 @@ function ConfirmUnlock({
             ctaHref={`/checkout?pkg=${encodeURIComponent(pkg.id)}&go=1`}
           />
         </div>
-        <p className={`${MUTED} mt-5 text-sm`}>
+        <p className={`${SUBTLE} mt-5`}>
           Payment is handled by our payment provider on their own page. This app
           never sees your card.
         </p>

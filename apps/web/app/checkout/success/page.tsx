@@ -7,7 +7,7 @@ import Shell from "@/components/Shell";
 import { resolveActivePackage } from "@/lib/active-package";
 import { ACTIVE_PACKAGE_COOKIE } from "@/lib/home";
 import { EXPIRY_DAYS, PACKAGE_SESSIONS } from "@/lib/pricing";
-import { PRIMARY_BUTTON, QUIET_LINK } from "@/lib/ui";
+import { PAGE_HEADING, PRIMARY_BUTTON, QUIET_LINK, SUBTLE } from "@/lib/ui";
 import type { Viewer } from "@/lib/viewer";
 import { getViewer } from "@/lib/viewer";
 import type { PackageSummary } from "@/lib/worker";
@@ -31,14 +31,14 @@ function Confirming({ viewer }: { viewer: Viewer | null }) {
     <Shell viewer={viewer}>
       <PollRefresh intervalMs={3000} />
       <div className="mx-auto flex w-full max-w-md flex-col pt-4">
-        <h1 className="text-2xl font-bold tracking-tight text-balance">
+        <h1 className={`${PAGE_HEADING} text-balance`}>
           Confirming your payment&hellip;
         </h1>
         <p className="mt-3 text-ink-muted">
           Polar is telling us about your payment now. That usually takes a few
           seconds. This page updates by itself; there is nothing else to do.
         </p>
-        <p className="mt-2 text-sm text-ink-muted">
+        <p className={`${SUBTLE} mt-2`}>
           Taking longer than a minute? The confirmation sometimes lags the
           charge. Your payment is safe either way. Leave this page open or
           come back later.
@@ -58,7 +58,7 @@ export default async function CheckoutSuccessPage({
     return (
       <Shell viewer={null}>
         <div className="flex flex-col items-center gap-4 py-16 text-center">
-          <h1 className="text-2xl font-bold tracking-tight text-balance">
+          <h1 className={`${PAGE_HEADING} text-balance`}>
             Sign in to see your unlocked package.
           </h1>
           <Link href="/login?next=/checkout/success" className={PRIMARY_BUTTON}>
@@ -92,7 +92,7 @@ export default async function CheckoutSuccessPage({
   return (
     <Shell viewer={viewer}>
       <div className="mx-auto flex w-full max-w-md flex-col pt-4">
-        <h1 className="text-2xl font-bold tracking-tight text-balance">
+        <h1 className={`${PAGE_HEADING} text-balance`}>
           Payment confirmed.
         </h1>
         <p className="mt-3 text-ink-muted">
@@ -104,7 +104,7 @@ export default async function CheckoutSuccessPage({
           <Link href="/home" className={PRIMARY_BUTTON}>
             Start your next session
           </Link>
-          <Link href="/settings" className={`${QUIET_LINK} text-sm`}>
+          <Link href="/settings" className={`${QUIET_LINK} ${SUBTLE}`}>
             Receipts
           </Link>
         </div>

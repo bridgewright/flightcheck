@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 
-import { PRIMARY_BUTTON, QUIET_LINK } from "@/lib/ui";
+import { PAGE_HEADING, PRIMARY_BUTTON, QUIET_LINK, SUBTLE } from "@/lib/ui";
 
 // S15 — the package link belongs to someone else. Rendered with a real
 // HTTP 403 by forbidden() from the /p/[token] claim page. Client component
@@ -18,13 +18,13 @@ export default function ForbiddenPackage() {
   const pathname = usePathname() ?? "/";
   return (
     <main className="mx-auto flex w-full max-w-2xl flex-col items-center gap-4 px-6 py-24 text-center">
-      <div className="text-lg">
-        <span className="font-bold">flight</span>check
+      <div className="text-section">
+        <span>flight</span>check
       </div>
-      <h1 className="text-2xl font-bold tracking-tight text-balance">
+      <h1 className={`${PAGE_HEADING} text-balance`}>
         This package belongs to a different account.
       </h1>
-      <p className="max-w-md text-sm text-ink-muted">
+      <p className={`${SUBTLE} max-w-md`}>
         Sign in with the account that opened it.
       </p>
       <form method="post" action="/auth/signout">
@@ -33,7 +33,7 @@ export default function ForbiddenPackage() {
           Switch account
         </button>
       </form>
-      <Link href="/home" className={`${QUIET_LINK} text-sm`}>
+      <Link href="/home" className={`${QUIET_LINK} ${SUBTLE}`}>
         Go to your home
       </Link>
     </main>

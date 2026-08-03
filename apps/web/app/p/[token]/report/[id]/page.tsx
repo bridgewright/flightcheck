@@ -2,7 +2,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 
 import PollRefresh from "@/components/PollRefresh";
-import { QUIET_LINK } from "@/lib/ui";
+import { PAGE_HEADING, QUIET_LINK } from "@/lib/ui";
 import { authorizeSession } from "@/lib/worker";
 
 export const dynamic = "force-dynamic";
@@ -16,7 +16,7 @@ export const dynamic = "force-dynamic";
 function NotFound() {
   return (
     <main className="mx-auto flex min-h-screen max-w-2xl flex-col justify-center gap-4 px-6 py-16">
-      <h1 className="text-2xl font-bold">Report not found</h1>
+      <h1 className={PAGE_HEADING}>Report not found</h1>
       <p className="text-ink-muted">
         This link does not match any session report. Check the URL, or{" "}
         <Link href="/new" className={QUIET_LINK}>
@@ -32,7 +32,7 @@ function WorkerUnreachable() {
   return (
     <main className="mx-auto flex min-h-screen max-w-2xl flex-col justify-center gap-4 px-6 py-16">
       <PollRefresh intervalMs={5000} />
-      <h1 className="text-2xl font-bold">Can&apos;t reach the scoring service</h1>
+      <h1 className={PAGE_HEADING}>Can&apos;t reach the scoring service</h1>
       <p className="text-ink-muted">
         Your link is fine. The scoring service is briefly unreachable, most
         often during a restart window. This page retries automatically; leave

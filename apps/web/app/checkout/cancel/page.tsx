@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 
 import Shell from "@/components/Shell";
-import { PRIMARY_BUTTON, QUIET_LINK } from "@/lib/ui";
+import { PAGE_HEADING, PRIMARY_BUTTON, QUIET_LINK, SUBTLE } from "@/lib/ui";
 import { getViewer } from "@/lib/viewer";
 
 // Landing for a checkout the user backed out of. Two honest facts, no
@@ -19,7 +19,7 @@ export default async function CheckoutCancelPage() {
   return (
     <Shell viewer={viewer}>
       <div className="mx-auto flex w-full max-w-md flex-col pt-4">
-        <h1 className="text-2xl font-bold tracking-tight text-balance">
+        <h1 className={`${PAGE_HEADING} text-balance`}>
           Checkout canceled.
         </h1>
         <p className="mt-3 text-ink-muted">
@@ -31,7 +31,7 @@ export default async function CheckoutCancelPage() {
           <Link href="/pricing" className={PRIMARY_BUTTON}>
             Back to pricing
           </Link>
-          <Link href="/home" className={`${QUIET_LINK} text-sm`}>
+          <Link href="/home" className={`${QUIET_LINK} ${SUBTLE}`}>
             Your sessions
           </Link>
         </div>

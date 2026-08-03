@@ -4,7 +4,7 @@ import { forbidden, redirect } from "next/navigation";
 
 import Shell from "@/components/Shell";
 import { claimAction } from "@/lib/package-claim";
-import { QUIET_LINK } from "@/lib/ui";
+import { PAGE_HEADING, QUIET_LINK } from "@/lib/ui";
 import { getViewer } from "@/lib/viewer";
 import { authorizePackage, packageOwnerId } from "@/lib/worker";
 
@@ -76,7 +76,7 @@ export default async function PackageClaimPage({
       return (
         <Shell viewer={viewer}>
           <div className="flex flex-col gap-3 py-16">
-            <h1 className="text-2xl font-bold tracking-tight">
+            <h1 className={PAGE_HEADING}>
               This package is unavailable right now
             </h1>
             <p className="text-ink-muted">
@@ -90,7 +90,7 @@ export default async function PackageClaimPage({
     return (
       <Shell viewer={viewer}>
         <div className="flex flex-col gap-3 py-16">
-          <h1 className="text-2xl font-bold tracking-tight">Package not found</h1>
+          <h1 className={PAGE_HEADING}>Package not found</h1>
           <p className="text-ink-muted">
             This link does not match any interview package. Check the URL, or{" "}
             <Link href="/new" className={QUIET_LINK}>
@@ -128,7 +128,7 @@ export default async function PackageClaimPage({
         return (
           <Shell viewer={viewer}>
             <div className="flex flex-col gap-3 py-16">
-              <h1 className="text-2xl font-bold tracking-tight">
+              <h1 className={PAGE_HEADING}>
                 This package is unavailable right now
               </h1>
               <p className="text-ink-muted">
