@@ -378,15 +378,36 @@ published. The correction is one tag, v0.5.0, with 0.3 and 0.4 named for what
 they actually were — internal milestones folded into it — rather than a pair
 of backdated tags invented at release time to make the history look tidy.
 
-**Our own checklist had an item nobody ran.** `docs/deploy.md` carries a
-release-blocking anonymization checklist that bars client references
-"including indirect identifiers". The fixture behind `/sample-report` — the
-no-signup demo the README sends every reviewer to — carried a consulting
-engagement narrative in the candidate's answers, live in production since
-v0.1 and through two tags. It was found by this release's audit, not by the
-checklist that existed to find it, and neutralized at `2ffd643` with the
-caption now stating that identifying details were removed rather than the
-vaguer "anonymized". Two smaller ones came out of the same sweep: the favicon
+**A made-up example cost us a release cycle, because nobody reads the
+author's mind.** `docs/deploy.md` carries a release-blocking anonymization
+checklist that bars client references "including indirect identifiers". The
+fixture behind `/sample-report` — the no-signup demo the README sends every
+reviewer to — carried a detailed consulting engagement in the candidate's
+answers: a diagnostic, a pilot, a percentage. The developer invented all of
+it on the spot, the way anyone invents examples in a practice interview.
+Nothing in it describes a real client, and no client information has ever
+been in this repository.
+
+None of that helped. It was phrased as client work, so it read as client
+work — to two independent audits, one of which called it a release blocker,
+and it would have read the same way to a reviewer. It was found by this
+release's audit rather than by the checklist that existed to find it, and
+reworded at `2ffd643` so it stops implying an engagement that never
+happened. The lesson is not about confidentiality, which was never at risk;
+it is that a public artifact is judged by how it reads and never by what its
+author knows about it. The checklist item is now written that way.
+
+That fix then produced the sharper failure. The post-mortem written into the
+runbook recorded what the checklist had missed **by quoting the removed
+strings back verbatim** — putting into the operator's manual exactly what had
+just been taken out of the fixture. A note describing an incident is a
+publication too. It now describes shapes instead of content, and says so as a
+standing rule. One real cost survives the whole affair: the reworded quotes
+are no longer verbatim transcript, which is the thing this product's evidence
+is supposed to be. That is discharged the next time the fixture is captured
+fresh, not by editing it further.
+
+Two smaller ones came out of the same sweep: the favicon
 was still create-next-app's default, byte-identical since scaffold — a
 framework vendor's mark serving as the product's own on the tab of something
 we were about to charge for — and `AGENTS.md` published an absolute local

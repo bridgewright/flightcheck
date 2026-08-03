@@ -253,37 +253,35 @@ release.**
          application-target detail leaked into an answer, remove it.
    - [ ] Set `report.session_id` to `"sample-anon-001"`.
 
-   > **This checklist has failed twice on this item — recorded 2026-08-03.**
-   > Do not quote the offending strings here when recording a future failure:
-   > republishing them in the runbook re-links whatever was scrubbed from the
-   > fixture. That is itself the second failure, and it is why this note
-   > describes shapes instead of content.
+   > **This box is about how a passage READS, not about what you know is
+   > true — recorded 2026-08-03.** It was ticked at the v0.1 launch and the
+   > fixture still shipped with a detailed engagement narrative phrased as
+   > client work. The narrative was invented on the spot during the practice
+   > session, the way anyone invents examples in an interview, and describes
+   > no real client. That changed nothing: it read as client work to two
+   > independent audits, one of which called it a release blocker, and it
+   > would have read that way to a reviewer. It went out at v0.1 and through
+   > two tags before the v0.5 audit caught it.
    >
-   > **First failure.** The client-reference box was ticked at the v0.1 launch
-   > and was not satisfied. `apps/web/public/sample-report.json` — the fixture
-   > behind `/sample-report`, the no-signup surface the README sends every
-   > reviewer to — shipped with evidence quotes describing a past engagement in
-   > a client-serving role. It stayed live from v0.1 until the v0.5 release
-   > audit found it. What the box missed: no name and no employer string was in
-   > the file, so the greps in step 3 came back clean and the item read as done.
-   > The identifier was **relational** — a client existing at all places the
-   > speaker inside a client-serving firm, and the engagement detail narrows it
-   > further.
+   > Why the box was ticked wrongly: the greps in step 3 look for names and
+   > employer strings, and there were none, so the item read as done. The
+   > signal was **relational** — "my client", "when I was in consulting firm"
+   > — and no grep for a proper noun finds that.
    >
-   > **Second failure.** The first fix substituted the attribution words and
-   > left the engagement narrative — the diagnostic, the numbers, the pilot,
-   > the outcome — intact, then captioned the result "identifying details
-   > removed". Swapping who the work was for does not remove an indirect
-   > identifier; it only removes the phrase that made it greppable, while the
-   > caption now asserts a completeness that does not hold.
+   > **Do not quote offending strings when recording a future failure here.**
+   > The first attempt at this note did exactly that, republishing in the
+   > runbook what had just been taken out of the fixture. A note describing an
+   > incident is a publication too.
    >
-   > Three working rules from it. This item cannot be discharged by grep — only
-   > by reading every evidence quote and rationale end to end and asking what
-   > the passage implies about where the speaker worked. A quote that fails
-   > this test is **deleted, not reworded**; if deleting it guts the sample,
-   > the sample is regenerated, not patched. And because step 1 regenerates the
-   > fixture from a live session, passing once does not carry forward: the
-   > checklist runs again in full every time the sample is refreshed.
+   > Three working rules. Read every evidence quote and rationale end to end
+   > and ask what the passage *implies* about where the speaker worked —
+   > invented content trips this wire exactly as hard as real content, and
+   > costs the same audit cycle. Prefer **regenerating** the fixture over
+   > rewording it: a reworded quote is no longer verbatim transcript, which is
+   > the thing this product's evidence is supposed to be, so rewording buys
+   > time and owes a recapture. And because step 1 regenerates the fixture
+   > from a live session, passing once does not carry forward — this checklist
+   > runs again in full every time the sample is refreshed.
 
 3. Verify the scrub with greps for your real name, current employer, and every
    client name (expected: **no output** from each), for example:
