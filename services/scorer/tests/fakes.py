@@ -185,6 +185,10 @@ class FakeDatabase:
         # Every successful set_scoring_stage call, in order, as
         # (session_id, stage) -- progression assertions read this.
         self.stage_writes: list[tuple[str, str]] = []
+        # Every delete_rows call, in order, as (kind, ids) -- the v0.6
+        # account-deletion tests assert on ORDER (child rows before their
+        # package), which no amount of end-state checking can prove.
+        self.deletes: list[tuple[str, list[str]]] = []
         # When set, used as "now" for updated_at touches and stale-row
         # cutoffs so v0.5 tests can run against a frozen clock; None means
         # real UTC now (mirrors production).
@@ -405,6 +409,30 @@ class FakeDatabase:
             "updated_at": self._now().isoformat(),
         })
 
+    # ------------------------------------------------ v0.6 account deletion
+
+    def delete_rows(self, kind: str, ids: list[str]) -> int:
+        # Mirrors SupabaseDatabase: unknown kind raises before anything is
+        # touched, an empty list is a no-op that is not even recorded, and
+        # ids that are already gone count as 0 rather than KeyError.
+        stores = {"package": self.packages, "session": self.sessions,
+                  "order": self.orders}
+        if kind not in stores:
+            raise ValueError(f"unknown delete kind: {kind!r}")
+        if not ids:
+            return 0
+        self.deletes.append((kind, list(ids)))
+        store = stores[kind]
+        deleted = 0
+        for row_id in ids:
+            if store.pop(row_id, None) is not None:
+                deleted += 1
+                if kind == "session":
+                    # Transcripts live on the session row in Postgres, so
+                    # they cannot outlive it here either.
+                    self.transcripts.pop(row_id, None)
+        return deleted
+
 
 class FakeStorage:
     """In-memory Storage: canned recording bytes and corpus texts (pinned).
@@ -413,12 +441,21 @@ class FakeStorage:
     corpus maps a bucket-relative path -> file text written out on
     sync_corpus (nested paths like "fewshot/example.json" land in
     subdirectories, mirroring SupabaseStorage's fewshot/ pass).
+
+    remove_failures is the deletion tests' failure injector: any requested
+    path in that set survives and comes back in the failed list. The real
+    adapter fails a whole batch at once, so this fake is deliberately MORE
+    granular than production -- it can produce the partial state the
+    protocol permits, which is the state api/deletion.py must survive.
     """
 
     def __init__(self, recordings: dict[str, bytes] | None = None,
                  corpus: dict[str, str] | None = None):
         self.recordings: dict[str, bytes] = dict(recordings or {})
         self.corpus: dict[str, str] = dict(corpus or {})
+        self.remove_failures: set[str] = set()
+        self.remove_calls: list[list[str]] = []   # every batch, as requested
+        self.removed: list[str] = []              # every key actually gone
 
     def download_recording(self, storage_path: str, dest_dir: Path) -> Path:
         data = self.recordings[storage_path]  # KeyError when absent (pinned)
@@ -436,3 +473,18 @@ class FakeStorage:
             target.parent.mkdir(parents=True, exist_ok=True)
             target.write_text(text)
         return dest_dir
+
+    def remove_recordings(self, paths: list[str]) -> list[str]:
+        paths = list(paths)
+        self.remove_calls.append(paths)
+        failed = []
+        for path in paths:
+            if path in self.remove_failures:
+                failed.append(path)
+                continue
+            # Absent is the end state, not an error (pinned contract): a
+            # retry of a half-finished deletion must report the missing key
+            # as done rather than as a failure.
+            if self.recordings.pop(path, None) is not None:
+                self.removed.append(path)
+        return failed

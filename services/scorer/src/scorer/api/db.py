@@ -67,6 +67,21 @@ def _table_for(kind: Literal["package", "session"]) -> str:
     return tables[kind]
 
 
+# delete_rows' kind -> table name. Deliberately a SECOND map rather than a
+# widening of _table_for: touch_updated_at writes an updated_at column that
+# orders does not have, so the two vocabularies are not interchangeable.
+DeletableKind = Literal["package", "session", "order"]
+_DELETE_TABLES: dict[str, str] = {
+    "package": "packages", "session": "sessions", "order": "orders",
+}
+
+
+def _delete_table_for(kind: str) -> str:
+    if kind not in _DELETE_TABLES:
+        raise ValueError(f"unknown delete kind: {kind!r}")
+    return _DELETE_TABLES[kind]
+
+
 class PackageRow(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
@@ -288,6 +303,26 @@ class Database(Protocol):
         compile can be retried. A pure state reset: the caller (Track C's
         retry endpoint) owns the only-when-failed guard and the recompile
         dispatch. Unknown ids raise KeyError."""
+        ...
+
+    # ------------------------------------------------ v0.6 account deletion
+
+    def delete_rows(self, kind: DeletableKind, ids: list[str]) -> int:
+        """Hard-delete rows by explicit id; return how many actually went.
+
+        The one destructive read-nothing-first operation on this protocol,
+        and deliberately the narrowest shape that can serve account deletion
+        (api/deletion.py is its only caller): it takes an id list the caller
+        already collected, never a filter, so no bug upstream can widen it
+        into "delete everyone".
+
+        Idempotent on purpose -- ids that are already gone are not an error,
+        they are the desired end state. That is what lets a deletion that
+        failed halfway be retried to completion instead of wedging. An empty
+        list is a no-op returning 0 (no round trip); unknown kinds raise
+        ValueError. Reports and transcripts are columns on sessions and go
+        with them.
+        """
         ...
 
 
@@ -610,3 +645,16 @@ class SupabaseDatabase:
                 .eq("id", package_id).execute().data)
         if not data:
             raise KeyError(package_id)
+
+    # ------------------------------------------------ v0.6 account deletion
+
+    def delete_rows(self, kind: DeletableKind, ids: list[str]) -> int:
+        table = _delete_table_for(kind)   # ValueError before any round trip
+        if not ids:
+            return 0
+        # PostgREST returns the deleted representation, so len() is the real
+        # count -- ids that were already gone simply do not appear, which is
+        # exactly the idempotent contract the protocol promises.
+        data = (self._client.table(table).delete()
+                .in_("id", list(ids)).execute().data)
+        return len(data or [])

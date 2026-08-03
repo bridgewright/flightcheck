@@ -9,11 +9,14 @@ and skips the network entirely.
 """
 from __future__ import annotations
 
+import logging
 import os
 from pathlib import Path
 from typing import Protocol, runtime_checkable
 
 from supabase import Client
+
+logger = logging.getLogger(__name__)
 
 RECORDINGS_BUCKET = "recordings"
 CORPUS_BUCKET = "corpus"
@@ -30,6 +33,23 @@ class Storage(Protocol):
         ...
 
     def sync_corpus(self, dest_dir: Path) -> Path:
+        ...
+
+    def remove_recordings(self, paths: list[str]) -> list[str]:
+        """Delete recording objects by exact key; return the keys that did
+        NOT get deleted ([] when everything is gone).
+
+        Failures are RETURNED rather than raised because the caller
+        (api/deletion.py) has to make a decision with the list in hand: it
+        deletes blobs before rows, and the session rows are the only index
+        to these keys, so a surviving object must stop the row deletion
+        rather than orphan itself.
+
+        "Already absent" counts as deleted -- the contract is about the end
+        state, not about who removed it. That is what makes a retried
+        account deletion converge instead of failing forever on the objects
+        the first attempt succeeded at.
+        """
         ...
 
 
@@ -74,3 +94,24 @@ class SupabaseStorage:
             (fewshot_dir / name).write_bytes(
                 bucket.download(f"{FEWSHOT_SUBDIR}/{name}"))
         return dest_dir
+
+    def remove_recordings(self, paths: list[str]) -> list[str]:
+        paths = list(paths)
+        if not paths:
+            return []
+        try:
+            self._client.storage.from_(RECORDINGS_BUCKET).remove(paths)
+        except Exception:
+            # Deliberately blanket: this is the abort signal for a deletion
+            # that is about to remove the only index to these objects, so
+            # every failure mode (network, auth, bucket policy, an SDK error
+            # class we have not enumerated) must land in the same "did not
+            # happen" answer. Narrowing it would let an unforeseen exception
+            # escape and orphan recordings. The path list is not logged --
+            # it embeds the package id of an account being erased.
+            logger.exception(
+                "recordings removal failed for %d object(s)", len(paths))
+            return paths
+        # A key the API did not return is one it had nothing to delete for.
+        # Absent is the end state we asked for, so it is not a failure.
+        return []
