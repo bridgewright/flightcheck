@@ -12,6 +12,14 @@ import { resolveActivePackage } from "@/lib/active-package";
 import type { Viewer } from "@/lib/viewer";
 import type { PackageSummary } from "@/lib/worker";
 import { listPackagesForUser } from "@/lib/worker";
+import {
+  DIVIDER,
+  MENU_PANEL,
+  MENU_ROW,
+  SECONDARY_BUTTON,
+  TAB,
+  TAB_ACTIVE,
+} from "@/lib/ui";
 
 // The app chrome, and a server component on purpose: the switcher and the
 // active tab are computed from the request (cookie + pathname prop), never
@@ -25,18 +33,12 @@ import { listPackagesForUser } from "@/lib/worker";
 // degrades to a bar without a switcher — the page body owns the real error
 // surface.
 
-const MENU_PANEL =
-  "absolute top-full z-20 mt-1.5 w-64 rounded-md border border-neutral-200 bg-white p-1 text-sm shadow-md dark:border-neutral-800 dark:bg-neutral-950";
-
-const MENU_ROW =
-  "block rounded px-3 py-2 hover:bg-neutral-100 dark:hover:bg-neutral-900";
-
 const SUMMARY =
   "flex cursor-pointer list-none items-center gap-1.5 [&::-webkit-details-marker]:hidden";
 
 function Chevron() {
   return (
-    <span aria-hidden="true" className="text-[9px] text-neutral-500">
+    <span aria-hidden="true" className="text-[9px] text-ink-faint">
       ▼
     </span>
   );
@@ -54,7 +56,7 @@ function PackageSwitcher({
   const active = packages.find((pkg) => pkg.id === activeId) ?? packages[0];
   return (
     <details className="relative order-2">
-      <summary className={`${SUMMARY} rounded-md px-2 py-1 text-sm text-neutral-600 hover:bg-neutral-100 dark:text-neutral-400 dark:hover:bg-neutral-900`}>
+      <summary className={`${SUMMARY} rounded-field px-2 py-1 text-sm text-ink-muted hover:bg-paper-sunk`}>
         <span className="max-w-36 truncate sm:max-w-48">
           {packageDisplayTitle(active.role_title)}
         </span>
@@ -74,14 +76,14 @@ function PackageSwitcher({
                 <span className="truncate">
                   {packageDisplayTitle(pkg.role_title)}
                 </span>
-                <span className="shrink-0 text-xs text-neutral-500 tabular-nums">
+                <span className="shrink-0 text-xs text-ink-faint tabular-nums">
                   {pkg.sessions_used}/{pkg.total_sessions}
                 </span>
               </Link>
             </li>
           ))}
         </ul>
-        <div className="mt-1 border-t border-neutral-200 pt-1 dark:border-neutral-800">
+        <div className={`mt-1 border-t pt-1 ${DIVIDER}`}>
           <Link href="/packages" className={MENU_ROW}>
             All packages
           </Link>
@@ -99,13 +101,13 @@ function AccountMenu({ viewer }: { viewer: Viewer }) {
   return (
     <details className="relative order-3 ml-auto sm:order-4">
       <summary className={SUMMARY} aria-label="Account menu">
-        <span className="flex size-7 items-center justify-center rounded-full bg-neutral-900 text-xs font-bold text-white dark:bg-white dark:text-neutral-900">
+        <span className="flex size-7 items-center justify-center rounded-full bg-ink text-xs font-bold text-paper">
           {initial}
         </span>
         <Chevron />
       </summary>
       <div className={`${MENU_PANEL} right-0`}>
-        <p className="truncate px-3 py-2 text-xs text-neutral-500">
+        <p className="truncate px-3 py-2 text-xs text-ink-faint">
           {viewer.email ?? "Signed in"}
         </p>
         <Link href="/settings" className={MENU_ROW}>
@@ -116,7 +118,7 @@ function AccountMenu({ viewer }: { viewer: Viewer }) {
             Sign out
           </button>
         </form>
-        <div className="mt-1 border-t border-neutral-200 pt-1 dark:border-neutral-800">
+        <div className={`mt-1 border-t pt-1 ${DIVIDER}`}>
           <Link href="/pricing" className={MENU_ROW}>
             Pricing
           </Link>
@@ -143,11 +145,7 @@ function SectionTabs({ path }: { path: string | undefined }) {
             key={tab.href}
             href={tab.href}
             aria-current={current ? "page" : undefined}
-            className={`flex items-center border-b-2 px-2.5 py-2.5 text-sm whitespace-nowrap ${
-              current
-                ? "border-neutral-900 font-medium text-neutral-900 dark:border-neutral-100 dark:text-neutral-100"
-                : "border-transparent text-neutral-600 hover:text-neutral-900 dark:text-neutral-400 dark:hover:text-neutral-100"
-            }`}
+            className={current ? TAB_ACTIVE : TAB}
           >
             {tab.label}
           </Link>
@@ -193,7 +191,7 @@ export default async function TopBar({
   }
 
   return (
-    <header className="border-b border-neutral-200 dark:border-neutral-800">
+    <header className={`border-b ${DIVIDER}`}>
       <div className="mx-auto flex w-full max-w-5xl flex-wrap items-center gap-x-4 px-6">
         <Link href={viewer ? "/home" : "/"} className="order-1 py-4 text-lg">
           <span className="font-bold">flight</span>check
@@ -220,7 +218,7 @@ export default async function TopBar({
             </Link>
             <Link
               href="/login"
-              className="rounded-md border border-neutral-300 px-4 py-1.5 dark:border-neutral-700"
+              className={SECONDARY_BUTTON}
             >
               Sign in
             </Link>

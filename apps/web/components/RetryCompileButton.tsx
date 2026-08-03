@@ -3,6 +3,8 @@
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 
+import { ERROR_TEXT, SECONDARY_BUTTON } from "@/lib/ui";
+
 // The "Retry compile" pill on failed-compile packages (home + packages).
 // The server action arrives as a prop from the server component that owns
 // the surface; on success the router refreshes so the package's "Compiling"
@@ -38,11 +40,11 @@ export default function RetryCompileButton({
         type="button"
         onClick={retry}
         disabled={pending}
-        className="self-start rounded-md border border-neutral-300 px-4 py-1.5 text-sm disabled:cursor-wait disabled:opacity-50 dark:border-neutral-700"
+        className={`${SECONDARY_BUTTON} self-start`}
       >
         {pending ? "Retrying…" : "Retry compile"}
       </button>
-      {error ? <p className="text-sm text-red-600 dark:text-red-400">{error}</p> : null}
+      {error ? <p className={ERROR_TEXT}>{error}</p> : null}
     </div>
   );
 }

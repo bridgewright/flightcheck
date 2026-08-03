@@ -2,6 +2,7 @@ import Link from "next/link";
 
 import { LEGAL_LINKS, SUPPORT_EMAIL, supportMailto } from "@/app/legal/policy";
 import TopBar from "@/components/TopBar";
+import { DIVIDER, QUIET_LINK } from "@/lib/ui";
 import type { Viewer } from "@/lib/viewer";
 import type { PackageSummary } from "@/lib/worker";
 
@@ -54,20 +55,20 @@ export default function Shell({
       {/* Quiet trust footer on every Shell page: the legal pages and a real
           person to write to. Links come from app/legal/policy.ts so the
           footer can never point at pages that do not exist. */}
-      <footer className="border-t border-neutral-200 dark:border-neutral-800">
-        <div className="mx-auto flex w-full max-w-5xl flex-wrap items-center gap-x-5 gap-y-1 px-6 py-5 text-xs text-neutral-500">
+      <footer className={`border-t ${DIVIDER}`}>
+        <div className="mx-auto flex w-full max-w-5xl flex-wrap items-center gap-x-5 gap-y-1 px-6 py-5 text-xs text-ink-faint">
           {LEGAL_LINKS.map((link) => (
             <Link
               key={link.href}
               href={link.href}
-              className="hover:text-neutral-700 dark:hover:text-neutral-300"
+              className={QUIET_LINK}
             >
               {link.label}
             </Link>
           ))}
           <a
             href={supportMailto()}
-            className="hover:text-neutral-700 dark:hover:text-neutral-300"
+            className={QUIET_LINK}
           >
             Support: {SUPPORT_EMAIL}
           </a>

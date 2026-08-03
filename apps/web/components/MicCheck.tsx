@@ -127,14 +127,14 @@ export default function MicCheck() {
             aria-valuemin={0}
             aria-valuemax={100}
             aria-valuenow={Math.round(level * 100)}
-            className="h-2 w-full overflow-hidden rounded-full bg-neutral-200 dark:bg-neutral-800"
+            className="h-2 w-full overflow-hidden rounded-full bg-hairline"
           >
             <div
-              className="h-full bg-neutral-900 transition-[width] duration-75 dark:bg-white"
+              className="h-full bg-ink transition-[width] duration-75"
               style={{ width: `${Math.round(level * 100)}%` }}
             />
           </div>
-          <p className="text-sm text-neutral-600 dark:text-neutral-400">
+          <p className="text-sm text-ink-muted">
             {state.deviceLabel ? `${state.deviceLabel} is live.` : "Your microphone is live."}{" "}
             Say something — the bar should move as you speak.
           </p>
@@ -145,7 +145,7 @@ export default function MicCheck() {
       ) : (
         <>
           <p
-            className="text-sm text-neutral-600 dark:text-neutral-400"
+            className="text-sm text-ink-muted"
             role={state.kind === "denied" || state.kind === "no-device" || state.kind === "error" ? "alert" : undefined}
           >
             {state.kind === "error" ? state.message : STATUS_LINES[state.kind]}

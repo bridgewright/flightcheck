@@ -7,9 +7,9 @@ import type { JourneyLeg } from "@/lib/home";
 // up next, and how many the package still owes you. Solid / outlined / faint
 // carry those three states without relying on colour.
 const LEG_STYLES: Record<JourneyLeg, string> = {
-  done: "bg-neutral-900 dark:bg-neutral-100",
-  next: "border-2 border-neutral-900 dark:border-neutral-100",
-  todo: "bg-neutral-300 dark:bg-neutral-700",
+  done: "bg-ink",
+  next: "border-2 border-ink",
+  todo: "bg-hairline",
 };
 
 const LEG_LABELS: Record<JourneyLeg, string> = {
@@ -26,19 +26,19 @@ export default function JourneyStrip({ legs }: { legs: JourneyLeg[] }) {
     <div
       role="img"
       aria-label={`Session progress: ${done} of ${legs.length} done`}
-      className="flex items-center justify-center gap-[7px] overflow-x-auto px-0.5 py-1 text-xs text-neutral-600 dark:text-neutral-400"
+      className="flex items-center justify-center gap-[7px] overflow-x-auto px-0.5 py-1 text-xs text-ink-muted"
     >
       <span className="shrink-0 font-semibold">Start</span>
       {legs.map((leg, i) => (
         <Fragment key={i}>
-          <span className="h-px w-5 shrink-0 bg-neutral-300 dark:bg-neutral-700" />
+          <span className="h-px w-5 shrink-0 bg-hairline" />
           <span
             title={`Session ${i + 1} · ${LEG_LABELS[leg]}`}
             className={`size-[9px] shrink-0 rounded-full ${LEG_STYLES[leg]}`}
           />
         </Fragment>
       ))}
-      <span className="h-px w-5 shrink-0 bg-neutral-300 dark:bg-neutral-700" />
+      <span className="h-px w-5 shrink-0 bg-hairline" />
       <span className="shrink-0 font-semibold">Ready</span>
     </div>
   );

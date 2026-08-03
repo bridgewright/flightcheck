@@ -8,6 +8,7 @@ import {
   missingCapabilities,
   unsupportedBrowserMessage,
 } from "@/lib/session-media";
+import { NOTICE } from "@/lib/ui";
 
 // Capability gate for the interview room: probes the three browser APIs a
 // live session cannot run without, and when any is missing replaces its
@@ -44,18 +45,18 @@ export default function BrowserGate({ children }: { children: ReactNode }) {
   return (
     <section
       role="alert"
-      className="mt-6 rounded-lg border border-neutral-300 p-4 dark:border-neutral-700"
+      className={`${NOTICE} mt-6`}
     >
       <h2 className="text-sm font-medium">
         This browser cannot run a live interview
       </h2>
-      <p className="mt-2 text-sm text-neutral-600 dark:text-neutral-400">
+      <p className="mt-2">
         {unsupportedBrowserMessage(missing)}
       </p>
-      <p className="mt-2 text-sm text-neutral-600 dark:text-neutral-400">
+      <p className="mt-2">
         {SUPPORTED_BROWSERS_LINE}
       </p>
-      <p className="mt-2 text-sm text-neutral-500">{IN_APP_BROWSER_HINT}</p>
+      <p className="mt-2 text-ink-faint">{IN_APP_BROWSER_HINT}</p>
     </section>
   );
 }
