@@ -6,6 +6,7 @@ import {
 } from "@/components/progress-view";
 import type { RecurringIssues } from "@/lib/progress";
 import type { SessionProgressEntry } from "@/lib/worker";
+import { LABEL, MUTED } from "@/lib/ui";
 
 // Every sentence here states what the data computed and nothing more:
 // lib/progress.recurringIssues flags a dimension after two consecutive
@@ -41,11 +42,11 @@ export default function ProgressFocus({
   const empty = issues.weakDimensions.length === 0 && issues.gaps.length === 0;
   return (
     <section>
-      <h2 className="mb-2.5 text-xs font-semibold tracking-wide text-neutral-500 uppercase">
+      <h2 className={`${LABEL} mb-2.5 font-semibold`}>
         Recurring focus
       </h2>
       {empty ? (
-        <p className="text-sm text-neutral-600 dark:text-neutral-400">
+        <p className={`text-sm ${MUTED}`}>
           Nothing recurring yet. This section fills in when the same gap shows
           up in two or more reports, or a dimension stays among your two lowest
           across consecutive scored sessions.
@@ -61,14 +62,14 @@ export default function ProgressFocus({
           ) : null}
           {issues.gaps.length > 0 ? (
             <div>
-              <p className="mb-1.5 text-neutral-600 dark:text-neutral-400">
+              <p className={`mb-1.5 ${MUTED}`}>
                 Noted in more than one report:
               </p>
               <ul className="flex flex-col gap-1.5">
                 {issues.gaps.map((gap) => (
-                  <li key={gap} className="border-l-2 border-neutral-200 pl-3 dark:border-neutral-800">
+                  <li key={gap} className="border-l-2 border-hairline pl-3">
                     {gap}{" "}
-                    <span className="whitespace-nowrap text-neutral-500">
+                    <span className="whitespace-nowrap text-ink-faint">
                       — {gapRecurrenceCount(entries, gap)} reports
                     </span>
                   </li>

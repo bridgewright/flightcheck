@@ -4,7 +4,7 @@ import type { VerdictLine } from "@/lib/home";
 import { exhaustedSessionsLine } from "@/lib/home";
 // The one object on the page: what you do next, and the sentence from last
 // time that says why.
-import { LABEL } from "@/lib/ui";
+import { CARD, LABEL } from "@/lib/ui";
 
 function pad(n: number): string {
   return String(n).padStart(2, "0");
@@ -13,10 +13,10 @@ function pad(n: number): string {
 function Rule({ children, live }: { children: ReactNode; live: boolean }) {
   return (
     <p
-      className={`border-l-2 py-0.5 pl-3 text-sm text-neutral-600 dark:text-neutral-400 ${
+      className={`border-l-2 py-0.5 pl-3 text-sm text-ink-muted ${
         live
-          ? "border-neutral-900 dark:border-neutral-100"
-          : "border-neutral-300 dark:border-neutral-700"
+          ? "border-ink"
+          : "border-hairline"
       }`}
     >
       {children}
@@ -47,7 +47,7 @@ export default function SessionTicket({
 }) {
   const exhausted = sessionNumber === null;
   return (
-    <article className="rounded-md border border-neutral-300 dark:border-neutral-700">
+    <article className={CARD}>
       <div className="flex flex-col gap-3 px-5 py-5">
         {exhausted ? (
           <>
@@ -94,7 +94,7 @@ export default function SessionTicket({
             {verdict ? (
               <Rule live>
                 Last verdict:{" "}
-                <b className="font-semibold text-neutral-900 dark:text-neutral-100">
+                <b className="font-semibold text-ink">
                   {verdict.headline}
                 </b>
                 {verdict.detail ? ` ${verdict.detail}` : ""}
@@ -114,7 +114,7 @@ export default function SessionTicket({
           <div className="flex flex-wrap items-center gap-3.5">
             {action}
             {exhausted ? null : (
-              <span className="text-xs text-neutral-500">
+              <span className="text-xs text-ink-faint">
                 Fresh topics · English · scored from your voice
               </span>
             )}

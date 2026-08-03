@@ -1,4 +1,5 @@
 import type { SessionProgressEntry } from "@/lib/worker";
+import { EMPTY_RULE, LABEL, TABLE_ROW } from "@/lib/ui";
 
 // Raw measurements only — no targets, no judgments. The scorer's judges own
 // interpretation; this table is instrumentation the user reads over time.
@@ -6,7 +7,7 @@ import type { SessionProgressEntry } from "@/lib/worker";
 // session detail), so it deliberately has no row here.
 
 function dash(): React.ReactNode {
-  return <span className="text-neutral-400 dark:text-neutral-600">—</span>;
+  return <span className={EMPTY_RULE} aria-hidden="true" />;
 }
 
 interface DeliveryRow {
@@ -55,13 +56,13 @@ export default function ProgressDeliveryTable({
   }
   return (
     <section>
-      <h2 className="mb-2.5 text-xs font-semibold tracking-wide text-neutral-500 uppercase">
+      <h2 className={`${LABEL} mb-2.5 font-semibold`}>
         Delivery trends
       </h2>
       <div className="overflow-x-auto">
         <table className="w-full text-sm">
           <thead>
-            <tr className="border-b border-neutral-200 text-xs text-neutral-500 dark:border-neutral-800">
+            <tr className="border-b border-hairline text-xs text-ink-faint">
               <th scope="col" className="py-2 pr-3 text-left font-medium">
                 Measure
               </th>
@@ -80,8 +81,8 @@ export default function ProgressDeliveryTable({
             {ROWS.map((row) => (
               <tr
                 key={row.label}
-                className={`border-b border-neutral-200 dark:border-neutral-800 ${
-                  row.secondary ? "text-neutral-500" : ""
+                className={`${TABLE_ROW} ${
+                  row.secondary ? "text-ink-faint" : ""
                 }`}
               >
                 <th scope="row" className="py-2.5 pr-3 text-left font-normal">

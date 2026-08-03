@@ -1,5 +1,5 @@
 import { formatOrderAmount, formatOrderDate, orderStatusLabel } from "@/lib/home";
-import { LABEL } from "@/lib/ui";
+import { EMPTY_RULE, LABEL, MUTED, TABLE_ROW } from "@/lib/ui";
 import type { OrderRow } from "@/lib/types";
 import { listOrders } from "@/lib/worker";
 
@@ -13,14 +13,16 @@ import { listOrders } from "@/lib/worker";
 
 function Row({ order }: { order: OrderRow }) {
   return (
-    <tr className="border-t border-neutral-200 dark:border-neutral-800">
+    <tr className={TABLE_ROW}>
       <td className="py-2.5 pr-4 whitespace-nowrap">
-        {formatOrderDate(order.created_at) ?? "—"}
+        {formatOrderDate(order.created_at) ?? (
+          <span className={EMPTY_RULE} aria-hidden="true" />
+        )}
       </td>
       <td className="py-2.5 pr-4 tabular-nums whitespace-nowrap">
         {formatOrderAmount(order.amount_minor, order.currency)}
       </td>
-      <td className="py-2.5 text-neutral-600 dark:text-neutral-400">
+      <td className={`py-2.5 ${MUTED}`}>
         {orderStatusLabel(order.status)}
       </td>
     </tr>
@@ -33,7 +35,7 @@ export default async function OrderHistory({ userId }: { userId: string }) {
     orders = await listOrders(userId);
   } catch {
     return (
-      <p className="text-sm text-neutral-600 dark:text-neutral-400">
+      <p className={`text-sm ${MUTED}`}>
         Your payment history can&apos;t be loaded right now. Nothing is lost —
         try again in a moment.
       </p>
@@ -42,7 +44,7 @@ export default async function OrderHistory({ userId }: { userId: string }) {
 
   if (orders.length === 0) {
     return (
-      <p className="text-sm text-neutral-600 dark:text-neutral-400">
+      <p className={`text-sm ${MUTED}`}>
         No payments yet. When you unlock a package, the receipt appears here.
       </p>
     );

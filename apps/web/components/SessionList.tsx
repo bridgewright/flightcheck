@@ -3,6 +3,7 @@ import Link from "next/link";
 import { formatSessionDate } from "@/lib/home";
 import type { SessionStatus } from "@/lib/types";
 import type { SessionSummary } from "@/lib/worker";
+import { CHIP, CHIP_ACCENT, EMPTY_RULE, LABEL, TABLE_ROW } from "@/lib/ui";
 
 // A session that is not scored yet still has something true to say about
 // itself. "failed" is shown, not hidden: the product's promise is the bar,
@@ -10,23 +11,23 @@ import type { SessionSummary } from "@/lib/worker";
 const PILLS: Record<SessionStatus, { label: string; className: string } | null> = {
   planned: {
     label: "Not started",
-    className: "bg-neutral-100 text-neutral-600 dark:bg-neutral-800 dark:text-neutral-400",
+    className: CHIP,
   },
   scoring: {
     label: "Scoring…",
-    className: "bg-amber-100 text-amber-900 dark:bg-amber-950 dark:text-amber-200",
+    className: CHIP_ACCENT,
   },
   failed: {
     label: "Scoring failed",
-    className: "bg-red-100 text-red-900 dark:bg-red-950 dark:text-red-200",
+    className: "inline-flex rounded-full bg-alarm-wash px-2.5 py-1 text-label uppercase text-alarm",
   },
   insufficient: {
     label: "Not scored — not enough evidence",
-    className: "bg-red-100 text-red-900 dark:bg-red-950 dark:text-red-200",
+    className: "inline-flex rounded-full bg-alarm-wash px-2.5 py-1 text-label uppercase text-alarm",
   },
   failed_permanent: {
     label: "Closed — not scored",
-    className: "bg-red-100 text-red-900 dark:bg-red-950 dark:text-red-200",
+    className: "inline-flex rounded-full bg-alarm-wash px-2.5 py-1 text-label uppercase text-alarm",
   },
   scored: null,
 };
@@ -36,14 +37,14 @@ function Outcome({ session }: { session: SessionSummary }) {
   if (pill) {
     return (
       <span
-        className={`inline-flex rounded-full px-2.5 py-0.5 text-[11px] font-medium ${pill.className}`}
+        className={pill.className}
       >
         {pill.label}
       </span>
     );
   }
   return session.overall === null ? (
-    <span className="text-neutral-500">—</span>
+    <span className={EMPTY_RULE} aria-hidden="true" />
   ) : (
     <span className="font-semibold tabular-nums">{session.overall.toFixed(1)}</span>
   );
@@ -62,11 +63,11 @@ export default function SessionList({
   const newestFirst = [...sessions].sort((a, b) => b.index - a.index);
   return (
     <section>
-      <h2 className="mb-2.5 text-xs font-semibold tracking-wide text-neutral-500 uppercase">
+      <h2 className={`${LABEL} mb-2.5 font-semibold`}>
         Your sessions
       </h2>
       {newestFirst.length === 0 ? (
-        <p className="text-sm text-neutral-600 dark:text-neutral-400">
+        <p className="text-sm text-ink-muted">
           Nothing here yet — your first session appears the moment you finish it.
         </p>
       ) : (
@@ -76,15 +77,15 @@ export default function SessionList({
             return (
               // The whole row is the link: the detail page has an honest
               // state for every status, not only scored ones.
-              <li key={session.id} className="border-b border-neutral-200 dark:border-neutral-800">
+              <li key={session.id} className={TABLE_ROW}>
                 <Link
                   href={`/sessions/${session.id}`}
-                  className="grid grid-cols-[36px_1fr_auto_auto] items-center gap-3.5 py-3 text-sm hover:bg-neutral-50 dark:hover:bg-neutral-900"
+                  className="grid grid-cols-[36px_1fr_auto_auto] items-center gap-3.5 py-3 text-sm hover:bg-paper-sunk"
                 >
-                  <span className="text-xs text-neutral-500 tabular-nums">
+                  <span className="text-xs text-ink-faint tabular-nums">
                     {String(session.index).padStart(2, "0")}
                   </span>
-                  <span className="text-neutral-600 dark:text-neutral-400">
+                  <span className="text-ink-muted">
                     {when ?? ""}
                   </span>
                   <Outcome session={session} />

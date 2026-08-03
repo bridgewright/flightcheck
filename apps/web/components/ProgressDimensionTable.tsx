@@ -5,6 +5,7 @@ import {
   SCORE_MAX,
 } from "@/components/progress-view";
 import type { DimensionTrend, TrendPoint } from "@/lib/progress";
+import { EMPTY_RULE, LABEL, TABLE_ROW } from "@/lib/ui";
 
 // One bar per scored session: height is the score normalized to the 1..5
 // rubric scale, drawn with plain CSS on a fixed track. The number itself is
@@ -13,12 +14,12 @@ function BarDot({ point }: { point: TrendPoint }) {
   const pct = Math.min(Math.max(point.score / SCORE_MAX, 0), 1) * 100;
   return (
     <span
-      className="flex h-8 w-2 items-end overflow-hidden rounded-sm bg-neutral-100 dark:bg-neutral-800"
+      className="flex h-8 w-2 items-end overflow-hidden rounded-sm bg-paper-sunk"
       title={`Session ${point.index}: ${point.score.toFixed(1)}`}
     >
       <span
         aria-hidden="true"
-        className="w-full rounded-sm bg-neutral-700 dark:bg-neutral-300"
+        className="w-full rounded-sm bg-ink-muted"
         style={{ height: `${pct}%` }}
       />
       <span className="sr-only">
@@ -44,13 +45,13 @@ export default function ProgressDimensionTable({
   }
   return (
     <section>
-      <h2 className="mb-2.5 text-xs font-semibold tracking-wide text-neutral-500 uppercase">
+      <h2 className={`${LABEL} mb-2.5 font-semibold`}>
         Dimension trends
       </h2>
       <div className="overflow-x-auto">
         <table className="w-full text-sm">
           <thead>
-            <tr className="border-b border-neutral-200 text-left text-xs text-neutral-500 dark:border-neutral-800">
+            <tr className="border-b border-hairline text-left text-xs text-ink-faint">
               <th scope="col" className="py-2 pr-3 font-medium">
                 Dimension
               </th>
@@ -72,14 +73,14 @@ export default function ProgressDimensionTable({
               return (
                 <tr
                   key={trend.dimension_key}
-                  className="border-b border-neutral-200 dark:border-neutral-800"
+                  className={TABLE_ROW}
                 >
                   <th scope="row" className="py-2.5 pr-3 text-left font-normal">
                     <span className="font-medium">
                       {dimension?.name ?? humanizeDimensionKey(trend.dimension_key)}
                     </span>
                     {dimension?.channel ? (
-                      <span className="ml-2 text-[10px] font-semibold tracking-wide text-neutral-500 uppercase">
+                      <span className="ml-2 text-[10px] font-semibold tracking-wide text-ink-faint uppercase">
                         {CHANNEL_TAGS[dimension.channel]}
                       </span>
                     ) : null}
@@ -92,13 +93,13 @@ export default function ProgressDimensionTable({
                     </span>
                   </td>
                   <td className="py-2.5 pr-3 text-right font-semibold tabular-nums">
-                    {latest ? latest.score.toFixed(1) : "—"}
+                    {latest ? latest.score.toFixed(1) : <span className={EMPTY_RULE} aria-hidden="true" />}
                   </td>
                   <td className="py-2.5 text-right tabular-nums">
                     {trend.points.length >= 2 ? (
                       formatSigned(trend.net)
                     ) : (
-                      <span className="text-neutral-500">—</span>
+                      <span className={EMPTY_RULE} aria-hidden="true" />
                     )}
                   </td>
                 </tr>
@@ -107,7 +108,7 @@ export default function ProgressDimensionTable({
           </tbody>
         </table>
       </div>
-      <p className="mt-1.5 text-[11px] text-neutral-500">
+      <p className="mt-1.5 text-[11px] text-ink-faint">
         Net is the latest score minus the first scored session&apos;s, on the
         rubric&apos;s 1–{SCORE_MAX} scale.
       </p>
