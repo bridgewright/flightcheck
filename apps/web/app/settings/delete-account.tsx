@@ -3,7 +3,7 @@
 import { useState } from "react";
 
 import { ACCOUNT_DELETION_REMOVES, deletionConfirmationMatches } from "@/lib/account";
-import { DANGER_BUTTON, ERROR_TEXT, FIELD, SECONDARY_BUTTON } from "@/lib/ui";
+import { DANGER_BUTTON, ERROR_TEXT, FIELD, SECONDARY_BUTTON, SUBTLE } from "@/lib/ui";
 
 // F-34: the delete-account section of /settings.
 //
@@ -81,7 +81,7 @@ export default function DeleteAccountSection({
   if (notice !== null) {
     return (
       <div className="flex flex-col gap-3">
-        <p className="text-sm text-ink-muted">{notice}</p>
+        <p className={SUBTLE}>{notice}</p>
         <a
           href={supportHref}
           className={`${SECONDARY_BUTTON} self-start`}
@@ -95,7 +95,7 @@ export default function DeleteAccountSection({
   if (accountEmail === null) {
     return (
       <div className="flex flex-col gap-3">
-        <p className="text-sm text-ink-muted">
+        <p className={SUBTLE}>
           This account has no email address on record, so there is nothing to
           type as confirmation. Email support and we will delete it by hand.
         </p>
@@ -111,19 +111,19 @@ export default function DeleteAccountSection({
 
   return (
     <div className="flex flex-col gap-4">
-      <p className="text-sm text-ink-muted">
+      <p className={SUBTLE}>
         Deleting your account removes, immediately and permanently:
       </p>
-      <ul className="flex list-disc flex-col gap-1 pl-5 text-sm text-ink-muted">
+      <ul className={`${SUBTLE} flex list-disc flex-col gap-1 pl-5`}>
         {ACCOUNT_DELETION_REMOVES.map((item) => (
           <li key={item}>{item}</li>
         ))}
       </ul>
-      <p className="text-sm text-ink-muted">
+      <p className={SUBTLE}>
         There is no undo and no grace period. Days left on a paid package are
         not refunded, because nothing survives to restore them to.
       </p>
-      <label className="flex flex-col gap-2 text-sm">
+      <label className="flex flex-col gap-2 text-fine">
         <span className="text-ink-muted">
           Type <span className="font-medium text-ink">{accountEmail}</span>{" "}
           to confirm.

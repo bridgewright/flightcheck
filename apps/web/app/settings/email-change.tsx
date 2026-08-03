@@ -4,7 +4,7 @@ import { useState } from "react";
 
 import { emailChangeOutcome, validateNewEmail } from "@/lib/account";
 import { createClient } from "@/lib/supabase/client";
-import { ERROR_TEXT, FIELD, SECONDARY_BUTTON } from "@/lib/ui";
+import { ERROR_TEXT, FIELD, SECONDARY_BUTTON, SUBTLE } from "@/lib/ui";
 
 // F-35: change the address you sign in with.
 //
@@ -59,12 +59,12 @@ export default function EmailChangeSection({
 
   return (
     <form onSubmit={submit} className="flex flex-col gap-3">
-      <p className="text-sm text-ink-muted">
+      <p className={SUBTLE}>
         We send a confirmation link to the new address, and your current
         address may receive one too. The change takes effect only once every
         link we send has been opened, so a typo here cannot lock you out.
       </p>
-      <label className="flex flex-col gap-2 text-sm">
+      <label className="flex flex-col gap-2 text-fine">
         <span className="text-ink-muted">New email address</span>
         <input
           type="email"
@@ -85,7 +85,7 @@ export default function EmailChangeSection({
         {pending ? "Sending…" : "Send confirmation link"}
       </button>
       {notice ? (
-        <p className="text-sm text-ink-muted" role="status">
+        <p className={SUBTLE} role="status">
           {notice}
         </p>
       ) : null}

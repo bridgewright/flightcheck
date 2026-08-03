@@ -27,7 +27,7 @@ import {
   type SessionDetailState,
 } from "@/lib/transcript";
 import type { Rubric, SessionReport, TranscriptSegment } from "@/lib/types";
-import { DIVIDER, MUTED, PRIMARY_BUTTON } from "@/lib/ui";
+import { DIVIDER, LABEL, MUTED, PAGE_HEADING, PRIMARY_BUTTON, SUB_HEADING, SUBTLE } from "@/lib/ui";
 import type { Viewer } from "@/lib/viewer";
 import { getViewer } from "@/lib/viewer";
 import type { SessionProgressEntry } from "@/lib/worker";
@@ -81,7 +81,7 @@ function SignedOut({ sessionId }: { sessionId: string }) {
   return (
     <Shell viewer={null}>
       <div className="flex flex-col items-center gap-4 py-16 text-center">
-        <h1 className="text-2xl font-bold tracking-tight text-balance">
+        <h1 className={`${PAGE_HEADING} text-balance`}>
           You need to sign in to see this session.
         </h1>
         <Link
@@ -171,10 +171,10 @@ function NotFound({ viewer }: { viewer: Viewer }) {
     <Shell viewer={viewer}>
       <div className="flex flex-col items-center gap-4 py-16 text-center">
         <Icon name="search" className="size-8 text-ink-faint" />
-        <h1 className="text-2xl font-bold tracking-tight text-balance">
+        <h1 className={`${PAGE_HEADING} text-balance`}>
           Session not found
         </h1>
-        <p className="max-w-md text-sm text-ink-muted">
+        <p className={`${SUBTLE} max-w-md`}>
           This link doesn&apos;t match any session on your account. Check the
           address, or head back to your sessions.
         </p>
@@ -192,10 +192,10 @@ function Unreachable({ viewer }: { viewer: Viewer }) {
       <PollRefresh intervalMs={5000} />
       <div className="flex flex-col items-center gap-3 py-16 text-center">
         <Icon name="offline" className="size-8 text-ink-faint" />
-        <h1 className="text-2xl font-bold tracking-tight text-balance">
+        <h1 className={`${PAGE_HEADING} text-balance`}>
           Can&apos;t reach this session right now.
         </h1>
-        <p className="max-w-md text-sm text-ink-muted">
+        <p className={`${SUBTLE} max-w-md`}>
           Your account is fine. The service that holds your sessions is briefly
           unreachable, most often during a restart. This page retries by itself;
           leave it open.
@@ -217,7 +217,7 @@ function ContextLine({
   date: string | null;
 }) {
   return (
-    <p className="text-xs font-semibold tracking-wide text-ink-faint uppercase">
+    <p className={LABEL}>
       {roleTitle ?? "Your interview package"} · Session {index} of {total}
       {date ? ` · ${date}` : ""}
     </p>
@@ -393,7 +393,7 @@ export default async function SessionDetailPage({
             />
             {state === "limited" ? (
               <div className="rounded-surface border border-hairline bg-blush p-3 text-fine text-ink">
-                <p className="font-semibold">Scored on limited evidence</p>
+                <p className={SUB_HEADING}>Scored on limited evidence</p>
                 <p className="mt-1">{report.limits_note}</p>
               </div>
             ) : null}
@@ -463,11 +463,11 @@ export default async function SessionDetailPage({
             total={pkg.total_sessions}
             date={date}
           />
-          <h1 className="flex items-start gap-2.5 text-2xl font-bold tracking-tight text-balance">
+          <h1 className={`${PAGE_HEADING} flex items-start gap-2.5 text-balance`}>
             <Icon name={STATE_ICONS[narrowState]} className="mt-1 size-6" />
             {heading[narrowState]}
           </h1>
-          <p className="max-w-prose text-sm text-ink-muted">
+          <p className={`${SUBTLE} max-w-prose`}>
             {stage ?? body[narrowState]}
           </p>
         </header>

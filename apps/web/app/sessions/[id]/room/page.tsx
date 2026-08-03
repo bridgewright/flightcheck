@@ -6,7 +6,7 @@ import {
   CAPABILITY_ENDED_MESSAGE,
   sessionCapability,
 } from "@/lib/session-capability";
-import { PRIMARY_BUTTON } from "@/lib/ui";
+import { PRIMARY_BUTTON, SECTION_HEADING } from "@/lib/ui";
 import { getViewer } from "@/lib/viewer";
 import { authorizeViewerSession } from "@/lib/worker";
 
@@ -47,7 +47,7 @@ export default async function SessionRoomPage({
     if (access.status === 502) {
       return (
         <main className="mx-auto max-w-2xl p-8">
-          <h1 className="text-xl font-semibold">The room is unavailable right now</h1>
+          <h1 className={SECTION_HEADING}>The room is unavailable right now</h1>
           <p className="mt-2 text-ink-faint">
             The scoring service could not be reached. Nothing is lost. Reload
             in a moment.
@@ -57,7 +57,7 @@ export default async function SessionRoomPage({
     }
     return (
       <main className="mx-auto max-w-2xl p-8">
-        <h1 className="text-xl font-semibold">Session unavailable</h1>
+        <h1 className={SECTION_HEADING}>Session unavailable</h1>
         <p className="mt-2 text-ink-faint">
           This session does not exist or is not part of your account. Go back
           to your home and start a new session.
@@ -68,7 +68,7 @@ export default async function SessionRoomPage({
   if (sessionCapability(access.value.session) !== "active") {
     return (
       <main className="mx-auto max-w-2xl p-8">
-        <h1 className="text-xl font-semibold">This session is closed</h1>
+        <h1 className={SECTION_HEADING}>This session is closed</h1>
         <p className="mt-2 text-ink-faint">{CAPABILITY_ENDED_MESSAGE}</p>
         <Link href="/home" className={`${PRIMARY_BUTTON} mt-6 inline-block`}>
           Back to your sessions

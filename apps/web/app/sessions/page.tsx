@@ -13,7 +13,7 @@ import {
   VERDICT_LABELS,
   verdictPillClasses,
 } from "@/lib/report-format";
-import { EMPTY_RULE, PRIMARY_BUTTON, QUIET_LINK } from "@/lib/ui";
+import { EMPTY_RULE, FINE_PRINT, LABEL, PAGE_HEADING, PRIMARY_BUTTON, QUIET_LINK, SCORE_NUMBER, SUB_HEADING, SUBTLE, TABLE_HEAD } from "@/lib/ui";
 import type { Viewer } from "@/lib/viewer";
 import { getViewer } from "@/lib/viewer";
 import type { PackageSummary, SessionSummary } from "@/lib/worker";
@@ -29,7 +29,7 @@ function SignedOut() {
   return (
     <Shell viewer={null}>
       <div className="flex flex-col items-center gap-4 py-16 text-center">
-        <h1 className="text-2xl font-bold tracking-tight text-balance">
+        <h1 className={`${PAGE_HEADING} text-balance`}>
           You need to sign in to see your sessions.
         </h1>
         <Link href="/login?next=/sessions" className={PRIMARY_BUTTON}>
@@ -45,10 +45,10 @@ function Unreachable({ viewer }: { viewer: Viewer }) {
     <Shell viewer={viewer}>
       <PollRefresh intervalMs={5000} />
       <div className="flex flex-col items-center gap-3 py-16 text-center">
-        <h1 className="text-2xl font-bold tracking-tight text-balance">
+        <h1 className={`${PAGE_HEADING} text-balance`}>
           Can&apos;t reach your sessions right now.
         </h1>
-        <p className="max-w-md text-sm text-ink-muted">
+        <p className={`${SUBTLE} max-w-md`}>
           Your account is fine. The service that holds your sessions is briefly
           unreachable, most often during a restart. This page retries by itself;
           leave it open.
@@ -62,7 +62,7 @@ function NoPackages({ viewer }: { viewer: Viewer }) {
   return (
     <Shell viewer={viewer}>
       <div className="flex flex-col items-center gap-5 py-14 text-center">
-        <h1 className="text-2xl font-bold tracking-tight text-balance">
+        <h1 className={`${PAGE_HEADING} text-balance`}>
           No sessions yet.
         </h1>
         <p className="max-w-md text-ink-muted">
@@ -101,7 +101,7 @@ function VerdictCell({ session }: { session: SessionSummary }) {
       >
         {pill.label}
       </span>
-      {stage ? <span className="text-xs text-ink-faint">{stage}</span> : null}
+      {stage ? <span className={FINE_PRINT}>{stage}</span> : null}
     </span>
   );
 }
@@ -110,7 +110,7 @@ function RowLinks({ session }: { session: SessionSummary }) {
   const detail = (label: string) => (
     <Link
       href={`/sessions/${session.id}`}
-      className={`${QUIET_LINK} text-xs`}
+      className={`${QUIET_LINK} text-fine`}
     >
       {label}
     </Link>
@@ -124,7 +124,7 @@ function RowLinks({ session }: { session: SessionSummary }) {
         {detail("View")}
         <Link
           href={`/sessions/${session.id}/room`}
-          className={`${QUIET_LINK} text-xs`}
+          className={`${QUIET_LINK} text-fine`}
         >
           Retry
         </Link>
@@ -141,19 +141,19 @@ function ArchiveTable({ sessions }: { sessions: SessionSummary[] }) {
   const deltas = overallDeltas(sessions);
   return (
     <div className="overflow-x-auto">
-      <table className="w-full border-collapse text-left text-sm">
+      <table className="w-full border-collapse text-left text-fine">
         <thead>
-          <tr className="border-b border-hairline text-xs tracking-wide text-ink-faint uppercase">
-            <th className="py-2 pr-4 font-semibold">#</th>
-            <th className="py-2 pr-4 font-semibold">Date</th>
-            <th className="py-2 pr-4 font-semibold">Outcome</th>
-            <th className="py-2 pr-4 font-semibold">Overall</th>
-            <th className="py-2 pr-4 font-semibold">
+          <tr className={`${TABLE_HEAD} border-b border-hairline`}>
+            <th className="py-2 pr-4">#</th>
+            <th className="py-2 pr-4">Date</th>
+            <th className="py-2 pr-4">Outcome</th>
+            <th className="py-2 pr-4">Overall</th>
+            <th className="py-2 pr-4">
               <abbr title="Change vs your previous scored session" className="no-underline">
                 Δ
               </abbr>
             </th>
-            <th className="py-2 font-semibold">
+            <th className="py-2">
               <span className="sr-only">Open</span>
             </th>
           </tr>
@@ -166,7 +166,7 @@ function ArchiveTable({ sessions }: { sessions: SessionSummary[] }) {
                 key={session.id}
                 className="border-b border-hairline"
               >
-                <td className={`${CELL} text-xs text-ink-faint tabular-nums`}>
+                <td className={`${CELL} ${FINE_PRINT} tabular-nums`}>
                   {String(session.index).padStart(2, "0")}
                 </td>
                 <td className={`${CELL} whitespace-nowrap text-ink-muted`}>
@@ -177,7 +177,7 @@ function ArchiveTable({ sessions }: { sessions: SessionSummary[] }) {
                 <td className={CELL}>
                   <VerdictCell session={session} />
                 </td>
-                <td className={`${CELL} font-semibold tabular-nums`}>
+                <td className={`${CELL} ${SCORE_NUMBER}`}>
                   {session.overall === null ? (
                     <span className={EMPTY_RULE} aria-hidden="true" />
                   ) : (
@@ -215,18 +215,18 @@ function PackageGroup({
 }) {
   return (
     <section className="flex flex-col gap-2">
-      <h3 className="text-sm font-semibold">
+      <h3 className={SUB_HEADING}>
         {pkg.role_title ?? "Untitled package"}
-        <span className="ml-2 font-normal text-ink-faint">
+        <span className="ml-2 text-ink-faint">
           {pkg.sessions_used} of {pkg.total_sessions} used
         </span>
       </h3>
       {sessions === null ? (
-        <p className="text-sm text-ink-muted">
+        <p className={SUBTLE}>
           Couldn&apos;t load this package&apos;s sessions right now.
         </p>
       ) : sessions.length === 0 ? (
-        <p className="text-sm text-ink-muted">
+        <p className={SUBTLE}>
           No sessions in this package yet.
         </p>
       ) : (
@@ -236,7 +236,7 @@ function PackageGroup({
             .map((session) => (
               <li
                 key={session.id}
-                className="grid grid-cols-[7rem_1fr_auto_auto] items-baseline gap-3.5 border-b border-hairline py-2.5 text-sm"
+                className="grid grid-cols-[7rem_1fr_auto_auto] items-baseline gap-3.5 border-b border-hairline py-2.5 text-fine"
               >
                 <span className="text-ink-muted">
                   {formatSessionDate(session.created_at) ?? (
@@ -244,7 +244,7 @@ function PackageGroup({
                   )}
                 </span>
                 <VerdictCell session={session} />
-                <span className="font-semibold tabular-nums">
+                <span className={SCORE_NUMBER}>
                   {session.overall === null ? (
                     <span className={EMPTY_RULE} aria-hidden="true" />
                   ) : (
@@ -316,21 +316,21 @@ export default async function SessionsPage({
           way. Mounted once for the whole page. */}
       {anyScoring || anyFailedFetch ? <PollRefresh intervalMs={5000} /> : null}
 
-      <h1 className="text-2xl font-bold tracking-tight">Sessions</h1>
-      <p className="mt-1 text-sm text-ink-muted">
+      <h1 className={PAGE_HEADING}>Sessions</h1>
+      <p className={`${SUBTLE} mt-1`}>
         {active.role_title ?? "Your interview package"} · {active.sessions_used} of{" "}
         {active.total_sessions} sessions used
       </p>
 
       <div className="mt-6">
         {activeSessions === null ? (
-          <p className="text-sm text-ink-muted">
+          <p className={SUBTLE}>
             Couldn&apos;t load this package&apos;s sessions right now. This page
             retries by itself.
           </p>
         ) : activeSessions.length === 0 ? (
           <div className="flex flex-col items-start gap-4 py-6">
-            <p className="text-sm text-ink-muted">
+            <p className={SUBTLE}>
               Nothing here yet. Your first session appears the moment you finish
               it.
             </p>
@@ -345,7 +345,7 @@ export default async function SessionsPage({
 
       {others.length > 0 ? (
         <section className="mt-10 flex flex-col gap-6">
-          <h2 className="text-xs font-semibold tracking-wide text-ink-faint uppercase">
+          <h2 className={LABEL}>
             Other packages
           </h2>
           {others.map((candidate, i) => (

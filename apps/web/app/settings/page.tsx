@@ -4,7 +4,7 @@ import { deletionMailto } from "@/app/legal/policy";
 import MicCheck from "@/components/MicCheck";
 import OrderHistory from "@/components/OrderHistory";
 import Shell from "@/components/Shell";
-import { DIVIDER, LABEL, PRIMARY_BUTTON, SECONDARY_BUTTON } from "@/lib/ui";
+import { DIVIDER, LABEL, PAGE_HEADING, PRIMARY_BUTTON, SECONDARY_BUTTON, SUB_HEADING, SUBTLE } from "@/lib/ui";
 import { getViewer } from "@/lib/viewer";
 
 import DeleteAccountSection from "./delete-account";
@@ -28,7 +28,7 @@ function SignedOut() {
   return (
     <Shell viewer={null}>
       <div className="flex flex-col items-center gap-4 py-16 text-center">
-        <h1 className="text-2xl font-bold tracking-tight text-balance">
+        <h1 className={`${PAGE_HEADING} text-balance`}>
           You need to sign in to manage your settings.
         </h1>
         <Link href="/login?next=/settings" className={PRIMARY_BUTTON}>
@@ -61,13 +61,13 @@ export default async function SettingsPage() {
   return (
     <Shell viewer={viewer}>
       <div className="flex flex-col gap-8">
-        <h1 className="text-2xl font-bold tracking-tight">Settings</h1>
+        <h1 className={PAGE_HEADING}>Settings</h1>
 
         <Section label="Account">
-          <p className="text-sm">
-            <span className="font-medium">{viewer.email ?? "No email on record"}</span>
+          <p className="text-fine">
+            <span className={SUB_HEADING}>{viewer.email ?? "No email on record"}</span>
           </p>
-          <p className="text-sm text-ink-muted">
+          <p className={SUBTLE}>
             You sign in with a magic link sent to this address. Passwordless, always.
           </p>
         </Section>
@@ -81,7 +81,7 @@ export default async function SettingsPage() {
         </Section>
 
         <Section label="Audio check">
-          <p className="text-sm text-ink-muted">
+          <p className={SUBTLE}>
             Your interviewer hears you through this microphone. Check it here before a
             session. Speakers or headphones both work.
           </p>
@@ -89,7 +89,7 @@ export default async function SettingsPage() {
         </Section>
 
         <Section label="Data & recordings">
-          <p className="text-sm text-ink-muted">
+          <p className={SUBTLE}>
             Your session recordings are kept in private storage, tied to your account.
             They exist so your delivery can be scored from the raw audio and so you can
             replay a session next to its report. Nothing else. They are never public
