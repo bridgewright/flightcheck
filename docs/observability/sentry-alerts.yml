@@ -1,0 +1,109 @@
+# Sentry alert rules — configuration, not clicks.
+#
+# Alerts configured only in the Sentry UI are invisible: nobody can review
+# them, nobody notices when one is deleted, and rebuilding them after a
+# project is recreated is guesswork. This file is the source of truth. It is
+# applied by hand today (Sentry's UI, Alerts > Create Alert), and every
+# change to production alerting lands here in the same commit.
+#
+# Scope: two projects, one per runtime.
+#   flightcheck-web    — @sentry/nextjs, apps/web/instrumentation*.ts
+#   flightcheck-worker — sentry-sdk, services/scorer/observability.py
+#
+# Both are no-ops until a DSN is set (NEXT_PUBLIC_SENTRY_DSN / SENTRY_DSN),
+# so this file describes the intended configuration of a monitored
+# deployment, and is honest that a deployment without a DSN has none of it.
+#
+# Delivery goes to the operator's email. There is one operator; a paging
+# rotation would be theatre.
+
+version: 1
+
+defaults:
+  # Every rule is scoped to production. Preview deploys throw constantly by
+  # design, and an alert stream that cries wolf is worse than no alert.
+  environment: production
+  action:
+    - type: email
+      target: operator
+
+rules:
+  - name: Any new error in production
+    project: flightcheck-web
+    # An issue nobody has seen before is the only class of alert that
+    # reliably means "something changed". Regressions of resolved issues
+    # count, because a fix that came undone is new information.
+    conditions:
+      - first_seen_event
+      - regression_event
+    frequency_minutes: 30
+    why: >
+      This product has one operator and low traffic. Volume thresholds
+      would never fire; a single unfamiliar stack trace is the signal.
+
+  - name: Any new error in the scoring worker
+    project: flightcheck-worker
+    conditions:
+      - first_seen_event
+      - regression_event
+    frequency_minutes: 30
+    why: >
+      A scoring failure costs a customer a paid session, and the pipeline
+      swallows every exception by design so the event loop survives. The
+      log line and this alert are the only places it surfaces.
+
+  - name: Scoring pipeline failing repeatedly
+    project: flightcheck-worker
+    conditions:
+      - event_frequency:
+          value: 5
+          interval: 1h
+    filters:
+      - tag: logger
+        match: starts_with
+        value: scorer.api
+    frequency_minutes: 60
+    why: >
+      Distinguishes a provider having a bad minute (retried, invisible)
+      from a run of failures that is stranding paying customers.
+
+  - name: Checkout or webhook broken
+    project: flightcheck-web
+    conditions:
+      - event_frequency:
+          value: 2
+          interval: 1h
+    filters:
+      - tag: url
+        match: contains
+        value: /api/webhooks/polar
+    frequency_minutes: 60
+    why: >
+      A webhook that stops verifying takes money without provisioning the
+      package the customer paid for. Two in an hour is not a coincidence.
+
+  - name: Worker unreachable from the web app
+    project: flightcheck-web
+    conditions:
+      - event_frequency:
+          value: 10
+          interval: 1h
+    filters:
+      - tag: error.type
+        match: equals
+        value: WorkerError
+    frequency_minutes: 60
+    why: >
+      Every signed-in page fans out to the worker. A run of WorkerErrors
+      means Railway is down or the token rotated without the web app,
+      which presents to users as the whole app being broken.
+
+# Deliberately NOT alerted on
+#
+# - Performance / transaction thresholds. tracesSampleRate is 0
+#   (lib/observability.ts): errors are the need, traces are quota.
+# - Any rule that pages on a single 4xx. Rate limits, 401s from expired
+#   sessions, and 403s from foreign-package links are the guards working.
+# - Anything derived from the /healthz endpoint. Railway owns deployment
+#   gating; duplicating it here would produce two alerts for one event and
+#   an argument about which is authoritative.

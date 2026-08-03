@@ -74,7 +74,10 @@ describe("shouldEnforceEnv", () => {
 
 describe("assertRequiredEnv", () => {
   it("fails the build with every missing name in one message", () => {
-    const env = { ...complete(), VERCEL: "1" };
+    const env: Record<string, string | undefined> = {
+      ...complete(),
+      VERCEL: "1",
+    };
     delete env.OPENAI_API_KEY;
     delete env.SUPABASE_URL;
     expect(() => assertRequiredEnv(env)).toThrow(/OPENAI_API_KEY/);

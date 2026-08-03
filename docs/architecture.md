@@ -86,6 +86,74 @@ server env only. The worker's own HTTP surface is closed by default: bearer
 auth on every `/api` route, `/healthz` the only public one, and FastAPI's
 interactive docs (`/docs`, `/redoc`, `/openapi.json`) disabled.
 
+## Observability
+
+### One id per unit of work
+
+The web mints an `x-request-id` for each inbound request and forwards it on
+every worker call that request makes (`apps/web/lib/worker.ts`, memoized with
+React `cache()` so a page that fans out to four calls correlates as one
+unit). The worker accepts it, generates one when absent, binds it to every
+log record, and echoes it on the response — including on 401s and 404s that
+never reach a route (`services/scorer/src/scorer/api/requestid.py`).
+
+Worker log lines carry it in the format itself:
+
+```
+2026-08-03 10:11:12,345 INFO scorer.api.pipeline [req=8f1c…]: scoring session …
+```
+
+Lines with no request in scope — startup, the reaper loop, `tools/` scripts —
+show `[req=-]` rather than a fabricated id.
+
+### /healthz tells the truth
+
+`GET /healthz` on the worker used to return `{"ok": true}` unconditionally.
+That is a liveness lie, and it is how a dead Railway build kept serving
+traffic while every new deploy failed: the platform's health check could not
+tell a working process from a broken one.
+
+`scorer.observability.run_health_checks` answers with what it actually
+verified:
+
+```json
+{"ok": true, "checks": {"database": "ok"}, "release": "<commit sha>"}
+```
+
+- **Checks the database.** It is the only dependency the worker cannot serve
+  a single request without, and a build that cannot reach it must never be
+  promoted over one that can. The probe is a lookup for a token no package
+  can hold: indexed, reads nothing real, writes nothing, and "no such
+  package" is a successful round trip.
+- **Does not check Gemini, OpenAI, or object storage.** They are slow,
+  remote, rate-limited, and billed per call. A provider having a bad minute
+  is not a reason to fail a deployment; that belongs to the pipeline's
+  retries and the dead-letter path. A health check that fans out to every
+  dependency turns any one of them into a total outage.
+- **Every probe runs under a hard timeout** (2s). The second way a health
+  check lies is by never answering at all.
+- **`release` names the build that answered** — the question the incident
+  could not answer.
+
+### Error monitoring
+
+`@sentry/nextjs` on the web (`instrumentation.ts` for server and edge,
+`instrumentation-client.ts` for the browser), `sentry-sdk` on the worker.
+Both are a clean no-op without a DSN, so monitoring is a deployment setting
+rather than a code change.
+
+Two policies are not negotiable and are enforced in `lib/observability.ts`:
+
+- `sendDefaultPii: false`. This product holds interview recordings and
+  transcripts.
+- Every event passes `redactedEvent` before it leaves. The legacy share
+  links carry a package capability token **in the URL** (`/p/<token>`), and
+  the Supabase auth callback carries a one-time `code`. An unredacted error
+  report would hand a working credential to a third party and then email it.
+
+Alert rules live in `docs/observability/sentry-alerts.yml` — configuration in
+the repo, reviewable and restorable, rather than clicks someone did once.
+
 ## Configuration
 
 ### Where a number lives
