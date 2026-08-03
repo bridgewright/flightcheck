@@ -14,7 +14,7 @@ import { publicMetadata } from "../site";
 
 export const metadata: Metadata = publicMetadata({
   path: "/pricing",
-  title: "Pricing — flightcheck",
+  title: "Pricing: flightcheck",
   description:
     "One package per job description: six scored sessions, per-session " +
     "reports, and a final verdict. The first session is a free trial.",

@@ -11,7 +11,7 @@ import { privateMetadata } from "../site";
 // noindex for the ordinary reason: nothing in a search result should point at
 // a sign-in form.
 
-export const metadata: Metadata = privateMetadata("Sign in — flightcheck");
+export const metadata: Metadata = privateMetadata("Sign in: flightcheck");
 
 export default function LoginLayout({ children }: { children: React.ReactNode }) {
   return children;

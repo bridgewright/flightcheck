@@ -96,7 +96,7 @@ const OG_IMAGE = {
   url: new URL("/opengraph-image", SITE_URL).toString(),
   width: 1200,
   height: 630,
-  alt: "flightcheck — would you pass the interview today?",
+  alt: "flightcheck: would you pass the interview today?",
 };
 
 /**

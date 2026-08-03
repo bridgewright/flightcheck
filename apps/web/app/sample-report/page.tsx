@@ -20,7 +20,7 @@ const sample = loadSampleReport(sampleJson);
 // without signing up, which is exactly what a reviewer wants to click.
 export const metadata: Metadata = publicMetadata({
   path: "/sample-report",
-  title: "A real scored report — flightcheck",
+  title: "A real scored report: flightcheck",
   description:
     "What you get after a session: content and delivery scored separately, " +
     "with your own words quoted as evidence, and an honest verdict.",
