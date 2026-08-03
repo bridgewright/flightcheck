@@ -106,9 +106,15 @@ def compile_package(
         row = db.get_package(package_id)
         if resume_text is not None or linkedin_text is not None:
             profile = build_profile(resume_text, linkedin_text, client)
+            db.set_package_profile(package_id, profile)
+        elif row.candidate_profile is not None:
+            # Compile retries arrive without source documents (they are
+            # never stored); the profile the original compile extracted is
+            # still the truth — keep it instead of blanking personalization.
+            profile = row.candidate_profile
         else:
             profile = _minimal_profile()
-        db.set_package_profile(package_id, profile)
+            db.set_package_profile(package_id, profile)
         facts = _extract_jd_facts(row.jd_text, client)
         corpus_dir = storage.sync_corpus(_corpus_cache_dir())
         corpus = load_corpus(corpus_dir)

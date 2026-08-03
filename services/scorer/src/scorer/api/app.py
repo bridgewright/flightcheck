@@ -203,6 +203,7 @@ def create_app(db: Database, storage: Storage, client: GenAIClientLike) -> FastA
         limits.complete_window_s, limits.complete_per_window)
     resume_attempts = AttemptCounter()
     score_attempts = AttemptCounter()
+    compile_retry_attempts = AttemptCounter()
 
     def _extract_pdf_upload(pdf_b64: str, label: str) -> str:
         """b64 -> PDF text with every failure a clean 422 (the cap on the
@@ -334,6 +335,45 @@ def create_app(db: Database, storage: Storage, client: GenAIClientLike) -> FastA
                 linkedin_text=linkedin_text,
             )
         return {"package_id": row.id, "access_token": row.access_token}
+
+    @api.post("/packages/{package_id}/compile-retry", status_code=202)
+    def retry_compile(package_id: str, background_tasks: BackgroundTasks):
+        """Reset a failed-compile package and re-enqueue compilation (F-30).
+
+        Only "failed" rows are retryable; the cap keeps a permanently broken
+        JD from buying unlimited Gemini runs. The retry carries no source
+        documents (they are never stored) — compile_package keeps the
+        profile the original compile extracted.
+        """
+        try:
+            package = db.get_package(package_id)
+        except KeyError as exc:
+            raise HTTPException(status_code=404, detail="package not found") from exc
+        if package.status != "failed":
+            return JSONResponse(
+                status_code=409,
+                content={
+                    "error": (f"package status is {package.status!r}; only a "
+                              "failed compile can be retried"),
+                    "code": "not-retryable",
+                },
+            )
+        if compile_retry_attempts.bump(package_id) > limits.compile_retry_cap:
+            return JSONResponse(
+                status_code=429,
+                content={
+                    "error": ("compile retry limit reached for this package "
+                              "— contact support"),
+                    "code": "compile-retry-cap",
+                },
+            )
+        db.reset_package_for_compile(package_id)
+        background_tasks.add_task(
+            _compile_package_job, package_id, db, storage, client,
+            resume_text=None, linkedin_text=None,
+        )
+        logger.info("package %s re-enqueued for compile", package_id)
+        return {"package_id": package_id, "status": "compiling"}
 
     @api.post("/packages/{package_id}/paid")
     def mark_package_paid(package_id: str, body: MarkPaidRequest):
