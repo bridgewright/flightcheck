@@ -24,6 +24,8 @@ export type JourneyLeg = "done" | "next" | "todo";
 // create_session resumes a "planned", "failed", or "insufficient" row rather
 // than burning a new one, so the strip must point at that slot instead of
 // the one after it.
+// "failed_permanent" is deliberately absent: the worker retires a row after
+// the resume/re-score caps, and resuming it would only bounce off a 409.
 const RESUMABLE: ReadonlySet<SessionStatus> = new Set<SessionStatus>([
   "planned",
   "failed",
@@ -38,6 +40,7 @@ const ATTEMPTED: ReadonlySet<SessionStatus> = new Set<SessionStatus>([
   "scored",
   "failed",
   "insufficient",
+  "failed_permanent",
 ]);
 
 // Rows numbered outside the package's own range cannot be drawn on a strip of
@@ -364,22 +367,25 @@ export interface PaywallState {
   expires_at?: string | null;
 }
 
-/** A trial whose unlock has not been bought yet — the state every unlock
- * CTA keys on. is_trial stays true after payment; paid_at is what flips. */
-export function isUnpaidTrial(pkg: PaywallState): boolean {
-  return (pkg.is_trial ?? false) && !pkg.paid_at;
+/** A package whose unlock has not been bought yet — the state every unlock
+ * CTA and session count keys on. The worker's quota chokepoint grants the
+ * trial quota to EVERY unpaid package, not just the account's first one
+ * (is_trial marks records and copy, and never flips on payment) — so the
+ * UI mirrors paid_at alone, or the two would disagree screen by screen. */
+export function isUnpaid(pkg: PaywallState): boolean {
+  return !pkg.paid_at;
 }
 
 /**
- * How many sessions the package offers RIGHT NOW: the trial quota until an
- * unpaid trial is paid, the package's own quota otherwise. Every rendered
- * session count goes through here — a "1 of 6" on a trial would promise
- * five sessions the user has not bought.
+ * How many sessions the package offers RIGHT NOW: the trial quota until the
+ * package is paid, its own quota afterwards. Every rendered session count
+ * goes through here — a "1 of 6" on an unpaid package would promise five
+ * sessions the user has not bought.
  */
 export function effectiveTotalSessions(
   pkg: PaywallState & { total_sessions: number },
 ): number {
-  return isUnpaidTrial(pkg) ? TRIAL_SESSIONS : pkg.total_sessions;
+  return isUnpaid(pkg) ? TRIAL_SESSIONS : pkg.total_sessions;
 }
 
 /** The one unlock sentence, derived from lib/pricing so the button can never

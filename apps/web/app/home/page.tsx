@@ -16,9 +16,9 @@ import {
   ACTIVE_PACKAGE_COOKIE,
   checkoutHref,
   effectiveTotalSessions,
+  isUnpaid,
   expiryLine,
   greetingName,
-  isUnpaidTrial,
   journeyLegs,
   nextSessionNumber,
   packageDisplayTitle,
@@ -200,7 +200,7 @@ export default async function HomePage({
   }
 
   // The effective quota is the UI chokepoint of the trial model: an unpaid
-  // trial renders "of 1", never "of 6" — no surface promises sessions the
+  // package renders "of 1", never "of 6" — no surface promises sessions the
   // user has not bought.
   const total = effectiveTotalSessions(active);
   const legs = journeyLegs(sessions, total);
@@ -208,7 +208,7 @@ export default async function HomePage({
   const done = legs.filter((leg) => leg === "done").length;
   const stageLine = scoringStageLine(sessions);
   const outcome = await lastOutcome(active, sessions);
-  const trial = isUnpaidTrial(active);
+  const unpaid = isUnpaid(active);
   const expiry = expiryLine(active, new Date());
 
   return (
@@ -237,10 +237,10 @@ export default async function HomePage({
         totalSessions={total}
         verdict={outcome.line}
         stageLine={stageLine}
-        trial={trial}
+        trial={unpaid}
         action={
           next === null ? (
-            trial ? (
+            unpaid ? (
               // The unlock moment: same package, same JD — the payment only
               // lifts the session quota.
               <Link href={checkoutHref(active.id)} className={PRIMARY_BUTTON}>

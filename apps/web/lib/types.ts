@@ -163,7 +163,10 @@ export type SessionStatus =
   | "scoring"
   | "scored"
   | "failed"
-  | "insufficient";
+  | "insufficient"
+  // Retired by the worker after the resume/re-score caps (v0.5 guards): the
+  // attempt happened and the slot is spent, but no report will ever exist.
+  | "failed_permanent";
 
 export interface SessionRow {
   id: string;

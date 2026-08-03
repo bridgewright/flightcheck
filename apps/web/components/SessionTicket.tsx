@@ -39,8 +39,10 @@ export default function SessionTicket({
   /** lib/home.scoringStageLine's sentence while a session is being scored. */
   stageLine?: string | null;
   action?: ReactNode;
-  /** lib/home.isUnpaidTrial: an unpaid trial's exhausted state is an unlock
-   * moment on the SAME package, not the end of it. */
+  /** lib/home.isUnpaid: an unpaid package's exhausted state is an unlock
+   * moment on the SAME package, not the end of it. (The worker grants the
+   * trial quota to every unpaid package, so the copy holds beyond the
+   * account's first one.) */
   trial?: boolean;
 }) {
   const exhausted = sessionNumber === null;

@@ -12,7 +12,7 @@ import {
   formatOrderDate,
   formatSessionDate,
   greetingName,
-  isUnpaidTrial,
+  isUnpaid,
   journeyLegs,
   latestVerdict,
   nextSessionNumber,
@@ -526,23 +526,34 @@ describe("effectiveTotalSessions", () => {
     ).toBe(6);
   });
 
-  it("returns the package's own quota for a non-trial", () => {
+  it("caps ANY unpaid package at the trial quota — the worker grants 1 until payment regardless of is_trial", () => {
     expect(
       effectiveTotalSessions({ is_trial: false, paid_at: null, total_sessions: 4 }),
-    ).toBe(4);
+    ).toBe(1);
   });
 
-  it("treats rows from a pre-v0.5 worker (fields absent) as not trial", () => {
-    expect(effectiveTotalSessions({ total_sessions: 6 })).toBe(6);
+  it("returns the package's own quota for a paid non-trial", () => {
+    expect(
+      effectiveTotalSessions({
+        is_trial: false,
+        paid_at: "2026-08-03T12:00:00Z",
+        total_sessions: 6,
+      }),
+    ).toBe(6);
+  });
+
+  it("treats rows from a pre-v0.5 worker (fields absent) as unpaid — under-promising is the safe skew", () => {
+    expect(effectiveTotalSessions({ total_sessions: 6 })).toBe(1);
   });
 });
 
-describe("isUnpaidTrial", () => {
-  it("is true only for a trial without a payment", () => {
-    expect(isUnpaidTrial({ is_trial: true, paid_at: null })).toBe(true);
-    expect(isUnpaidTrial({ is_trial: true, paid_at: "2026-08-03T12:00:00Z" })).toBe(false);
-    expect(isUnpaidTrial({ is_trial: false, paid_at: null })).toBe(false);
-    expect(isUnpaidTrial({})).toBe(false);
+describe("isUnpaid", () => {
+  it("keys on paid_at alone — is_trial never changes the paywall state", () => {
+    expect(isUnpaid({ is_trial: true, paid_at: null })).toBe(true);
+    expect(isUnpaid({ is_trial: false, paid_at: null })).toBe(true);
+    expect(isUnpaid({})).toBe(true);
+    expect(isUnpaid({ is_trial: true, paid_at: "2026-08-03T12:00:00Z" })).toBe(false);
+    expect(isUnpaid({ is_trial: false, paid_at: "2026-08-03T12:00:00Z" })).toBe(false);
   });
 });
 

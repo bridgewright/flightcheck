@@ -360,6 +360,7 @@ export default async function SessionDetailPage({
     not_started: "Not started — slot preserved.",
     scoring: "Scoring your session…",
     failed: "Scoring failed",
+    closed: "Session closed",
   };
   const body: Record<Exclude<SessionDetailState, "scored" | "limited">, string> = {
     insufficient:
@@ -372,6 +373,8 @@ export default async function SessionDetailPage({
       "Transcription, delivery metrics, and dual-channel judging usually take a few minutes. This page refreshes itself.",
     failed:
       "We could not score this session — most often an unreadable recording. We show failures instead of papering over them. The slot is preserved; run it again whenever you're ready.",
+    closed:
+      "This session was retried several times without producing a scoreable result, so it is closed and the slot is spent. Whatever was saved — transcript, recording — stays available below.",
   };
   const narrowState = state as Exclude<SessionDetailState, "scored" | "limited">;
   const stage = state === "scoring" ? scoringStageCopy(session.scoring_stage) : null;
@@ -381,6 +384,7 @@ export default async function SessionDetailPage({
   const showTranscript =
     state === "insufficient" ||
     state === "failed" ||
+    state === "closed" ||
     (state === "scoring" && segments !== null);
 
   return (

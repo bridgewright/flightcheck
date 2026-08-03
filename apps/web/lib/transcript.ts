@@ -91,7 +91,10 @@ export type SessionDetailState =
   | "guard_ended"
   | "not_started"
   | "scoring"
-  | "failed";
+  | "failed"
+  // The worker retired the row after the resume/re-score caps: the slot is
+  // spent, no report will exist, and the room must not be offered again.
+  | "closed";
 
 export function deriveSessionDetailState(
   session: {
@@ -111,6 +114,8 @@ export function deriveSessionDetailState(
       return "failed";
     case "insufficient":
       return "insufficient";
+    case "failed_permanent":
+      return "closed";
     case "scored":
       // A scored row without its report yet (replication lag, or an
       // inconsistent row) reads as still scoring — the poll state resolves it.
@@ -188,6 +193,7 @@ export function detailCta(
             label: `Start session ${nextSessionNumber}`,
           };
     case "scoring":
+    case "closed":
       return { kind: "home", label: "Back to home" };
   }
 }

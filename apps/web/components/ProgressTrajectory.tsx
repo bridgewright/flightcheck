@@ -12,6 +12,7 @@ const STATUS_WORDS: Record<Exclude<SessionStatus, "scored">, string> = {
   scoring: "Scoring…",
   failed: "Scoring failed",
   insufficient: "Not scored",
+  failed_permanent: "Closed",
 };
 
 function CellBody({ cell }: { cell: TrajectoryCell }) {

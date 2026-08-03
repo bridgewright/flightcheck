@@ -10,7 +10,7 @@ import { resolveActivePackage } from "@/lib/active-package";
 import {
   checkoutHref,
   effectiveTotalSessions,
-  isUnpaidTrial,
+  isUnpaid,
   nextSessionNumber,
   unlockCtaLabel,
 } from "@/lib/home";
@@ -137,7 +137,7 @@ export default async function RubricPage({
   }
 
   const rubric = pkg.rubric;
-  // Effective quota (lib/home): an unpaid trial owes 1 session here too.
+  // Effective quota (lib/home): an unpaid package owes 1 session here too.
   const total = effectiveTotalSessions({
     is_trial: pkg.is_trial,
     paid_at: pkg.paid_at,
@@ -145,7 +145,7 @@ export default async function RubricPage({
   });
   const sessions = await listSessions(pkg.id).catch(() => [] as SessionSummary[]);
   const next = nextSessionNumber(sessions, total);
-  const trial = isUnpaidTrial(pkg);
+  const trial = isUnpaid(pkg);
 
   return (
     <Shell viewer={viewer}>

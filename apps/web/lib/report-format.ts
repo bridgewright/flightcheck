@@ -93,6 +93,10 @@ const ARCHIVE_STATUS_PILLS: Record<
     label: "Scoring failed",
     className: "bg-red-100 text-red-900 dark:bg-red-950 dark:text-red-200",
   },
+  failed_permanent: {
+    label: "Closed — not scored",
+    className: "bg-red-100 text-red-900 dark:bg-red-950 dark:text-red-200",
+  },
   insufficient: {
     label: "Not scored — not enough evidence",
     className: "bg-red-100 text-red-900 dark:bg-red-950 dark:text-red-200",
