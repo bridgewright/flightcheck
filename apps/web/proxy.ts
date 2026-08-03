@@ -15,7 +15,19 @@ export async function proxy(request: NextRequest) {
     }
     return NextResponse.next();
   }
-  return await updateSession(request);
+  const response = await updateSession(request);
+  // API calls get the cookie refresh but never the login redirect: every
+  // /api handler does its own auth, and some callers (the Polar webhook)
+  // are servers with no cookies at all — an HTML redirect would break them.
+  // updateSession only redirects when there is no user, in which case there
+  // were no cookies to refresh either, so plain pass-through loses nothing.
+  if (
+    request.nextUrl.pathname.startsWith("/api") &&
+    response.headers.has("location")
+  ) {
+    return NextResponse.next();
+  }
+  return response;
 }
 
 export const config = {
@@ -29,5 +41,9 @@ export const config = {
     "/settings/:path*",
     "/new",
     "/dev/:path*",
+    // Supabase cookie refresh must also cover API calls, or a long-idle tab
+    // whose first request is an API call (poll, upload) acts signed-out.
+    // The matcher stays an include-list, so static assets remain excluded.
+    "/api/:path*",
   ],
 };
