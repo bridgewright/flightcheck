@@ -65,11 +65,29 @@ today's answer here:
 If that page shows no backups, take a manual dump before anything else:
 
 ```bash
-# From anywhere. Connection string: Supabase Dashboard -> Connect -> Session pooler.
-# Never paste this string into a shell that logs history to a synced file.
+# Connection string: Supabase Dashboard -> Connect -> Session pooler.
+# It is NOT one of the variables this repo uses (SUPABASE_URL and
+# SUPABASE_SERVICE_ROLE_KEY are the REST credentials; this is Postgres).
+# Set it in a throwaway terminal -- never in a shell whose history syncs.
+export SUPABASE_DB_URL='postgresql://postgres.<ref>:<password>@<host>:5432/postgres'
+
 pg_dump "$SUPABASE_DB_URL" --no-owner --no-privileges \
   --file "flightcheck-$(date -u +%Y-%m-%d).sql"
 ```
+
+Two things stall people here, both at 2am:
+
+- **The copied string contains a literal `[YOUR-PASSWORD]` placeholder.**
+  Replace it with the database password (Dashboard → Project Settings →
+  Database → *Reset database password* if it was never written down —
+  resetting it breaks nothing else, the service-role key is separate). A
+  string pasted verbatim fails authentication and reads like a network
+  problem.
+- **`pg_dump` refuses a server newer than itself** ("server version
+  mismatch"). Check with `pg_dump --version` against the version on
+  Dashboard → Project Settings → Infrastructure, and upgrade the client
+  (`brew install postgresql@17`, then use its `bin/pg_dump`) rather than
+  hunting for a flag — there is none.
 
 ### Restore
 
