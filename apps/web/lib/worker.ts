@@ -3,6 +3,15 @@
 // this module carries WORKER_API_TOKEN and must never reach the browser.
 import "server-only";
 
+import { headers as inboundHeaders } from "next/headers";
+import { cache } from "react";
+
+import {
+  REQUEST_ID_HEADER,
+  isNextControlFlowError,
+  newRequestId,
+  normalizeRequestId,
+} from "@/lib/request-id";
 import type {
   CreatePackageBody,
   CreateSessionResponse,
@@ -14,6 +23,37 @@ import type {
   TranscriptSegment,
   Verdict,
 } from "@/lib/types";
+
+/**
+ * The id for the request being served, minted once and reused by every
+ * worker call it makes (F-36).
+ *
+ * React's cache() is what makes "once" true: it memoizes per request, so a
+ * page that fans out to four worker calls correlates as one unit of work in
+ * the worker's logs. An id already on the inbound request wins, so a proxy
+ * or an upstream service that stamps one keeps its trace intact.
+ *
+ * Outside a Next request scope — a script, this repo's tests — headers()
+ * throws and a fresh id is minted per call. The call stays traceable; it
+ * just is not correlated with anything, which is the honest answer. Next's
+ * own control-flow throws are re-raised untouched: swallowing the
+ * static-rendering bailout would leave a page prerendered with one
+ * request's data baked in, which is far worse than a missing log id.
+ */
+const requestId = cache(async (): Promise<string> => {
+  try {
+    const inbound = normalizeRequestId((await inboundHeaders()).get(REQUEST_ID_HEADER));
+    if (inbound !== null) {
+      return inbound;
+    }
+  } catch (error) {
+    if (isNextControlFlowError(error)) {
+      throw error;
+    }
+    // No request scope to read. Fall through to a fresh id.
+  }
+  return newRequestId();
+});
 
 export async function workerFetch(path: string, init: RequestInit = {}): Promise<Response> {
   const base = process.env.WORKER_URL;
@@ -28,6 +68,9 @@ export async function workerFetch(path: string, init: RequestInit = {}): Promise
   headers.set("Authorization", `Bearer ${token}`);
   if (init.body !== undefined && !headers.has("Content-Type")) {
     headers.set("Content-Type", "application/json");
+  }
+  if (!headers.has(REQUEST_ID_HEADER)) {
+    headers.set(REQUEST_ID_HEADER, await requestId());
   }
   return fetch(`${base.replace(/\/+$/, "")}${path}`, { ...init, headers, cache: "no-store" });
 }

@@ -28,6 +28,7 @@ from scorer.api.db import Database
 from scorer.api.deps import Deps
 from scorer.api.guards import AttemptCounter, FixedWindowLimiter
 from scorer.api.reaper import reap_stuck_safely
+from scorer.api.requestid import install_request_id
 from scorer.api.routers import account, ops, orders, packages, preview, sessions
 from scorer.api.storage import Storage
 from scorer.config import load_product_config
@@ -91,6 +92,9 @@ def create_app(db: Database, storage: Storage, client: GenAIClientLike) -> FastA
         redoc_url=None,
         openapi_url=None,
     )
+    # Before anything else can answer: an id on every response and every log
+    # record, including the refusals that never reach a route.
+    install_request_id(app)
     api = APIRouter(prefix="/api", dependencies=[Depends(_require_worker_token)])
 
     # Per-user fixed windows plus per-row attempt counters (see guards.py on
