@@ -19,18 +19,23 @@ Paste the job description you are applying to. flightcheck researches how that c
 
 ## Package (pricing)
 
-One JD = one package: **₩89,000 · 30 days · 6 sessions × 20 min · per-session reports · final Ready verdict.** No subscription. Honest-verdict policy: if not ready by session 6, the product says so — never a courtesy pass.
+One JD = one package: **$49 · 30 days · 6 sessions × 20 min · per-session reports · final Ready verdict.** No subscription. The first session on a package is a free trial; $49 unlocks the same package — same JD, same rubric — to its full six sessions, and the 30-day window starts at payment (new starts only; reports stay readable). Honest-verdict policy: if not ready by session 6, the product says so — never a courtesy pass.
+
+> 2026-08-03: price restated from ₩89,000 to $49 USD (single global price
+> story) and the trial-then-unlock model added with v0.5 payments — full
+> options-and-rejections trail in [DECISIONS.md #018](DECISIONS.md) and
+> [#019](DECISIONS.md).
 
 ## Success metrics (targets set in advance — v1.0 = 2026-08-21)
 
-| Metric | Target | By |
-| --- | --- | --- |
-| Judge–human scoring agreement (Cohen's κ) | ≥ 0.8 | v1.0 |
-| "This feedback was actually useful" (post-session) | ≥ 80% | v1.0 |
-| First-response latency, user stops → interviewer speaks (p50) | ≤ 800 ms | v0.2 |
-| Session completion rate (no mid-session abandonment) | ≥ 85% | v0.2 |
-| Package utilization (sessions actually used, of 6) | ≥ 4 | v1.0 |
-| Paid packages | ≥ 1 | 2026-08-23 |
+| Metric | Target | By | Measured by |
+| --- | --- | --- | --- |
+| Judge–human scoring agreement (Cohen's κ) | ≥ 0.8 | v1.0 | `evals/` golden-set blind ranking vs judge scores |
+| "This feedback was actually useful" (post-session) | ≥ 80% | v1.0 | post-session prompt (instrumented with F-13, v0.6) |
+| First-response latency, user stops → interviewer speaks (p50) | ≤ 800 ms | v0.2 | delivery metrics per session (`avg_response_latency_s`) |
+| Session completion rate (no mid-session abandonment) | ≥ 85% | v0.2 | session status data (scored+insufficient vs started; F-13 report) |
+| Package utilization (sessions actually used, of 6) | ≥ 4 | v1.0 | package burn-through report (F-13, v0.6) |
+| Paid packages | ≥ 1 | 2026-08-23 | Polar orders (the `orders` table; receipts in settings) |
 
 Changes to targets are recorded here with date and reason — never silently.
 

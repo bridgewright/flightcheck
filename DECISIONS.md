@@ -318,3 +318,95 @@ Format per entry: Context · Options · Choice · Why · Rejected because · Rev
 - **Revisit when:** Polar's store review rejects the account; fees rise
   past ~10% effective; or payout reliability to KR proves poor in the
   first months of real settlement.
+
+## 018 — $49 single price and the trial-then-unlock package (2026-08-03)
+
+- **Decision:** pricing is **$49 USD everywhere**, from one constant
+  (`lib/pricing.ts`) with a pinning test; the ₩89,000 figure is retired
+  from every surface. The package model: the account's **first package is
+  a trial** carrying one free session; **$49 unlocks the SAME package** —
+  same JD, same rubric — to its full 6 sessions. One implementation
+  consequence is recorded openly: the worker's quota chokepoint keys on
+  `paid_at` alone, so **every unpaid package grants the 1-session trial
+  quota**, not just the account's first (`is_trial` marks records and
+  copy, never quota). A second JD therefore also gets one free session
+  before its $49 unlock. The exposure is bounded by the package cap
+  (10/account) and the per-user create rate limits.
+- **Why:** this revises 008's stance that no free tier exists. What 008
+  actually protected was verdict integrity and cost discipline before the
+  webapp existed; with accounts, quotas, rate limits, and caps now
+  enforced worker-side, one free session per JD is the cheapest honest
+  demo of the product's core (the verdict), and USD-only pricing keeps
+  one price story for a global audience.
+- **Rejected — account-wide single trial (0 sessions on later unpaid
+  packages):** purer reading of "first package = trial", but it makes the
+  second JD a blind $49 purchase and needs paywall states the batch would
+  have shipped untested. Revisit at real conversion data.
+- **Rejected — ₩ pricing or dual currency:** two price stories, FX drift,
+  and the public repo's reviewers think in USD.
+- **Rejected — launch discounts:** a discount on an honest-verdict
+  product reads as bargaining with the bar.
+- **Revisit when:** free-session farming appears in the metrics (many
+  unpaid packages per account, sessions consumed, no conversions); or
+  conversion data argues the trial should widen or narrow.
+
+## 019 — the 30-day window starts at payment and blocks only new starts (2026-08-03)
+
+- **Decision:** `expires_at = paid_at + 30 days`, set once by the
+  idempotent payment flip (replays can never move it). Expiry blocks
+  **new session starts only** — a distinct `package-expired` refusal,
+  not the exhausted one — while reports, transcripts, and replays stay
+  readable forever. Trials (no `paid_at`) never expire.
+- **Why:** the clock starts when money changes hands, not when a rubric
+  compiles — anything else charges the user for compile time or shelf
+  time. Keeping artifacts readable is the retention promise of 013; a
+  paid-for report that vanishes is confiscation, not expiry.
+- **Rejected — expiry from package creation:** punishes the trial user
+  who pays on day 20.
+- **Rejected — full lockout at expiry:** simpler, dishonest.
+- **Revisit when:** real usage shows 30 days misfits the interview-prep
+  arc (utilization data, F-13).
+
+## 020 — retention and deletion v0: policy page, mailto intake, operator purge (2026-08-03)
+
+- **Decision:** executes 013's revisit condition. The privacy page states
+  what is kept (recordings, transcripts, reports, orders — privately, for
+  scoring and replay) and how deletion works today: a prefilled deletion
+  email from settings, executed by the operator with
+  `tools/purge_user.py` (dry-run by default, rows + storage objects)
+  within a stated 7 days. The refund page states the honest-verdict rule:
+  the verdict itself is never refund grounds; technical failures refund
+  within 14 days. Legal copy renders its commercial numbers from
+  `lib/pricing.ts` — it cannot drift from the product.
+- **Why:** charging money without deletion, retention, and refund
+  surfaces is trust debt at the exact moment trust is being asked for;
+  a manual process honestly described beats a self-serve flow shipped
+  untested.
+- **Rejected — self-serve deletion now:** needs auth-adjacent deletion
+  endpoints and storage fan-out done carefully — scheduled as F-34
+  (v0.6).
+- **Rejected — no refund window:** "never" is not an honest answer to a
+  broken recording.
+- **Revisit when:** deletion requests exceed a manual cadence, or v0.6
+  ships F-34 self-serve deletion.
+
+## 021 — prompt-injection stance: fence now, detect later (F-11 split) (2026-08-03)
+
+- **Decision:** v0.5 ships the injection **minimum**: every
+  user-controlled text (JD, resume, LinkedIn, transcript) is
+  delimiter-fenced at all prompt sites with fence-marker neutralization,
+  the JD is truncated before the rubric compiler, and hidden text (HTML
+  comments/tags, zero-width, bidi) is stripped once at intake. Judge
+  RULE wording stays untouched. Detection-and-refusal, SSRF hardening,
+  and an injection eval suite are **F-11b (v0.6)**.
+- **Why:** fencing is a pure-loss-free containment change verifiable by
+  unit test today; detection heuristics change judge behavior and must
+  land behind the eval gate (evals run once per release — regressions
+  from prompt drift would surface late and silently).
+- **Rejected — shipping detection heuristics this batch:** unevaluated
+  judge-adjacent changes violate the eval-gated release rule.
+- **Rejected — doing nothing until v0.6:** a paid product that pipes
+  raw user text into prompts is an open door; the minimum closes the
+  cheap half.
+- **Revisit when:** F-11b lands with the eval suite; or a live injection
+  attempt is observed in transcripts.

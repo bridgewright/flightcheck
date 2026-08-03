@@ -2,6 +2,70 @@
 
 ## [Unreleased]
 
+### Added — payments: the trial-then-unlock package (v0.5)
+- Real payments, through Polar as merchant of record: checkout happens on
+  Polar's hosted page — the app never renders a card field — and a
+  signature-verified, replay-safe `order.paid` webhook unlocks the
+  package. A forged or unsigned webhook provisions nothing; a missing
+  webhook secret refuses to process at all (DECISIONS 017, 018).
+- The trial model: the first session on a package is free. $49 unlocks
+  the same package — same JD, same rubric — to its full six sessions.
+  Every screen renders the honest quota ("of 1" until payment), and the
+  unlock button is one sentence with the price on it (DECISIONS 018).
+- The 30-day window starts at payment and blocks only new session
+  starts — an expired package refuses with its own message, and reports,
+  transcripts, and replays stay readable. Trials never expire
+  (DECISIONS 019).
+- Pricing is $49 USD on every surface, rendered from one constant with a
+  test pinning it. The ₩89,000 stub price is retired.
+- Receipts: an order history (date, amount, status) in settings.
+- Packages whose rubric compilation failed get a "Retry compile" action
+  instead of a dead end.
+
+### Fixed — the session room on Safari and iOS
+- Recorder construction moved inside the failure path with a container
+  probe and an `audio/mp4` fallback, audio starts inside the user's own
+  tap (autoplay policy), and a capability gate turns an unsupported
+  browser into an honest message before the mic check — not a silent
+  permanent "Connecting…".
+- Start-session refusals now say what happened — package exhausted,
+  package expired, slot closed, rate limited, or the service being
+  unreachable — each with its own calm state. The raw red 502 string is
+  gone.
+- A recording disclosure line at the mic-check step says plainly that
+  the session is recorded, scored, and kept privately for replay.
+
+### Added — guardrails for a paid product
+- Abuse and cost guards worker-side: per-user rate limits on package and
+  session creation and scoring, input length caps (with base64 size
+  checked before decoding), a recording-duration ceiling at scoring
+  intake, a per-session connection-secret cap, retry caps that retire a
+  slot honestly after repeated failures, and a refusal to re-mint upload
+  URLs for a session that is already scored.
+- A stuck-state reaper: packages and sessions stalled mid-pipeline for
+  over 30 minutes are marked failed (and retryable) instead of spinning
+  forever; every lifecycle write now carries a freshness timestamp.
+- Prompt-injection minimum: user-controlled text (JD, resume, LinkedIn,
+  transcript) is fenced at every prompt site, the JD is truncated before
+  rubric compilation, and hidden HTML/zero-width payloads are stripped
+  at intake. Judge instructions are unchanged (DECISIONS 021).
+- Worker logs are visible in production and an error tracker (Sentry)
+  switches on only when configured.
+
+### Added — legal and trust surfaces
+- Terms, privacy, and refund pages in the product's own plain register,
+  linked from a footer on every app page with a support address. Every
+  commercial number in them renders from the pricing constants. The
+  refund rule is stated honestly: the verdict itself is never refund
+  grounds; technical failures refund within 14 days (DECISIONS 020).
+- Sign-in gains a consent line ("By continuing you agree…"), a resend
+  button with a cooldown, and a check-your-spam note.
+- Settings gains a deletion section: a prefilled email starts a manual
+  deletion the privacy page describes, executed operator-side by a purge
+  tool that dry-runs by default (DECISIONS 020).
+- Session cookies now refresh on API calls too, so a long-lived tab
+  cannot drift into a signed-out state mid-flow.
+
 ### Added — the complete webapp
 - The app now lives at login-scoped addresses with a persistent top
   navigation: Home · Sessions · Progress · Role & Rubric section tabs, a
