@@ -1,6 +1,12 @@
+import Link from "next/link";
 import { redirect } from "next/navigation";
 
 import SessionRoom from "@/components/SessionRoom";
+import {
+  CAPABILITY_ENDED_MESSAGE,
+  sessionCapability,
+} from "@/lib/session-capability";
+import { PRIMARY_BUTTON } from "@/lib/ui";
 import { getViewer } from "@/lib/viewer";
 import { authorizeViewerSession } from "@/lib/worker";
 
@@ -8,14 +14,19 @@ export const dynamic = "force-dynamic";
 
 // S9 — the live interview room at its canonical, login-scoped address.
 // Authorization is viewer ownership (the signed-in account must own the
-// session's package); no capability token appears in the URL. The wrapper
-// forwards only what the client needs — the session plan and interviewer
-// instructions in the worker payload never reach the browser.
+// session's package); no capability token appears in the URL.
 //
-// The package access token still rides along as a prop (never a URL): the
-// recording-upload sign route accepts only the legacy token credential this
-// batch, and the interview must not fail at its very last step. Retiring
-// the prop needs viewer auth on that route (F-10 territory).
+// F-12: nor in the RSC payload. The package access token used to ride along
+// as a prop so the recording-upload route could authorize it — a permanent,
+// package-wide capability serialized into the page, readable by anything
+// that could read the payload, with no expiry and no way to revoke it. The
+// upload route now authorizes the signed-in viewer like the other two
+// privileged routes, so the room needs no credential at all and none is
+// sent. tests/room-token-hygiene.test.ts is the gate that keeps it out.
+//
+// Entry is also gated on the session's own capability window (migration
+// 006): an expired or revoked session does not open a room. Finishing one
+// is deliberately never gated — see lib/session-capability.ts.
 //
 // Renders chrome-less: an interview gets the whole screen, no navigation.
 export default async function SessionRoomPage({
@@ -54,13 +65,18 @@ export default async function SessionRoomPage({
       </main>
     );
   }
+  if (sessionCapability(access.value.session) !== "active") {
+    return (
+      <main className="mx-auto max-w-2xl p-8">
+        <h1 className="text-xl font-semibold">This session is closed</h1>
+        <p className="mt-2 text-neutral-500">{CAPABILITY_ENDED_MESSAGE}</p>
+        <Link href="/home" className={`${PRIMARY_BUTTON} mt-6 inline-block`}>
+          Back to your sessions
+        </Link>
+      </main>
+    );
+  }
   return (
-    <SessionRoom
-      sessionId={id}
-      packageId={access.value.session.package_id}
-      sessionIndex={access.value.session.index}
-      token={access.value.pkg.access_token}
-      reportHref={`/sessions/${id}`}
-    />
+    <SessionRoom sessionId={id} reportHref={`/sessions/${id}`} />
   );
 }

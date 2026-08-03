@@ -86,6 +86,74 @@ server env only. The worker's own HTTP surface is closed by default: bearer
 auth on every `/api` route, `/healthz` the only public one, and FastAPI's
 interactive docs (`/docs`, `/redoc`, `/openapi.json`) disabled.
 
+## Security headers and capability hygiene
+
+### The response policy
+
+`apps/web/lib/security-headers.ts` builds the policy; `next.config.ts`
+applies it through `headers()`, not through the proxy — the proxy's matcher
+is an include-list of signed-in surfaces, so it never sees the landing page,
+and `next.config` headers also reach prerendered responses.
+
+| Header | Value | Why |
+| --- | --- | --- |
+| `Content-Security-Policy` | see below | exfiltration allowlist + injection primitives |
+| `X-Frame-Options` / `frame-ancestors` | `DENY` / `'none'` | the room asks for a microphone; a report is private |
+| `Permissions-Policy` | microphone denied everywhere except `/sessions/:id/room` | the one page that needs it |
+| `Referrer-Policy` | `strict-origin-when-cross-origin`, `no-referrer` on `/p/*` | `/p/<token>` puts a capability in the path |
+| `Strict-Transport-Security` | `max-age=63072000; includeSubDomains` | |
+| `Cross-Origin-Opener-Policy` | `same-origin-allow-popups` | a popup-based OAuth sign-in must keep working |
+| `X-Content-Type-Options` | `nosniff` | |
+
+`connect-src` is the directive doing the most work: `'self'`, the Supabase
+project origin (auth and the signed storage upload), `https://api.openai.com`
+(the browser POSTs its WebRTC offer directly), and the Sentry ingest hosts.
+Nothing else. Injected script cannot post a transcript to an attacker's host.
+
+**`script-src` still allows `'unsafe-inline'`, and that is a stated
+weakness.** Next inlines the RSC flight payload as a per-render
+`<script>self.__next_f.push(...)</script>`, so no fixed hash covers it. The
+strict alternative is a per-request nonce generated in the proxy — which
+requires **every** page to be dynamically rendered, because a prerendered
+page ships without the nonce and then renders as a blank screen under a CSP
+demanding one. This app still prerenders `/login` and `/new`. A CSP that
+blanks the sign-in page is worse than one that permits inline script, for
+the same reason a CSP that breaks payment is worse than no CSP. Revisit when
+every route is dynamic, or when Next emits a stable hash for its bootstrap.
+
+What the policy is verified against, because a wrong CSP is a payment
+outage: the Polar hosted-checkout hop (a server redirect on a GET
+navigation, which no CSP directive governs — `form-action` names Polar
+anyway so a future form-driven checkout cannot become an incident), the
+Polar webhook's raw-body signature check (response headers only; nothing
+touches a request body), the Supabase auth callback, and the room's
+microphone plus its OpenAI connection. `lib/security-headers.test.ts` and
+`tests/security-surface.test.ts` pin all of it, including that the
+microphone exception still matches a route that exists.
+
+### The room holds no capability
+
+The room `access_token` used to be read from the package and passed to
+`SessionRoom` as a prop — a permanent, package-wide capability serialized
+into the page's RSC payload and echoed into three request bodies. Whoever
+held that string could start and complete sessions on the package forever.
+
+It is gone. The room sends only a session id; the secret mint, the upload
+URL mint, and session complete all authorize the signed-in viewer, and the
+upload route now derives the package and slot from the **authorized session
+row** rather than from the request — so nothing about where a recording
+lands is under the caller's control. `tests/room-token-hygiene.test.ts` is
+the gate.
+
+Migration 006's `access_token_expires_at` and `token_revoked_at` are honoured
+by `lib/session-capability.ts`, which fails closed on anything it cannot
+read and treats null as "no expiry" (the pre-006 behaviour). It gates
+**entry** — rendering the room, minting the secret — and deliberately not
+**finishing**: the recording upload and the complete call stay open, because
+a window that lapsed at minute 19 of a 20-minute interview must never be the
+reason a customer's session is thrown away. Revocation stops the next
+session, not the one already recorded.
+
 ## Observability
 
 ### One id per unit of work

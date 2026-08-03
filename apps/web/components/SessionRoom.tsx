@@ -65,23 +65,20 @@ interface RoomError {
 
 interface SessionRoomProps {
   sessionId: string;
-  packageId: string;
-  sessionIndex: number;
-  /**
-   * Legacy package access token (the v0.1 credential). When present it rides
-   * the privileged calls; when absent those routes authorize the signed-in
-   * viewer instead. The recording-upload sign route still requires it, so
-   * server wrappers keep forwarding it until that route accepts viewer auth.
-   */
-  token?: string;
   reportHref: string;
 }
 
+// F-12: this component holds NO credential, and no longer needs to know
+// which package or slot it belongs to. All three privileged calls it makes
+// -- secret mint, upload-URL mint, session complete -- send only the session
+// id and authorize the signed-in viewer server-side, which is also where the
+// package and index are resolved. The package access token used to arrive as
+// a prop and ride in every one of those bodies: a permanent, package-wide
+// capability serialized into the RSC payload for three requests that could
+// derive everything they needed from the session row.
+
 export default function SessionRoom({
   sessionId,
-  packageId,
-  sessionIndex,
-  token,
   reportHref,
 }: SessionRoomProps) {
   const router = useRouter();
@@ -159,12 +156,14 @@ export default function SessionRoom({
         if (blob.size > MAX_RECORDING_BYTES) {
           throw new Error("recording exceeds the 50 MB upload limit");
         }
-        // Step 1: the token-authorized route mints a signed upload URL for
-        // the server-derived storage path.
+        // Step 1: the viewer-authorized route mints a signed upload URL.
+        // Only the session id is sent: the route resolves the package and
+        // the index from the authorized session row, so the storage path
+        // cannot be pointed at another package's recording.
         const signRes = await fetch("/api/recordings", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ packageId, sessionIndex, token }),
+          body: JSON.stringify({ sessionId }),
         });
         if (!signRes.ok) {
           const signBody = (await signRes.json().catch(() => ({}))) as {
@@ -200,7 +199,7 @@ export default function SessionRoom({
         const completeRes = await fetch(`/api/sessions/${sessionId}`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ action: "complete", token }),
+          body: JSON.stringify({ action: "complete" }),
         });
         // 409 = the worker already has this session scoring (or scored) —
         // e.g. a retry after a lost response. The run we wanted exists, the
@@ -223,7 +222,7 @@ export default function SessionRoom({
         });
       }
     },
-    [packageId, reportHref, router, sessionId, sessionIndex, token],
+    [reportHref, router, sessionId],
   );
 
   const endSession = useCallback(async () => {
@@ -359,7 +358,7 @@ export default function SessionRoom({
       const secretRes = await fetch("/api/realtime-secret", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ sessionId, token }),
+        body: JSON.stringify({ sessionId }),
       });
       if (!secretRes.ok) {
         const secretBody = (await secretRes.json().catch(() => ({}))) as {
@@ -555,7 +554,7 @@ export default function SessionRoom({
         message: err instanceof Error ? err.message : String(err),
       });
     }
-  }, [sessionId, token]);
+  }, [sessionId]);
 
   // --- Timer + 25:00 hard cut -------------------------------------------
   useEffect(() => {

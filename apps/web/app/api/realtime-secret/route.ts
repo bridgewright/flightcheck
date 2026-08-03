@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 
+import { sessionCapability } from "@/lib/session-capability";
 import { getViewer } from "@/lib/viewer";
 import {
   WorkerError,
@@ -41,6 +42,10 @@ export async function POST(request: Request) {
   }
   const token = typeof body.token === "string" && body.token !== "" ? body.token : null;
   let instructions: string | undefined;
+  // Capability state of the authorized session, checked below before any
+  // OpenAI call. Set in both branches so revocation is a property of the
+  // session rather than of whichever credential was used to reach it.
+  let capability: ReturnType<typeof sessionCapability> = "active";
   if (token !== null) {
     const access = await authorizeSession(token, body.sessionId);
     if (!access.ok) {
@@ -53,6 +58,7 @@ export async function POST(request: Request) {
       );
     }
     instructions = access.value.session.interviewer_instructions;
+    capability = sessionCapability(access.value.session);
   } else {
     const viewer = await getViewer();
     if (!viewer) {
@@ -69,6 +75,16 @@ export async function POST(request: Request) {
       );
     }
     instructions = access.value.session.interviewer_instructions;
+    capability = sessionCapability(access.value.session);
+  }
+  // F-12 entry gate (migration 006). Minting a secret is handing out access
+  // to a live interview, so an expired or revoked session is refused here —
+  // before OpenAI is called and before the mint counter moves. Finishing an
+  // interview that already happened is deliberately NOT gated; see
+  // lib/session-capability.ts.
+  if (capability !== "active") {
+    console.error(`realtime-secret: session capability is ${capability}`);
+    return NextResponse.json({ error: "access denied" }, { status: 403 });
   }
   if (typeof instructions !== "string" || instructions === "") {
     console.error("realtime-secret: worker session payload has no interviewer instructions");

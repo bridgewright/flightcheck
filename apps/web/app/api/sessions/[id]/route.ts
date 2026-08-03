@@ -58,6 +58,13 @@ async function storedRecordingBytes(storagePath: string): Promise<number | null>
 // The worker rejects re-scoring (409 when the session is already "scoring"
 // or "scored"); that is passed through as a 409 so the client can treat it
 // as already-in-progress success rather than a failure.
+//
+// F-12: deliberately NOT gated on the session's capability window. This is
+// the last step of an interview the candidate has already sat through, and
+// the recording is already in storage. A capability that lapsed at minute 19
+// of a 20-minute session must never be the reason that interview is thrown
+// away. Revocation stops the NEXT session — the room page and the
+// secret-mint route are where it is enforced.
 export async function POST(
   request: Request,
   { params }: { params: Promise<{ id: string }> },
