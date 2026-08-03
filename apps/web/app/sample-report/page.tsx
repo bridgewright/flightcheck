@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import Link from "next/link";
 
 import ReportView from "@/components/ReportView";
@@ -6,6 +7,7 @@ import { PRIMARY_BUTTON } from "@/lib/ui";
 import { getViewer } from "@/lib/viewer";
 import sampleJson from "@/public/sample-report.json";
 
+import { publicMetadata } from "../site";
 import { loadSampleReport } from "./sample-data";
 
 // S2. The one report every visitor can see without an account. Renders the
@@ -13,6 +15,16 @@ import { loadSampleReport } from "./sample-data";
 // validates the fixture and fills worker-serialized defaults so this page and
 // a real report page can never quietly diverge.
 const sample = loadSampleReport(sampleJson);
+
+// The most-shared link this product has: it is the whole product, visible
+// without signing up, which is exactly what a reviewer wants to click.
+export const metadata: Metadata = publicMetadata({
+  path: "/sample-report",
+  title: "A real scored report — flightcheck",
+  description:
+    "What you get after a session: content and delivery scored separately, " +
+    "with your own words quoted as evidence, and an honest verdict.",
+});
 
 export default async function SampleReportPage() {
   const viewer = await getViewer();

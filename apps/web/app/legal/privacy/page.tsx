@@ -8,13 +8,19 @@ import {
   supportMailto,
 } from "../policy";
 import { LegalPage, LegalSection } from "../shared";
+import { publicMetadata } from "../../site";
 
 // Privacy policy in plain words: exactly what we hold, why we hold it, and
 // how to make us delete it. The retention promise here is the same one the
 // settings page and the session room's recording disclosure make — one
 // policy, stated three places, drifting in none.
 
-export const metadata: Metadata = { title: "Privacy Policy — flightcheck" };
+export const metadata: Metadata = publicMetadata({
+  path: "/legal/privacy",
+  title: "Privacy Policy — flightcheck",
+  description:
+    "Exactly what we hold, why we hold it, and how to make us delete it. Recordings exist because delivery is scored from raw audio.",
+});
 
 export default async function PrivacyPage() {
   const viewer = await getViewer();

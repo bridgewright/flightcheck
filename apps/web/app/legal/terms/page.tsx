@@ -10,13 +10,19 @@ import {
 import { getViewer } from "@/lib/viewer";
 import { REFUND_WINDOW_DAYS, SUPPORT_EMAIL, supportMailto } from "../policy";
 import { LegalPage, LegalSection } from "../shared";
+import { publicMetadata } from "../../site";
 
 // Terms of service in the product's own register: what you are buying, what
 // we promise, what we refuse to promise. Every commercial number renders
 // from lib/pricing.ts — nothing here is allowed to drift from the price the
 // checkout charges.
 
-export const metadata: Metadata = { title: "Terms of Service — flightcheck" };
+export const metadata: Metadata = publicMetadata({
+  path: "/legal/terms",
+  title: "Terms of Service — flightcheck",
+  description:
+    "What you are buying, what we promise, and what we refuse to promise — including why an honest verdict is never grounds for a refund.",
+});
 
 export default async function TermsPage() {
   const viewer = await getViewer();

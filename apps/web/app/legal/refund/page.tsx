@@ -5,12 +5,18 @@ import { PRICE_DISPLAY } from "@/lib/pricing";
 import { getViewer } from "@/lib/viewer";
 import { REFUND_WINDOW_DAYS, SUPPORT_EMAIL, supportMailto } from "../policy";
 import { LegalPage, LegalSection } from "../shared";
+import { publicMetadata } from "../../site";
 
 // The refund policy of an honest-verdict product: technical failure is our
 // fault and refundable; a verdict you dislike is the product doing its job.
 // The 14-day window is DECISIONS 020; it renders from app/legal/policy.ts.
 
-export const metadata: Metadata = { title: "Refund Policy — flightcheck" };
+export const metadata: Metadata = publicMetadata({
+  path: "/legal/refund",
+  title: "Refund Policy — flightcheck",
+  description:
+    "Technical failure on our side is refundable. A verdict you did not like is not — and that is what makes the verdicts worth anything.",
+});
 
 export default async function RefundPage() {
   const viewer = await getViewer();
