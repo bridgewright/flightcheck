@@ -3,6 +3,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 
 import PollRefresh from "@/components/PollRefresh";
+import ReadinessGauge from "@/components/ReadinessGauge";
 import RubricView from "@/components/RubricView";
 import Shell from "@/components/Shell";
 import StartSessionButton from "@/components/StartSessionButton";
@@ -14,7 +15,16 @@ import {
   nextSessionNumber,
   unlockCtaLabel,
 } from "@/lib/home";
-import { PRIMARY_BUTTON, QUIET_LINK } from "@/lib/ui";
+import {
+  DIVIDER,
+  MUTED,
+  PAGE_HEADING,
+  PRIMARY_BUTTON,
+  QUIET_LINK,
+  SECTION_HEADING,
+  SUBTLE,
+} from "@/lib/ui";
+import { UNSCORED_READING } from "@/lib/verdict";
 import { getViewer } from "@/lib/viewer";
 import type { SessionSummary } from "@/lib/worker";
 import {
@@ -26,7 +36,7 @@ import {
 
 export const dynamic = "force-dynamic";
 
-// S5 — the bar made visible. The full rubric the sessions are scored
+// S5, the bar made visible. The full rubric the sessions are scored
 // against: dimensions with weights, channels, signals, and BARS anchors.
 // With ?reveal=1 (the redirect target right after a package compiles) it
 // opens with the one-time framing; without it, it is the plain reference
@@ -55,10 +65,8 @@ export default async function RubricPage({
     return (
       <Shell viewer={viewer}>
         <div className="flex flex-col gap-3 py-16">
-          <h1 className="text-2xl font-bold tracking-tight">
-            Your rubric is unavailable right now
-          </h1>
-          <p className="text-ink-muted">
+          <h1 className={PAGE_HEADING}>Your rubric is unavailable right now</h1>
+          <p className={MUTED}>
             The scoring service could not be reached. Nothing is lost. Reload
             in a moment.
           </p>
@@ -78,8 +86,8 @@ export default async function RubricPage({
     return (
       <Shell viewer={viewer}>
         <div className="flex flex-col items-start gap-4 py-16">
-          <h1 className="text-2xl font-bold tracking-tight">No rubric yet</h1>
-          <p className="text-ink-muted">
+          <h1 className={PAGE_HEADING}>No rubric yet</h1>
+          <p className={MUTED}>
             Paste the JD you are applying to and we compile the rubric your
             sessions are scored against.
           </p>
@@ -96,10 +104,8 @@ export default async function RubricPage({
       <Shell viewer={viewer}>
         <PollRefresh intervalMs={3000} />
         <div className="flex flex-col gap-3 py-16">
-          <h1 className="text-2xl font-bold tracking-tight">
-            Compiling your rubric&hellip;
-          </h1>
-          <p className="text-ink-muted">
+          <h1 className={PAGE_HEADING}>Compiling your rubric&hellip;</h1>
+          <p className={MUTED}>
             We are reading the JD, researching how this role actually
             interviews, and compiling your rubric. This page refreshes itself.
             Compiling usually takes 1-2 minutes.
@@ -120,10 +126,8 @@ export default async function RubricPage({
     return (
       <Shell viewer={viewer}>
         <div className="flex flex-col gap-3 py-16">
-          <h1 className="text-2xl font-bold tracking-tight">
-            We could not compile this package
-          </h1>
-          <p className="text-ink-muted">
+          <h1 className={PAGE_HEADING}>We could not compile this package</h1>
+          <p className={MUTED}>
             Rubric compilation failed, most often because the JD page could
             not be read. No charge, nothing saved.{" "}
             <Link href="/new" className={QUIET_LINK}>
@@ -150,28 +154,34 @@ export default async function RubricPage({
   return (
     <Shell viewer={viewer}>
       {reveal === "1" ? (
-        <div className="mb-8 border-b border-hairline pb-8">
-          <p className="text-2xl font-bold tracking-tight">This is the bar.</p>
-          <p className="mt-2 text-ink-muted">
+        <div className={`mb-8 border-b pb-8 ${DIVIDER}`}>
+          <p className={SECTION_HEADING}>This is the bar.</p>
+          <p className={`${MUTED} mt-2`}>
             Every session is scored against these dimensions. Nothing else.
           </p>
         </div>
       ) : null}
 
-      <h1 className="text-2xl font-bold tracking-tight text-balance">
-        {rubric.role_title}
-      </h1>
-      <p className="mt-1 mb-8 text-sm text-ink-muted">
+      <h1 className={`${PAGE_HEADING} text-balance`}>{rubric.role_title}</h1>
+      <p className={`${SUBTLE} mt-1`}>
         {rubric.company ? `${rubric.company} · ` : ""}compiled from your JD
       </p>
 
+      {/* The same instrument the report draws, with nothing measured against
+          it yet. The two bars a session has to clear are the whole verdict
+          rule, and a candidate should meet them here rather than for the first
+          time in a result they are trying to argue with. */}
+      <div className="mt-7 mb-9 max-w-md">
+        <ReadinessGauge score={null} verdict={null} reading={UNSCORED_READING} />
+      </div>
+
       <RubricView rubric={rubric} />
 
-      <div className="mt-10 flex flex-col gap-2 border-t border-hairline pt-8">
+      <div className={`mt-10 flex flex-col gap-2 border-t pt-8 ${DIVIDER}`}>
         {next === null ? (
           trial ? (
             <>
-              <p className="text-sm text-ink-muted">
+              <p className={SUBTLE}>
                 Your trial session is used. The rest of this package scores
                 against this same rubric.
               </p>
@@ -184,7 +194,7 @@ export default async function RubricPage({
             </>
           ) : (
             <>
-              <p className="text-sm text-ink-muted">
+              <p className={SUBTLE}>
                 All {total} sessions of this package are used.
               </p>
               <Link href="/pricing" className={`${PRIMARY_BUTTON} self-start`}>
@@ -194,7 +204,7 @@ export default async function RubricPage({
           )
         ) : (
           <>
-            <p className="text-sm text-ink-muted">
+            <p className={SUBTLE}>
               Session {next} of {total} is next.
             </p>
             <StartSessionButton packageId={pkg.id} />

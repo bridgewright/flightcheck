@@ -1,18 +1,40 @@
+import ReadinessGauge from "@/components/ReadinessGauge";
 import {
   formatDelta,
   formatLatency,
   formatTimestamp,
   topObservations,
   VERDICT_LABELS,
-  verdictClasses,
 } from "@/lib/report-format";
 import type {
   Channel,
   DeliveryMetrics,
+  DimensionScore,
   Rubric,
   SessionReport,
   TimestampedObservation,
 } from "@/lib/types";
+import {
+  CARD,
+  CHIP,
+  CHIP_BLUSH,
+  DIVIDE_Y,
+  DIVIDER,
+  EVIDENCE_QUOTE,
+  FINE_PRINT,
+  LABEL,
+  MUTED,
+  PROSE_WIDTH,
+  QUIET_LINK,
+  SCORE_DENOMINATOR,
+  SCORE_NUMBER,
+  SECTION_HEADING,
+  SUB_HEADING,
+  SUBTLE,
+  VERDICT_HEADING,
+  VERDICT_READY,
+} from "@/lib/ui";
+import { MAX_SCORE, readVerdict, weakestDimension } from "@/lib/verdict";
 
 // Trimmed-by-default display (user feedback, 2026-08-01): lead with the few
 // items that carry the judgment; the full set stays one native <details>
@@ -22,11 +44,15 @@ const MAX_TIMELINE = 5;
 
 // One badge for every surface that renders a judge-vs-measurement
 // disagreement (observations timeline here, transcript inline notes in
-// TranscriptView) — the conflict must look identical wherever it appears.
+// TranscriptView): the conflict must look identical wherever it appears.
+//
+// Blush, not alarm. The judge and the DSP measurement disagreeing is something
+// to notice, not something anyone did wrong, and alarm in this product means a
+// destructive action or a true error.
 export function DspConflictBadge() {
   return (
-    <span className="ml-2 rounded bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-900 dark:bg-amber-950 dark:text-amber-200">
-      DSP conflict — differs from measured audio metrics
+    <span className={`ml-2 ${CHIP_BLUSH}`}>
+      DSP conflict: differs from measured audio metrics
     </span>
   );
 }
@@ -37,8 +63,8 @@ function ObservationItem({
   observation: TimestampedObservation;
 }) {
   return (
-    <li className="flex items-baseline gap-3 text-sm">
-      <span className="font-mono text-neutral-500">
+    <li className="flex items-baseline gap-3 text-fine">
+      <span className="font-mono tabular-nums text-ink-faint">
         {formatTimestamp(observation.at_s)}
       </span>
       <span>
@@ -68,6 +94,102 @@ export function dimensionMetaFromRubric(rubric: Rubric): DimensionMeta[] {
 // without duplicating any of this. The default export composes them in the
 // classic order for pages that want the whole report as one block.
 
+/** The rationale, the two verdict lists, and the quotes. Shared by both shapes
+ * a dimension is drawn in, so promoting one to the lead changes its scale and
+ * its surroundings and nothing about what it says. */
+function DimensionBody({ score }: { score: DimensionScore }) {
+  // F-03 fields are declared required, but reports serialized before the
+  // fields existed (the checked-in sample fixture, cached JSON) omit them at
+  // runtime: read defensively, render nothing.
+  const strengths = score.strengths ?? [];
+  const weaknesses = score.weaknesses ?? [];
+  return (
+    <>
+      <p className={`${MUTED} ${PROSE_WIDTH} mt-3`}>{score.rationale}</p>
+      {(strengths.length > 0 || weaknesses.length > 0) && (
+        <div className="mt-4 grid gap-4 sm:grid-cols-2">
+          {strengths.length > 0 && (
+            <div>
+              <p className={LABEL}>What worked</p>
+              <ul className={`${MUTED} mt-1.5 list-disc pl-5 text-fine`}>
+                {strengths.map((item) => (
+                  <li key={item}>{item}</li>
+                ))}
+              </ul>
+            </div>
+          )}
+          {weaknesses.length > 0 && (
+            <div>
+              <p className={LABEL}>What held the score down</p>
+              <ul className={`${MUTED} mt-1.5 list-disc pl-5 text-fine`}>
+                {weaknesses.map((item) => (
+                  <li key={item}>{item}</li>
+                ))}
+              </ul>
+            </div>
+          )}
+        </div>
+      )}
+      {score.evidence_quotes.length > 0 && (
+        <div className="mt-4 flex flex-col gap-2">
+          <p className={LABEL}>What you actually said</p>
+          {score.evidence_quotes.slice(0, MAX_QUOTES).map((quote) => (
+            <blockquote key={quote} className={EVIDENCE_QUOTE}>
+              &ldquo;{quote}&rdquo;
+            </blockquote>
+          ))}
+          {score.evidence_quotes.length > MAX_QUOTES && (
+            <details>
+              <summary className={`${SUBTLE} ${QUIET_LINK} cursor-pointer`}>
+                Show {score.evidence_quotes.length - MAX_QUOTES} more quotes
+              </summary>
+              <div className="mt-2 flex flex-col gap-2">
+                {score.evidence_quotes.slice(MAX_QUOTES).map((quote) => (
+                  <blockquote key={quote} className={EVIDENCE_QUOTE}>
+                    &ldquo;{quote}&rdquo;
+                  </blockquote>
+                ))}
+              </div>
+            </details>
+          )}
+        </div>
+      )}
+    </>
+  );
+}
+
+function DimensionHeader({
+  name,
+  channel,
+  score,
+  before,
+  large,
+}: {
+  name: string;
+  channel: Channel | null;
+  score: number;
+  before: number | undefined;
+  large: boolean;
+}) {
+  return (
+    <header className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
+      <h3 className={large ? SECTION_HEADING : SUB_HEADING}>{name}</h3>
+      {/* Absent when no rubric rode along with the report. An empty pill would
+          say less than no pill, and the name above already carries the row. */}
+      {channel === null ? null : <span className={CHIP}>{channel}</span>}
+      <span className={`${SCORE_NUMBER} ml-auto ${large ? "text-page" : ""}`}>
+        {score.toFixed(1)}
+        <span className={SCORE_DENOMINATOR}> / {MAX_SCORE}</span>
+      </span>
+      {before !== undefined ? (
+        <span className={`${FINE_PRINT} w-full tabular-nums sm:w-auto`}>
+          {formatDelta(score - before)} vs last scored
+        </span>
+      ) : null}
+    </header>
+  );
+}
+
 export function ReportDimensionCards({
   report,
   dimensions,
@@ -76,116 +198,61 @@ export function ReportDimensionCards({
   report: SessionReport;
   dimensions: DimensionMeta[];
   /** The previous scored session's scores by dimension key. When a key is
-   * present, the card shows its delta — comparable because every session in
+   * present, the card shows its delta: comparable because every session in
    * a package shares the rubric. */
   previous?: Record<string, number>;
 }) {
   const metaByKey = new Map(dimensions.map((d) => [d.key, d]));
+  const scores = report.dimension_scores;
+
+  // Rhythm, from order and scale alone (design spec 8.3). Six identical cards
+  // is section-layout repetition, and it also flattens the one thing the
+  // reader has to act on into the same shape as the one they already have.
+  // The weakest dimension leads at card scale, the rest follow as rows, and it
+  // is the same dimension the gauge names two sections up. No new data: this
+  // is the report's own numbers, ordered.
+  const low = weakestDimension(scores);
+  const distinct = low !== null && scores.some((s) => s.score > low.score);
+  const lead = distinct ? low : (scores[0] ?? null);
+  const rest = lead === null ? [] : scores.filter((s) => s !== lead);
+
+  const draw = (score: DimensionScore, large: boolean) => {
+    const meta = metaByKey.get(score.dimension_key);
+    return (
+      <DimensionHeader
+        name={meta?.name ?? score.dimension_key}
+        channel={meta?.channel ?? null}
+        score={score.score}
+        before={previous?.[score.dimension_key]}
+        large={large}
+      />
+    );
+  };
+
   return (
-    <section className="flex flex-col gap-4">
-      <h2 className="text-xl font-semibold">Dimension scores</h2>
-      {/* One card per dimension: the score, the judge's written rationale
-          (why this score), and the candidate's own verified words as quotes. */}
-      {report.dimension_scores.map((score) => {
-        const meta = metaByKey.get(score.dimension_key);
-        const before = previous?.[score.dimension_key];
-        // F-03 fields are declared required, but reports serialized before
-        // the fields existed (the checked-in sample fixture, cached JSON)
-        // omit them at runtime — read defensively, render nothing.
-        const strengths = score.strengths ?? [];
-        const weaknesses = score.weaknesses ?? [];
-        return (
-          <article
-            key={score.dimension_key}
-            className="rounded-lg border border-neutral-200 p-5 dark:border-neutral-800"
-          >
-            <header className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
-              <h3 className="text-base font-semibold">
-                {meta?.name ?? score.dimension_key}
-              </h3>
-              <span className="rounded bg-neutral-100 px-2 py-0.5 text-xs uppercase tracking-wide text-neutral-600 dark:bg-neutral-900 dark:text-neutral-400">
-                {meta?.channel ?? "—"}
-              </span>
-              <span className="ml-auto text-lg font-semibold tabular-nums">
-                {score.score.toFixed(1)}
-                <span className="text-sm font-normal text-neutral-500">
-                  {" "}
-                  / 5
-                </span>
-              </span>
-              {before !== undefined ? (
-                <span className="text-xs tabular-nums text-neutral-500">
-                  {formatDelta(score.score - before)} vs last scored
-                </span>
-              ) : null}
-            </header>
-            <p className="mt-3 text-sm leading-relaxed text-neutral-700 dark:text-neutral-300">
-              {score.rationale}
-            </p>
-            {(strengths.length > 0 || weaknesses.length > 0) && (
-              <div className="mt-4 grid gap-4 sm:grid-cols-2">
-                {strengths.length > 0 && (
-                  <div>
-                    <p className="text-xs uppercase tracking-wide text-neutral-500">
-                      What worked
-                    </p>
-                    <ul className="mt-1.5 list-disc pl-5 text-sm text-neutral-700 dark:text-neutral-300">
-                      {strengths.map((item) => (
-                        <li key={item}>{item}</li>
-                      ))}
-                    </ul>
-                  </div>
-                )}
-                {weaknesses.length > 0 && (
-                  <div>
-                    <p className="text-xs uppercase tracking-wide text-neutral-500">
-                      What held the score down
-                    </p>
-                    <ul className="mt-1.5 list-disc pl-5 text-sm text-neutral-700 dark:text-neutral-300">
-                      {weaknesses.map((item) => (
-                        <li key={item}>{item}</li>
-                      ))}
-                    </ul>
-                  </div>
-                )}
-              </div>
-            )}
-            {score.evidence_quotes.length > 0 && (
-              <div className="mt-4 flex flex-col gap-2">
-                <p className="text-xs uppercase tracking-wide text-neutral-500">
-                  What you actually said
-                </p>
-                {score.evidence_quotes.slice(0, MAX_QUOTES).map((quote) => (
-                  <blockquote
-                    key={quote}
-                    className="border-l-2 border-neutral-300 pl-3 text-sm italic text-neutral-600 dark:border-neutral-700 dark:text-neutral-400"
-                  >
-                    &ldquo;{quote}&rdquo;
-                  </blockquote>
-                ))}
-                {score.evidence_quotes.length > MAX_QUOTES && (
-                  <details>
-                    <summary className="cursor-pointer text-xs text-neutral-500 underline underline-offset-4">
-                      Show {score.evidence_quotes.length - MAX_QUOTES} more
-                      quotes
-                    </summary>
-                    <div className="mt-2 flex flex-col gap-2">
-                      {score.evidence_quotes.slice(MAX_QUOTES).map((quote) => (
-                        <blockquote
-                          key={quote}
-                          className="border-l-2 border-neutral-300 pl-3 text-sm italic text-neutral-600 dark:border-neutral-700 dark:text-neutral-400"
-                        >
-                          &ldquo;{quote}&rdquo;
-                        </blockquote>
-                      ))}
-                    </div>
-                  </details>
-                )}
-              </div>
-            )}
-          </article>
-        );
-      })}
+    <section className="flex flex-col gap-5">
+      <h2 className={SECTION_HEADING}>Dimension scores</h2>
+      {lead === null ? null : (
+        <article className={`${CARD} p-5`}>
+          {distinct ? (
+            <div className="mb-2.5">
+              <span className={CHIP_BLUSH}>Weakest dimension</span>
+            </div>
+          ) : null}
+          {draw(lead, true)}
+          <DimensionBody score={lead} />
+        </article>
+      )}
+      {rest.length > 0 && (
+        <div className={DIVIDE_Y}>
+          {rest.map((score) => (
+            <article key={score.dimension_key} className="py-5">
+              {draw(score, false)}
+              <DimensionBody score={score} />
+            </article>
+          ))}
+        </div>
+      )}
     </section>
   );
 }
@@ -193,25 +260,34 @@ export function ReportDimensionCards({
 export function ReportDeliveryMetrics({ metrics }: { metrics: DeliveryMetrics }) {
   return (
     <section className="flex flex-col gap-3">
-      <h2 className="text-xl font-semibold">Delivery metrics</h2>
-      <dl className="grid grid-cols-2 gap-4 sm:grid-cols-4">
-        <div className="rounded-md border border-neutral-200 p-4 dark:border-neutral-800">
-          <dt className="text-sm text-neutral-500">Pace</dt>
-          <dd className="text-2xl font-semibold">{Math.round(metrics.wpm_overall)} WPM</dd>
+      <h2 className={SECTION_HEADING}>Delivery metrics</h2>
+      {/* Four measurements, grouped by space above one hairline rather than by
+          four more boxes. The dimension list above is already the report's card
+          layout, and repeating it here is the repetition tell. */}
+      <dl
+        className={`grid grid-cols-2 gap-x-6 gap-y-5 border-t pt-4 sm:grid-cols-4 ${DIVIDER}`}
+      >
+        <div className="flex flex-col">
+          <dt className={`${LABEL} flex-1`}>Pace</dt>
+          <dd className={`${SCORE_NUMBER} mt-1 text-page`}>
+            {Math.round(metrics.wpm_overall)} WPM
+          </dd>
         </div>
-        <div className="rounded-md border border-neutral-200 p-4 dark:border-neutral-800">
-          <dt className="text-sm text-neutral-500">Fillers</dt>
-          <dd className="text-2xl font-semibold">
+        <div className="flex flex-col">
+          <dt className={`${LABEL} flex-1`}>Fillers</dt>
+          <dd className={`${SCORE_NUMBER} mt-1 text-page`}>
             {metrics.filler_rate_per_min.toFixed(1)} / min
           </dd>
         </div>
-        <div className="rounded-md border border-neutral-200 p-4 dark:border-neutral-800">
-          <dt className="text-sm text-neutral-500">Silences &ge; 1s</dt>
-          <dd className="text-2xl font-semibold">{metrics.silence_events.length}</dd>
+        <div className="flex flex-col">
+          <dt className={`${LABEL} flex-1`}>Silences &ge; 1s</dt>
+          <dd className={`${SCORE_NUMBER} mt-1 text-page`}>
+            {metrics.silence_events.length}
+          </dd>
         </div>
-        <div className="rounded-md border border-neutral-200 p-4 dark:border-neutral-800">
-          <dt className="text-sm text-neutral-500">Avg response latency</dt>
-          <dd className="text-2xl font-semibold">
+        <div className="flex flex-col">
+          <dt className={`${LABEL} flex-1`}>Avg response latency</dt>
+          <dd className={`${SCORE_NUMBER} mt-1 text-page`}>
             {formatLatency(metrics.avg_response_latency_s)}
           </dd>
         </div>
@@ -227,7 +303,7 @@ export function ReportObservations({
 }) {
   return (
     <section className="flex flex-col gap-3">
-      <h2 className="text-xl font-semibold">Observations timeline</h2>
+      <h2 className={SECTION_HEADING}>Observations timeline</h2>
       <ol className="flex flex-col gap-3">
         {topObservations(observations, MAX_TIMELINE).map((observation) => (
           <ObservationItem
@@ -238,7 +314,7 @@ export function ReportObservations({
       </ol>
       {observations.length > MAX_TIMELINE && (
         <details>
-          <summary className="cursor-pointer text-xs text-neutral-500 underline underline-offset-4">
+          <summary className={`${SUBTLE} ${QUIET_LINK} cursor-pointer`}>
             Show the full timeline ({observations.length} observations)
           </summary>
           <ol className="mt-3 flex flex-col gap-3">
@@ -260,16 +336,16 @@ export function ReportOutcomes({ report }: { report: SessionReport }) {
     <>
       <section className="grid gap-8 sm:grid-cols-2">
         <div className="flex flex-col gap-3">
-          <h2 className="text-xl font-semibold">Strengths</h2>
-          <ul className="list-disc pl-5 text-sm">
+          <h2 className={SECTION_HEADING}>Strengths</h2>
+          <ul className="list-disc pl-5 text-fine">
             {report.strengths.map((strength) => (
               <li key={strength}>{strength}</li>
             ))}
           </ul>
         </div>
         <div className="flex flex-col gap-3">
-          <h2 className="text-xl font-semibold">Gaps</h2>
-          <ul className="list-disc pl-5 text-sm">
+          <h2 className={SECTION_HEADING}>Gaps</h2>
+          <ul className="list-disc pl-5 text-fine">
             {report.gaps.map((gap) => (
               <li key={gap}>{gap}</li>
             ))}
@@ -278,8 +354,8 @@ export function ReportOutcomes({ report }: { report: SessionReport }) {
       </section>
 
       <section className="flex flex-col gap-3">
-        <h2 className="text-xl font-semibold">Next drills</h2>
-        <ol className="list-decimal pl-5 text-sm">
+        <h2 className={SECTION_HEADING}>Next drills</h2>
+        <ol className="list-decimal pl-5 text-fine">
           {report.next_drills.map((drill) => (
             <li key={drill}>{drill}</li>
           ))}
@@ -298,19 +374,38 @@ export default function ReportView({
   dimensions: DimensionMeta[];
   previous?: Record<string, number>;
 }) {
+  // Verdict first (design spec 7.1). What shipped before was a coloured band
+  // containing small text, which is the visual language of a form validation
+  // error rather than of a judgment: the verdict is the product's output and it
+  // is set at display scale, with the score beside it, the instrument that
+  // produced it underneath, and the caveat below rather than inside a box.
+  const reading = readVerdict(report, dimensions);
   return (
     <div className="flex flex-col gap-10">
-      <section className={`rounded-lg border p-6 ${verdictClasses(report.verdict)}`}>
-        <p className="text-sm uppercase tracking-wide">Verdict</p>
-        <p className="text-3xl font-bold">
-          {VERDICT_LABELS[report.verdict]}
-          <span className="ml-3 text-xl font-medium">
-            {report.overall_score.toFixed(2)} / 5
-          </span>
-        </p>
+      <section className="flex flex-col gap-5">
+        <div className="flex flex-wrap items-baseline gap-x-4 gap-y-1">
+          <h2
+            className={report.verdict === "ready" ? VERDICT_READY : VERDICT_HEADING}
+          >
+            {VERDICT_LABELS[report.verdict]}
+          </h2>
+          <p className={`${SCORE_NUMBER} text-page`}>
+            {report.overall_score.toFixed(2)}
+            <span className={SCORE_DENOMINATOR}> / {MAX_SCORE}</span>
+          </p>
+        </div>
         {/* F-03 headline; reports stored before the field carry "". */}
-        {report.headline ? <p className="mt-2 text-base">{report.headline}</p> : null}
-        <p className="mt-3 text-sm">{report.limits_note}</p>
+        {report.headline ? (
+          <p className={PROSE_WIDTH}>{report.headline}</p>
+        ) : null}
+        <div className="max-w-md">
+          <ReadinessGauge
+            score={report.overall_score}
+            verdict={report.verdict}
+            reading={reading}
+          />
+        </div>
+        <p className={`${FINE_PRINT} ${PROSE_WIDTH}`}>{report.limits_note}</p>
       </section>
 
       <ReportDimensionCards
