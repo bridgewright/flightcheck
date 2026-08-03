@@ -41,8 +41,8 @@ def _neutralize_markers(text: str) -> str:
     The replacements are single-angle quotation marks (U+2039/U+203A): the
     text stays readable, but it can never form a real marker again.
     """
-    return text.replace("<<<", "‹‹‹").replace(
-        ">>>", "›››")
+    return text.replace("<<<", "\u2039\u2039\u2039").replace(
+        ">>>", "\u203a\u203a\u203a")
 
 
 def fence(label: str, text: str) -> str:
