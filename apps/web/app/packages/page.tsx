@@ -6,6 +6,8 @@ import Shell from "@/components/Shell";
 import { retryCompileAction } from "@/app/packages/actions";
 import type { PillTone } from "@/lib/home";
 import {
+  effectiveTotalSessions,
+  expiryLine,
   latestVerdict,
   packageDisplayTitle,
   packagePill,
@@ -94,7 +96,10 @@ function PackageCard({
   pkg: PackageSummary;
   verdict: Verdict | null;
 }) {
-  const pill = packagePill(pkg.status, pkg.sessions_used, pkg.total_sessions);
+  // Effective quota (lib/home): an unpaid trial reads "of 1", never "of 6".
+  const total = effectiveTotalSessions(pkg);
+  const pill = packagePill(pkg.status, pkg.sessions_used, total);
+  const expiry = expiryLine(pkg, new Date());
   return (
     <li className="flex flex-col gap-3 rounded-md border border-neutral-300 p-5 dark:border-neutral-700">
       <div className="flex items-start justify-between gap-3">
@@ -108,9 +113,12 @@ function PackageCard({
         </span>
       </div>
       <p className="text-sm text-neutral-600 tabular-nums dark:text-neutral-400">
-        {pkg.sessions_used} of {pkg.total_sessions} sessions used
+        {pkg.sessions_used} of {total} sessions used
         {verdict !== null ? ` · Last verdict: ${verdictPhrase(verdict)}` : ""}
       </p>
+      {expiry !== null ? (
+        <p className="text-xs text-neutral-500">{expiry}</p>
+      ) : null}
       <div className="flex flex-wrap items-center gap-3">
         <Link
           href={switchHref(pkg.id, "/home")}

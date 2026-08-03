@@ -14,11 +14,16 @@ import { resolveActivePackage } from "@/lib/active-package";
 import type { VerdictLine } from "@/lib/home";
 import {
   ACTIVE_PACKAGE_COOKIE,
+  checkoutHref,
+  effectiveTotalSessions,
+  expiryLine,
   greetingName,
+  isUnpaidTrial,
   journeyLegs,
   nextSessionNumber,
   packageDisplayTitle,
   scoringStageLine,
+  unlockCtaLabel,
   verdictLine,
 } from "@/lib/home";
 import type { Verdict } from "@/lib/types";
@@ -194,12 +199,17 @@ export default async function HomePage({
     );
   }
 
-  const total = active.total_sessions;
+  // The effective quota is the UI chokepoint of the trial model: an unpaid
+  // trial renders "of 1", never "of 6" — no surface promises sessions the
+  // user has not bought.
+  const total = effectiveTotalSessions(active);
   const legs = journeyLegs(sessions, total);
   const next = nextSessionNumber(sessions, total);
   const done = legs.filter((leg) => leg === "done").length;
   const stageLine = scoringStageLine(sessions);
   const outcome = await lastOutcome(active, sessions);
+  const trial = isUnpaidTrial(active);
+  const expiry = expiryLine(active, new Date());
 
   return (
     <Shell viewer={viewer} path="/home" packages={packages} activePackageId={active.id}>
@@ -208,10 +218,15 @@ export default async function HomePage({
       <h1 className="text-center text-2xl font-bold tracking-tight text-balance">
         {greetingName(viewer.email)}
       </h1>
-      <p className="mb-6 text-center text-sm text-neutral-600 dark:text-neutral-400">
+      <p
+        className={`${expiry === null ? "mb-6" : "mb-1.5"} text-center text-sm text-neutral-600 dark:text-neutral-400`}
+      >
         {packageDisplayTitle(active.role_title)} · {done} of {total} sessions
         done
       </p>
+      {expiry !== null ? (
+        <p className="mb-6 text-center text-xs text-neutral-500">{expiry}</p>
+      ) : null}
 
       <div className="mb-7">
         <JourneyStrip legs={legs} />
@@ -222,11 +237,20 @@ export default async function HomePage({
         totalSessions={total}
         verdict={outcome.line}
         stageLine={stageLine}
+        trial={trial}
         action={
           next === null ? (
-            <Link href="/pricing" className={PRIMARY_BUTTON}>
-              See pricing
-            </Link>
+            trial ? (
+              // The unlock moment: same package, same JD — the payment only
+              // lifts the session quota.
+              <Link href={checkoutHref(active.id)} className={PRIMARY_BUTTON}>
+                {unlockCtaLabel()}
+              </Link>
+            ) : (
+              <Link href="/pricing" className={PRIMARY_BUTTON}>
+                See pricing
+              </Link>
+            )
           ) : (
             <StartSessionButton
               packageId={active.id}

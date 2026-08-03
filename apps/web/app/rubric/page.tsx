@@ -7,7 +7,13 @@ import RubricView from "@/components/RubricView";
 import Shell from "@/components/Shell";
 import StartSessionButton from "@/components/StartSessionButton";
 import { resolveActivePackage } from "@/lib/active-package";
-import { nextSessionNumber } from "@/lib/home";
+import {
+  checkoutHref,
+  effectiveTotalSessions,
+  isUnpaidTrial,
+  nextSessionNumber,
+  unlockCtaLabel,
+} from "@/lib/home";
 import { PRIMARY_BUTTON } from "@/lib/ui";
 import { getViewer } from "@/lib/viewer";
 import type { SessionSummary } from "@/lib/worker";
@@ -131,9 +137,15 @@ export default async function RubricPage({
   }
 
   const rubric = pkg.rubric;
-  const total = packageTotalSessions(pkg);
+  // Effective quota (lib/home): an unpaid trial owes 1 session here too.
+  const total = effectiveTotalSessions({
+    is_trial: pkg.is_trial,
+    paid_at: pkg.paid_at,
+    total_sessions: packageTotalSessions(pkg),
+  });
   const sessions = await listSessions(pkg.id).catch(() => [] as SessionSummary[]);
   const next = nextSessionNumber(sessions, total);
+  const trial = isUnpaidTrial(pkg);
 
   return (
     <Shell viewer={viewer}>
@@ -157,14 +169,29 @@ export default async function RubricPage({
 
       <div className="mt-10 flex flex-col gap-2 border-t border-neutral-200 pt-8 dark:border-neutral-800">
         {next === null ? (
-          <>
-            <p className="text-sm text-neutral-600 dark:text-neutral-400">
-              All {total} sessions of this package are used.
-            </p>
-            <Link href="/pricing" className={`${PRIMARY_BUTTON} self-start`}>
-              See pricing
-            </Link>
-          </>
+          trial ? (
+            <>
+              <p className="text-sm text-neutral-600 dark:text-neutral-400">
+                Your trial session is used. The rest of this package scores
+                against this same rubric.
+              </p>
+              <Link
+                href={checkoutHref(pkg.id)}
+                className={`${PRIMARY_BUTTON} self-start`}
+              >
+                {unlockCtaLabel()}
+              </Link>
+            </>
+          ) : (
+            <>
+              <p className="text-sm text-neutral-600 dark:text-neutral-400">
+                All {total} sessions of this package are used.
+              </p>
+              <Link href="/pricing" className={`${PRIMARY_BUTTON} self-start`}>
+                See pricing
+              </Link>
+            </>
+          )
         ) : (
           <>
             <p className="text-sm text-neutral-600 dark:text-neutral-400">

@@ -30,6 +30,7 @@ export default function SessionTicket({
   verdict = null,
   stageLine = null,
   action = null,
+  trial = false,
 }: {
   /** null once every session in the package has been used. */
   sessionNumber: number | null;
@@ -38,6 +39,9 @@ export default function SessionTicket({
   /** lib/home.scoringStageLine's sentence while a session is being scored. */
   stageLine?: string | null;
   action?: ReactNode;
+  /** lib/home.isUnpaidTrial: an unpaid trial's exhausted state is an unlock
+   * moment on the SAME package, not the end of it. */
+  trial?: boolean;
 }) {
   const exhausted = sessionNumber === null;
   return (
@@ -46,15 +50,22 @@ export default function SessionTicket({
         {exhausted ? (
           <>
             <div>
-              <div className={LABEL}>Package complete</div>
+              <div className={LABEL}>{trial ? "Trial complete" : "Package complete"}</div>
               <div className="text-xl font-bold tabular-nums">
                 {totalSessions} of {totalSessions} used
               </div>
             </div>
-            <Rule live={false}>
-              {exhaustedSessionsLine(totalSessions)} A new package covers a new
-              JD — or the same one again.
-            </Rule>
+            {trial ? (
+              <Rule live>
+                Your trial session is used. The rest of this package — same JD,
+                same rubric, fresh topics — unlocks with payment.
+              </Rule>
+            ) : (
+              <Rule live={false}>
+                {exhaustedSessionsLine(totalSessions)} A new package covers a new
+                JD — or the same one again.
+              </Rule>
+            )}
           </>
         ) : (
           <>
