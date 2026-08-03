@@ -52,8 +52,7 @@ export function supportMailto(): string {
 // write from the account address so we can attribute the request at all.
 export function deletionMailto(accountEmail: string | null): string {
   const body = accountEmail
-    ? `Please delete the flightcheck account registered to ${accountEmail} ` +
-      "and all data attached to it."
+    ? `Please delete the flightcheck account registered to ${accountEmail} and all data attached to it.`
     : "Please delete my flightcheck account and all data attached to it. " +
       "I am writing from the address the account is registered to.";
   // encodeURIComponent, not URLSearchParams: the latter encodes spaces as

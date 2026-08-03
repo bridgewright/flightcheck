@@ -118,11 +118,20 @@ function sentenceFor(
 
   switch (clause) {
     case "unscored":
-      return (
-        `Ready takes both at once: an overall of ${BAR} or better, and no ` +
-        `single dimension below ${FLOOR}. Both bars are drawn above, and a ` +
-        `session has to clear each of them.`
-      );
+      // ONE template literal, not three joined with `+`.
+      //
+      // This sentence shipped to production reading "an overall of
+      // 4.0single dimension below 3.0". The source was correct and every test
+      // passed, because tests run the source. The production bundler folds a
+      // module-scope constant string whose interpolations are all
+      // compile-time values, and when it folds a `+` chain it drops the
+      // literal text that follows the LAST interpolation in each part: here
+      // " or better, and no ". `UNSCORED_READING` is a module-level const, so
+      // this whole call was foldable and the corruption was silent.
+      //
+      // Written as one literal there is no concatenation to fold, and the
+      // built output is checked by `tests/built-copy.test.ts`.
+      return `Ready takes both at once: an overall of ${BAR} or better, and no single dimension below ${FLOOR}. Both bars are drawn above, and a session has to clear each of them.`;
     case "both-clear":
       return weakest === null
         ? `Overall ${total} clears the ${BAR} bar, and no dimension sits below the ${FLOOR} floor. Both clauses hold, which is what Ready means.`
@@ -132,10 +141,7 @@ function sentenceFor(
       // so the verdict is always Approaching here and the sentence can name
       // both verdicts by name rather than saying "this".
       return (
-        `Overall ${total} clears the ${BAR} Ready bar. The verdict also needs ` +
-        `every dimension at ${FLOOR} or better, and ${weakest?.name} is ` +
-        `${low}. That second clause is the whole difference between ` +
-        `Approaching and Ready.`
+        `Overall ${total} clears the ${BAR} Ready bar. The verdict also needs every dimension at ${FLOOR} or better, and ${weakest?.name} is ${low}. That second clause is the whole difference between Approaching and Ready.`
       );
     case "overall-below-ready":
       return weakest === null
@@ -143,9 +149,7 @@ function sentenceFor(
         : `Every dimension clears the ${FLOOR} floor, and overall ${total} is short of the ${BAR} bar Ready needs. The overall is the only thing still between this session and Ready.`;
     case "both-open":
       return (
-        `Overall ${total} is short of the ${BAR} bar Ready needs, and ` +
-        `${weakest?.name} is ${low}, below the ${FLOOR} floor every dimension ` +
-        `has to clear. Both clauses are still open.`
+        `Overall ${total} is short of the ${BAR} bar Ready needs, and ${weakest?.name} is ${low}, below the ${FLOOR} floor every dimension has to clear. Both clauses are still open.`
       );
     case "below-approaching":
       return weakest === null
@@ -153,10 +157,7 @@ function sentenceFor(
         : `Overall ${total} is below ${ENTRY}, which is the bar for Approaching. Ready is ${BAR} overall with no dimension below ${FLOOR}; the weakest here is ${weakest.name} at ${low}.`;
     case "unreconciled":
       return (
-        `The scorer recorded this session as ` +
-        `${verdict === null ? "unscored" : VERDICT_LABELS[verdict]}. The two ` +
-        `bars above do not account for that reading, so the verdict shown is ` +
-        `the scorer's own and this explanation could not be reconciled with it.`
+        `The scorer recorded this session as ${verdict === null ? "unscored" : VERDICT_LABELS[verdict]}. The two bars above do not account for that reading, so the verdict shown is the scorer's own and this explanation could not be reconciled with it.`
       );
   }
 }

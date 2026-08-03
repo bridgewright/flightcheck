@@ -61,9 +61,7 @@ export const HOW_IT_WORKS: Step[] = [
   {
     title: "Talk to your interviewer",
     detail:
-      `About ${SESSION_MINUTES} minutes, out loud, in English. Speech both ` +
-      "ways, so pace and hesitation stay real signal instead of being lost " +
-      "in a transcript.",
+      `About ${SESSION_MINUTES} minutes, out loud, in English. Speech both ways, so pace and hesitation stay real signal instead of being lost in a transcript.`,
   },
   {
     title: "Read the report",
@@ -79,9 +77,7 @@ export const HOW_IT_WORKS: Step[] = [
   {
     title: "Go again until the verdict changes",
     detail:
-      `${PACKAGE_SESSIONS} sessions on one job description, fresh topics each ` +
-      "time. The verdict moves from Not yet ready to Approaching to Ready, or " +
-      "it says plainly what is still holding it down.",
+      `${PACKAGE_SESSIONS} sessions on one job description, fresh topics each time. The verdict moves from Not yet ready to Approaching to Ready, or it says plainly what is still holding it down.`,
   },
 ];
 
@@ -132,13 +128,9 @@ export const PRICING = {
   price: PRICE_DISPLAY,
   priceNote: "per job description",
   trialNote:
-    `Your first package starts as a free trial: ${TRIAL_SESSIONS} full session, ` +
-    `scored. The ${PRICE_DISPLAY} unlock opens the rest of that same package ` +
-    `for ${EXPIRY_DAYS} days.`,
+    `Your first package starts as a free trial: ${TRIAL_SESSIONS} full session, scored. The ${PRICE_DISPLAY} unlock opens the rest of that same package for ${EXPIRY_DAYS} days.`,
   refundLine:
-    `If a technical failure on our side keeps you from using what you paid ` +
-    `for, tell us within ${REFUND_WINDOW_DAYS} days and we will fix it or ` +
-    `refund you.`,
+    `If a technical failure on our side keeps you from using what you paid for, tell us within ${REFUND_WINDOW_DAYS} days and we will fix it or refund you.`,
   cta: "Continue to payment",
 } as const;
 
@@ -188,11 +180,7 @@ export const FAQ: FaqEntry[] = [
   {
     question: "Can I get a refund?",
     answer:
-      `If a technical failure on our side keeps you from using what you paid ` +
-      `for, tell us within ${REFUND_WINDOW_DAYS} days of payment and we will ` +
-      `fix it or refund you. A verdict you did not like is not grounds. If a ` +
-      `disappointing verdict were refundable, you would have to wonder whether ` +
-      `we soften them to keep the money.`,
+      `If a technical failure on our side keeps you from using what you paid for, tell us within ${REFUND_WINDOW_DAYS} days of payment and we will fix it or refund you. A verdict you did not like is not grounds. If a disappointing verdict were refundable, you would have to wonder whether we soften them to keep the money.`,
   },
   {
     question: "Why is this built for non-native English speakers?",

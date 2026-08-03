@@ -125,8 +125,7 @@ function spoken(score: number | null, reading: VerdictReading | null): string {
       : `Latest overall score ${score.toFixed(1)} out of ${MAX_SCORE}.`;
   }
   const bar =
-    `The Ready bar is ${READY_OVERALL.toFixed(1)} out of ${MAX_SCORE} overall, ` +
-    `with no dimension below ${READY_MIN_DIMENSION.toFixed(1)}.`;
+    `The Ready bar is ${READY_OVERALL.toFixed(1)} out of ${MAX_SCORE} overall, with no dimension below ${READY_MIN_DIMENSION.toFixed(1)}.`;
   if (score === null) {
     return `${bar} Nothing has been measured against it yet.`;
   }
