@@ -1,9 +1,10 @@
 """Route-layer contracts the v0.6 tracks build against.
 
 Phase 0 split the ~640-line create_app closure into api/routers/*. Three of
-those modules are wired ahead of the tracks that implement them, answering
-501: the point is that the routing, the bearer dependency, and the request
-contract are proven here rather than assumed on four parallel branches.
+those modules were wired ahead of the tracks that implemented them, answering
+501, so the routing, the bearer dependency, and the request contract were
+proven here rather than assumed on four parallel branches. All three have
+since landed; what remains pinned is the posture they must keep.
 
 These tests pin what a track may NOT change while implementing its endpoint:
 the path, the auth posture, and the required parameters the web client
@@ -96,36 +97,17 @@ def test_healthz_is_public_and_not_under_the_api_prefix(client):
 # --- the three endpoints wired ahead of their tracks ---------------------
 
 
-# Still awaiting its track. DELETE /api/account (Track A, F-34) and
-# GET /api/metrics/usage (Track B, F-13) both landed and moved to WIRED
-# below -- the Phase 0 contract is that a stub is replaced, so a track
-# finishing its endpoint is expected to move its own row. Their fuller
-# contracts now live in tests/test_api_account.py and tests/test_api_usage.py.
-NOT_IMPLEMENTED = (
-    ("POST", "/api/preview/rubric", {"json": {"jd_text": "We are hiring."}},
-     "rubric preview is not available yet"),
-)
-
-# Implemented. The auth posture and the path are still pinned here: what a
-# track may change is the body, never where the endpoint lives or who may
-# reach it.
+# Every endpoint Phase 0 wired ahead of its track is now implemented: DELETE
+# /api/account by F-34, POST /api/preview/rubric by F-45, GET
+# /api/metrics/usage by F-13. The 501 table and its test retired with them.
+# What stays pinned here is what a track may never change while implementing
+# an endpoint — where it lives and who may reach it. The request contracts
+# moved to tests/test_api_account.py, test_api_preview.py and test_api_usage.py.
 WIRED = (
     ("DELETE", "/api/account", {"params": {"user_id": "user-1"}}),
     ("POST", "/api/preview/rubric", {"json": {"jd_text": "We are hiring."}}),
     ("GET", "/api/metrics/usage", {}),
 )
-
-
-@pytest.mark.parametrize(
-    "method,path,kwargs,message", NOT_IMPLEMENTED,
-    ids=["preview-rubric"],
-)
-def test_wired_endpoint_answers_501_with_an_honest_typed_body(
-    client, method, path, kwargs, message
-):
-    response = client.request(method, path, headers=AUTH, **kwargs)
-    assert response.status_code == 501
-    assert response.json() == {"error": message, "code": "not-implemented"}
 
 
 @pytest.mark.parametrize(
