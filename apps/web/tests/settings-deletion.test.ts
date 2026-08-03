@@ -17,6 +17,12 @@ function read(relative: string): string {
   return readFileSync(fileURLToPath(new URL(relative, import.meta.url)), "utf8");
 }
 
+/** Source with every run of whitespace collapsed, so a copy assertion does
+ * not fail because a sentence happened to wrap across two JSX lines. */
+function squish(source: string): string {
+  return source.replace(/\s+/g, " ");
+}
+
 const page = read("../app/settings/page.tsx");
 const deleteSection = read("../app/settings/delete-account.tsx");
 const emailSection = read("../app/settings/email-change.tsx");
@@ -39,7 +45,7 @@ describe("settings screen composition", () => {
 describe("deletion confirmation", () => {
   it("confirms by typing the account address, not a browser dialog", () => {
     expect(deleteSection).toContain("deletionConfirmationMatches");
-    expect(deleteSection).toContain("to confirm");
+    expect(squish(deleteSection)).toContain("to confirm");
     // Native confirm()/alert() are forbidden in this codebase: they
     // interrupt instead of informing, and a reflex OK proves nothing.
     expect(deleteSection).not.toMatch(/(^|[^.\w])confirm\(/);
@@ -47,8 +53,8 @@ describe("deletion confirmation", () => {
   });
 
   it("states that the deletion is immediate and cannot be undone", () => {
-    expect(deleteSection).toContain("immediately and permanently");
-    expect(deleteSection).toContain("no undo");
+    expect(squish(deleteSection)).toContain("immediately and permanently");
+    expect(squish(deleteSection)).toContain("no undo and no grace period");
   });
 
   it("lists what is deleted from the shared source, not a retyped list", () => {
@@ -66,7 +72,7 @@ describe("deletion confirmation", () => {
 
   it("says so when only the sign-in record survived", () => {
     expect(deleteSection).toContain("signInRecordRemoved");
-    expect(deleteSection).toContain("Your data is deleted");
+    expect(squish(deleteSection)).toContain("Your data is deleted");
   });
 });
 
@@ -79,9 +85,11 @@ describe("email change honesty", () => {
   it("never claims the address changed on submit", () => {
     // Supabase emails a confirmation link; the old address keeps working
     // until it is opened. A success state here would be a lie the user
-    // discovers at their next sign-in.
+    // discovers at their next sign-in. The copy also has to survive secure
+    // email change being on, where the CURRENT address gets a link too —
+    // hence "every link we send" rather than "that link".
     expect(emailSection).not.toMatch(/Email (changed|updated)/i);
-    expect(emailSection).toContain("until you open that link");
+    expect(squish(emailSection)).toContain("every link we send has been opened");
   });
 });
 

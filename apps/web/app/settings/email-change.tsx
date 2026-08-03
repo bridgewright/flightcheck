@@ -38,9 +38,14 @@ export default function EmailChangeSection({
     }
     setPending(true);
     const supabase = createClient();
-    const { error: authError } = await supabase.auth.updateUser({
-      email: check.email,
-    });
+    const { error: authError } = await supabase.auth.updateUser(
+      { email: check.email },
+      // Land the confirmation back on this screen, the same way the magic
+      // link lands on its `next` (app/login/page.tsx). Without it the link
+      // goes to the project's Site URL and the person ends up somewhere
+      // unrelated to the thing they were doing.
+      { emailRedirectTo: `${location.origin}/auth/callback?next=%2Fsettings` },
+    );
     const outcome = emailChangeOutcome(accountEmail, check.email, authError ?? null);
     if (outcome.kind === "pending") {
       setNotice(outcome.message);
@@ -54,9 +59,9 @@ export default function EmailChangeSection({
   return (
     <form onSubmit={submit} className="flex flex-col gap-3">
       <p className="text-sm text-neutral-600 dark:text-neutral-400">
-        Changing this sends a confirmation link to the new address. Your
-        sign-in address stays the same until you open that link, so a typo
-        cannot lock you out.
+        We send a confirmation link to the new address, and your current
+        address may receive one too. The change takes effect only once every
+        link we send has been opened — so a typo here cannot lock you out.
       </p>
       <label className="flex flex-col gap-2 text-sm">
         <span className="text-neutral-600 dark:text-neutral-400">New email address</span>

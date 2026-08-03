@@ -130,9 +130,13 @@ export function emailChangeOutcome(
       };
     }
   }
+  // "every link we send", not "that link": with Supabase's secure email
+  // change turned on, the CURRENT address gets a confirmation too and both
+  // must be opened. Wording that covers both configurations is the only kind
+  // that is true whatever the project setting happens to be.
   const tail = currentEmail
-    ? `You still sign in with ${currentEmail} until you open that link.`
-    : "Your sign-in address does not change until you open that link.";
+    ? `You still sign in with ${currentEmail} until you open every link we send.`
+    : "Your sign-in address does not change until you open every link we send.";
   return {
     kind: "pending",
     message: `If that address is available, a confirmation link is on its way to ${requested}. ${tail}`,
