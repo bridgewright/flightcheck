@@ -6,7 +6,8 @@
 
 - **App:** https://flightcheck.vercel.app
 - **Sample report (no signup):** https://flightcheck.vercel.app/sample-report
-  — a real practice session, anonymized
+  — a real session run by the developer, with identifying details removed
+  (flightcheck has no external users yet)
 
 ![flightcheck demo: paste a JD, preview the cited rubric, take the voice interview, read the honest report](docs/demo.gif)
 

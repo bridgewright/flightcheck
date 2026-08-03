@@ -6,11 +6,10 @@ weaken it here.
 
 ## Execution rules
 
-- Work, create files, and commit only in the dedicated task worktree. Treat
-  `/Users/thk/project-flightcheck/repo/` and every other file under the private
-  workspace root as read-only. The shared Git directory is writable only to
-  commit to the current `codex/*` task branch; do not modify any other branch
-  or ref.
+- Work, create files, and commit only in the dedicated task worktree. Treat the
+  primary repository checkout and everything outside your worktree as
+  read-only. The shared Git directory is writable only to commit to the current
+  `codex/*` task branch; do not modify any other branch or ref.
 - Never run `git push`. Claude reviews, integrates, and pushes accepted work.
 - Never print or record `.env` contents or environment-variable values. Never
   commit an `.env` file.
