@@ -68,8 +68,13 @@ export default async function TermsPage() {
           <p>
             You need a browser with a working microphone, and sessions are
             conducted in English. Keep your sign-in link to yourself — anyone
-            holding it can use your sessions. Use the product for your own
-            interview preparation; do not probe, scrape, or resell it.
+            holding it can use your sessions. Use this hosted service for your
+            own interview preparation; do not probe it, scrape it, or resell
+            access to it. That restriction covers the hosted service only:
+            flightcheck&apos;s source code is published separately under the
+            MIT license, and nothing here takes away the rights that license
+            grants you over the code — including running, modifying, and
+            selling your own copy.
           </p>
         </LegalSection>
         <LegalSection heading="Changes and contact">

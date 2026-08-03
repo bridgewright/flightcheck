@@ -1,7 +1,12 @@
 [project]
 name = "scorer"
-version = "0.0.1"
+version = "0.5.0"
 description = "flightcheck scoring worker + eval harnesses"
+# SPDX expression only. The LICENSE file itself lives at the repo root, above
+# this project directory, so `license-files` cannot reach it (hatchling drops
+# out-of-tree paths without an error) — the field is left off rather than set
+# to something that silently does nothing.
+license = "MIT"
 requires-python = ">=3.12"
 dependencies = [
   "websockets>=15",

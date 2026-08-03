@@ -216,7 +216,20 @@ def create_app(db: Database, storage: Storage, client: GenAIClientLike) -> FastA
             with suppress(asyncio.CancelledError):
                 await task
 
-    app = FastAPI(title="flightcheck scorer worker", lifespan=lifespan)
+    # Interactive docs off in every environment. FastAPI's defaults publish
+    # /docs, /redoc, and /openapi.json unauthenticated, and on the public
+    # Railway domain that handed anyone the full schema -- all fourteen
+    # paths, request bodies included -- of the service holding customer
+    # recordings. On since the worker's first commit (4c60e26, 2026-07-26)
+    # and found by the v0.5 release audit. Bearer auth was, and is, enforced
+    # on every /api route, so nothing leaked; this removes the free map.
+    app = FastAPI(
+        title="flightcheck scorer worker",
+        lifespan=lifespan,
+        docs_url=None,
+        redoc_url=None,
+        openapi_url=None,
+    )
     api = APIRouter(prefix="/api", dependencies=[Depends(_require_worker_token)])
 
     # Per-user fixed windows plus per-row attempt counters (see guards.py on

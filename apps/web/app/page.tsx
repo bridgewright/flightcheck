@@ -3,11 +3,6 @@ import Link from "next/link";
 import Shell from "@/components/Shell";
 import { getViewer } from "@/lib/viewer";
 
-// The 90-second staged session capture is not recorded yet. Set this to the
-// published asset URL and the hero becomes a real player; until then the panel
-// says so plainly rather than dangling a play button that does nothing.
-const DEMO_VIDEO_URL: string | null = null;
-
 const FEATURES: {
   title: string;
   detail: string;
@@ -28,29 +23,22 @@ const FEATURES: {
   },
 ];
 
-function DemoVideo() {
-  if (DEMO_VIDEO_URL) {
-    return (
-      <video
-        className="aspect-video w-full rounded-md border border-neutral-300 dark:border-neutral-700"
-        src={DEMO_VIDEO_URL}
-        controls
-        preload="metadata"
-      />
-    );
-  }
+// The same capture the README opens with (docs/demo.gif, copied into public/
+// so the app serves its own asset): intake, the cited rubric, the session
+// room, the report verdict. Plain <img> on purpose — next/image would route
+// the file through the optimizer, which drops GIF animation. width/height are
+// the file's real pixels (not 16:9), so the browser reserves the right box
+// and the frames are never cropped.
+function DemoClip() {
   return (
-    <div className="relative flex aspect-video w-full items-center justify-center rounded-md border border-neutral-300 bg-neutral-50 dark:border-neutral-700 dark:bg-neutral-900">
-      <span
-        aria-hidden="true"
-        className="flex size-16 items-center justify-center rounded-full border border-neutral-300 dark:border-neutral-700"
-      >
-        <span className="ml-1.5 border-y-[12px] border-l-[20px] border-y-transparent border-l-neutral-400" />
-      </span>
-      <span className="absolute bottom-3.5 left-4 text-xs text-neutral-500">
-        Demo video — coming soon
-      </span>
-    </div>
+    // eslint-disable-next-line @next/next/no-img-element
+    <img
+      className="h-auto w-full rounded-md border border-neutral-300 dark:border-neutral-700"
+      src="/demo.gif"
+      alt="flightcheck demo: paste a JD, preview the cited rubric, take the voice interview, read the honest report"
+      width={960}
+      height={450}
+    />
   );
 }
 
@@ -67,7 +55,7 @@ export default async function LandingPage() {
             to that role&apos;s real bar — in English, out loud — and tells you honestly
             what&apos;s still missing. Repeat until you&apos;d pass.
           </p>
-          <DemoVideo />
+          <DemoClip />
           <div className="mt-8 flex flex-wrap justify-center gap-3">
             <Link
               href="/login"

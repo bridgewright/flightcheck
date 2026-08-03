@@ -55,9 +55,12 @@ export default async function PrivacyPage() {
             Running the product means a few subprocessors touch your data on
             our behalf: hosting and database providers store it, a payment
             processor (as merchant of record) handles checkout so we never see
-            card details, and AI model providers process session audio and
-            transcripts to conduct and score your sessions. Each receives only
-            what its job requires.
+            card details, AI model providers process session audio and
+            transcripts to conduct and score your sessions, and an
+            error-monitoring service receives crash reports from our servers —
+            record identifiers and stack traces, with its personal-data
+            collection switched off, so no recording, transcript, or report
+            content reaches it. Each receives only what its job requires.
           </p>
         </LegalSection>
         <LegalSection heading="Deleting your account and data">
