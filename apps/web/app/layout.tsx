@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
+import { SITE_URL } from "./site";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -13,6 +14,10 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
+  // Every relative og:image resolves against this. Without it Next falls back
+  // to localhost, and the statically prerendered routes ship a card nobody
+  // outside the developer's machine can load.
+  metadataBase: new URL(SITE_URL),
   title: "flightcheck — know if you'd pass",
   description:
     "JD-specific mock interviews with honest verdicts for non-native English speakers.",

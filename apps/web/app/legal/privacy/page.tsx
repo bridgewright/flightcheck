@@ -71,18 +71,20 @@ export default async function PrivacyPage() {
         </LegalSection>
         <LegalSection heading="Deleting your account and data">
           <p>
-            Deletion is a manual process right now, and we are honest about
-            that: request it from the{" "}
+            You can delete your account yourself, from the{" "}
             <a className="underline" href="/settings">
               settings page
-            </a>{" "}
-            (or email{" "}
+            </a>
+            . It happens immediately and it cannot be undone: the account goes
+            with every recording, transcript, report, and order attached to it.
+            If something goes wrong on our side we tell you that nothing was
+            deleted rather than leaving you half-removed, so you can try again.
+            If you would rather we did it, or you can no longer sign in, email{" "}
             <a className="underline" href={supportMailto()}>
               {SUPPORT_EMAIL}
             </a>{" "}
-            from your account address), and within {DELETION_TIMELINE_DAYS}{" "}
-            days we delete the account with every recording, transcript,
-            report, and order attached to it, then confirm by reply.
+            from your account address and we do it within{" "}
+            {DELETION_TIMELINE_DAYS} days.
           </p>
         </LegalSection>
         <LegalSection heading="Changes and contact">

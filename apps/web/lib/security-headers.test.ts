@@ -186,6 +186,18 @@ describe("securityHeaderRules", () => {
     );
   });
 
+  it("tells crawlers not to index the token-bearing share links", () => {
+    // robots.txt disallows /p/ as well, and the two are not redundant: a
+    // disallowed URL can still be indexed URL-only from an inbound link, and
+    // a crawler that obeys the disallow never fetches the page, so it never
+    // sees a meta noindex. The header is the signal that survives a fetch by
+    // a crawler that ignored robots.txt.
+    expect(headerValue("/p/:path*", "X-Robots-Tag")).toBe(
+      "noindex, nofollow, noarchive",
+    );
+    expect(headerValue("/(.*)", "X-Robots-Tag")).toBeUndefined();
+  });
+
   it("sets the rest of the baseline once", () => {
     expect(headerValue("/(.*)", "X-Content-Type-Options")).toBe("nosniff");
     expect(headerValue("/(.*)", "Strict-Transport-Security")).toContain(

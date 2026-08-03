@@ -169,7 +169,16 @@ export function securityHeaderRules(
     {
       // A capability token in the path must not travel in a Referer header.
       source: TOKEN_LINK_SOURCE,
-      headers: [{ key: "Referrer-Policy", value: "no-referrer" }],
+      headers: [
+        { key: "Referrer-Policy", value: "no-referrer" },
+        // robots.txt disallows /p/ too, but the two do different jobs and
+        // neither is sufficient alone: a disallowed URL can still be indexed
+        // URL-only from an inbound link, and a crawler obeying the disallow
+        // never fetches the page, so it never sees a meta noindex. A header
+        // is the one signal that survives being fetched by a crawler that
+        // ignored robots.txt.
+        { key: "X-Robots-Tag", value: "noindex, nofollow, noarchive" },
+      ],
     },
     {
       source: ROOM_PATH_SOURCE,

@@ -119,7 +119,9 @@ def test_healthz_is_public():
     client, _ = _client(FakeGenAI([]))
     response = client.get("/healthz")
     assert response.status_code == 200
-    assert response.json() == {"ok": True}
+    # F-36 turned this from an unconditional true into a report of what it
+    # checked. Still public, still 200 when the database answers.
+    assert response.json()["ok"] is True
 
 
 def test_api_routes_reject_missing_or_wrong_token():

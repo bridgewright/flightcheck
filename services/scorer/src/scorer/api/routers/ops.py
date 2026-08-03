@@ -17,10 +17,12 @@ from __future__ import annotations
 from typing import Annotated
 
 from fastapi import APIRouter, Query
+from fastapi.responses import JSONResponse
 
 from scorer.api.deadletter import default_log
 from scorer.api.deps import Deps
 from scorer.api.usage import UsageMetrics, compute_usage
+from scorer.observability import database_probe, run_health_checks
 from scorer.resilience import load_resilience_config
 
 # One request cannot dump the whole ring: this is an operator endpoint, not
@@ -80,7 +82,11 @@ def build_public_router(deps: Deps) -> APIRouter:
     router = APIRouter()
 
     @router.get("/healthz")
-    def healthz() -> dict[str, bool]:
-        return {"ok": True}
+    def healthz() -> JSONResponse:
+        # Track C built and tested the probes; the wiring waited for the merge
+        # because this file belongs to Track B. Unconditional true is what let
+        # a dead Railway build keep answering while every deploy failed.
+        report = run_health_checks({"database": database_probe(deps.db)})
+        return JSONResponse(report.as_dict(), status_code=200 if report.ok else 503)
 
     return router

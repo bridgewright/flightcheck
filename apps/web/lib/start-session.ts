@@ -8,6 +8,7 @@
 // client component stays a thin fetch-and-render shell.
 
 export type StartFailureKind =
+  | "in-progress"
   | "exhausted"
   | "expired"
   | "insufficient-terminal"
@@ -56,6 +57,19 @@ export function startFailureView(
         "The 30-day session window has ended, so new sessions cannot " +
         "start. Your reports and recordings remain available.",
       retryable: false,
+    };
+  }
+  // Must precede the exhausted branch: F-38's lock also answers 409, and
+  // falling through told a customer with five sessions left that they had none.
+  if (code === "session-in-progress") {
+    return {
+      kind: "in-progress",
+      title: "A session is already in progress",
+      message:
+        "Finish the session you have open, or wait for it to time out (up " +
+        "to 25 minutes) before starting another. This does not use up a " +
+        "session from your package.",
+      retryable: true,
     };
   }
   if (code === "package-exhausted" || status === 409) {

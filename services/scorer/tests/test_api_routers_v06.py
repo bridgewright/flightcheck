@@ -87,7 +87,11 @@ def test_deps_is_frozen():
 
 
 def test_healthz_is_public_and_not_under_the_api_prefix(client):
-    assert client.get("/healthz").json() == {"ok": True}
+    # It now reports what it checked rather than an unconditional true (F-36),
+    # but the posture this test exists for is unchanged: reachable, and public.
+    body = client.get("/healthz").json()
+    assert body["ok"] is True
+    assert body["checks"]["database"] == "ok"
     # Moving it into routers/ops.py must not quietly put it behind the
     # bearer dependency or the /api prefix: Railway's health check has
     # neither a token nor that path.
