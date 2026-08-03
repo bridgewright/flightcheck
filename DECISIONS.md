@@ -629,3 +629,141 @@ screen in the product.*
   executor rather than to the brief; or commit-identity contamination
   stops being reliably catchable at cherry-pick, at which point the ops
   cost is no longer bounded.
+
+## 025 — account deletion: blobs first, and a partial failure deletes nothing (2026-08-03)
+
+- **Decision:** self-serve deletion removes recordings from the storage
+  bucket **before** any database row, and a bucket object that will not
+  delete aborts the whole run before a single row is touched. Every half is
+  idempotent — an object or row already gone counts as done, never an error
+  — so a failed run can simply be retried. The web route calls the worker
+  first and removes the Supabase auth user last. If the worker refuses, the
+  account and the sign-in are left exactly as they were and the customer is
+  told **nothing was deleted**; if the worker succeeds and the auth delete
+  then fails, that is reported honestly rather than hidden.
+- **Why:** the loss is asymmetric. Session rows are the only index to the
+  recordings-bucket keys, so deleting rows first and then failing strands
+  recordings that nobody can ever locate again — a privacy promise broken
+  silently, discoverable by no one, fixable only by a bucket-wide audit.
+  Deleting blobs first and failing leaves the account completely intact:
+  the plan recomputes identically and the honest answer is "nothing was
+  deleted, try again". Ordering the auth delete last follows from the same
+  rule — the sign-in record is the customer's only route back to retry.
+- **Rejected — rows first, blobs second:** the natural reading order, and
+  the one that produces unreachable orphaned recordings on any storage
+  flake.
+- **Rejected — best-effort continue-on-error:** it converts one failure
+  into a half-deleted account with no way for the customer to finish or
+  restart, and no way for the operator to know which half is missing.
+- **Rejected — soft delete with a grace period:** a retention promise that
+  keeps the data is not a deletion; v0.7 may add an export before deletion,
+  which is a different feature.
+- **Revisit when:** deletions grow large enough that one abort-and-retry is
+  materially worse than resuming a partial run, or when export lands and
+  the two need to share a plan.
+
+## 026 — CSP without a nonce, and what that costs (2026-08-03)
+
+- **Decision:** the Content-Security-Policy ships without a nonce.
+  `frame-ancestors 'none'`, an explicit four-origin `connect-src`
+  allowlist, `form-action` scoped to the checkout origins, and
+  `Permissions-Policy` granting the microphone on the room route only.
+- **Why:** a nonce has to be minted per request, which forces every page
+  that carries inline framework bootstrap into dynamic rendering. `/login`
+  and the landing are prerendered on purpose — they are the two routes a
+  cold reviewer and a paying stranger hit first — and a nonce CSP renders a
+  prerendered page as a blank screen. A policy that constrains where the
+  browser may *talk*, *submit*, and *embed* is the half that stops the
+  attacks this product can actually suffer; script-source strictness is the
+  half that would cost the landing page.
+- **Rejected — nonce plus all-dynamic rendering:** strictly stronger on
+  script injection, paid for with the prerendered landing and login.
+- **Rejected — hash-based SRI for the inline bootstrap:** the hashes change
+  with every framework build, so the policy silently rots into
+  unsafe-inline the first time a build is not re-hashed.
+- **Revisit when:** every route that must stay fast is server-rendered
+  anyway, or the framework serves a stable nonce without forcing dynamic
+  rendering.
+- **Verification note:** the webhook's raw-body verification was proven
+  under the new headers with a real signed delivery against a running
+  server; the Supabase code exchange and a live WebRTC room remain for the
+  production smoke, and are named as such rather than assumed.
+
+## 027 — prompt injection: fence, then detect, then refuse out loud (2026-08-03)
+
+*Completes the split opened in 021.*
+
+- **Decision:** user-controlled text stays fenced at every prompt site
+  (021), and on top of that a classifier refuses at intake, with a message
+  naming what it saw, when a submission reads as an instruction set rather
+  than a job description. The suite that gates it lives in
+  `evals/suites/injection/` with committed hostile and benign fixtures and
+  two baselines: hostile recall and, deliberately, a **zero** tolerance for
+  benign false positives.
+- **Why:** the JD is attacker-writable and lands in the prompt that builds
+  the scoring bar, so an unrefused instruction set rewrites the standard
+  the customer is judged against. Refusing silently would be worse than not
+  refusing: the customer paid, and a package that fails without saying why
+  is indistinguishable from a broken product.
+- **Rejected — sanitize and score anyway:** guesses at intent, and a
+  rewrite that drops the attack also drops the parts of a real posting that
+  looked like it.
+- **Rejected — a stricter classifier:** the first draft refused ordinary
+  postings in this product's own target market — prompt-engineering roles
+  whose real responsibilities include rewriting system prompts. A false
+  refusal blocks a paying customer at the door, which is why the benign
+  false-positive baseline is zero rather than small.
+- **Revisit when:** the eval suite's hostile set stops finding new shapes,
+  or a real customer hits a false refusal.
+
+## 028 — one live session per package, released only by the hard cut (2026-08-03)
+
+- **Decision:** a package may have one live session at a time. A second
+  start returns a distinct `session-in-progress` refusal, and the web
+  states plainly that no session is consumed. The lock is released when the
+  live session ends or reaches its 25-minute hard cut.
+- **Why:** two tabs recording the same session both mint upload URLs and
+  both write, so the second upload overwrites the first — the customer's
+  interview, gone, with no error anywhere.
+- **Rejected — the previous free resume of a `planned` row:** it was the
+  recovery path, and it was also exactly the race. Keeping it meant keeping
+  the overwrite.
+- **Known cost, stated rather than buried:** a customer whose tab crashes
+  one minute in waits out the rest of the hard cut before starting again.
+  The batch spec claimed the reaper would release these rows; that was
+  wrong, and the review caught it — `reap_stuck` touches `compiling`
+  packages and `scoring` sessions, never `planned` ones. The 25-minute cut
+  is the only release valve. No session is consumed, so the cost is time,
+  not entitlement.
+- **Rejected — a shorter staleness window instead of the hard cut:**
+  nothing touches `updated_at` during a live interview, so a genuinely live
+  session would look stale within minutes and the lock would stop working.
+- **Revisit when:** the room reports a heartbeat, which is what would let
+  the owner reclaim their own dead session immediately instead of waiting.
+  That is the fix; it is v0.7 work, not a copy change.
+
+## 029 — the capability window: revocation now, expiry not yet (2026-08-03)
+
+- **Decision:** migration 006 added `access_token_expires_at` and
+  `token_revoked_at`; the web honours both on every path that **grants**
+  room access, and the worker's session reads now select them. Nothing
+  mints an expiry automatically. Revocation is operator-driven and works
+  end to end today.
+- **Why:** shipping the read path is what makes revocation real — before
+  it, a revocation written into the database could never reach the code
+  that honours it, which is enforcement with no signal. Minting an expiry
+  is a different question, because a window that is too tight locks a
+  customer out of an interview they are in the middle of.
+- **Rejected — expiry at session creation:** the obvious default, and the
+  one that ends a session for a customer who opened the room, stepped away
+  for a call, and came back.
+- **Rejected — leaving the columns unselected until expiry exists:** it
+  keeps a guard that cannot ever fire, and the CHANGELOG would have to
+  claim a capability window that does nothing.
+- **Deliberately not gated:** the recording upload and the completion call.
+  An interview that already happened is evidence a customer paid for, and a
+  capability that lapsed at minute 19 of a 20-minute session must not be
+  the reason it is thrown away. Revocation stops the next session, not the
+  one already recorded.
+- **Revisit when:** the heartbeat from 028 exists — the same signal that
+  tells us a room is alive is the one that can safely bound its token.

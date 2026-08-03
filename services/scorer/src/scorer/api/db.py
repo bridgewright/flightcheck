@@ -30,7 +30,14 @@ from scorer.schemas import (
 # get_transcript is the only reader of that column, and it reads nothing else.
 SESSION_COLUMNS = (
     "id,package_id,index,status,scoring_stage,session_plan,"
-    "audio_path,report,created_at,updated_at,secret_mints"
+    "audio_path,report,created_at,updated_at,secret_mints,"
+    # Migration 006. The web guard (lib/session-capability.ts) fails closed on
+    # anything it cannot read and treats both nulls as "not yet", so selecting
+    # them changes nothing until a value exists -- but without selecting them
+    # the guard could never see a revocation, which made it enforcement with
+    # no signal. Revocation is now live end to end: set token_revoked_at and
+    # the next room entry and secret mint are refused.
+    "access_token_expires_at,token_revoked_at"
 )
 
 # Paid-package policy constants (v0.5): $49 unlocks the trial package to 6
@@ -128,8 +135,9 @@ class SessionRow(BaseModel):
     # access_token. Both NULL by default -- a null expiry means "no expiry",
     # which is the pre-006 behaviour, and a null revocation means "never
     # revoked". Declared here so the seam is typed; the hot session read
-    # (SESSION_COLUMNS) does not fetch them yet, so reads carry None until
-    # Track C (F-12) turns the columns on.
+    # (SESSION_COLUMNS) fetches them as of v0.6. Both stay None until
+    # something sets them: revocation is operator-driven, and no automatic
+    # expiry is minted yet (see DECISIONS on the capability window).
     access_token_expires_at: str | None = None
     token_revoked_at: str | None = None
 

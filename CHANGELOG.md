@@ -2,6 +2,137 @@
 
 ## [Unreleased]
 
+The v0.6 batch — "operate at scale". The release where the operator can be
+away for a week: users leave cleanly, links share correctly, and the pipeline
+survives its own history rather than a customer discovering it did not.
+
+### Added — you can leave, and take your data with you
+
+- **Delete your account yourself, from settings.** It removes every
+  recording, transcript, report, package and order, and it is immediate.
+  Recordings go before database rows, and a storage failure aborts the run
+  before anything is removed — so a failure means *nothing* was deleted and
+  you can simply try again, rather than being stranded half-deleted
+  (DECISIONS 025). The operator purge script and the endpoint now run the
+  same code instead of two implementations that could drift.
+- **Change the email you sign in with**, with the confirmation round trip
+  stated honestly: the new address is not your sign-in address until it is
+  confirmed.
+
+### Added — try it before you sign up
+
+- **Paste a job description on the landing page and see the bar.** The
+  compiled rubric preview — dimensions and weights — comes back without an
+  account, without a session, and without storing anything. No candidate-side
+  product shows you the standard before you commit to it.
+- It is also an unauthenticated model call, so it is guarded like one: a
+  per-visitor window at the edge, a length cap enforced before any model
+  call, a global daily ceiling, a concurrency slot, and a deadline. Above the
+  ceiling it says the preview is busy and points you at the real thing — the
+  degraded state is written as carefully as the happy path.
+- The landing page itself was rebuilt for screen parity with what the market
+  ships: a four-step how-it-works, framed product screenshots, an FAQ that
+  answers the six questions people actually ask, and itemized pricing. What
+  unlocks for $49 is now listed **before** the button, with the refund line
+  next to it.
+
+### Added — the operator's instruments
+
+- **A real-usage endpoint and a report script** (`GET /api/metrics/usage`),
+  so completion rate, latency percentiles and package burn-through come off
+  an instrument instead of a hand-written query. The generator enforces the
+  honesty rules rather than trusting whoever runs it: every rate prints its
+  counts, the account count leads the summary, a one-account sample is
+  labelled a self-test in the output, and a metric the product does not
+  instrument prints as **not instrumented** with the reason.
+- **A dead-letter record for permanently failed jobs**, and an endpoint to
+  read it. Failures were previously discovered by customer complaint.
+- **Backup and restore documented as a procedure**, including the corpus
+  bucket — the one asset whose loss would silently degrade every future
+  rubric — plus worker-token rotation written down as ops.
+
+### Added — the pipeline survives its own history
+
+- **Backoff on every model call in the tree.** The audit found one of seven
+  covered; a discovery-based test then found eleven call sites rather than
+  seven, and pins the count so a twelfth cannot ship without it. Transcription
+  first — the most expensive, least replaceable step, and the one that had
+  none.
+- **A scoring concurrency limit and a memory guard.** Measured peak was
+  ~1.6GB; two concurrent scorings would be an OOM that has already happened
+  once in production.
+- **An overall job deadline**, so one job cannot occupy a worker thread for
+  fifty minutes by chaining per-call timeouts.
+- **One live session per package.** Two tabs on one session both mint upload
+  URLs and the second overwrites the first — an interview lost with no error
+  anywhere. The refusal says so, and says no session is consumed
+  (DECISIONS 028, which also records what this costs a crashed tab).
+
+### Added — security and observability
+
+- **Real security headers**: a CSP with an explicit connect-source allowlist,
+  `frame-ancestors 'none'`, and a Permissions-Policy that grants the
+  microphone on the interview room and nowhere else (DECISIONS 026 records
+  why it ships without a nonce, and what that trades away).
+- **Capability revocation works end to end.** The room token can be revoked
+  and the next room entry and secret mint refuse it. Automatic expiry is
+  deliberately not minted yet, and DECISIONS 029 says why rather than
+  implying a window that does not exist.
+- **Prompt-injection refusal with its own eval suite.** A submission that
+  reads as an instruction set is refused at intake with a message naming
+  what was seen — and the suite's benign false-positive baseline is *zero*,
+  because the first classifier refused real prompt-engineering job postings
+  (DECISIONS 027).
+- **`/healthz` checks what it claims.** It returned an unconditional true,
+  which is what let a dead build keep serving while every deploy failed; it
+  now probes the database and answers 503 naming what failed.
+- **One request id** travels from the browser through the web routes into the
+  worker's logs, and comes back on the response.
+- Sentry on both sides, with alert rules recorded as configuration rather
+  than as clicks someone did once.
+
+### Fixed
+
+- The poll loop could retry every five seconds forever, including for an id
+  that would never resolve. It now backs off, breaks the circuit, and can
+  re-arm.
+- Closing a tab mid-upload silently threw away the interview. It warns.
+- Session timing was double-sourced between the worker's config and the
+  browser, with TypeScript quietly winning. One source now, with a test in
+  each suite that fails if the mirror drifts.
+- A missing environment variable used to surface as a 500 on a live page.
+  It now fails the build, so the previous deployment keeps serving.
+- Share links (`/p/`) carry a capability in the URL and were only protected
+  by a robots.txt disallow — which cannot stop URL-only indexing and stops a
+  crawler from ever seeing a noindex. They now send `X-Robots-Tag` as well.
+- Per-page metadata, OG images, `robots.txt` and `sitemap.xml`, so a link
+  pasted into a chat renders as something rather than nothing.
+- Google sign-in is wired behind its flag, ready for the provider
+  configuration.
+
+### Decisions
+
+- DECISIONS 025: deletion removes blobs before rows, and a partial failure
+  deletes nothing.
+- DECISIONS 026: a CSP without a nonce, and the prerendered pages that
+  choice protects.
+- DECISIONS 027: injection — fence, then detect, then refuse out loud, with
+  a zero-tolerance benign false-positive baseline.
+- DECISIONS 028: one live session per package, released by the hard cut, and
+  what that costs a customer whose tab crashed.
+- DECISIONS 029: the capability window — revocation now, expiry not yet.
+
+### Not shipped, and why
+
+- **Judge-authored report strengths and weaknesses (F-03b) was dropped
+  whole.** It needs a judge-prompt change, and validating a judge-prompt
+  change needs an eval run that this batch's cost directive batches to the
+  release gate. Shipping an unvalidated judge change is precisely the
+  regression that surfaces late and expensively, so it waits for a gate
+  rather than riding this one degraded.
+- Data export, the IndexedDB upload stash, and per-user worker authorization
+  remain v0.7.
+
 ## [0.5.0] — 2026-08-03
 
 The payments release: a live merchant-of-record checkout, the

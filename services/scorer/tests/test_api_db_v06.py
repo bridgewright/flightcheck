@@ -44,12 +44,15 @@ def test_session_row_accepts_the_token_columns():
     assert row.token_revoked_at == "2026-08-03T12:00:00+00:00"
 
 
-def test_session_reads_do_not_select_the_token_columns_yet():
-    # Phase 0 ships the seam, not the feature. Widening the hot session read
-    # is Track C's change to make, with its own test update.
+def test_session_reads_select_the_token_columns():
+    # Phase 0 shipped the seam and left this widening to whoever implemented
+    # F-12; it landed at the merge, because the web guard and this column
+    # list sat in two different tracks' zones. Without them selected the
+    # guard is enforcement with no signal: a revocation written into the
+    # database could never reach the code that honours it.
     columns = SESSION_COLUMNS.split(",")
-    assert "access_token_expires_at" not in columns
-    assert "token_revoked_at" not in columns
+    assert "access_token_expires_at" in columns
+    assert "token_revoked_at" in columns
 
 
 def test_migration_006_is_additive_and_idempotent():
