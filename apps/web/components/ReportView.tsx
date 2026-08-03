@@ -22,10 +22,11 @@ import {
   DIVIDER,
   EVIDENCE_QUOTE,
   FINE_PRINT,
+  KEY_FINDING,
   LABEL,
+  LINK,
   MUTED,
   PROSE_WIDTH,
-  LINK,
   SCORE_DENOMINATOR,
   SCORE_NUMBER,
   SECTION_HEADING,
@@ -111,7 +112,7 @@ function RationaleText({ rationale }: { rationale: string }) {
   const { lead, rest } = splitRationale(rationale);
   return (
     <div className={`${PROSE_WIDTH} mt-3 flex flex-col gap-2`}>
-      <p className="font-medium text-ink underline decoration-hairline decoration-1 underline-offset-4">
+      <p className={KEY_FINDING}>
         {lead}
       </p>
       {rest ? <p className={MUTED}>{rest}</p> : null}

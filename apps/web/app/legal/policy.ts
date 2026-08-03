@@ -25,6 +25,23 @@ export const LEGAL_LINKS = [
   { href: "/legal/refund", label: "Refunds" },
 ] as const;
 
+/**
+ * What the footer actually renders: the FAQ, then the policies.
+ *
+ * Separate from LEGAL_LINKS because the FAQ is not a legal page, and a test
+ * pins LEGAL_LINKS to exactly the three that are.
+ *
+ * The FAQ is in this list because it was reachable from nowhere. The batch
+ * moved the objection block off the landing onto its own route and added that
+ * route to PUBLIC_ROUTES, so `sitemap.ts` published it and `robots.ts` allowed
+ * it: a crawler could find the answers and a customer about to spend $49 could
+ * not. Two separate files described the click that had never been built.
+ */
+export const FOOTER_LINKS = [
+  { href: "/faq", label: "FAQ" },
+  ...LEGAL_LINKS,
+] as const;
+
 export function supportMailto(): string {
   return `mailto:${SUPPORT_EMAIL}`;
 }

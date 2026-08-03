@@ -290,27 +290,85 @@ describe("the scheme and the scale", () => {
     expect(declaredCss).toMatch(/@custom-variant\s+dark\s*\(/);
   });
 
-  it("sets the root scale once, as a percentage", () => {
-    // 87.5% is a 14px root, which is what the reference sets. This reverses an
-    // earlier "110% is the new 100%" directive, on the user's decision of
-    // 2026-08-04 after seeing the two side by side. A percentage rather than a
-    // px value so it scales the reader's own browser text-size setting instead
-    // of overriding it.
-    expect(declaredCss).toMatch(/html\s*\{[^}]*font-size:\s*87\.5%/);
-    // And nothing in the vocabulary compensates for it with a pixel literal.
+  it("sets the root scale once, relative to the reader, and floored", () => {
+    // This asserted the literal string `font-size: 87.5%` and so protected a
+    // spelling rather than a property. The property has three parts and the
+    // middle one is the part that had actually broken.
+    const htmlBlock = declaredCss.slice(declaredCss.search(/\bhtml\s*\{/));
+    const rule = htmlBlock.slice(0, htmlBlock.indexOf("}"));
+    const declarations = rule.match(/font-size\s*:[^;]+/g) ?? [];
+
+    // 1. Once. Two root font sizes is how a scale silently becomes two scales.
+    expect(declarations.length, "the root scale is not declared exactly once").toBe(1);
+    const value = declarations[0]!;
+
+    // 2. Relative to the reader. A bare px root overrides someone who has
+    //    enlarged their browser text, and this product is read by people doing
+    //    a hard thing in a second language; that setting is not decoration.
+    expect(value, "the root scale stopped multiplying the reader's own setting").toMatch(/%/);
+
+    // 3. Floored, and this is the one that was missing. A bare percentage
+    //    COMPOUNDS: measured in a real browser on 2026-08-04, a machine whose
+    //    default is 14px rather than 16px rendered a 12.25px root, an 11.48px
+    //    body against a 13.1px target, and a 784px reading column against 896.
+    //    The design was being judged 12.5% smaller than it was drawn. A floor
+    //    at the measured size is what stops the reduction the reader never
+    //    asked for, so the floor is the assertion, not the exact function.
+    const floor = value.match(/clamp\(\s*(\d+(?:\.\d+)?)px/);
+    expect(floor, `the root scale has no px floor: ${value.trim()}`).not.toBeNull();
+    expect(Number(floor![1]), "the floor is below the size the design was measured at")
+      .toBeGreaterThanOrEqual(14);
+
+    // And nothing in the vocabulary compensates for any of it with a literal.
     expect(emitted).not.toMatch(/text-\[\d/);
   });
 
-  it("honours reduced motion at the stylesheet level, not only in components", () => {
-    expect(declaredCss).toMatch(/prefers-reduced-motion:\s*reduce/);
-  });
+  // The entry motion ships its HIDDEN state in the server HTML: motion cannot
+  // know either of these preferences before hydration, so every revealed block
+  // arrives as `opacity:0;transform:translateY(12px)`. Nine such blocks on the
+  // landing, two on /faq, measured from the built server output.
+  //
+  // That makes both of these rules load-bearing rather than polish. Each one
+  // is the only thing standing between a class of reader and a page that is
+  // fully present in the DOM and completely invisible.
+  //
+  // Reduced motion is the one that had actually broken. The component branch
+  // for it returns a plain <div> with no style, and React does not remove a
+  // server-rendered attribute the client did not re-declare, so the opacity
+  // stayed at 0 forever. The accommodation blanked the page for the readers it
+  // was built for, and `tests/landing-motion.test.ts` passed throughout,
+  // because it regex-matches the component's source instead of rendering it.
+  //
+  // These assertions therefore check the rule INSIDE its media block. The
+  // version they replace matched `[data-reveal]` anywhere in the stylesheet,
+  // which the `scripting: none` block satisfied on its own.
+  it.each([
+    ["prefers-reduced-motion: reduce", /@media\s*\(prefers-reduced-motion:\s*reduce\)/],
+    ["scripting: none", /@media\s*\(scripting:\s*none\)/],
+  ])("un-hides every revealed block under (%s)", (condition, opener) => {
+    const at = declaredCss.search(opener);
+    expect(at, `no @media (${condition}) block`).toBeGreaterThan(-1);
 
-  it("keeps the landing readable when scripting is off", () => {
-    // The entry motion ships its hidden state in the server HTML, so without
-    // this rule a reader with JavaScript disabled gets a blank page whose text
-    // is all present in the DOM.
-    expect(declaredCss).toMatch(/@media\s*\(scripting:\s*none\)/);
-    expect(declaredCss).toMatch(/\[data-reveal\]/);
+    // Take the whole block by brace balance: these blocks nest rules.
+    let depth = 0;
+    let end = at;
+    for (let i = declaredCss.indexOf("{", at); i < declaredCss.length; i += 1) {
+      if (declaredCss[i] === "{") depth += 1;
+      else if (declaredCss[i] === "}") {
+        depth -= 1;
+        if (depth === 0) {
+          end = i;
+          break;
+        }
+      }
+    }
+    const block = declaredCss.slice(at, end);
+
+    const rule = block.match(/\[data-reveal\][^{]*\{([^}]*)\}/);
+    expect(rule, `@media (${condition}) does not reach [data-reveal]`).not.toBeNull();
+    // `!important` is not optional: what it has to beat is an inline style.
+    expect(rule![1], "opacity is not forced back to 1").toMatch(/opacity:\s*1\s*!important/);
+    expect(rule![1], "the translate is not cleared").toMatch(/transform:\s*none\s*!important/);
   });
 });
 

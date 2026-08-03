@@ -80,13 +80,19 @@ const ARCHIVE_STATUS_PILLS: Record<
   // In progress, which is what blush marks everywhere in the product.
   scoring: { label: "Scoring…", className: CHIP_BLUSH },
   // These three are real failures of ours, which is the one job alarm has.
-  // One separator between them, deliberately: they render as siblings in the
-  // same column, and a comma, a colon, and nothing at all across three
-  // adjacent pills reads as three different voices.
+  //
+  // The separators differ on purpose and a fix pass briefly flattened them to
+  // commas on the reasoning that three siblings in one column should not use
+  // three marks. That reasoning was wrong twice. There were two marks, not
+  // three ("Scoring failed" has nothing to separate), and the colon is doing
+  // work the comma cannot: in the other two labels the comma coordinates two
+  // co-equal facts, while here the second fragment is the REASON for the
+  // first. Flattening it, in a label that already reads "Not ... not ...",
+  // makes parallel negation the default reading, which is close to nonsense.
   failed: { label: "Scoring failed", className: CHIP_ALARM },
   failed_permanent: { label: "Closed, not scored", className: CHIP_ALARM },
   insufficient: {
-    label: "Not scored, not enough evidence",
+    label: "Not scored: not enough evidence",
     className: CHIP_ALARM,
   },
   scored: null,

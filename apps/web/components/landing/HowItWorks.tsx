@@ -29,7 +29,7 @@ const SPANS = [
 
 export default function HowItWorks() {
   return (
-    <ol className="grid grid-cols-1 gap-10 md:grid-cols-12 md:gap-x-10 md:gap-y-14">
+    <ol role="list" className="grid grid-cols-1 gap-10 md:grid-cols-12 md:gap-x-10 md:gap-y-14">
       {HOW_IT_WORKS.map((step, index) => (
         <li key={step.title} className={SPANS[index]}>
           <Reveal

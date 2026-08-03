@@ -1,6 +1,6 @@
 import { MinusIcon, PlusIcon } from "@phosphor-icons/react/ssr";
 
-import { CARD, DIVIDE_Y, MUTED, SUB_HEADING } from "@/lib/ui";
+import { CARD, DIVIDE_Y, MUTED, PROSE_WIDTH, SUB_HEADING } from "@/lib/ui";
 
 import { FAQ } from "./copy";
 
@@ -25,6 +25,11 @@ import { FAQ } from "./copy";
 
 export default function Faq() {
   return (
+    // PROSE_WIDTH on the answers, not only on the page intro. On its own
+    // route the card sits in the wide shell, so an answer ran to about 190
+    // characters a line against this product's own stated limit of 68. It was
+    // worse here than it had been on the landing, where the same component sat
+    // in a narrower column.
     <div className={`${CARD} ${DIVIDE_Y}`}>
       {FAQ.map((entry) => (
         <details key={entry.question} className="group px-5 py-4">
@@ -33,7 +38,7 @@ export default function Faq() {
             <PlusIcon aria-hidden="true" className="shrink-0 group-open:hidden" />
             <MinusIcon aria-hidden="true" className="hidden shrink-0 group-open:block" />
           </summary>
-          <p className={`${MUTED} mt-3 text-fine`}>{entry.answer}</p>
+          <p className={`${MUTED} ${PROSE_WIDTH} mt-3 text-fine`}>{entry.answer}</p>
         </details>
       ))}
     </div>

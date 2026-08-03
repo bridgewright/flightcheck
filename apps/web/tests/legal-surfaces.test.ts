@@ -4,6 +4,8 @@ import { fileURLToPath } from "node:url";
 
 import { describe, expect, it } from "vitest";
 
+import { FOOTER_LINKS } from "@/app/legal/policy";
+
 // The legal surfaces have no render harness (environment: node, no jsdom),
 // so these scan source instead — the same pattern as token-in-href.test.ts.
 // What they pin: every number in legal copy comes from lib/pricing.ts or
@@ -17,8 +19,20 @@ const read = (path: string) => readFileSync(join(webRoot, path), "utf8");
 describe("Shell footer", () => {
   const shell = () => read("components/Shell.tsx");
 
-  it("renders the legal links from the policy module, not literals", () => {
-    expect(shell()).toContain("LEGAL_LINKS");
+  it("renders the footer links from the policy module, not literals", () => {
+    // FOOTER_LINKS, which spreads LEGAL_LINKS and puts /faq ahead of it. The
+    // split exists because the FAQ is not a legal page and legal-policy.test.ts
+    // pins LEGAL_LINKS to exactly the three that are.
+    expect(shell()).toContain("FOOTER_LINKS");
+    expect(shell()).not.toContain('href="/legal/');
+  });
+
+  it("gives /faq the only route into it that exists", () => {
+    // The batch moved the objection block off the landing to its own route and
+    // added that route to PUBLIC_ROUTES, so the sitemap published it and robots
+    // allowed it while nothing on the site linked to it. A crawler could reach
+    // the answers and a visitor deciding whether to spend $49 could not.
+    expect(FOOTER_LINKS.map((link) => link.href)).toContain("/faq");
   });
 
   it("offers the support mailto from the policy module", () => {

@@ -1,4 +1,4 @@
-import { SKELETON } from "@/lib/ui";
+import {MAIN_WIDE, SKELETON} from "@/lib/ui";
 
 // Archive skeleton: a heading and a handful of table-row bars in the wide
 // column the real page uses, so the swap to content doesn't jump.
@@ -6,7 +6,7 @@ export default function Loading() {
   return (
     <main
       aria-busy="true"
-      className="mx-auto flex w-full max-w-5xl flex-col gap-4 px-6 pt-10 pb-12"
+      className={`${MAIN_WIDE} flex flex-col gap-4`}
     >
       <span className="sr-only">Loading your sessions</span>
       <div aria-hidden="true" className={`${SKELETON} h-7 w-40`} />

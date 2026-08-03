@@ -66,7 +66,11 @@ describe("session-detail loading skeleton", () => {
   it("draws the report anatomy, not the archive table it used to inherit", () => {
     // The nearest ancestor was app/sessions/loading.tsx, a row of table bars,
     // which is the wrong shape here and made the swap to content jump.
-    expect(loading).toContain("max-w-2xl");
+    // Was `max-w-2xl`, a literal that stopped matching the page it stands in
+    // for the moment Shell's width table moved. Both now compose MAIN_READING,
+    // which is the property this line was always about: the same column as the
+    // report, so the swap to content cannot jump.
+    expect(loading).toContain("MAIN_READING");
     // Four or more skeleton blocks: context line, verdict, dimensions,
     // delivery, transcript. Counting token usages rather than radius literals
     // survives a change to what the token's radius happens to be.

@@ -149,7 +149,7 @@ describe("archiveStatusPill", () => {
     expect(archiveStatusPill("scoring")?.label).toBe("Scoring…");
     expect(archiveStatusPill("failed")?.label).toBe("Scoring failed");
     expect(archiveStatusPill("insufficient")?.label).toBe(
-      "Not scored, not enough evidence",
+      "Not scored: not enough evidence",
     );
   });
 

@@ -1,4 +1,4 @@
-import { SKELETON } from "@/lib/ui";
+import {MAIN_READING, SKELETON} from "@/lib/ui";
 
 // Session-detail skeleton (F-43): the report anatomy in tokenized blocks — context line,
 // verdict block, dimension cards, delivery metrics, transcript. The archive
@@ -11,7 +11,7 @@ export default function Loading() {
   return (
     <main
       aria-busy="true"
-      className="mx-auto flex w-full max-w-2xl flex-col gap-10 px-6 pt-10 pb-12"
+      className={`${MAIN_READING} flex flex-col gap-10`}
     >
       <span className="sr-only">Loading this session</span>
       <header className="flex flex-col gap-4">

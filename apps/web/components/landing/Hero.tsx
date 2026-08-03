@@ -1,5 +1,5 @@
 import MountReveal from "@/components/motion/MountReveal";
-import { DISPLAY_HEADING, HERO_BLOOM, MUTED } from "@/lib/ui";
+import { DISPLAY_HEADING, HERO_BLOOM, MUTED, PROSE_WIDTH } from "@/lib/ui";
 
 import CtaRow from "./CtaRow";
 import { HERO } from "./copy";
@@ -33,7 +33,14 @@ export default function Hero() {
       <div aria-hidden="true" className={HERO_BLOOM} />
       <MountReveal className="flex flex-col gap-6 py-10 md:py-16">
         <h1 className={`${DISPLAY_HEADING} max-w-3xl`}>{HERO.heading}</h1>
-        <p className={`${MUTED} max-w-md`}>{HERO.body}</p>
+        {/* Was max-w-md, which is 392px. Measured in a browser, that let the
+            subtext use about a third of a 1120px content column while the
+            heading above it used 672px, so the paragraph stopped well short of
+            the line the claim had just drawn and the hero read as narrow. This
+            is the reading measure, which is the constraint that belongs here:
+            wide enough to sit under the claim, still short of the point where
+            the eye loses the line. */}
+        <p className={`${MUTED} ${PROSE_WIDTH}`}>{HERO.body}</p>
         <CtaRow
           label={HERO.primaryCta}
           secondary={{ label: HERO.secondaryCta, href: "/sample-report" }}

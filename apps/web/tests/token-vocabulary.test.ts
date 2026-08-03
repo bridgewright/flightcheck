@@ -146,7 +146,22 @@ describe("every screen speaks the token vocabulary", () => {
       ...(body.match(/"(?:[^"\\\n]|\\.)*"/g) ?? []),
       ...(body.match(/'(?:[^'\\\n]|\\.)*'/g) ?? []),
       ...(body.match(/`(?:[^`\\]|\\.)*`/g) ?? []),
-      ...(body.match(/>[^<>{}]*</g) ?? []),
+      // JSX text.
+      //
+      // The first version of this was `/>[^<>{}]*</g`, which excluded `{` and
+      // so could not see any sentence interrupted by an expression. That is
+      // every sentence quoting a number, and a Round 2 reviewer found 19 such
+      // prose runs across 12 files invisible to it, including the confirmation
+      // sentence Round 1 had just rewritten. The gate built because ~110
+      // strings were ungated could not read the ones carrying the price, the
+      // session count, the expiry, or the refund window.
+      //
+      // So: take the text between tags, then blank the interpolations inside
+      // it rather than refusing to look at the run that contains them. What is
+      // inside `{...}` is an expression, and it is covered by the string
+      // literal scans above; what surrounds it is prose, and this is the only
+      // thing that reads it.
+      ...(body.match(/>[^<>]*</g) ?? []).map((run) => run.replace(/\{[^{}]*\}/g, " ")),
     ];
     expect(strings.filter((s) => /[—–]/.test(s))).toEqual([]);
   });

@@ -102,6 +102,22 @@ export const DANGER_BUTTON =
 export const LINK =
   "underline decoration-field underline-offset-4 transition-colors duration-300 ease-[cubic-bezier(0.165,0.84,0.44,1)] hover:decoration-ink";
 
+/** The one sentence in a judge's rationale that carries the finding.
+ *
+ * Bold and underlined on the user's request, so the point of a paragraph is
+ * findable without reading all of it. It was written inline as
+ * `underline decoration-hairline decoration-1`, which put the emphasis mark at
+ * 1.23:1 against paper: `hairline` is declared in globals.css as decorative
+ * and deliberately under 3:1, so it is the one token that cannot carry an
+ * emphasis. It also sat at the same colour and offset as the clickable
+ * `<summary>` links on the same screen, so a block of prose and a control were
+ * marked identically and told apart only by line thickness.
+ *
+ * `field` is visible (3.53:1 on paper) and is not what any link uses at this
+ * weight, so the two read as different things. */
+export const KEY_FINDING =
+  "font-medium text-ink underline decoration-field decoration-1 underline-offset-4";
+
 // --- Type -----------------------------------------------------------------
 //
 // Every step carries its own size, leading, tracking, and weight from
@@ -124,6 +140,26 @@ export const MUTED = "text-ink-muted";
 /** Quieter still: microcopy under a control, captions, footnotes. */
 export const SUBTLE = "text-fine text-ink-muted";
 export const FINE_PRINT = "text-fine text-ink-faint";
+
+// --- Page containers ------------------------------------------------------
+//
+// Shell renders these, and so does every loading.tsx that stands in for a
+// Shell page. That is the whole reason they are here: the four skeletons were
+// written against `max-w-2xl` and `max-w-5xl` with a bare `px-6`, the batch
+// moved Shell to `max-w-reading` / `max-w-shell` with responsive padding and
+// widened `- -container-reading` from 46rem to 64rem, and the skeletons stayed
+// behind. A reader clicking into a report watched the column jump 308px wider
+// the moment content arrived, which is the exact reflow a skeleton exists to
+// prevent. Each file said in its own comment that it matched the real page.
+
+/** Padding and centring shared by every page column. */
+const PAGE_GUTTER = "mx-auto w-full px-6 pt-10 pb-12 sm:px-10 lg:px-16 xl:px-24";
+
+/** The reading column most screens use. */
+export const MAIN_READING = `${PAGE_GUTTER} max-w-reading`;
+
+/** Side-by-side or full-bleed content: landing, tables. Matches the top bar. */
+export const MAIN_WIDE = `${PAGE_GUTTER} max-w-shell`;
 
 /** The reading measure. Past about 68 characters the eye loses the line. */
 export const PROSE_WIDTH = "max-w-[68ch]";

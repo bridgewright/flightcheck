@@ -193,19 +193,33 @@
 }
 
 html {
-  /* 87.5% of the browser default, i.e. a 14px root, which is what the
-     reference sets.
+  /* A 14px root, which is what the reference sets, with a floor.
 
      This reverses an earlier directive ("what 110% browser zoom shows today
      should be the new 100%") on the user's decision of 2026-08-04, after
-     seeing the two side by side. A percentage rather than a pixel value so it
-     scales the reader's own browser text-size setting instead of overriding
-     it. Tailwind v4 derives spacing from --spacing, so type and rhythm move
-     together and no screen needs a compensating tweak.
+     seeing the two side by side. Tailwind v4 derives spacing from --spacing,
+     so type and rhythm move together and no screen needs a compensating tweak.
+
+     Why clamp and not a bare 87.5%. The percentage was chosen so the scale
+     multiplies the reader's own browser text-size setting instead of
+     overriding it, which is the right instinct and was wrong on its own: the
+     percentage compounds. Measured in a real browser on 2026-08-04, this
+     product was rendering at a 12.25px root, because that browser's default is
+     14px rather than the assumed 16px and 87.5% of 14 is 12.25. Body came out
+     at 11.48px against a 13.1px design target, and the reading column at 784px
+     against 896px. Every screenshot the design was judged from was 12.5%
+     smaller than the thing being designed, which is most of why it kept
+     reading as narrow.
+
+     So: still a multiple of the reader's setting, but floored at the size the
+     design was measured for, and capped so a reader who has set a very large
+     default gets a large page rather than an enormous one. A reader who
+     enlarges text is honoured; a reader whose browser happens to ship a
+     smaller default no longer gets a second reduction they did not ask for.
 
      Breakpoints are unaffected: rem inside a media query resolves against the
      initial root size by spec, so md stays at 768px. */
-  font-size: 87.5%;
+  font-size: clamp(14px, 87.5%, 20px);
   scroll-behavior: smooth;
 }
 
@@ -291,7 +305,22 @@ select:focus-visible {
   background-image: url("/hero-bloom.svg");
   background-repeat: no-repeat;
   background-position: center top;
-  background-size: cover;
+  /* Stretched to the box, NOT `cover`.
+   *
+   * `cover` scales by whichever axis needs more and crops the other, and at
+   * any wide viewport that crop cuts straight through the middle of the
+   * ellipses: at 1600x493 the visible slice ended at y=548 in the artwork
+   * while the paint runs to y=700, so the cloud stopped along a hard
+   * horizontal line across the page. That is precisely the rectangle this
+   * element is not allowed to draw, and it was drawing it.
+   *
+   * Non-uniform scaling is free here because the subject is three soft
+   * radial ellipses with no edge and no detail to distort. Stretching also
+   * fixes the narrow case: `cover` cropped toward the centre as the viewport
+   * narrowed, which walked the cloud's densest part into the text column and
+   * put the hero subhead at 4.25:1 on a phone. Proportional placement keeps
+   * the mass where it was drawn, over the empty right. */
+  background-size: 100% 100%;
 }
 
 
@@ -331,5 +360,30 @@ select:focus-visible {
 
   html {
     scroll-behavior: auto;
+  }
+
+  /* And the entry states, which the rules above cannot reach.
+   *
+   * This is not a nicety. Without it, a reader with Reduce Motion turned on
+   * got a BLANK PAGE: the server always renders the hidden variant, because
+   * motion cannot know the reader's preference before hydration, so the HTML
+   * ships `opacity:0;transform:translateY(12px)` on every revealed block. Nine
+   * of them on the landing, two on /faq. The client's reduced-motion branch
+   * then returns a plain <div> with no style, and React does not remove
+   * server-rendered attributes that the client did not re-declare. Nothing
+   * ever raised the opacity again.
+   *
+   * The accommodation for the reader who asked for stillness was the thing
+   * that blanked the page for them. It went unseen because the test that
+   * covers the reduce branch reads the component's source with a regex instead
+   * of rendering it, so it passed on exactly this code.
+   *
+   * A CSS backstop rather than a component change, for the same reason the
+   * `scripting: none` block above is one: it does not depend on the client
+   * running, or on a hydration behaviour staying the same across a React
+   * upgrade. */
+  [data-reveal] {
+    opacity: 1 !important;
+    transform: none !important;
   }
 }

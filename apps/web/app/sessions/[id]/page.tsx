@@ -423,11 +423,11 @@ export default async function SessionDetailPage({
 
   // --- Non-report states ---------------------------------------------------
   const heading: Record<Exclude<SessionDetailState, "scored" | "limited">, string> = {
-    insufficient: "Not scored, not enough evidence.",
+    insufficient: "Not scored: not enough evidence.",
     not_started: "Not started, slot preserved.",
     scoring: "Scoring your session…",
     failed: "Scoring failed",
-    closed: "Session closed",
+    closed: "Closed, not scored.",
   };
   const body: Record<Exclude<SessionDetailState, "scored" | "limited">, string> = {
     insufficient:
