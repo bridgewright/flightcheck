@@ -379,17 +379,17 @@ def _post_package(client: TestClient, body: dict[str, str]):
     )
 
 
-def test_same_jd_reuses_rubric_without_recompile(monkeypatch):
+def test_same_user_same_jd_reuses_rubric_without_recompile(monkeypatch):
     monkeypatch.setenv("WORKER_API_TOKEN", "test-worker-token")
     db = FakeDatabase()
     fake = FakeGenAI(_package_responses()[1:])
     client = _package_client(fake, db)
 
-    first = _post_package(client, {"jd_text": JD_TEXT})
+    first = _post_package(client, {"jd_text": JD_TEXT, "user_id": "user-1"})
     first_row = db.get_package(first.json()["package_id"])
     call_count = len(fake.calls)
 
-    second = _post_package(client, {"jd_text": JD_TEXT})
+    second = _post_package(client, {"jd_text": JD_TEXT, "user_id": "user-1"})
     second_row = db.get_package(second.json()["package_id"])
 
     assert second_row.status == "ready"
@@ -423,23 +423,49 @@ def test_create_package_without_user_id_stays_unbound(monkeypatch):
     assert db.get_package(response.json()["package_id"]).user_id is None
 
 
-def test_rubric_cache_reuse_keeps_the_new_package_bound(monkeypatch):
-    # A second account posting the same JD gets the cached rubric copied in,
-    # but the new row must belong to that account, not inherit the source
-    # package's binding.
+def test_another_account_never_reuses_a_cached_package(monkeypatch):
+    # The cached row carries the source account's candidate_profile, which the
+    # reuse path copies onto the new package -- and the live interviewer greets
+    # the candidate by the name in that profile. A second account posting the
+    # same JD must therefore compile its own package, never inherit this one.
     monkeypatch.setenv("WORKER_API_TOKEN", "test-worker-token")
     db = FakeDatabase()
-    fake = FakeGenAI(_package_responses()[1:])
+    fake = FakeGenAI([*_package_responses(), *_package_responses()[1:]])
     client = _package_client(fake, db)
 
-    _post_package(client, {"jd_text": JD_TEXT, "user_id": "user-1"})
+    first = _post_package(client, {
+        "jd_text": JD_TEXT,
+        "resume_text": "Alex Example. Senior Product Analyst.",
+        "user_id": "user-1",
+    })
+    first_row = db.get_package(first.json()["package_id"])
+    assert first_row.candidate_profile.name == "Alex Example"
     call_count = len(fake.calls)
+
     second = _post_package(client, {"jd_text": JD_TEXT, "user_id": "user-2"})
 
     second_row = db.get_package(second.json()["package_id"])
     assert second_row.status == "ready"
     assert second_row.user_id == "user-2"
-    assert len(fake.calls) == call_count   # cache hit: no new compile calls
+    assert len(fake.calls) > call_count            # compiled, not copied
+    assert second_row.candidate_profile.name is None
+
+
+def test_unowned_package_never_reuses_a_cached_package(monkeypatch):
+    # Reuse requires a concrete owner match on both sides: an unowned row is
+    # not "owned by nobody in common", so two anonymous packages must not
+    # share a compile either.
+    monkeypatch.setenv("WORKER_API_TOKEN", "test-worker-token")
+    db = FakeDatabase()
+    fake = FakeGenAI([*_package_responses()[1:], *_package_responses()[1:]])
+    client = _package_client(fake, db)
+
+    _post_package(client, {"jd_text": JD_TEXT})
+    call_count = len(fake.calls)
+    second = _post_package(client, {"jd_text": JD_TEXT})
+
+    assert db.get_package(second.json()["package_id"]).status == "ready"
+    assert len(fake.calls) > call_count
 
 
 def test_different_jd_still_compiles(monkeypatch):

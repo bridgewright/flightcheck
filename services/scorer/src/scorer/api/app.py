@@ -183,14 +183,15 @@ def create_app(db: Database, storage: Storage, client: GenAIClientLike) -> FastA
             linkedin_text = extract_pdf_text(base64.b64decode(body.linkedin_pdf_b64))
         row = db.create_package(jd_text, body.jd_url, user_id=body.user_id)
         cached = (
-            db.find_ready_rubric_by_jd(jd_text)
+            db.find_ready_rubric_by_jd(jd_text, body.user_id)
             if resume_text is None and linkedin_text is None
             else None
         )
         if cached is not None:
-            # Same JD, no personalization inputs: the compile output is
-            # reusable -- copy it instead of paying for and waiting on
-            # another Gemini run (~100-200 s measured).
+            # Same JD, same account, no personalization inputs: the compile
+            # output is reusable -- copy it instead of paying for and waiting
+            # on another Gemini run (~100-200 s measured). The account match
+            # is what makes copying candidate_profile safe.
             profile, rubric = cached
             if profile is not None:
                 db.set_package_profile(row.id, profile)

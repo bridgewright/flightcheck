@@ -226,10 +226,14 @@ class FakeDatabase:
             update["rubric"] = rubric
         self.packages[package_id] = row.model_copy(update=update)
 
-    def find_ready_rubric_by_jd(self, jd_text):
+    def find_ready_rubric_by_jd(self, jd_text, user_id):
+        # Mirrors SupabaseDatabase: reuse needs a concrete owner match, so an
+        # unowned request matches nothing (not even other unowned rows).
+        if user_id is None:
+            return None
         for row in reversed(list(self.packages.values())):
-            if (row.jd_text == jd_text and row.status == "ready"
-                    and row.rubric is not None):
+            if (row.jd_text == jd_text and row.user_id == user_id
+                    and row.status == "ready" and row.rubric is not None):
                 return (row.candidate_profile, row.rubric)
         return None
 

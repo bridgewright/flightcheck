@@ -332,6 +332,14 @@ class StubTable:
         self._call.setdefault("eq", []).append((column, value))
         return self
 
+    def order(self, column, desc=False):
+        self._call["order"] = (column, desc)
+        return self
+
+    def limit(self, count):
+        self._call["limit"] = count
+        return self
+
     def execute(self):
         self._log.append(self._call)
         return SimpleNamespace(data=self._results.pop(0))
@@ -424,6 +432,23 @@ def test_supabase_get_package_by_token_filters_on_token():
     stub = StubSupabase([[_package_data()]])
     SupabaseDatabase(stub).get_package_by_token("tok_abc")
     assert stub.log[0]["eq"] == [("access_token", "tok_abc")]
+
+
+def test_supabase_rubric_reuse_filters_on_the_owning_account():
+    data = _package_data(status="ready", user_id="user-1",
+                         rubric=_rubric().model_dump(mode="json"))
+    stub = StubSupabase([[data]])
+    found = SupabaseDatabase(stub).find_ready_rubric_by_jd("jd text", "user-1")
+    assert found is not None
+    assert ("user_id", "user-1") in stub.log[0]["eq"]
+
+
+def test_supabase_rubric_reuse_without_an_owner_never_queries():
+    # user_id=None must not reach PostgREST: eq("user_id", None) filters on
+    # NULL and would match every unowned row, which is the leak itself.
+    stub = StubSupabase([])
+    assert SupabaseDatabase(stub).find_ready_rubric_by_jd("jd text", None) is None
+    assert stub.log == []
 
 
 def test_supabase_missing_package_raises_keyerror():

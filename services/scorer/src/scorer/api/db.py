@@ -94,12 +94,17 @@ class Database(Protocol):
         ...
 
     def find_ready_rubric_by_jd(
-        self, jd_text: str
+        self, jd_text: str, user_id: str | None
     ) -> tuple[CandidateProfile | None, Rubric] | None:
-        """Newest "ready" package with EXACTLY this jd_text, as
+        """Newest "ready" package of THIS user with EXACTLY this jd_text, as
         (candidate_profile, rubric); None when no such package exists.
         Rubric reuse: identical intake inputs compile to an equivalent
-        rubric, so a recompile is pure spend."""
+        rubric, so a recompile is pure spend.
+
+        Same-account only, always: the returned candidate_profile is the
+        source account's own resume data, so a cross-account match would hand
+        one customer another customer's name. user_id=None has no account to
+        match and therefore never reuses."""
         ...
 
     def create_session(self, package_id: str, index: int,
@@ -260,10 +265,15 @@ class SupabaseDatabase:
             raise KeyError(package_id)
 
     def find_ready_rubric_by_jd(
-        self, jd_text: str
+        self, jd_text: str, user_id: str | None
     ) -> tuple[CandidateProfile | None, Rubric] | None:
+        # Never let user_id=None reach PostgREST: eq("user_id", None) filters
+        # on NULL and would match every unowned row instead of matching nothing.
+        if user_id is None:
+            return None
         data = (self._client.table("packages").select("*")
-                .eq("jd_text", jd_text).eq("status", "ready")
+                .eq("jd_text", jd_text).eq("user_id", user_id)
+                .eq("status", "ready")
                 .order("created_at", desc=True).limit(1).execute().data)
         if not data:
             return None
