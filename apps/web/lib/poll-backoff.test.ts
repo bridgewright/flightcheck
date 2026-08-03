@@ -1,3 +1,6 @@
+import { readFileSync } from "node:fs";
+import { fileURLToPath } from "node:url";
+
 import { describe, expect, it } from "vitest";
 
 import {
@@ -6,6 +9,7 @@ import {
   POLL_BACKOFF_FACTOR,
   POLL_BUDGET_MS,
   POLL_MAX_INTERVAL_MS,
+  POLL_REARM_EVENTS,
   afterPoll,
   pollDelayMs,
   rearmedPollState,
@@ -110,5 +114,39 @@ describe("rearmedPollState", () => {
 
   it("is a new object, so React sees a state change after a trip", () => {
     expect(rearmedPollState()).not.toBe(INITIAL_POLL_STATE);
+  });
+});
+
+describe("POLL_REARM_EVENTS", () => {
+  // The breaker must never be a one-way door. Visibility handles the tab
+  // that went away and came back; these handle the tab that never left,
+  // where a scoring run outlasting the budget would otherwise freeze the
+  // page on "scoring" with nothing on screen saying to reload.
+  const component = readFileSync(
+    fileURLToPath(new URL("../components/PollRefresh.tsx", import.meta.url)),
+    "utf8",
+  );
+
+  it("gives a tripped run a way back that does not need a tab switch", () => {
+    expect(POLL_REARM_EVENTS.length).toBeGreaterThan(0);
+  });
+
+  it("listens for deliberate acts, not for bursts", () => {
+    // scroll and mousemove fire in floods, and momentum scrolling keeps
+    // firing after the reader has gone — they would re-arm a tab nobody is
+    // reading, which is exactly the traffic the breaker stops.
+    expect(POLL_REARM_EVENTS).not.toContain("scroll");
+    expect(POLL_REARM_EVENTS).not.toContain("mousemove");
+    expect(POLL_REARM_EVENTS).toContain("keydown");
+    expect(POLL_REARM_EVENTS).toContain("pointerdown");
+  });
+
+  it("is what the component actually arms, not documentation", () => {
+    // No render harness here (environment: node), so the wiring is pinned by
+    // reading the source, the same technique as tests/token-in-href.test.ts.
+    expect(component).toContain("POLL_REARM_EVENTS");
+    expect(component).toContain("rearmedPollState()");
+    // Armed only while stopped: an active run must not pay for listeners.
+    expect(component).toMatch(/if \(!state\.tripped \|\| !visible\) return;/);
   });
 });

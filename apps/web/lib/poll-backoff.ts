@@ -103,3 +103,29 @@ export function afterPoll(state: PollState, limits: PollLimits): PollState {
 export function rearmedPollState(): PollState {
   return { attempts: 0, elapsedMs: 0, tripped: false };
 }
+
+/**
+ * The events that re-arm a tripped run, besides the tab becoming visible.
+ *
+ * Visibility alone is not enough to tell "someone is waiting on this" from
+ * "this tab has been open since Tuesday": a foreground tab stays `visible`
+ * for as long as the laptop is. Without this list, a scoring run that
+ * outlasts the budget — which the v0.6 scoring semaphore makes more likely,
+ * not less — would leave the page frozen on "scoring" with no way back
+ * short of a manual reload, and PollRefresh renders nothing that could say
+ * so.
+ *
+ * A person, then, rather than a clock: the first sign of one starts a fresh
+ * run with a fresh budget. A tab nobody touches produces none of these and
+ * stays stopped, which is the whole point of the breaker.
+ *
+ * Chosen to be the cheapest reliable evidence of a human. `scroll` and
+ * `mousemove` are excluded on purpose — they fire in bursts, and momentum
+ * scrolling would re-arm long after the reader left.
+ */
+export const POLL_REARM_EVENTS: readonly string[] = [
+  "pointerdown",
+  "keydown",
+  "wheel",
+  "touchstart",
+];

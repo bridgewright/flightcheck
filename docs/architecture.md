@@ -138,16 +138,32 @@ The room `access_token` used to be read from the package and passed to
 into the page's RSC payload and echoed into three request bodies. Whoever
 held that string could start and complete sessions on the package forever.
 
-It is gone. The room sends only a session id; the secret mint, the upload
-URL mint, and session complete all authorize the signed-in viewer, and the
-upload route now derives the package and slot from the **authorized session
-row** rather than from the request — so nothing about where a recording
-lands is under the caller's control. `tests/room-token-hygiene.test.ts` is
-the gate.
+It is gone from the room. The room sends only a session id; the secret mint,
+the upload URL mint, and session complete all authorize the signed-in
+viewer, and the upload route now derives the package and slot from the
+**authorized session row** rather than from the request — so nothing about
+where a recording lands is under the caller's control.
+`tests/room-token-hygiene.test.ts` is the gate.
+
+It is not gone from the app. `/home`, `/progress` and `/rubric` still pass
+the package `access_token` to `StartSessionButton`, because `POST
+/api/sessions` still requires that credential to start a session. Those
+three pages therefore still serialize a permanent package-wide capability
+into their RSC payload. Retiring it needs the same move the upload route
+just made — viewer authorization on `/api/sessions` — and is not done.
 
 Migration 006's `access_token_expires_at` and `token_revoked_at` are honoured
 by `lib/session-capability.ts`, which fails closed on anything it cannot
-read and treats null as "no expiry" (the pre-006 behaviour). It gates
+read and treats null as "no expiry" (the pre-006 behaviour).
+
+> **Reads null today, so it never refuses.** The worker's hot session read
+> (`SESSION_COLUMNS` in `api/db.py`) does not select the two columns and
+> `_to_session_row` does not map them, so every session the web sees carries
+> `null` for both — and nothing writes them at session create either. The
+> guard is enforcement without a signal until both land. Delete this note in
+> the commit that turns the columns on.
+
+It gates
 **entry** — rendering the room, minting the secret — and deliberately not
 **finishing**: the recording upload and the complete call stay open, because
 a window that lapsed at minute 19 of a 20-minute interview must never be the
@@ -174,19 +190,26 @@ Worker log lines carry it in the format itself:
 Lines with no request in scope — startup, the reaper loop, `tools/` scripts —
 show `[req=-]` rather than a fabricated id.
 
-### /healthz tells the truth
+### What /healthz should answer
 
-`GET /healthz` on the worker used to return `{"ok": true}` unconditionally.
-That is a liveness lie, and it is how a dead Railway build kept serving
-traffic while every new deploy failed: the platform's health check could not
-tell a working process from a broken one.
+`GET /healthz` on the worker returns `{"ok": true}` unconditionally. That is
+a liveness lie, and it is how a dead Railway build kept serving traffic
+while every new deploy failed: the platform's health check could not tell a
+working process from a broken one.
 
-`scorer.observability.run_health_checks` answers with what it actually
-verified:
+`scorer.observability.run_health_checks` is the replacement, and it answers
+with what it actually verified:
 
 ```json
 {"ok": true, "checks": {"database": "ok"}, "release": "<commit sha>"}
 ```
+
+> **Not yet served.** The endpoint itself lives in
+> `services/scorer/src/scorer/api/routers/ops.py` and does not call this
+> function yet, so `run_health_checks` ships tested but unused and
+> `/healthz` still answers unconditionally. Delete this note in the commit
+> that wires `build_public_router` to it — 503 when the report is not ok,
+> which gates deployment promotion without restarting a running container.
 
 - **Checks the database.** It is the only dependency the worker cannot serve
   a single request without, and a build that cannot reach it must never be
@@ -209,6 +232,14 @@ verified:
 `instrumentation-client.ts` for the browser), `sentry-sdk` on the worker.
 Both are a clean no-op without a DSN, so monitoring is a deployment setting
 rather than a code change.
+
+The browser entry names every variable it reads as a literal
+`process.env.NEXT_PUBLIC_X`. That is not style: `process` does not exist in
+a browser, the bundler substitutes a value only where it sees that exact
+member expression, and any other use resolves to a shim whose `env` is
+`{}`. Handing `process.env` to a helper therefore compiles, builds, passes
+tests that inject their own env — and reports nothing, forever, with a
+correct DSN configured. `tests/instrumentation-client.test.ts` is the gate.
 
 Two policies are not negotiable and are enforced in `lib/observability.ts`:
 

@@ -175,6 +175,10 @@ def test_the_database_probe_reads_nothing_real():
     assert db.packages == {}
 
 
-def test_healthz_over_the_database_probe_is_the_whole_wiring():
+def test_the_probe_and_the_runner_compose():
+    # The two halves /healthz is meant to serve, together. The endpoint that
+    # calls them lives in api/routers/ops.py, which this track does not own;
+    # until that wiring lands, /healthz still answers unconditionally and
+    # nothing here proves otherwise.
     report = run_health_checks({"database": database_probe(FakeDatabase())})
     assert report.ok is True
