@@ -9,6 +9,7 @@ Long jobs run as BackgroundTasks: POST returns 202 and clients poll GET.
 from __future__ import annotations
 
 import base64
+import binascii
 import logging
 import os
 import secrets
@@ -29,9 +30,12 @@ from postgrest.exceptions import APIError as PostgrestAPIError
 from pydantic import BaseModel, ConfigDict
 
 from scorer.api.db import Database, OrderRow, PackageRow, SessionRow
+from scorer.api.guards import AttemptCounter, FixedWindowLimiter
 from scorer.api.pipeline import compile_package, score_session
 from scorer.api.quota import (
+    RESUME_COUNTED_STATUSES,
     RETRIABLE_STATUSES,
+    TERMINAL_STATUS,
     effective_total_sessions,
     is_expired,
     sessions_used,
@@ -172,10 +176,54 @@ def _compile_package_job(
         logger.exception("background compile failed: package_id=%s", package_id)
 
 
+def _rate_limited(action: str) -> JSONResponse:
+    return JSONResponse(
+        status_code=429,
+        content={
+            "error": f"too many {action} attempts just now — wait a few "
+                     "minutes and try again",
+            "code": "rate-limited",
+        },
+    )
+
+
 def create_app(db: Database, storage: Storage, client: GenAIClientLike) -> FastAPI:
     app = FastAPI(title="flightcheck scorer worker")
     api = APIRouter(prefix="/api", dependencies=[Depends(_require_worker_token)])
     limits = load_product_config().limits
+
+    # Per-user fixed windows plus per-row attempt counters (see guards.py on
+    # why process-local is honest here). Keys fall back to the package id for
+    # legacy unbound rows so nothing stays uncounted.
+    package_create_limiter = FixedWindowLimiter(
+        limits.package_create_window_s, limits.package_create_per_window)
+    session_create_limiter = FixedWindowLimiter(
+        limits.session_create_window_s, limits.session_create_per_window)
+    complete_limiter = FixedWindowLimiter(
+        limits.complete_window_s, limits.complete_per_window)
+    resume_attempts = AttemptCounter()
+    score_attempts = AttemptCounter()
+
+    def _extract_pdf_upload(pdf_b64: str, label: str) -> str:
+        """b64 -> PDF text with every failure a clean 422 (the cap on the
+        encoded LENGTH ran earlier, before this decode)."""
+        try:
+            raw = base64.b64decode(pdf_b64, validate=True)
+        except binascii.Error as exc:
+            raise HTTPException(
+                status_code=422,
+                detail=f"the {label} upload is not valid base64",
+            ) from exc
+        try:
+            return extract_pdf_text(raw)
+        except Exception as exc:
+            # types on attacker-controlled bytes; every one is a client
+            # problem, never a worker 500.
+            raise HTTPException(
+                status_code=422,
+                detail=f"could not read the {label} PDF — export it again "
+                       "and retry",
+            ) from exc
 
     @app.get("/healthz")
     def healthz() -> dict[str, bool]:
@@ -196,6 +244,28 @@ def create_app(db: Database, storage: Storage, client: GenAIClientLike) -> FastA
                     "code": "package-cap",
                 },
             )
+        if not package_create_limiter.hit(body.user_id or "-unbound-"):
+            return _rate_limited("package-create")
+        # Length caps run before any fetch, decode, or insert: an over-limit
+        # request must cost nothing (F-29; the worker is on a public domain,
+        # so no proxy body limit backstops it). The JD cap itself runs after
+        # jd_text/jd_url resolution below — it has to cover fetched pages.
+        for label, text in (("resume", body.resume_text),
+                            ("LinkedIn", body.linkedin_text)):
+            if text is not None and len(text) > limits.profile_text_max_chars:
+                return JSONResponse(
+                    status_code=422,
+                    content={"error": f"the {label} text is too long — trim "
+                                      "it to the relevant experience"},
+                )
+        for label, pdf_b64 in (("resume", body.resume_pdf_b64),
+                               ("LinkedIn", body.linkedin_pdf_b64)):
+            if pdf_b64 is not None and len(pdf_b64) > limits.pdf_b64_max_chars:
+                return JSONResponse(
+                    status_code=422,
+                    content={"error": f"the {label} PDF is too large — "
+                                      "export a smaller one and retry"},
+                )
         if body.jd_text is not None:
             jd_text = body.jd_text
         elif body.jd_url is not None:
@@ -214,12 +284,19 @@ def create_app(db: Database, storage: Storage, client: GenAIClientLike) -> FastA
             raise HTTPException(
                 status_code=422, detail="one of jd_text or jd_url is required"
             )
+        if len(jd_text) > limits.jd_text_max_chars:
+            # A fetched page can be over the cap too; same honest rejection.
+            return JSONResponse(
+                status_code=422,
+                content={"error": "that job description is too long — paste "
+                                  "the posting itself, not the whole page"},
+            )
         resume_text = body.resume_text
         if resume_text is None and body.resume_pdf_b64 is not None:
-            resume_text = extract_pdf_text(base64.b64decode(body.resume_pdf_b64))
+            resume_text = _extract_pdf_upload(body.resume_pdf_b64, "resume")
         linkedin_text = body.linkedin_text
         if linkedin_text is None and body.linkedin_pdf_b64 is not None:
-            linkedin_text = extract_pdf_text(base64.b64decode(body.linkedin_pdf_b64))
+            linkedin_text = _extract_pdf_upload(body.linkedin_pdf_b64, "LinkedIn")
         # Trial model (F-24): the account's FIRST package is the trial. The
         # flag is cosmetic-plus-records -- the money chokepoint is paid_at
         # (effective_total_sessions) -- but the web renders trial state from
@@ -454,6 +531,8 @@ def create_app(db: Database, storage: Storage, client: GenAIClientLike) -> FastA
             package = db.get_package(body.package_id)
         except KeyError as exc:
             raise HTTPException(status_code=404, detail="package not found") from exc
+        if not session_create_limiter.hit(package.user_id or package.id):
+            return _rate_limited("session-start")
         if is_expired(package):
             return JSONResponse(
                 status_code=410,
@@ -464,11 +543,27 @@ def create_app(db: Database, storage: Storage, client: GenAIClientLike) -> FastA
                 },
             )
         existing = db.list_sessions(body.package_id)
-        retriable = [
-            row for row in existing if row.status in RETRIABLE_STATUSES
-        ]
+        retriable = sorted(
+            (row for row in existing if row.status in RETRIABLE_STATUSES),
+            key=lambda row: row.index,
+        )
+        for row in retriable:
+            if row.status not in RESUME_COUNTED_STATUSES:
+                # A planned row never ran: resuming it is free, always.
+                return _session_response(row, package)
+            if resume_attempts.bump(row.id) <= limits.resume_attempt_cap:
+                return _session_response(row, package)
+            # Past the cap: retire the row and spend its slot, so the answer
+            # below is honestly "next session" or "exhausted" — never an
+            # endless retry loop on a session that keeps dying (F-30).
+            db.set_session_status(row.id, TERMINAL_STATUS)
+            db.touch_updated_at("session", row.id)
+            logger.info(
+                "session %s retired after %d resume attempts",
+                row.id, limits.resume_attempt_cap,
+            )
         if retriable:
-            return _session_response(min(retriable, key=lambda row: row.index), package)
+            existing = db.list_sessions(body.package_id)
         total = effective_total_sessions(package)
         if sessions_used(existing) >= total:
             used_line = (
@@ -514,9 +609,66 @@ def create_app(db: Database, storage: Storage, client: GenAIClientLike) -> FastA
                     "error": f"session is already {row.status}; it cannot be re-scored"
                 },
             )
+        if row.status == TERMINAL_STATUS:
+            return JSONResponse(
+                status_code=409,
+                content={
+                    "error": ("this session was retired after repeated "
+                              "attempts and cannot be scored again"),
+                    "code": "session-terminal",
+                },
+            )
+        package = db.get_package(row.package_id)
+        if not complete_limiter.hit(package.user_id or row.package_id):
+            return _rate_limited("scoring")
+        if score_attempts.bump(session_id) > limits.score_attempt_cap:
+            # The scoring pipeline keeps dying on this recording: burning
+            # more model spend on it will not change the outcome, so the
+            # row is retired and its slot spent (F-30).
+            db.set_session_status(session_id, TERMINAL_STATUS)
+            db.touch_updated_at("session", session_id)
+            logger.info(
+                "session %s retired after %d scoring attempts",
+                session_id, limits.score_attempt_cap,
+            )
+            return JSONResponse(
+                status_code=429,
+                content={
+                    "error": ("scoring attempt limit reached for this "
+                              "session — the slot is closed"),
+                    "code": "score-attempt-cap",
+                },
+            )
         db.set_session_status(session_id, "scoring", audio_path=body.audio_path)
+        db.touch_updated_at("session", session_id)
         background_tasks.add_task(_score_session_job, session_id, db, storage, client)
         return {"session_id": session_id, "status": "scoring"}
+
+    @api.post("/sessions/{session_id}/secret-mint")
+    def mint_session_secret(session_id: str):
+        """Count one realtime-secret mint against the session's cap.
+
+        DB-backed (migration 005): the count survives worker restarts, so
+        this is the durable per-session bound on OpenAI Realtime spend. The
+        web's realtime-secret route calls this BEFORE minting and refuses
+        on 429.
+        """
+        try:
+            db.get_session(session_id)
+        except KeyError as exc:
+            raise HTTPException(status_code=404, detail="session not found") from exc
+        count = db.increment_secret_mints(session_id)
+        if count > limits.secret_mint_cap:
+            return JSONResponse(
+                status_code=429,
+                content={
+                    "error": ("this session has reached its live-interview "
+                              "connection limit"),
+                    "code": "mint-cap",
+                    "secret_mints": count,
+                },
+            )
+        return {"session_id": session_id, "secret_mints": count}
 
     @api.get("/sessions/{session_id}/transcript")
     def get_session_transcript(session_id: str) -> dict:

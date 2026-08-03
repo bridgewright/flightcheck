@@ -152,10 +152,25 @@ def score_session(
                 f"session {session_id} is not scorable: audio_path="
                 f"{row.audio_path!r}, rubric_present={rubric is not None}"
             )
+        product = load_product_config()
         with tempfile.TemporaryDirectory(prefix="flightcheck-session-") as tmp:
             db.set_scoring_stage(session_id, "download")
             local = storage.download_recording(row.audio_path, Path(tmp))
             wav = ensure_wav(local)
+            # Duration ceiling at scoring intake (F-29), BEFORE the first
+            # model call: a runaway recording must never buy a transcription
+            # pass. Honest failure, retryable like any other failed run.
+            duration_s = sf.info(str(wav)).duration
+            max_duration_s = product.limits.recording_max_minutes * 60.0
+            if duration_s > max_duration_s:
+                logger.warning(
+                    "recording for session %s runs %.1f minutes, over the "
+                    "%.0f-minute scoring ceiling; marking the session failed",
+                    session_id, duration_s / 60.0,
+                    product.limits.recording_max_minutes,
+                )
+                db.set_session_status(session_id, "failed")
+                return None
             db.set_scoring_stage(session_id, "transcribe")
             segments = transcribe_verbatim(wav, client)
             # Persisted immediately, BEFORE any judge runs: the 20-minute
@@ -165,10 +180,9 @@ def score_session(
             # F-04 gate, after the transcript is safe and before any judge
             # spend: a verdict from a few minutes of speech would be noise
             # sold as signal. The wav (not the transcript) is the duration
-            # ground truth.
-            duration_s = sf.info(str(wav)).duration
+            # ground truth; duration_s was measured off it above.
             eligibility = check_eligibility(
-                segments, duration_s, load_product_config().eligibility
+                segments, duration_s, product.eligibility
             )
             if eligibility == "insufficient":
                 logger.info(
