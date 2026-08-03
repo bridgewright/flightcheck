@@ -17,6 +17,7 @@ import {
   MENU_PANEL,
   MENU_ROW,
   SECONDARY_BUTTON,
+  SECTION_HEADING,
   TAB,
   TAB_ACTIVE,
 } from "@/lib/ui";
@@ -56,7 +57,7 @@ function PackageSwitcher({
   const active = packages.find((pkg) => pkg.id === activeId) ?? packages[0];
   return (
     <details className="relative order-2">
-      <summary className={`${SUMMARY} rounded-field px-2 py-1 text-sm text-ink-muted hover:bg-paper-sunk`}>
+      <summary className={`${SUMMARY} rounded-field px-2 py-1 text-fine text-ink-muted hover:bg-paper-sunk`}>
         <span className="max-w-36 truncate sm:max-w-48">
           {packageDisplayTitle(active.role_title)}
         </span>
@@ -70,13 +71,13 @@ function PackageSwitcher({
                 href={switchHref(pkg.id, path)}
                 aria-current={pkg.id === active.id ? "true" : undefined}
                 className={`${MENU_ROW} flex items-baseline justify-between gap-3 ${
-                  pkg.id === active.id ? "font-semibold" : ""
+                  pkg.id === active.id ? "font-medium" : ""
                 }`}
               >
                 <span className="truncate">
                   {packageDisplayTitle(pkg.role_title)}
                 </span>
-                <span className="shrink-0 text-xs text-ink-faint tabular-nums">
+                <span className="shrink-0 text-fine text-ink-faint tabular-nums">
                   {pkg.sessions_used}/{pkg.total_sessions}
                 </span>
               </Link>
@@ -101,13 +102,13 @@ function AccountMenu({ viewer }: { viewer: Viewer }) {
   return (
     <details className="relative order-3 ml-auto sm:order-4">
       <summary className={SUMMARY} aria-label="Account menu">
-        <span className="flex size-7 items-center justify-center rounded-full bg-ink text-xs font-bold text-paper">
+        <span className="flex size-7 items-center justify-center rounded-full bg-ink text-fine text-paper">
           {initial}
         </span>
         <Chevron />
       </summary>
       <div className={`${MENU_PANEL} right-0`}>
-        <p className="truncate px-3 py-2 text-xs text-ink-faint">
+        <p className="truncate px-3 py-2 text-fine text-ink-faint">
           {viewer.email ?? "Signed in"}
         </p>
         <Link href="/settings" className={MENU_ROW}>
@@ -193,8 +194,8 @@ export default async function TopBar({
   return (
     <header className={`border-b ${DIVIDER}`}>
       <div className="mx-auto flex w-full max-w-shell flex-wrap items-center gap-x-4 px-6 sm:px-10 lg:px-16 xl:px-24">
-        <Link href={viewer ? "/home" : "/"} className="order-1 py-4 text-lg">
-          <span className="font-bold">flight</span>check
+        <Link href={viewer ? "/home" : "/"} className={`order-1 py-4 ${SECTION_HEADING}`}>
+          flightcheck
         </Link>
         {viewer ? (
           <>
@@ -209,7 +210,7 @@ export default async function TopBar({
             <AccountMenu viewer={viewer} />
           </>
         ) : (
-          <nav className="order-2 ml-auto flex items-center gap-5 py-3 text-sm">
+          <nav className="order-2 ml-auto flex items-center gap-5 py-3 text-fine">
             <Link href="/sample-report" className="underline underline-offset-4">
               Sample report
             </Link>

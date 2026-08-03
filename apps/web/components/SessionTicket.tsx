@@ -4,7 +4,7 @@ import type { VerdictLine } from "@/lib/home";
 import { exhaustedSessionsLine } from "@/lib/home";
 // The one object on the page: what you do next, and the sentence from last
 // time that says why.
-import { CARD, LABEL } from "@/lib/ui";
+import { CARD, LABEL, SCORE_NUMBER, SUB_HEADING } from "@/lib/ui";
 
 function pad(n: number): string {
   return String(n).padStart(2, "0");
@@ -13,7 +13,7 @@ function pad(n: number): string {
 function Rule({ children, live }: { children: ReactNode; live: boolean }) {
   return (
     <p
-      className={`border-l-2 py-0.5 pl-3 text-sm text-ink-muted ${
+      className={`border-l-2 py-0.5 pl-3 text-fine text-ink-muted ${
         live
           ? "border-ink"
           : "border-hairline"
@@ -53,7 +53,7 @@ export default function SessionTicket({
           <>
             <div>
               <div className={LABEL}>{trial ? "Trial complete" : "Package complete"}</div>
-              <div className="text-xl font-bold tabular-nums">
+              <div className={`${SCORE_NUMBER} text-section`}>
                 {totalSessions} of {totalSessions} used
               </div>
             </div>
@@ -74,14 +74,14 @@ export default function SessionTicket({
             <div className="flex flex-wrap items-end justify-between gap-3">
               <div>
                 <div className={LABEL}>Next session</div>
-                <div className="text-xl font-bold tabular-nums">
+                <div className={`${SCORE_NUMBER} text-section`}>
                   Session {pad(sessionNumber)}
                 </div>
               </div>
               {/* The mockup's third stat read "STATUS / READY", which collides
                   with the readiness verdict this same screen renders as "NOT
                   YET READY". Two meanings of one word, so it is dropped. */}
-              <div className="flex gap-6 text-sm tabular-nums">
+              <div className="flex gap-6 text-fine tabular-nums">
                 <div>
                   <div className={LABEL}>Progress</div>
                   {pad(sessionNumber)} / {pad(totalSessions)}
@@ -94,7 +94,7 @@ export default function SessionTicket({
             {verdict ? (
               <Rule live>
                 Last verdict:{" "}
-                <b className="font-semibold text-ink">
+                <b className={SUB_HEADING}>
                   {verdict.headline}
                 </b>
                 {verdict.detail ? ` ${verdict.detail}` : ""}
@@ -114,7 +114,7 @@ export default function SessionTicket({
           <div className="flex flex-wrap items-center gap-3.5">
             {action}
             {exhausted ? null : (
-              <span className="text-xs text-ink-faint">
+              <span className="text-fine text-ink-faint">
                 Fresh topics · English · scored from your voice
               </span>
             )}

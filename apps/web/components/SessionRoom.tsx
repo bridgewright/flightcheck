@@ -10,8 +10,11 @@ import {
   ALARM_NOTICE,
   CARD,
   DANGER_BUTTON,
+  PAGE_HEADING,
   PRIMARY_BUTTON,
+  SCORE_NUMBER,
   SECONDARY_BUTTON,
+  SUB_HEADING,
 } from "../lib/ui";
 
 import { MAX_RECORDING_BYTES } from "../lib/realtime";
@@ -718,8 +721,8 @@ export default function SessionRoom({
 
       {phase === "ready" && (
         <section>
-          <h1 className="text-xl font-semibold">Interview session</h1>
-          <p className="mt-2 text-sm text-ink-faint">
+          <h1 className={PAGE_HEADING}>Interview session</h1>
+          <p className="mt-2 text-fine text-ink-faint">
             Headphones are strongly recommended: they keep the
             interviewer&apos;s voice out of your microphone, so your turns
             are detected cleanly.
@@ -732,11 +735,11 @@ export default function SessionRoom({
                 before committing to a 20-minute session. It holds its own
                 stream; the session acquires its own in start(). */}
             <div className={`${CARD} mt-6 p-4`}>
-              <h2 className="text-sm font-medium">Microphone check</h2>
+              <h2 className={SUB_HEADING}>Microphone check</h2>
               <div className="mt-3">
                 <MicCheck />
               </div>
-              <p className="mt-3 text-sm text-ink-faint">
+              <p className="mt-3 text-fine text-ink-faint">
                 {RECORDING_DISCLOSURE}
               </p>
             </div>
@@ -749,14 +752,14 @@ export default function SessionRoom({
             </button>
             {error && error.kind !== "upload" && (
               <div className={`${ALARM_NOTICE} mt-6`}>
-                <p className="font-medium">
+                <p className={SUB_HEADING}>
                   {error.kind === "mic"
                     ? "Microphone unavailable"
                     : error.kind === "recorder"
                       ? "Recording is not available in this browser"
                       : "Could not start the interview"}
                 </p>
-                <p className="mt-1 text-sm">{error.message}</p>
+                <p className="mt-1 text-fine">{error.message}</p>
                 <button
                   type="button"
                   onClick={() => void start()}
@@ -780,15 +783,15 @@ export default function SessionRoom({
       {phase === "live" && (
         <section>
           <div className={`${CARD} flex items-baseline gap-4 p-4`}>
-            <span className="text-2xl tabular-nums">
+            <span className={`${SCORE_NUMBER} text-page`}>
               {formatTimer(elapsedS)}
             </span>
-            <span className="text-sm text-ink-faint">
+            <span className="text-fine text-ink-faint">
               / {formatTimer(SESSION_BUDGET_S)} planned · hard stop at{" "}
               {formatTimer(HARD_CUT_S)}
             </span>
             <span
-              className={`ml-auto text-sm ${
+              className={`ml-auto text-fine ${
                 hearing ? "text-ready" : "text-transparent"
               }`}
             >
@@ -796,7 +799,7 @@ export default function SessionRoom({
             </span>
           </div>
           {elapsedS < 15 && (
-            <p className="mt-2 text-sm text-ink-faint">
+            <p className="mt-2 text-fine text-ink-faint">
               Morgan will greet you in a moment, so you don&apos;t need to
               speak first.
             </p>
@@ -841,11 +844,11 @@ export default function SessionRoom({
       )}
       {phase === "uploading" && error?.kind === "upload" && (
         <div className={ALARM_NOTICE}>
-          <p className="font-medium">
+          <p className={SUB_HEADING}>
             Your recording is safe in this tab, but saving it failed
           </p>
-          <p className="mt-1 text-sm">{error.message}</p>
-          <p className="mt-1 text-sm text-ink-faint">
+          <p className="mt-1 text-fine">{error.message}</p>
+          <p className="mt-1 text-fine text-ink-faint">
             Do not close this tab. Retry until the upload succeeds.
           </p>
           <button
@@ -868,8 +871,8 @@ export default function SessionRoom({
 
       {phase === "connection-lost" && (
         <section>
-          <h1 className="text-xl font-semibold">Connection lost</h1>
-          <p className="mt-3 text-sm text-ink-muted">
+          <h1 className={PAGE_HEADING}>Connection lost</h1>
+          <p className="mt-3 text-fine text-ink-muted">
             {CONNECTION_LOST_MESSAGE}
           </p>
           <button
