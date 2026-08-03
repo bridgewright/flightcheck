@@ -3,9 +3,19 @@
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
 
+import BrowserGate from "./BrowserGate";
 import MicCheck from "./MicCheck";
 
 import { MAX_RECORDING_BYTES } from "../lib/realtime";
+import {
+  AUDIO_START_FAILURE_MESSAGE,
+  MIC_FAILURE_LINES,
+  RECORDER_UNAVAILABLE_MESSAGE,
+  RECORDING_DISCLOSURE,
+  classifyMicFailure,
+  containerType,
+  pickRecorderMimeType,
+} from "../lib/session-media";
 import {
   CONNECTION_LOST_MESSAGE,
   ECHO_OUTLIVE_MS,
@@ -44,7 +54,11 @@ type Phase =
   | "connection-lost";
 
 interface RoomError {
-  kind: "mic" | "connect" | "upload";
+  // "recorder" is the explicit state for the failure the audit found
+  // vanishing at SessionRoom.tsx:338: MediaRecorder cannot be built or
+  // started in this browser. It must never again present as a permanent
+  // "Connecting…".
+  kind: "mic" | "connect" | "upload" | "recorder";
   message: string;
 }
 
@@ -80,6 +94,10 @@ export default function SessionRoom({
   const audioCtxRef = useRef<AudioContext | null>(null);
   const pcRef = useRef<RTCPeerConnection | null>(null);
   const recorderRef = useRef<MediaRecorder | null>(null);
+  // Container of the active recording ("audio/webm" on Chrome/Edge/Firefox,
+  // "audio/mp4" on Safari) — the blob and its upload Content-Type must tell
+  // the truth about what was actually recorded.
+  const recorderContainerRef = useRef("audio/webm");
   const chunksRef = useRef<Blob[]>([]);
   const blobRef = useRef<Blob | null>(null); // kept for upload retries
   const remoteAudioRef = useRef<HTMLAudioElement | null>(null);
@@ -115,7 +133,9 @@ export default function SessionRoom({
       new Promise<Blob>((resolve) => {
         const recorder = recorderRef.current;
         const assemble = () =>
-          resolve(new Blob(chunksRef.current, { type: "audio/webm" }));
+          resolve(
+            new Blob(chunksRef.current, { type: recorderContainerRef.current }),
+          );
         if (!recorder || recorder.state === "inactive") {
           assemble();
           return;
@@ -162,7 +182,10 @@ export default function SessionRoom({
         const upRes = await fetch(signedUrl, {
           method: "PUT",
           headers: {
-            "Content-Type": "audio/webm",
+            // The blob's own type: audio/mp4 when Safari recorded it. The
+            // storage key keeps its registry-contract .webm name — the
+            // scorer transcodes by sniffing content, not extensions.
+            "Content-Type": blob.type !== "" ? blob.type : "audio/webm",
             "x-upsert": "true",
           },
           body: blob,
@@ -255,19 +278,67 @@ export default function SessionRoom({
         micStreamRef.current = micStream;
         audioCtx = new AudioContext();
         audioCtxRef.current = audioCtx;
-      } catch {
+      } catch (err) {
         connectingRef.current = false;
         setPhase("ready");
-        setError({
-          kind: "mic",
-          message:
-            "Microphone access was denied or failed. The interview cannot " +
-            "run without a microphone — allow access in the browser prompt " +
-            "(or the address-bar site settings) and try again.",
-        });
+        // Same discrimination as MicCheck: blocked permission, missing
+        // hardware, and everything else are different problems with
+        // different fixes — one generic line helped nobody.
+        const kind = classifyMicFailure(
+          err instanceof DOMException ? err.name : "",
+        );
+        setError({ kind: "mic", message: MIC_FAILURE_LINES[kind] });
         return;
       }
     }
+    // Safari (macOS + iOS): a fresh AudioContext starts "suspended" and only
+    // a resume() issued inside the user's start gesture reliably runs it —
+    // without this the recording mix and the analysers are silent.
+    try {
+      await audioCtx.resume();
+    } catch {
+      connectingRef.current = false;
+      setPhase("ready");
+      setError({ kind: "connect", message: AUDIO_START_FAILURE_MESSAGE });
+      return;
+    }
+    // Unlock the remote-audio element inside the same gesture (Safari
+    // autoplay policy): a play() issued now — with nothing to play yet —
+    // lets the ontrack play() succeed once the interviewer's track arrives.
+    void remoteAudioRef.current?.play().catch(() => {});
+
+    // Recording mix + recorder BEFORE the secret mint: candidate mic +
+    // interviewer audio into ONE stream, so the uploaded file provably
+    // contains BOTH voices (the webroom lesson — a recording missing either
+    // side scores half the interview). Building the recorder here means a
+    // browser that cannot record fails fast into an honest state with
+    // nothing minted — never mid-connection where the audit found the
+    // failure vanishing (SessionRoom.tsx:338).
+    const dest = audioCtx.createMediaStreamDestination();
+    audioCtx.createMediaStreamSource(micStream).connect(dest);
+    let recorder: MediaRecorder;
+    try {
+      if (typeof MediaRecorder === "undefined") {
+        throw new Error("MediaRecorder is not available");
+      }
+      const mimeType = pickRecorderMimeType(
+        typeof MediaRecorder.isTypeSupported === "function"
+          ? (type) => MediaRecorder.isTypeSupported(type)
+          : undefined,
+      );
+      if (mimeType === null) {
+        throw new Error("no supported recording container");
+      }
+      recorder = new MediaRecorder(dest.stream, { mimeType });
+      recorderContainerRef.current = containerType(mimeType);
+    } catch (err) {
+      console.error("session room: recorder unavailable", err);
+      connectingRef.current = false;
+      setPhase("ready");
+      setError({ kind: "recorder", message: RECORDER_UNAVAILABLE_MESSAGE });
+      return;
+    }
+    recorderRef.current = recorder;
     try {
       const secretRes = await fetch("/api/realtime-secret", {
         method: "POST",
@@ -286,12 +357,6 @@ export default function SessionRoom({
         value: string;
       };
 
-      // Recording mix: candidate mic + interviewer audio into ONE stream,
-      // so the uploaded file provably contains BOTH voices (the webroom
-      // lesson — a recording missing either side scores half the interview).
-      const dest = audioCtx.createMediaStreamDestination();
-      audioCtx.createMediaStreamSource(micStream).connect(dest);
-
       const pc = new RTCPeerConnection();
       pcRef.current = pc;
       pc.onconnectionstatechange = () => {
@@ -301,6 +366,10 @@ export default function SessionRoom({
       pc.ontrack = (e) => {
         if (remoteAudioRef.current) {
           remoteAudioRef.current.srcObject = e.streams[0];
+          // Explicit play(): Safari does not always honor autoplay for a
+          // srcObject assigned after page load, even unlocked. A rejection
+          // here is non-fatal — the element was primed in the gesture.
+          void remoteAudioRef.current.play().catch(() => {});
         }
         // Interviewer side of the recording mix.
         audioCtx
@@ -323,34 +392,51 @@ export default function SessionRoom({
       const dc = pc.createDataChannel("oai-events");
       dcRef.current = dc;
       dc.addEventListener("open", () => {
-        // Recorder starts at data-channel open — session start — so the
-        // file timeline matches the interview timeline and scoring
-        // timestamps (transcript start_s, observations at_s) line up.
-        // Diagnostic mic level (independent of MicCheck's meter, which owns
-        // its own stream and is long gone by now): lets the [silence] diag
-        // line show whether a committed turn had real acoustic energy
-        // behind it.
-        const micAnalyser = audioCtx.createAnalyser();
-        micAnalyser.fftSize = 512;
-        audioCtx.createMediaStreamSource(micStream).connect(micAnalyser);
-        micAnalyserRef.current = micAnalyser;
-        micLevelDataRef.current = new Uint8Array(micAnalyser.frequencyBinCount);
-        const recorder = new MediaRecorder(dest.stream, {
-          mimeType: "audio/webm;codecs=opus",
-        });
-        recorderRef.current = recorder;
-        chunksRef.current = [];
-        recorder.ondataavailable = (ev) => {
-          if (ev.data.size > 0) chunksRef.current.push(ev.data);
-        };
-        recorder.start(1000); // 1s timeslice: a crash loses <= 1s of audio
-        startedAtRef.current = Date.now();
-        setPhase("live");
-        // Server-VAD models never speak unprompted: nudge the first
-        // response so Morgan opens the session (the recorder is already
-        // rolling, so the greeting lands in the recording).
-        responseRequestedRef.current = true;
-        dc.send(greetingTriggerEvent());
+        // The whole handler is guarded: a throw in a data-channel event
+        // handler surfaces nowhere — this exact spot used to swallow
+        // Safari's MediaRecorder NotSupportedError and leave the room on
+        // "Connecting…" forever. Any failure now lands in the room's state
+        // as an explicit recorder error.
+        try {
+          // Recorder starts at data-channel open — session start — so the
+          // file timeline matches the interview timeline and scoring
+          // timestamps (transcript start_s, observations at_s) line up.
+          // Diagnostic mic level (independent of MicCheck's meter, which
+          // owns its own stream and is long gone by now): lets the
+          // [silence] diag line show whether a committed turn had real
+          // acoustic energy behind it.
+          const micAnalyser = audioCtx.createAnalyser();
+          micAnalyser.fftSize = 512;
+          audioCtx.createMediaStreamSource(micStream).connect(micAnalyser);
+          micAnalyserRef.current = micAnalyser;
+          micLevelDataRef.current = new Uint8Array(
+            micAnalyser.frequencyBinCount,
+          );
+          chunksRef.current = [];
+          recorder.ondataavailable = (ev) => {
+            if (ev.data.size > 0) chunksRef.current.push(ev.data);
+          };
+          recorder.start(1000); // 1s timeslice: a crash loses <= 1s of audio
+          startedAtRef.current = Date.now();
+          setPhase("live");
+          // Server-VAD models never speak unprompted: nudge the first
+          // response so Morgan opens the session (the recorder is already
+          // rolling, so the greeting lands in the recording).
+          responseRequestedRef.current = true;
+          dc.send(greetingTriggerEvent());
+        } catch (err) {
+          console.error("session room: recorder start failed", err);
+          pcRef.current?.close();
+          pcRef.current = null;
+          micStreamRef.current?.getTracks().forEach((t) => t.stop());
+          micStreamRef.current = null;
+          connectingRef.current = false;
+          setPhase("ready");
+          setError({
+            kind: "recorder",
+            message: RECORDER_UNAVAILABLE_MESSAGE,
+          });
+        }
       });
       dc.addEventListener("message", (ev) => {
         messageArrivedRef.current = true;
@@ -580,7 +666,7 @@ export default function SessionRoom({
 
   return (
     <main className="mx-auto max-w-2xl p-8">
-      <audio ref={remoteAudioRef} autoPlay />
+      <audio ref={remoteAudioRef} autoPlay playsInline />
 
       {phase === "ready" && (
         <section>
@@ -590,39 +676,49 @@ export default function SessionRoom({
             interviewer&apos;s voice out of your microphone, so your turns
             are detected cleanly.
           </p>
-          {/* Device check (shared MicCheck): confirm the mic picks you up
-              before committing to a 20-minute session. It holds its own
-              stream; the session acquires its own in start(). */}
-          <div className="mt-6 rounded-lg border border-neutral-300 p-4 dark:border-neutral-700">
-            <h2 className="text-sm font-medium">Microphone check</h2>
-            <div className="mt-3">
-              <MicCheck />
-            </div>
-          </div>
-          <button
-            type="button"
-            onClick={() => void start()}
-            className="mt-6 rounded-lg border border-current px-5 py-3"
-          >
-            Start interview
-          </button>
-          {error && (error.kind === "mic" || error.kind === "connect") && (
-            <div className="mt-6 rounded-lg border border-red-600 p-4">
-              <p className="font-medium text-red-600">
-                {error.kind === "mic"
-                  ? "Microphone unavailable"
-                  : "Could not start the interview"}
+          {/* Capability gate BEFORE the mic check: a browser missing
+              getUserMedia, WebRTC, or MediaRecorder gets honest copy naming
+              supported browsers instead of a check that cannot succeed. */}
+          <BrowserGate>
+            {/* Device check (shared MicCheck): confirm the mic picks you up
+                before committing to a 20-minute session. It holds its own
+                stream; the session acquires its own in start(). */}
+            <div className="mt-6 rounded-lg border border-neutral-300 p-4 dark:border-neutral-700">
+              <h2 className="text-sm font-medium">Microphone check</h2>
+              <div className="mt-3">
+                <MicCheck />
+              </div>
+              <p className="mt-3 text-sm text-neutral-500">
+                {RECORDING_DISCLOSURE}
               </p>
-              <p className="mt-1 text-sm">{error.message}</p>
-              <button
-                type="button"
-                onClick={() => void start()}
-                className="mt-3 rounded-lg border border-current px-4 py-2"
-              >
-                Try again
-              </button>
             </div>
-          )}
+            <button
+              type="button"
+              onClick={() => void start()}
+              className="mt-6 rounded-lg border border-current px-5 py-3"
+            >
+              Start interview
+            </button>
+            {error && error.kind !== "upload" && (
+              <div className="mt-6 rounded-lg border border-red-600 p-4">
+                <p className="font-medium text-red-600">
+                  {error.kind === "mic"
+                    ? "Microphone unavailable"
+                    : error.kind === "recorder"
+                      ? "Recording is not available in this browser"
+                      : "Could not start the interview"}
+                </p>
+                <p className="mt-1 text-sm">{error.message}</p>
+                <button
+                  type="button"
+                  onClick={() => void start()}
+                  className="mt-3 rounded-lg border border-current px-4 py-2"
+                >
+                  Try again
+                </button>
+              </div>
+            )}
+          </BrowserGate>
         </section>
       )}
 

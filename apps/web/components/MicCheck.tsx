@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 
+import { classifyMicFailure } from "@/lib/session-media";
 import { PRIMARY_BUTTON } from "@/lib/ui";
 
 // A small, honest microphone check: ask for permission, show a live input
@@ -68,16 +69,17 @@ export default function MicCheck() {
     try {
       stream = await navigator.mediaDevices.getUserMedia({ audio: true });
     } catch (err) {
-      const name = err instanceof DOMException ? err.name : "";
-      if (name === "NotAllowedError" || name === "SecurityError") {
-        setState({ kind: "denied" });
-      } else if (name === "NotFoundError" || name === "OverconstrainedError") {
-        setState({ kind: "no-device" });
-      } else {
+      // Shared classification (lib/session-media) so this check and the
+      // session room discriminate failures identically; the copy stays
+      // MicCheck's own ("check again" — this is a check, not the interview).
+      const kind = classifyMicFailure(err instanceof DOMException ? err.name : "");
+      if (kind === "other") {
         setState({
           kind: "error",
           message: "The microphone could not be started. Reload the page and try again.",
         });
+      } else {
+        setState({ kind });
       }
       return;
     }
