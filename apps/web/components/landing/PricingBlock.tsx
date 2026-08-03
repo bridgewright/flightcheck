@@ -1,14 +1,6 @@
 import Link from "next/link";
 
-import {
-  CARD,
-  DIVIDER,
-  FINE_PRINT,
-  LABEL,
-  MUTED,
-  PRIMARY_BUTTON,
-  SUBTLE,
-} from "@/lib/ui";
+import { CARD, DIVIDER, FINE_PRINT, LABEL, MUTED, PRIMARY_BUTTON } from "@/lib/ui";
 
 import { PRICING, PRICING_LINES } from "./copy";
 
@@ -40,16 +32,17 @@ export default function PricingBlock({
       <div className="flex flex-col gap-5 px-5 py-5">
         <div>
           <div className={LABEL}>What unlocks</div>
-          <ul className="mt-3 flex flex-col gap-2.5 text-sm">
+          {/* A real list marker rather than a dash typed into every row. The
+              old bullet was an em-dash character, which is banned typography
+              and was doing a job the markup already does. `space-y` instead of
+              flex on the ul is load-bearing: a flex parent blockifies its
+              children, which drops `display: list-item` and takes the markers
+              with it. */}
+          <ul className="mt-3 list-disc space-y-2.5 pl-5 text-sm">
             {PRICING_LINES.map((line) => (
-              <li key={line.label} className="flex items-baseline gap-2.5">
-                <span aria-hidden="true" className={SUBTLE}>
-                  —
-                </span>
-                <span>
-                  <b className="font-medium">{line.label}</b>{" "}
-                  <span className={MUTED}>{line.detail}</span>
-                </span>
+              <li key={line.label}>
+                <b className="font-medium">{line.label}</b>{" "}
+                <span className={MUTED}>{line.detail}</span>
               </li>
             ))}
           </ul>

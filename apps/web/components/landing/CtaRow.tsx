@@ -6,22 +6,33 @@ import { TRIAL_MICROCOPY } from "./copy";
 
 // The primary call to action, plus the one sentence that answers "what does
 // this cost me to find out". Every scroll block re-offers this rather than
-// relying on the nav — all three products in the competitive read do, and the
+// relying on the nav. All three products in the competitive read do, and the
 // microcopy under the button is the single highest-leverage line on the page.
 //
 // One component so the offer cannot drift between blocks: same words, same
 // destination, same promise, wherever a visitor decides.
+//
+// `microcopy` is off in exactly one place, the hero, because a tiny tagline
+// under the hero CTAs is a named ban (taste-skill 4.7) and the hero is allowed
+// three text elements rather than four. It is a prop rather than a second
+// component for the reason the file exists: forking CtaRow would let the offer
+// say one thing in the hero and another further down. The line still appears
+// under all three of the page's other CTAs, so the dossier's "every scroll
+// block re-offers one CTA with the microcopy under it" survives everywhere
+// except the first viewport. That is a real trade, recorded as one.
 
 export default function CtaRow({
   label,
   href = "/login?next=/new",
   secondary,
   align = "start",
+  microcopy = true,
 }: {
   label: string;
   href?: string;
   secondary?: { label: string; href: string };
   align?: "start" | "center";
+  microcopy?: boolean;
 }) {
   const alignment = align === "center" ? "items-center text-center" : "items-start";
   return (
@@ -36,7 +47,7 @@ export default function CtaRow({
           </Link>
         ) : null}
       </div>
-      <p className={FINE_PRINT}>{TRIAL_MICROCOPY}</p>
+      {microcopy ? <p className={FINE_PRINT}>{TRIAL_MICROCOPY}</p> : null}
     </div>
   );
 }

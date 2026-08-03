@@ -9,19 +9,27 @@ import PricingBlock from "@/components/landing/PricingBlock";
 import Section from "@/components/landing/Section";
 import Showcase from "@/components/landing/Showcase";
 import { CLOSING } from "@/components/landing/copy";
+import Reveal from "@/components/motion/Reveal";
 import Shell from "@/components/Shell";
 import { LINK, MUTED, PAGE_HEADING } from "@/lib/ui";
 import { getViewer } from "@/lib/viewer";
 import { publicMetadata } from "./site";
 
-// The landing page (F-46). Screen parity with what the market's top three
-// actually ship, minus everything in the dossier's AVOID list.
+// The landing page (F-46, recomposed in F-21). Screen parity with what the
+// market's top three actually ship, minus everything in the dossier's AVOID
+// list.
 //
 // The order is the argument: the hero shows the bar for YOUR job before
 // asking for anything, how-it-works explains the loop, the screenshots prove
 // it exists, the price is itemized inline rather than hidden behind a click,
 // and the FAQ answers the six objections on the page instead of in a policy
-// link. Every block re-offers one CTA with the trial microcopy under it.
+// link. Every block re-offers one CTA, and all but the hero carry the trial
+// microcopy under it.
+//
+// Six layout families for six blocks, which is what keeps the page from
+// reading as one template repeated: an asymmetric split hero, a numbered
+// sequence in unequal pairs, a two-up frame gallery, a card beside prose, an
+// accordion, and a centered close. No family appears twice.
 //
 // All prose lives in components/landing/copy.ts, where the register test can
 // hold it to honest and calm; every number comes from lib/pricing.ts and
@@ -29,7 +37,10 @@ import { publicMetadata } from "./site";
 
 export const metadata: Metadata = publicMetadata({
   path: "/",
-  title: "flightcheck — would you pass the interview today?",
+  // A colon rather than the dash this used to carry. The title is a
+  // user-visible string: it is the browser tab, the search result, and the
+  // link preview.
+  title: "flightcheck: would you pass the interview today?",
   description:
     "Paste the job description you're facing. A live interviewer holds you to " +
     "that role's real bar, in English, out loud, and tells you honestly what " +
@@ -43,22 +54,25 @@ export default async function LandingPage() {
       <Hero />
 
       {viewer ? (
-        <p className="pb-2 text-sm">
+        // Two sentences rather than one dash, and the link now names its own
+        // destination instead of opening with a status.
+        <p className={`${MUTED} pb-2 text-sm`}>
+          You are signed in.{" "}
           <Link href="/home" className={LINK}>
-            You are signed in — go to your home
+            Go to your home
           </Link>
         </p>
       ) : null}
 
-      <Section heading="How it works">
+      <Section heading="How it works" revealBody={false}>
         <HowItWorks />
       </Section>
 
-      <Section heading="What you actually get">
+      <Section heading="What you actually get" revealBody={false}>
         <Showcase />
-        <div className="mt-10">
+        <Reveal className="mt-10">
           <CtaRow label={CLOSING.cta} />
-        </div>
+        </Reveal>
       </Section>
 
       <Section heading="One package per job description">
@@ -74,7 +88,9 @@ export default async function LandingPage() {
         <Faq />
       </Section>
 
-      <Section>
+      {/* The second and last blush field. One behind the top of the page, one
+          behind the close, and no gradient anywhere else in the product. */}
+      <Section wash>
         <div className="flex flex-col items-center gap-5 text-center">
           <h2 className={PAGE_HEADING}>{CLOSING.heading}</h2>
           <CtaRow label={CLOSING.cta} align="center" />

@@ -27,10 +27,20 @@ export const TRIAL_MICROCOPY = "First session free. No card.";
 
 export const HERO = {
   heading: "Would you pass the interview today?",
+  // Twenty words, counted, because the hero is a single moment and a
+  // forty-word paragraph pushes the CTAs out of the first viewport
+  // (taste-skill 4.7). Two phrases survived the cut on purpose: "in English"
+  // and "out loud" are the whole differentiation for a non-native speaker, and
+  // a subtext that saves words by dropping them has cut the wrong thing.
+  //
+  // What the cut cost: "Repeat until you would pass." The heading already asks
+  // the question, the fourth step of how-it-works states the loop, and the
+  // closing block re-offers it. "live" also went, and losing it is a small
+  // gain: the interviewer is an AI, which the FAQ says plainly, and "live"
+  // invited the reader to imagine a person.
   body:
-    "Paste the job description you're facing. A live interviewer holds you to " +
-    "that role's real bar — in English, out loud — and tells you honestly what " +
-    "is still missing. Repeat until you would pass.",
+    "Paste the job description. An interviewer holds you to that role's bar, " +
+    "in English, out loud, and says what's missing.",
   primaryCta: "Sign in and start",
   secondaryCta: "See a real report",
 } as const;
@@ -70,8 +80,8 @@ export const HOW_IT_WORKS: Step[] = [
     title: "Go again until the verdict changes",
     detail:
       `${PACKAGE_SESSIONS} sessions on one job description, fresh topics each ` +
-      "time. The verdict moves from Not yet ready to Approaching to Ready — " +
-      "or it says plainly what is still holding it down.",
+      "time. The verdict moves from Not yet ready to Approaching to Ready, or " +
+      "it says plainly what is still holding it down.",
   },
 ];
 
@@ -82,8 +92,8 @@ export interface Screenshot {
   /**
    * The captured screen, or null while there is nothing honest to show.
    *
-   * Real captures land after the F-21 design pass restyles the product —
-   * shipping a screenshot of a UI we are about to replace would be a picture
+   * Real captures land after the F-21 design pass restyles the product.
+   * Shipping a screenshot of a UI we are about to replace would be a picture
    * of something the buyer will never see. Until then the frame renders a
    * labelled placeholder that could not be mistaken for a product shot. The
    * swap is a file into public/screens/ and one string here; no component
@@ -119,7 +129,26 @@ export const SCREENSHOTS: Screenshot[] = [
   },
 ];
 
-export const PLACEHOLDER_LABEL = "Screenshot pending — captured after the design pass";
+export const PLACEHOLDER_LABEL = "Screenshot pending. Captured after the design pass.";
+
+/**
+ * The one screen the hero shows beside the claim.
+ *
+ * It is the report, and it is the same entry the showcase renders further down
+ * rather than a second copy of it: the hero's job is to show the product's
+ * output once, immediately, and two captions that drifted apart would be a
+ * page arguing with itself. Resolved by key so that reordering the showcase
+ * cannot silently repoint the hero at a different screen.
+ */
+export const HERO_SCREEN: Screenshot = screenNamed("report");
+
+function screenNamed(key: string): Screenshot {
+  const shot = SCREENSHOTS.find((entry) => entry.key === key);
+  if (!shot) {
+    throw new Error(`no landing screenshot is named ${key}`);
+  }
+  return shot;
+}
 
 export interface PricingLine {
   label: string;
@@ -144,7 +173,7 @@ export const PRICING_LINES: PricingLine[] = [
   },
   {
     label: "A final verdict",
-    detail: "Ready, Approaching, or Not yet ready — and what is missing.",
+    detail: "Ready, Approaching, or Not yet ready, plus what is missing.",
   },
   { label: `${EXPIRY_DAYS} days`, detail: "From the moment you pay." },
 ];
@@ -171,7 +200,7 @@ export interface FaqEntry {
 
 /**
  * The six questions people actually ask before paying. Objections die on the
- * page, not in a docs link — the answers here are the same promises the legal
+ * page, not in a docs link. The answers here are the same promises the legal
  * pages make, in plainer words.
  */
 export const FAQ: FaqEntry[] = [
@@ -204,7 +233,7 @@ export const FAQ: FaqEntry[] = [
     answer:
       `If a technical failure on our side keeps you from using what you paid ` +
       `for, tell us within ${REFUND_WINDOW_DAYS} days of payment and we will ` +
-      `fix it or refund you. A verdict you did not like is not grounds — if a ` +
+      `fix it or refund you. A verdict you did not like is not grounds. If a ` +
       `disappointing verdict were refundable, you would have to wonder whether ` +
       `we soften them to keep the money.`,
   },
@@ -222,7 +251,7 @@ export const FAQ: FaqEntry[] = [
     // (components/SessionRoom.tsx). Claiming here that headphones are never
     // mentioned would contradict the product one click later.
     answer:
-      "Either. Open speakers work — turn detection is built to survive the " +
+      "Either. Open speakers work: turn detection is built to survive the " +
       "echo your speakers put back into the microphone, and no part of the " +
       "product is gated on headphones. Headphones remove that echo at the " +
       "source, so the session room recommends them; that is the whole of the " +
