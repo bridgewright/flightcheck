@@ -3,12 +3,13 @@ import { cookies, headers } from "next/headers";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 
+import PricingBlock from "@/components/landing/PricingBlock";
 import Shell from "@/components/Shell";
 import { resolveActivePackage } from "@/lib/active-package";
-import { ACTIVE_PACKAGE_COOKIE } from "@/lib/home";
+import { ACTIVE_PACKAGE_COOKIE, packageDisplayTitle } from "@/lib/home";
 import { PolarConfigError, createCheckout } from "@/lib/polar";
 import { PRICE_DISPLAY } from "@/lib/pricing";
-import { PRIMARY_BUTTON } from "@/lib/ui";
+import { LABEL, MUTED, PRIMARY_BUTTON } from "@/lib/ui";
 import type { Viewer } from "@/lib/viewer";
 import { getViewer } from "@/lib/viewer";
 import type { PackageSummary } from "@/lib/worker";
@@ -24,6 +25,14 @@ import { listPackagesForUser } from "@/lib/worker";
 // a hint resolved against the viewer's own packages (foreign or stale ids
 // fall through to the active package). The {package_id, user_id} metadata
 // rides on the checkout session so order.paid can find its way back.
+//
+// F-43: a confirm step runs BEFORE that redirect. The in-app unlock button
+// used to go from "Unlock all sessions" straight to a card form, so a paying
+// customer never saw an itemized list of what they were buying or the refund
+// terms — the two things the checkout patterns worth copying put on the page,
+// and the two things whose absence turns a surprise into a chargeback.
+// ?go=1 is the confirmed request; everything about the Polar call below it is
+// unchanged from the flow that took a real payment in v0.5.
 
 export const dynamic = "force-dynamic";
 
@@ -80,17 +89,58 @@ function CheckoutUnavailable({
   );
 }
 
+// The confirm step (F-43). What unlocks, itemized, then the refund sentence,
+// then the button — the same PricingBlock the landing and /pricing render, so
+// the offer someone reads is the offer they are charged for, and the terms are
+// where the hesitation is rather than three clicks away.
+function ConfirmUnlock({
+  viewer,
+  pkg,
+}: {
+  viewer: Viewer;
+  pkg: PackageSummary;
+}) {
+  return (
+    <Shell viewer={viewer}>
+      <div className="mx-auto flex w-full max-w-md flex-col items-start pt-4">
+        <h1 className="text-2xl font-bold tracking-tight text-balance">
+          Unlock this package.
+        </h1>
+        <div className="mt-4">
+          <div className={LABEL}>Job description</div>
+          <p className="mt-1 font-medium">{packageDisplayTitle(pkg.role_title)}</p>
+        </div>
+        <p className={`${MUTED} mt-3 text-sm`}>
+          The payment lifts the session quota on this same package. Your rubric,
+          your reports, and the sessions you have already used stay where they
+          are.
+        </p>
+        <div className="mt-7">
+          <PricingBlock
+            ctaLabel="Continue to payment"
+            ctaHref={`/checkout?pkg=${encodeURIComponent(pkg.id)}&go=1`}
+          />
+        </div>
+        <p className={`${MUTED} mt-5 text-sm`}>
+          Payment is handled by our payment provider on their own page. This app
+          never sees your card.
+        </p>
+      </div>
+    </Shell>
+  );
+}
+
 export default async function CheckoutPage({
   searchParams,
 }: {
-  searchParams: Promise<{ pkg?: string | string[] }>;
+  searchParams: Promise<{ pkg?: string | string[]; go?: string | string[] }>;
 }) {
   const viewer = await getViewer();
   if (!viewer) {
     return <SignedOut />;
   }
 
-  const { pkg: pkgParam } = await searchParams;
+  const { pkg: pkgParam, go } = await searchParams;
   const cookieStore = await cookies();
   let packages: PackageSummary[];
   try {
@@ -150,6 +200,13 @@ export default async function CheckoutPage({
         </div>
       </Shell>
     );
+  }
+
+  // Everything above this line describes a package that cannot be paid for.
+  // Only a confirmed request goes on to create a checkout session, so an
+  // accidental navigation, a prefetch, or a back button never opens one.
+  if (go !== "1") {
+    return <ConfirmUnlock viewer={viewer} pkg={active} />;
   }
 
   // The success URL must be absolute for Polar; derive it from the request
