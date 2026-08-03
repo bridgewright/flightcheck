@@ -1,4 +1,4 @@
-import { readdirSync, readFileSync } from "node:fs";
+import { existsSync, readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -103,8 +103,6 @@ describe("the hero is one moment", () => {
   });
 
   it("carries the claim alone, and asks the visitor for nothing", () => {
-    const hero = read("components/landing/Hero.tsx");
-
     // Two things have now been put beside the claim and both came back out.
     // F-45 was an interactive rubric preview, rolled back the same day
     // (DECISIONS 030). A framed screenshot replaced it, argued for on
@@ -112,18 +110,53 @@ describe("the hero is one moment", () => {
     // removed that too. So the rule is the user's rather than the skill's:
     // the hero is words, a control, and the cloud behind them.
     //
-    // This assertion is the thing that stops a third one appearing. It is
-    // deliberately about the shape of the hero, not about one component name.
+    // THE HERO IS NOT ONE FILE. Every earlier version of this read Hero.tsx
+    // alone, so a picture one component deep was invisible: a reviewer added a
+    // `HeroArt` child holding an <svg> and wrapped the claim in a two-column
+    // row, and the suite went from 1733 tests to 1743 and passed all of them.
+    // The new file even brought its own ten cases. So the surface is the hero
+    // and everything it renders.
+    const surface: string[] = [];
+    const seen = new Set<string>();
+    const collect = (path: string) => {
+      if (seen.has(path)) return;
+      seen.add(path);
+      const source = read(path);
+      surface.push(source);
+      for (const match of source.matchAll(/from\s+"\.\/([A-Za-z0-9_-]+)"/g)) {
+        // Components only. A sibling .ts module is data, and copy.ts in
+        // particular is prose that other gates already read.
+        const child = `components/landing/${match[1]}.tsx`;
+        if (existsSync(join(webRoot, child))) collect(child);
+      }
+    };
+    collect("components/landing/Hero.tsx");
+    // A guard on the guard: if the import scan ever stops resolving, this
+    // reverts to the one-file check that already failed once.
+    expect(surface.length, "the hero surface collapsed to a single file").toBeGreaterThan(1);
+    const hero = surface.join("\n");
+
     expect(hero).not.toContain("ScreenFrame");
     // Every way of putting a picture there, not just the two that were used.
-    // An inline <svg> and a CSS background both cleared the earlier version of
-    // this check, which named `img` and a grid column and nothing else.
     expect(hero).not.toMatch(/\bimg\b|<Image\b|<svg\b|<video\b|<canvas\b|<picture\b/);
     expect(hero).not.toMatch(/bg-\[url\(|backgroundImage/);
+
     // No side-by-side split: a second column is where the last two arrived.
-    // Flex is the other way to build one, and it was open until now.
-    expect(hero).not.toMatch(/\bgrid-cols-\d|\bcol-span-\d/);
-    expect(hero).not.toMatch(/\bflex-row\b|\bmd:flex-row\b|\blg:flex-row\b/);
+    //
+    // `flex` on its own IS a row. `flex-row` is only ever written to override
+    // `flex-col`, so banning the override and not the default was backwards,
+    // and `grid-cols-[1fr_1fr]` slipped past a pattern that wanted a digit.
+    // The rule below is the honest one: any flex container here must say
+    // flex-col in the same class string, and no grid columns of any spelling.
+    expect(hero).not.toMatch(/\bgrid-cols-|\bcol-span-/);
+    for (const attr of hero.matchAll(/className=[{`"']([^`"'}]*)/g)) {
+      const value = attr[1];
+      // `flex` standing alone, not the `flex` inside `flex-col` or `flex-1`.
+      if (!/(?:^|\s)flex(?:$|\s)/.test(value)) continue;
+      expect(value, `a horizontal flex container in the hero: ${value.trim()}`).toMatch(
+        /(?:^|\s)flex-col(?:$|\s)/,
+      );
+    }
 
     // And still nothing that takes a keystroke, which is the DECISIONS 030
     // half and the half that has never changed.

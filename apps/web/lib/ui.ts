@@ -262,8 +262,17 @@ export const NOTICE =
 
 /** The one place we raise our voice: something to correct, or an action that
  * cannot be undone. */
+/** The same shape as NOTICE, in the alarm register.
+ *
+ * No border. It carried `border-alarm/25`, which composites to 1.45:1 against
+ * its own wash, and the gate that computes opacity modifiers refused it rather
+ * than let the row argue itself an exemption. That refusal was right, and the
+ * answer is not a stronger edge: the stylesheet's depth order is whitespace,
+ * then a hairline, then a ground change, and this notice already has the
+ * ground change. The edge was a fourth opinion about a boundary two other
+ * things had already drawn. */
 export const ALARM_NOTICE =
-  "rounded-surface border border-alarm/25 bg-alarm-wash px-3 py-2.5 text-fine text-alarm";
+  "rounded-surface bg-alarm-wash px-3 py-2.5 text-fine text-alarm";
 
 export const ERROR_TEXT = "text-fine text-alarm";
 

@@ -53,18 +53,66 @@ function walk(dir: string): string[] {
   return out;
 }
 
-const FILES = [...walk("app"), ...walk("components"), ...walk("lib")].filter(
-  (file) => !(file in EXEMPT),
-);
+/**
+ * Every screen file. The exemptions below are applied PER RULE, not by
+ * removing a file from this list.
+ *
+ * `EXEMPT` used to filter here, which dropped app/opengraph-image.tsx from all
+ * six rules on a reason that covers only its four hexes. An em-dash in its
+ * `alt` export — the string screen readers speak and Slack unfurls — passed
+ * silently.
+ */
+const FILES = [...walk("app"), ...walk("components"), ...walk("lib")];
 
-/** Source with comments blanked out: a rule that explains itself must not fail on
- * its own explanation. */
+/** The colour rules the satori exemption actually covers. */
+const COLOUR_EXEMPT = (file: string) => file in EXEMPT;
+
+/**
+ * Source with whole-line comments blanked out, line count preserved.
+ *
+ * The scans below are about what a module emits, not what it explains: a file
+ * that names the pattern it forbids must not fail the check for that pattern
+ * on its own documentation.
+ *
+ * ONLY lines that BEGIN with a comment marker. The version this replaces fired
+ * on any `//` not preceded by a colon, including inside a string, and blanked
+ * everything after it on that line. A Round 2 reviewer put a div carrying a
+ * template-literal `//status` plus a raw palette class, a dark: variant, a px
+ * font size and an em-dash into app/sessions/page.tsx, and the whole suite
+ * stayed green: 95 characters of live code erased, taking four of the six
+ * rules with it. An unterminated block marker inside a string was worse, since
+ * its blast radius ran to the next close marker anywhere in the file.
+ *
+ * A line-anchored version cannot do that, because a line that starts with a
+ * comment marker has no code on it. The trade is that a trailing comment after
+ * code is no longer blanked, so a rule can now fail on one. That is the right
+ * direction for a gate: a false failure gets read, a silent bypass does not.
+ */
 function emitted(source: string): string {
+  let inBlock = false;
   return source
-    .replace(/\/\*[\s\S]*?\*\//g, (block) => block.replace(/[^\n]/g, " "))
-    .replace(/(^|[^:])\/\/[^\n]*/g, (match, before: string) =>
-      before + match.slice(before.length).replace(/./g, " "),
-    );
+    .split("\n")
+    .map((line) => {
+      const blank = " ".repeat(line.length);
+      if (inBlock) {
+        const end = line.indexOf("*/");
+        if (end === -1) return blank;
+        inBlock = false;
+        return " ".repeat(end + 2) + line.slice(end + 2);
+      }
+      const trimmed = line.trimStart();
+      if (trimmed.startsWith("//")) return blank;
+      if (trimmed.startsWith("/*") || trimmed.startsWith("*")) {
+        const end = line.indexOf("*/");
+        if (end === -1) {
+          if (trimmed.startsWith("/*")) inBlock = true;
+          return blank;
+        }
+        return " ".repeat(end + 2) + line.slice(end + 2);
+      }
+      return line;
+    })
+    .join("\n");
 }
 
 /**
@@ -73,9 +121,9 @@ function emitted(source: string): string {
  */
 const DASH_EXEMPT: Record<string, string> = {
   "lib/session-room.ts":
-    "the silence-nudge prompts, which are instructions to the interviewer " +
-    "model rather than copy. Rewording them changes the live interviewer and " +
-    "is an evals-gated behaviour change, not a register fix.",
+    "the silence nudges and the clock notes, which are instructions to the " +
+    "interviewer model rather than copy. Rewording them changes the live " +
+    "interviewer and is an evals-gated behaviour change, not a register fix.",
   "app/api/webhooks/polar/route.ts":
     "two console.error strings on the fail-closed paths. They reach a server " +
     "log, never a reader.",
@@ -107,23 +155,41 @@ describe("every screen speaks the token vocabulary", () => {
   });
 
   it.each(FILES)("%s uses no raw Tailwind palette colour", (file) => {
+    if (COLOUR_EXEMPT(file)) return;
     const source = readFileSync(join(webRoot, file), "utf8");
     // `sky` needs a digit to count: bg-sky is the product's own token.
     const raw = new RegExp(`\\b(?:${PROP})-(?:${PALETTE})-\\d{2,3}\\b`);
     expect(offenders(source, raw)).toEqual([]);
+
+    // The numberless ones too. `bg-white` and `text-black` carry no digit, so
+    // the pattern above never saw them, while the lib/ui.ts-only check this
+    // suite was written to generalise did. Pure white on a warm #FBFBF8 paper
+    // is exactly the drift the tokens exist to stop.
+    const bare = new RegExp(`\\b(?:${PROP})-(?:white|black)\\b`);
+    expect(offenders(source, bare)).toEqual([]);
   });
 
   it.each(FILES)("%s carries no dark-mode variant", (file) => {
+    if (COLOUR_EXEMPT(file)) return;
     const source = readFileSync(join(webRoot, file), "utf8");
     expect(offenders(source, /\bdark:/)).toEqual([]);
   });
 
   it.each(FILES)("%s hard-codes no colour value", (file) => {
+    if (COLOUR_EXEMPT(file)) return;
     const source = readFileSync(join(webRoot, file), "utf8");
     // An arbitrary value is a colour the contrast matrix in
     // design-system.test.ts cannot see, which is the whole reason that matrix
     // is trustworthy.
+    //
+    // Not only inside Tailwind brackets. The bracket-anchored version missed
+    // `style={{ color: "#8b5cf6" }}` entirely, which is both a hex the matrix
+    // cannot see and, in that particular value, the AI violet the design
+    // skills name as the first tell.
     expect(offenders(source, /\[#[0-9a-fA-F]{3,8}\]|\[(?:rgb|hsl|oklch|oklab)a?\(/)).toEqual([]);
+    expect(
+      offenders(source, /["'`]\s*#[0-9a-fA-F]{3,8}\s*["'`]|\b(?:rgb|hsl|oklch|oklab)a?\(/),
+    ).toEqual([]);
   });
 
   it.each(FILES)("%s puts no dash in a sentence a reader sees", (file) => {
@@ -178,10 +244,17 @@ describe("every screen speaks the token vocabulary", () => {
     // class: the radial stops inside `public/hero-bloom.svg`, and
     // `PLACEHOLDER_HATCH`, which is a CSS value passed through `style` so that
     // it reads as a hatch and can never be mistaken for a screenshot.
-    expect(
-      offenders(source, /-\[(?:repeating-)?(?:linear|radial|conic)-gradient/),
-    ).toEqual([]);
-    expect(offenders(source, /\bbg-(?:gradient|linear|radial|conic)-to-[a-z]+\b/)).toEqual([]);
+    // Every spelling Tailwind 4.3 accepts, verified against the installed
+    // package rather than assumed: bg-linear, bg-radial and bg-conic all
+    // exist, and only the linear form takes a `-to-<side>` suffix. The
+    // earlier version demanded that suffix, so `bg-radial`, `bg-conic-180`
+    // and `bg-linear-45` all passed, as did `bg-[image:linear-gradient(...)]`,
+    // which anchored on `-[` being followed immediately by the function.
+    expect(offenders(source, /-\[(?:[a-z-]+:)?(?:repeating-)?(?:linear|radial|conic)-gradient/)).toEqual([]);
+    expect(offenders(source, /\bbg-(?:gradient|linear|radial|conic)\b/)).toEqual([]);
+    // And the inline route, which is how PLACEHOLDER_HATCH worked, so it is
+    // the one a reader of this file already knows about.
+    expect(offenders(source, /backgroundImage|background-image/)).toEqual([]);
   });
 
   it.each(FILES)("%s sizes type from the scale, not from pixels", (file) => {
@@ -211,12 +284,23 @@ describe("the exemptions are a list, not a loophole", () => {
 
   it("still needs every dash exemption it claims", () => {
     // An exemption that has stopped being load-bearing is a standing permission
-    // nobody re-examines. If the file no longer has a dash, the entry goes.
+    // nobody re-examines.
+    //
+    // Read what the RULE reads. This checked the raw source, so a dash in a
+    // comment kept an exemption alive after its string-level need was gone:
+    // a reviewer rewrote both console.error strings in the polar route to use
+    // commas and the exemption survived on four comment lines.
     for (const file of Object.keys(DASH_EXEMPT)) {
-      const source = readFileSync(join(webRoot, file), "utf8");
-      expect(source, `${file} is exempt from the dash rule but no longer needs to be`).toMatch(
-        /[—–]/,
-      );
+      const body = emitted(readFileSync(join(webRoot, file), "utf8"));
+      const strings = [
+        ...(body.match(/"(?:[^"\\\n]|\\.)*"/g) ?? []),
+        ...(body.match(/'(?:[^'\\\n]|\\.)*'/g) ?? []),
+        ...(body.match(/`(?:[^`\\]|\\.)*`/g) ?? []),
+      ];
+      expect(
+        strings.filter((str) => /[—–]/.test(str)).length,
+        `${file} is exempt from the dash rule but no string in it needs the exemption`,
+      ).toBeGreaterThan(0);
     }
   });
 });

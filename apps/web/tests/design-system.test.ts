@@ -115,36 +115,67 @@ describe("the design tokens exist where the system says they do", () => {
     // sitting in it, and is the only thing that does.
     const shadows = globals.match(/--shadow-[a-z-]+\s*:[^;]+;/g) ?? [];
     expect(shadows.length, "an elevation token came back").toBe(1);
-    // A pure-black shadow on a warm ground reads as dirt.
-    expect(shadows[0], `${shadows[0]} uses a black shadow`).not.toMatch(/rgb\(\s*0\s+0\s+0/);
+    // A pure-black shadow on a warm ground reads as dirt. Every spelling of
+    // it, not just the space-separated rgb() the token happened to use:
+    // `rgba(0, 0, 0, .05)` passed the version of this line that shipped.
+    for (const black of [
+      /rgba?\(\s*0\s*[,\s]\s*0\s*[,\s]\s*0\s*[,)]/,
+      /#000\b|#000000\b/i,
+      /\bblack\b/i,
+      /hsla?\(\s*0[^)]*?\b0%\s*[,)]/,
+      /oklch\(\s*0[\s,]/,
+    ]) {
+      expect(shadows[0], `${shadows[0]} uses a black shadow`).not.toMatch(black);
+    }
     // And it has to still be reachable from the token module.
     expect(emitted, "nothing consumes the float shadow").toContain("shadow-float");
   });
 });
 
 /**
- * Every `token/NN` opacity modifier in the tree, with the ground it renders
- * over and the bar it has to clear.
+ * Every opacity modifier in the tree, with the ground it renders over.
  *
  * The matrix below reads the declared values, which is why it could not see
  * these: `text-ink/60` is not a declared colour, it is one composited at paint
- * time, and Phase 4 found two of them under the bar in twelve render sites —
- * a secondary control label at 3.73:1 and, worse, that control's border at
- * 1.99:1, which was the only thing marking it as a control at rest.
+ * time, and Phase 4 found two of them under the bar in twelve render sites, a
+ * secondary control label at 3.73:1 and that control's border at 1.99:1, which
+ * was the only thing marking it as a control at rest.
  *
- * So the rule is not "no opacity modifiers". It is: an opacity modifier must
- * say what it sits on and what bar applies, and then get computed. A new one
- * that skips this table fails the test below with instructions.
+ * A row declares WHAT THE UTILITY IS, not what bar it would like. That is the
+ * difference from the version this replaces, which carried a free
+ * `bar: number | null`: a reviewer added a `text-ink/45` row with `bar: null`
+ * and a plausible note, and a control label at 2.52:1 passed. Worse, every row
+ * was `bar: null`, so the test named "computes every opacity modifier"
+ * computed none of them. Null was the path of least resistance at exactly the
+ * moment CI was telling someone off.
  *
- * `bar: null` is for a purely decorative edge, and it has to be argued for in
- * the note, not just asserted.
+ * So the bar comes from the kind, the kind is checked against the utility's
+ * own prefix, and `ground` — the only kind with no bar — is available solely
+ * to `bg-*`. A mark cannot be declared a background.
  */
+const BARS = {
+  /** Small text, which is every body size in this product. */
+  text: 4.5,
+  /** A boundary that identifies a control. WCAG 1.4.11. */
+  boundary: 3,
+  /** A fill. It carries no information itself; whatever sits ON it is checked
+   *  as text against this composited value. */
+  ground: null,
+} as const;
+
+/** Which prefixes may legitimately claim each kind. */
+const KIND_PREFIXES: Record<keyof typeof BARS, RegExp> = {
+  text: /^(?:[a-z-]+:)*(?:text|placeholder|decoration|fill)-/,
+  boundary: /^(?:[a-z-]+:)*(?:border|outline|ring|divide|stroke)(?:-[trblxy])?-/,
+  ground: /^(?:[a-z-]+:)*bg-/,
+};
+
 const COMPOSITES: {
   utility: string;
   ink: string;
   alpha: number;
   ground: string;
-  bar: number | null;
+  kind: keyof typeof BARS;
   note: string;
 }[] = [
   {
@@ -152,9 +183,7 @@ const COMPOSITES: {
     ink: "ink",
     alpha: 0.06,
     ground: "paper",
-    bar: null,
-    // STEP_NUMERAL. This is a ground, not a mark: the numeral on it is
-    // `text-ink`, and the row below checks that pairing rather than this one.
+    kind: "ground",
     note: "the tint behind a step numeral, whose own ink is checked as text",
   },
   {
@@ -162,24 +191,8 @@ const COMPOSITES: {
     ink: "paper",
     alpha: 0.95,
     ground: "paper",
-    bar: null,
-    // TranscriptView's sticky footer. A ground with a backdrop blur under it;
-    // what scrolls beneath is arbitrary, and the 5% is there so the reader can
-    // tell the bar is floating rather than to let anything through.
+    kind: "ground",
     note: "a sticky bar's ground, blurred, over arbitrary scrolled content",
-  },
-  {
-    utility: "border-alarm/25",
-    ink: "alarm",
-    alpha: 0.25,
-    ground: "alarm-wash",
-    bar: null,
-    // ALARM_NOTICE. A container edge, not a control boundary, so 1.4.11 does
-    // not reach it. What identifies the notice is its heading and its wash,
-    // both of which clear AA on their own; the edge only has to be findable
-    // once you are looking at it. If a control ever takes this token, the
-    // bar becomes 3 and this row has to change with it.
-    note: "a non-interactive notice edge; the notice is identified by its text",
   },
 ];
 
@@ -207,38 +220,56 @@ describe("contrast, computed from the declared values", () => {
   it("computes every opacity modifier in the tree, and lets none go undeclared", () => {
     // Find them rather than trust the table. A modifier that exists in the
     // source and not in COMPOSITES is the failure mode this is written for.
+    //
+    // The pattern is wide on purpose. It used to be
+    // `(text|bg|border|decoration|divide|ring|outline)-TOKEN/NN`, and a
+    // reviewer walked a control straight through it with `border-b-ink/20` and
+    // `text-ink/[0.35]`, painting 1.45:1 and 2.00:1 on the same button whose
+    // 1.99:1 and 3.73:1 this table exists to have caught.
     const found = new Set<string>();
     const sources = [emitted, ...FILES.map((f) => withoutComments(readFileSync(join(webRoot, f), "utf8")))];
     const names = Object.keys(COLOURS).join("|");
+    const PROPS =
+      "text|placeholder|decoration|fill|border|outline|ring|divide|stroke|bg|shadow|accent|caret";
     const modifier = new RegExp(
-      `\\b(?:text|bg|border|decoration|divide|ring|outline)-(?:${names})/\\d+`,
+      `\\b(?:[a-z-]+:)*(?:${PROPS})(?:-[trblxy])?-(?:${names})/(?:\\d+|\\[[\\d.]+\\])`,
       "g",
     );
     for (const source of sources) {
-      for (const hit of source.match(modifier) ?? []) found.add(hit);
+      for (const hit of source.match(modifier) ?? []) {
+        // Normalise the variant prefix away: `hover:text-ink/50` is the same
+        // paint question as `text-ink/50`, asked about a state.
+        found.add(hit.replace(/^(?:[a-z-]+:)+/, ""));
+      }
     }
 
     const declared = new Set(COMPOSITES.map((c) => c.utility));
-    const undeclared = [...found].filter((u) => !declared.has(u));
     expect(
-      undeclared,
-      "an opacity modifier renders a colour nothing computes: add it to COMPOSITES with the ground it sits on and the bar it must clear",
+      [...found].filter((u) => !declared.has(u)),
+      "an opacity modifier renders a colour nothing computes: add it to COMPOSITES with the ground it sits on and the KIND of thing it is",
     ).toEqual([]);
 
     for (const entry of COMPOSITES) {
       expect(found, `COMPOSITES lists ${entry.utility}, which no longer renders`).toContain(
         entry.utility,
       );
-      if (entry.bar === null) continue;
+      // The kind must match the utility. Declaring `text-ink/45` a "ground" is
+      // how a 2.52:1 control label got waved through.
+      expect(
+        entry.utility,
+        `${entry.utility} is declared kind "${entry.kind}", which its prefix does not support`,
+      ).toMatch(KIND_PREFIXES[entry.kind]);
+
+      const bar = BARS[entry.kind];
+      if (bar === null) continue;
       const painted = composite(COLOURS[entry.ink], COLOURS[entry.ground], entry.alpha);
       const ratio = contrast(painted, COLOURS[entry.ground]);
       expect(
         ratio,
-        `${entry.utility} paints ${painted} on --color-${entry.ground}: ${ratio.toFixed(2)}:1, below ${entry.bar}`,
-      ).toBeGreaterThanOrEqual(entry.bar);
+        `${entry.utility} paints ${painted} on --color-${entry.ground}: ${ratio.toFixed(2)}:1, below the ${entry.kind} bar of ${bar}`,
+      ).toBeGreaterThanOrEqual(bar);
     }
   });
-
   it("gives control boundaries the 3:1 they need to be seen", () => {
     // WCAG 1.4.11: a border that is the only thing identifying an input has to
     // clear 3:1. --color-hairline deliberately does not and is decorative
@@ -256,26 +287,32 @@ describe("contrast, computed from the declared values", () => {
     // The filled control: paper label on an ink fill.
     expect(contrast(COLOURS.paper, COLOURS.ink)).toBeGreaterThanOrEqual(4.5);
 
-    // The focus ring is `outline: 2px solid var(--color-ink)` drawn outside the
-    // element, so what it has to be visible against is the ground the element
-    // sits on, not the element. Every ground, because keyboard focus reaches
-    // controls inside cards and sunk panels too.
+    // The ring itself, READ FROM THE STYLESHEET.
     //
-    // The line this replaces asserted ink-on-paper a second time with the
-    // arguments swapped, against a 3:1 bar it had already cleared at 4.5:1 on
-    // the line above. Contrast is symmetric, so it could not fail unless its
-    // neighbour failed first.
+    // Two versions of this have now failed to check it. The first asserted
+    // ink-on-paper twice with the arguments swapped. The second looped over
+    // grounds but still compared `COLOURS.ink`, a property of the token rather
+    // than of the declaration, so a reviewer repointed the outline at
+    // `var(--color-hairline)` — the token this stylesheet declares decorative
+    // and deliberately under 3:1 — and the whole suite stayed green with a
+    // 1.23:1 focus ring.
+    const outline = declaredCss.match(/outline:\s*[^;]*var\(--color-([a-z-]+)\)/);
+    expect(outline, "no focus outline is declared from a token").not.toBeNull();
+    const ringToken = outline![1];
+    const ring = COLOURS[ringToken];
+    expect(ring, `--color-${ringToken} is not a declared colour`).toBeDefined();
+
+    // It is drawn outside the element, so what it has to be visible against is
+    // the ground the element sits on. Every ground, because keyboard focus
+    // reaches controls inside cards and sunk panels too.
     for (const ground of ["paper", "paper-sunk", "surface"]) {
-      const ratio = contrast(COLOURS.ink, COLOURS[ground]);
+      const ratio = contrast(ring, COLOURS[ground]);
       expect(
         ratio,
-        `the focus ring on --color-${ground} is ${ratio.toFixed(2)}:1, below 3`,
+        `the focus ring (--color-${ringToken}) on --color-${ground} is ${ratio.toFixed(2)}:1, below 3`,
       ).toBeGreaterThanOrEqual(3);
     }
   });
-});
-
-describe("the scheme and the scale", () => {
   it("is light only", () => {
     expect(declaredCss).toMatch(/color-scheme:\s*light/);
     expect(declaredCss).not.toMatch(/prefers-color-scheme:\s*dark/);
