@@ -8,7 +8,7 @@ import {
   missingCapabilities,
   unsupportedBrowserMessage,
 } from "@/lib/session-media";
-import { NOTICE } from "@/lib/ui";
+import { NOTICE, SUB_HEADING } from "@/lib/ui";
 
 // Capability gate for the interview room: probes the three browser APIs a
 // live session cannot run without, and when any is missing replaces its
@@ -47,7 +47,7 @@ export default function BrowserGate({ children }: { children: ReactNode }) {
       role="alert"
       className={`${NOTICE} mt-6`}
     >
-      <h2 className="text-sm font-medium">
+      <h2 className={SUB_HEADING}>
         This browser cannot run a live interview
       </h2>
       <p className="mt-2">

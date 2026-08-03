@@ -1,6 +1,6 @@
 import Link from "next/link";
 
-import { CARD, DIVIDER, FINE_PRINT, LABEL, MUTED, PRIMARY_BUTTON } from "@/lib/ui";
+import { CARD, DIVIDER, FINE_PRINT, LABEL, MUTED, PRIMARY_BUTTON, SCORE_NUMBER, SUB_HEADING } from "@/lib/ui";
 
 import { PRICING, PRICING_LINES } from "./copy";
 
@@ -38,18 +38,18 @@ export default function PricingBlock({
               flex on the ul is load-bearing: a flex parent blockifies its
               children, which drops `display: list-item` and takes the markers
               with it. */}
-          <ul className="mt-3 list-disc space-y-2.5 pl-5 text-sm">
+          <ul className="mt-3 list-disc space-y-2.5 pl-5 text-fine">
             {PRICING_LINES.map((line) => (
               <li key={line.label}>
-                <b className="font-medium">{line.label}</b>{" "}
+                <b className={SUB_HEADING}>{line.label}</b>{" "}
                 <span className={MUTED}>{line.detail}</span>
               </li>
             ))}
           </ul>
         </div>
         <div className={`flex flex-wrap items-baseline gap-2.5 border-t pt-5 ${DIVIDER}`}>
-          <span className="text-3xl font-bold tabular-nums">{PRICING.price}</span>
-          <span className={`${MUTED} text-sm`}>{PRICING.priceNote}</span>
+          <span className={`${SCORE_NUMBER} text-page`}>{PRICING.price}</span>
+          <span className={`${MUTED} text-fine`}>{PRICING.priceNote}</span>
         </div>
         {/* Directly above the button, where the hesitation is. */}
         <p className={FINE_PRINT}>{PRICING.refundLine}</p>

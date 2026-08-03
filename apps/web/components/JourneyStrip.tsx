@@ -26,9 +26,9 @@ export default function JourneyStrip({ legs }: { legs: JourneyLeg[] }) {
     <div
       role="img"
       aria-label={`Session progress: ${done} of ${legs.length} done`}
-      className="flex items-center justify-center gap-[7px] overflow-x-auto px-0.5 py-1 text-xs text-ink-muted"
+      className="flex items-center justify-center gap-[7px] overflow-x-auto px-0.5 py-1 text-fine text-ink-muted"
     >
-      <span className="shrink-0 font-semibold">Start</span>
+      <span className="shrink-0">Start</span>
       {legs.map((leg, i) => (
         <Fragment key={i}>
           <span className="h-px w-5 shrink-0 bg-hairline" />
@@ -39,7 +39,7 @@ export default function JourneyStrip({ legs }: { legs: JourneyLeg[] }) {
         </Fragment>
       ))}
       <span className="h-px w-5 shrink-0 bg-hairline" />
-      <span className="shrink-0 font-semibold">Ready</span>
+      <span className="shrink-0">Ready</span>
     </div>
   );
 }

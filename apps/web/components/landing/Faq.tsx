@@ -1,6 +1,6 @@
 import { MinusIcon, PlusIcon } from "@phosphor-icons/react/ssr";
 
-import { CARD, DIVIDE_Y, MUTED } from "@/lib/ui";
+import { CARD, DIVIDE_Y, MUTED, SUB_HEADING } from "@/lib/ui";
 
 import { FAQ } from "./copy";
 
@@ -28,12 +28,12 @@ export default function Faq() {
     <div className={`${CARD} ${DIVIDE_Y}`}>
       {FAQ.map((entry) => (
         <details key={entry.question} className="group px-5 py-4">
-          <summary className="flex cursor-pointer list-none items-center justify-between gap-4 font-medium [&::-webkit-details-marker]:hidden">
+          <summary className={`flex cursor-pointer list-none items-center justify-between gap-4 [&::-webkit-details-marker]:hidden ${SUB_HEADING}`}>
             {entry.question}
             <PlusIcon aria-hidden="true" className="shrink-0 group-open:hidden" />
             <MinusIcon aria-hidden="true" className="hidden shrink-0 group-open:block" />
           </summary>
-          <p className={`${MUTED} mt-3 text-sm leading-relaxed`}>{entry.answer}</p>
+          <p className={`${MUTED} mt-3 text-fine`}>{entry.answer}</p>
         </details>
       ))}
     </div>

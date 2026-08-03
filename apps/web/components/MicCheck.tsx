@@ -134,18 +134,18 @@ export default function MicCheck() {
               style={{ width: `${Math.round(level * 100)}%` }}
             />
           </div>
-          <p className="text-sm text-ink-muted">
+          <p className="text-fine text-ink-muted">
             {state.deviceLabel ? `${state.deviceLabel} is live.` : "Your microphone is live."}{" "}
             Say something. The bar should move as you speak.
           </p>
-          <button type="button" onClick={stopCheck} className="self-start text-sm underline underline-offset-4">
+          <button type="button" onClick={stopCheck} className="self-start text-fine underline underline-offset-4">
             Stop the check
           </button>
         </>
       ) : (
         <>
           <p
-            className="text-sm text-ink-muted"
+            className="text-fine text-ink-muted"
             role={state.kind === "denied" || state.kind === "no-device" || state.kind === "error" ? "alert" : undefined}
           >
             {state.kind === "error" ? state.message : STATUS_LINES[state.kind]}

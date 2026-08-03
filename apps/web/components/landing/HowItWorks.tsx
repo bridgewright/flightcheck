@@ -10,7 +10,7 @@ import { HOW_IT_WORKS } from "./copy";
 // "repeat until you would pass", so the last step points back at the first
 // instead of ending, and the order is the mechanic.
 //
-// What carries that order is a large serif numeral, not an eyebrow. The block
+// What carries that order is a small square numeral, not an eyebrow. The block
 // used to print "STEP 1" through "STEP 4" above four identical cells, which is
 // two named bans at once: generic step labels (taste-skill 9.F) and a row of
 // equal feature cards (9.C). The numerals are aria-hidden because the ol
@@ -40,7 +40,7 @@ export default function HowItWorks() {
               {index + 1}
             </span>
             <h3 className={SUB_HEADING}>{step.title}</h3>
-            <p className={`${MUTED} text-sm leading-relaxed`}>{step.detail}</p>
+            <p className={`${MUTED} text-fine`}>{step.detail}</p>
           </Reveal>
         </li>
       ))}

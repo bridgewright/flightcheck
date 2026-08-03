@@ -4,7 +4,7 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 
 import { startFailureView, type StartFailureView } from "@/lib/start-session";
-import { NOTICE, PRIMARY_BUTTON } from "@/lib/ui";
+import { NOTICE, PRIMARY_BUTTON, SUB_HEADING } from "@/lib/ui";
 
 export default function StartSessionButton({
   packageId,
@@ -78,7 +78,7 @@ export default function StartSessionButton({
           role="alert"
           className={`${NOTICE} max-w-md`}
         >
-          <p className="text-sm font-medium">{failure.title}</p>
+          <p className={SUB_HEADING}>{failure.title}</p>
           <p className="mt-1">
             {failure.message}
           </p>

@@ -6,6 +6,7 @@ import {
   SCREEN_CHROME,
   SCREEN_DOT,
   SCREEN_FRAME,
+  SUB_HEADING,
 } from "@/lib/ui";
 
 import { PLACEHOLDER_LABEL } from "./copy";
@@ -70,8 +71,8 @@ export default function ScreenFrame({
     <figure className="flex flex-col gap-3">
       {frame}
       <figcaption className="flex flex-col gap-1">
-        <span className="font-medium">{title}</span>
-        <span className={`${MUTED} text-sm`}>{caption}</span>
+        <span className={SUB_HEADING}>{title}</span>
+        <span className={`${MUTED} text-fine`}>{caption}</span>
       </figcaption>
     </figure>
   );
