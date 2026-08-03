@@ -1,7 +1,7 @@
 import { createClient } from "@supabase/supabase-js";
 import { NextResponse } from "next/server";
 
-import { authorizePackage } from "@/lib/worker";
+import { authorizePackage, listSessions } from "@/lib/worker";
 
 import {
   isValidPackageId,
@@ -71,6 +71,35 @@ export async function POST(request: Request) {
   if (access.value.id !== packageId) {
     console.error("recordings: token does not unlock the requested package");
     return NextResponse.json({ error: "access denied" }, { status: 403 });
+  }
+  // Blob-swap guard (v0.5): once the session at this index is scoring or
+  // scored, its recording is scoring evidence — an upsert upload URL minted
+  // now would let a token holder overwrite the audio AFTER the score
+  // exists. Retry paths stay open: a planned session whose complete call
+  // failed, and failed/insufficient sessions whose slot is reattempted, are
+  // exactly the honest re-upload cases the upsert exists for.
+  let sessions;
+  try {
+    sessions = await listSessions(packageId);
+  } catch (err) {
+    // Fail closed: with the session state unknowable, minting could enable
+    // the swap this guard exists to stop — and the upload retry needs the
+    // worker reachable moments later for /complete anyway.
+    console.error("recordings: session listing failed", err);
+    return NextResponse.json(
+      { error: "worker session lookup failed" },
+      { status: 502 },
+    );
+  }
+  const session = sessions.find((row) => row.index === index);
+  if (session && (session.status === "scoring" || session.status === "scored")) {
+    return NextResponse.json(
+      {
+        error:
+          "this session has already been submitted for scoring — its recording can no longer be replaced",
+      },
+      { status: 409 },
+    );
   }
   const storagePath = recordingStoragePath(packageId, index);
   const supabase = createClient(
