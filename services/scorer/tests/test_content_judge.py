@@ -9,6 +9,7 @@ import scorer.content.judge as judge_module
 from fakes import FakeGenAI
 from scorer.config import load_product_config
 from scorer.content.judge import ContentJudgeError, ContentScoreDoc, score_content
+from scorer.resilience import load_resilience_config
 from scorer.schemas import (
     BarsAnchor,
     QuestionSpec,
@@ -452,6 +453,21 @@ def _stub_sleep(monkeypatch) -> list[float]:
     return sleeps
 
 
+def _assert_backoff(sleeps: list[float], bases: list[float]) -> None:
+    """The judge's 1s/2s/4s schedule, now carrying jitter (v0.6 F-37).
+
+    Seven dimensions retry concurrently, so identical waits re-collide on
+    the endpoint that just refused them; the shared retry policy spreads
+    them across [base, base * (1 + jitter_ratio)]. The schedule itself is
+    unchanged, so these assertions still pin the shape of the backoff --
+    just not to the tenth of a second.
+    """
+    ratio = load_resilience_config().retry.jitter_ratio
+    assert len(sleeps) == len(bases)
+    for slept, base in zip(sleeps, bases, strict=True):
+        assert base <= slept <= base * (1 + ratio)
+
+
 def test_429_gets_backoff_retry_and_the_run_survives(monkeypatch):
     sleeps = _stub_sleep(monkeypatch)
     keyed = _happy_keyed_texts()
@@ -463,7 +479,7 @@ def test_429_gets_backoff_retry_and_the_run_survives(monkeypatch):
     assert [s.dimension_key for s in scores] == [
         "structured-answers", "quantified-impact", "role-knowledge",
     ]
-    assert sleeps == [1.0]
+    _assert_backoff(sleeps, [1.0])
     # The transient retry repeats the call it lost: same seed, then the rest.
     seeds = [c["config"]["seed"] for c in _calls_for(fake, "structured-answers")]
     assert seeds == [7, 7, 11, 13]
@@ -479,7 +495,7 @@ def test_transport_error_gets_the_same_backoff(monkeypatch):
     scores = score_content(_make_rubric(), _make_segments(), fake)
 
     assert [s.dimension_key for s in scores][-1] == "role-knowledge"
-    assert sleeps == [1.0]
+    _assert_backoff(sleeps, [1.0])
 
 
 def test_transient_retries_exhaust_and_reraise(monkeypatch):
@@ -490,7 +506,7 @@ def test_transient_retries_exhaust_and_reraise(monkeypatch):
 
     with pytest.raises(genai_errors.APIError):
         score_content(_make_rubric(), _make_segments(), fake)
-    assert sleeps == [1.0, 2.0, 4.0]
+    _assert_backoff(sleeps, [1.0, 2.0, 4.0])
 
 
 def test_non_transient_api_error_is_not_retried(monkeypatch):
@@ -519,7 +535,7 @@ def test_transient_backoff_does_not_spend_the_parse_retry(monkeypatch):
     scores = score_content(_make_rubric(), _make_segments(), fake)
 
     assert scores[0].score == 4.0
-    assert sleeps == [1.0]
+    _assert_backoff(sleeps, [1.0])
     seeds = [c["config"]["seed"] for c in _calls_for(fake, "structured-answers")]
     assert seeds == [7, 7, 7, 11, 13]
 

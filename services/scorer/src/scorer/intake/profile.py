@@ -9,6 +9,7 @@ from pypdf import PdfReader
 
 from scorer.config import load_product_config
 from scorer.promptsafe import fence
+from scorer.resilience import call_with_retry
 from scorer.schemas import CandidateProfile, GenAIClientLike
 
 _PROFILE_PROMPT = (
@@ -55,12 +56,15 @@ def build_profile(
         sections.append(
             f"## LINKEDIN PROFILE\n{fence('LINKEDIN PROFILE', linkedin_text)}")
     product = load_product_config()
-    response = client.models.generate_content(
-        model=product.models.scorer,
-        contents="\n\n".join(sections),
-        config=types.GenerateContentConfig(
-            response_mime_type="application/json",
-            response_schema=CandidateProfile,
+    response = call_with_retry(
+        lambda: client.models.generate_content(
+            model=product.models.scorer,
+            contents="\n\n".join(sections),
+            config=types.GenerateContentConfig(
+                response_mime_type="application/json",
+                response_schema=CandidateProfile,
+            ),
         ),
+        what="profile extraction",
     )
     return CandidateProfile.model_validate(json.loads(response.text))

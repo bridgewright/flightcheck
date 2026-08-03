@@ -16,6 +16,7 @@ from google.genai import types
 
 from scorer.config import load_product_config
 from scorer.promptsafe import fence
+from scorer.resilience import call_with_retry
 from scorer.schemas import GenAIClientLike, ResearchFindings, SourceCitation
 
 _SNIPPET_MAX_CHARS = 300     # SourceCitation.snippet contract: <= 300 chars
@@ -108,29 +109,35 @@ def run_sweep(jd_text: str, role_title: str, company: str | None,
     queries = build_queries(role_title, company)
     prose_blocks: list[str] = []
     grounded_citations: list[SourceCitation] = []
-    for query in queries:
+    for index, query in enumerate(queries):
         # F-11a: the JD excerpt is user text — fenced as data.
         prompt = _GROUNDED_PROMPT.format(
             query=query,
             jd_excerpt=fence("JOB DESCRIPTION EXCERPT",
                              jd_text[:_JD_EXCERPT_CHARS]))
-        response = client.models.generate_content(
-            model=product.models.scorer,
-            contents=prompt,
-            config=types.GenerateContentConfig(
-                tools=[types.Tool(google_search=types.GoogleSearch())],
+        response = call_with_retry(
+            lambda: client.models.generate_content(
+                model=product.models.scorer,
+                contents=prompt,
+                config=types.GenerateContentConfig(
+                    tools=[types.Tool(google_search=types.GoogleSearch())],
+                ),
             ),
+            what=f"research sweep query {index + 1}",
         )
         prose_blocks.append(f'## Query: "{query}"\n{response.text or ""}')
         grounded_citations.extend(
             _citations_from(_grounding_metadata(response)))
-    structured = client.models.generate_content(
-        model=product.models.scorer,
-        contents=_STRUCTURING_PROMPT + "\n\n".join(prose_blocks),
-        config=types.GenerateContentConfig(
-            response_mime_type="application/json",
-            response_schema=ResearchFindings,
+    structured = call_with_retry(
+        lambda: client.models.generate_content(
+            model=product.models.scorer,
+            contents=_STRUCTURING_PROMPT + "\n\n".join(prose_blocks),
+            config=types.GenerateContentConfig(
+                response_mime_type="application/json",
+                response_schema=ResearchFindings,
+            ),
         ),
+        what="research structuring",
     )
     parsed = ResearchFindings.model_validate(json.loads(structured.text))
     # Rebuild rather than mutate: queries and citations come from step 1

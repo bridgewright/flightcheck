@@ -29,6 +29,7 @@ from scorer.promptsafe import fence
 from scorer.report.compile import compile_report
 from scorer.report.eligibility import check_eligibility
 from scorer.research.sweep import run_sweep
+from scorer.resilience import call_with_retry
 from scorer.rubric.compiler import compile_rubric
 from scorer.rubric.corpus import load_corpus, load_fewshots
 from scorer.schemas import CandidateProfile, GenAIClientLike, SessionReport
@@ -72,13 +73,16 @@ _JD_FACTS_PROMPT = (
 
 
 def _extract_jd_facts(jd_text: str, client: GenAIClientLike) -> JdFacts:
-    response = client.models.generate_content(
-        model=load_product_config().models.scorer,
-        contents=_JD_FACTS_PROMPT + fence("JOB DESCRIPTION", jd_text),
-        config=types.GenerateContentConfig(
-            response_mime_type="application/json",
-            response_schema=JdFacts,
+    response = call_with_retry(
+        lambda: client.models.generate_content(
+            model=load_product_config().models.scorer,
+            contents=_JD_FACTS_PROMPT + fence("JOB DESCRIPTION", jd_text),
+            config=types.GenerateContentConfig(
+                response_mime_type="application/json",
+                response_schema=JdFacts,
+            ),
         ),
+        what="jd fact extraction",
     )
     return JdFacts.model_validate_json(response.text)
 

@@ -12,10 +12,13 @@
 # of the LLM call sites had a retry (the content judge); transcription --
 # the most expensive and least replaceable step, because the 20-minute
 # interview it transcribes cannot be re-recorded -- had none.
-# 3 attempts with 2s/4s waits costs at most ~6s of added latency on a run
+# 4 attempts with 1s/2s/4s waits costs at most ~7s of added latency on a run
 # that already takes minutes, and covers the 429/503 blips that dominate.
-max_attempts = 3
-initial_backoff_s = 2.0
+# These are the numbers the content judge has been running in production
+# since v0.1; v0.6 promotes them from a literal in that one module to the
+# policy every call site shares.
+max_attempts = 4
+initial_backoff_s = 1.0
 backoff_multiplier = 2.0
 max_backoff_s = 30.0
 # Full-jitter fraction: the wait is delay * (1 + jitter_ratio * random()).

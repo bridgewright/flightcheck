@@ -14,6 +14,7 @@ from google.genai import types
 from pydantic import BaseModel, ConfigDict
 
 from scorer.config import load_product_config
+from scorer.resilience import call_with_retry
 from scorer.schemas import GenAIClientLike, TranscriptSegment
 
 
@@ -42,15 +43,28 @@ _TRANSCRIBE_PROMPT = (
 def transcribe_verbatim(
     audio_path: Path, client: GenAIClientLike
 ) -> list[TranscriptSegment]:
-    """Upload the wav and return verbatim segments sorted by start time."""
-    handle = client.files.upload(file=audio_path)
-    response = client.models.generate_content(
-        model=load_product_config().models.scorer,
-        contents=[handle, _TRANSCRIBE_PROMPT],
-        config=types.GenerateContentConfig(
-            response_mime_type="application/json",
-            response_schema=TranscriptDoc,
+    """Upload the wav and return verbatim segments sorted by start time.
+
+    Both calls back off transient failures (F-37). This step is the
+    one that most needed it: it is the most expensive call in the
+    pipeline and its input is a 20-minute interview that happened
+    once, so a 503 here does not cost a retry -- it costs the
+    recording.
+    """
+    handle = call_with_retry(
+        lambda: client.files.upload(file=audio_path),
+        what="transcription upload",
+    )
+    response = call_with_retry(
+        lambda: client.models.generate_content(
+            model=load_product_config().models.scorer,
+            contents=[handle, _TRANSCRIBE_PROMPT],
+            config=types.GenerateContentConfig(
+                response_mime_type="application/json",
+                response_schema=TranscriptDoc,
+            ),
         ),
+        what="transcription",
     )
     doc = TranscriptDoc.model_validate_json(response.text)
     return sorted(doc.segments, key=lambda seg: seg.start_s)

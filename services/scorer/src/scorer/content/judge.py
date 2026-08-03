@@ -16,8 +16,9 @@ malformed reply must not fail the whole run; a second failure for the same
 dimension raises ContentJudgeError. Dimensions are scored concurrently under
 a bounded thread pool (their calls are independent and network-dominated);
 results still assemble in rubric dimension order and each dimension keeps
-its own retry budget. Transient 429/5xx/transport failures back off briefly
-(1s/2s/4s) and retry with a budget separate from the parse retry.
+its own retry budget. Transient 429/5xx/transport failures back off through
+the shared policy (scorer/resilience.py) with a budget separate from the
+parse retry.
 """
 from __future__ import annotations
 
@@ -25,12 +26,11 @@ import logging
 import time
 from concurrent.futures import ThreadPoolExecutor
 
-import httpx
-from google.genai import errors as genai_errors
 from pydantic import BaseModel, ConfigDict, ValidationError
 
 from scorer.config import load_product_config
 from scorer.promptsafe import fence
+from scorer.resilience import call_with_retry
 from scorer.schemas import (
     DimensionScore,
     GenAIClientLike,
@@ -154,30 +154,23 @@ _JUDGE_MAX_WORKERS = 8
 # concurrency went 1->7, so a 429 or dropped connection mid-run is expected
 # pressure, not a judge-quality problem. It gets its own short backoff budget
 # so it never spends the one parse retry a dimension holds.
-_BACKOFF_SCHEDULE_S = (1.0, 2.0, 4.0)
-_sleep = time.sleep  # module-level so tests can stub the wait
-
-
-def _is_transient(exc: Exception) -> bool:
-    """429 and 5xx are pressure/outage; other API errors are real bugs."""
-    if isinstance(exc, genai_errors.APIError):
-        return exc.code == 429 or (exc.code is not None and exc.code >= 500)
-    return isinstance(exc, httpx.TransportError)
+#
+# v0.6 (F-37): the schedule this module invented is now the policy every
+# model call site shares (scorer/resilience.py + config/resilience.toml).
+# The numbers are unchanged -- 4 attempts at 1s/2s/4s -- except that the
+# wait now carries jitter, because seven dimensions retrying in lockstep
+# re-collide on the endpoint that was already refusing them.
+_sleep = time.sleep  # kept as the module-level seam tests stub
 
 
 def _generate_with_backoff(client: GenAIClientLike, **kwargs):
-    for delay in _BACKOFF_SCHEDULE_S:
-        try:
-            return client.models.generate_content(**kwargs)
-        except Exception as exc:
-            if not _is_transient(exc):
-                raise
-            logger.warning(
-                "transient content judge failure (%s); retrying in %.0fs",
-                exc, delay,
-            )
-            _sleep(delay)
-    return client.models.generate_content(**kwargs)
+    return call_with_retry(
+        lambda: client.models.generate_content(**kwargs),
+        what="content judge",
+        # Resolved through the module global on every call, so stubbing
+        # judge._sleep still silences the wait in tests.
+        sleep=lambda seconds: _sleep(seconds),
+    )
 
 
 def _score_dimension_once(

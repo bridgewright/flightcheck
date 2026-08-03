@@ -16,6 +16,7 @@ import soundfile as sf
 from pydantic import BaseModel, ConfigDict
 
 from scorer.config import load_product_config
+from scorer.resilience import call_with_retry
 from scorer.schemas import (
     DeliveryMetrics,
     DimensionScore,
@@ -124,14 +125,21 @@ def judge_delivery(
     client: GenAIClientLike,
 ) -> tuple[list[DimensionScore], list[TimestampedObservation]]:
     duration_s = sf.info(str(audio_path)).duration
-    handle = client.files.upload(file=audio_path)
-    response = client.models.generate_content(
-        model=load_product_config().models.scorer,
-        contents=[handle, _build_prompt(delivery_dims, metrics, duration_s)],
-        config={
-            "response_mime_type": "application/json",
-            "response_schema": DeliveryJudgeDoc,
-        },
+    handle = call_with_retry(
+        lambda: client.files.upload(file=audio_path),
+        what="delivery-judge upload",
+    )
+    response = call_with_retry(
+        lambda: client.models.generate_content(
+            model=load_product_config().models.scorer,
+            contents=[handle,
+                      _build_prompt(delivery_dims, metrics, duration_s)],
+            config={
+                "response_mime_type": "application/json",
+                "response_schema": DeliveryJudgeDoc,
+            },
+        ),
+        what="delivery judge",
     )
     doc = DeliveryJudgeDoc.model_validate_json(response.text)
 

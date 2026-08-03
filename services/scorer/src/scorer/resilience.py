@@ -50,6 +50,12 @@ CONFIG_PATH = Path(__file__).resolve().parents[2] / "config" / "resilience.toml"
 # has no memory limit; anything at or above this is "unlimited".
 _CGROUP_V1_UNLIMITED = 1 << 62
 
+# Module-level seams so a test can stub the wait and the jitter without
+# passing them down through eight call sites (house pattern, previously in
+# content/judge.py). Resolved at call time, never bound as a default.
+_sleep = time.sleep
+_jitter = _random.random
+
 
 class RetryConfig(BaseModel):
     """Transient-failure backoff, shared by every outbound model call."""
@@ -193,8 +199,8 @@ def call_with_retry[T](
     *,
     what: str,
     retry: RetryConfig | None = None,
-    sleep: Callable[[float], None] = time.sleep,
-    jitter: Callable[[], float] = _random.random,
+    sleep: Callable[[float], None] | None = None,
+    jitter: Callable[[], float] | None = None,
 ) -> T:
     """Call `fn`, retrying transient failures with capped, jittered backoff.
 
@@ -208,6 +214,8 @@ def call_with_retry[T](
     three 480s timeouts into a 24-minute thread occupation.
     """
     policy = retry if retry is not None else load_resilience_config().retry
+    wait_for = sleep if sleep is not None else _sleep
+    randomize = jitter if jitter is not None else _jitter
     delay = policy.initial_backoff_s
     last: BaseException | None = None
     for attempt in range(1, policy.max_attempts + 1):
@@ -228,7 +236,7 @@ def call_with_retry[T](
                     what, attempt,
                 )
                 raise
-            wait = min(delay * (1.0 + policy.jitter_ratio * jitter()),
+            wait = min(delay * (1.0 + policy.jitter_ratio * randomize()),
                        policy.max_backoff_s)
             deadline = current_deadline()
             if deadline is not None and deadline.remaining_s <= wait:
@@ -240,7 +248,7 @@ def call_with_retry[T](
                 "transient failure in %s (attempt %d/%d: %s); retrying in %.1fs",
                 what, attempt, policy.max_attempts, exc, wait,
             )
-            sleep(wait)
+            wait_for(wait)
             delay = min(delay * policy.backoff_multiplier, policy.max_backoff_s)
     raise AssertionError("unreachable: the loop returns or raises")  # pragma: no cover
 

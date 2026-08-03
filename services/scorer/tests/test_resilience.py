@@ -109,7 +109,7 @@ def test_retry_recovers_from_a_transient_failure():
     result = call_with_retry(flaky, what="probe", sleep=slept.append, jitter=lambda: 0.0)
     assert result == "recovered"
     assert attempts["n"] == 3
-    assert slept == [2.0, 4.0], "backoff must grow, not hammer a pressured API"
+    assert slept == [1.0, 2.0], "backoff must grow, not hammer a pressured API"
 
 
 def test_retry_gives_up_after_the_configured_attempts():
@@ -218,7 +218,7 @@ def test_retry_does_not_sleep_past_the_deadline():
     def flaky():
         raise _api_error(503)
 
-    # 0.5s left, but the first backoff is 2s: retrying would blow the budget.
+    # 0.5s left, but the first backoff is 1s: retrying would blow the budget.
     with deadline_scope(0.5, monotonic=lambda: clock["t"]):
         with pytest.raises(DeadlineExceeded):
             call_with_retry(flaky, what="probe", sleep=slept.append,
