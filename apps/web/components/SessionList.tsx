@@ -22,11 +22,11 @@ const PILLS: Record<SessionStatus, { label: string; className: string } | null> 
     className: "inline-flex rounded-full bg-alarm-wash px-2.5 py-1 text-label uppercase text-alarm",
   },
   insufficient: {
-    label: "Not scored — not enough evidence",
+    label: "Not scored: not enough evidence",
     className: "inline-flex rounded-full bg-alarm-wash px-2.5 py-1 text-label uppercase text-alarm",
   },
   failed_permanent: {
-    label: "Closed — not scored",
+    label: "Closed, not scored",
     className: "inline-flex rounded-full bg-alarm-wash px-2.5 py-1 text-label uppercase text-alarm",
   },
   scored: null,

@@ -11,8 +11,8 @@ export function formatWeight(weight: number): string {
 // the transcript, delivery from the raw audio. The labels say so in plain
 // words instead of leaking internal channel keys.
 const CHANNEL_LABELS: Record<Channel, string> = {
-  content: "Content — what you say",
-  delivery: "Delivery — how you say it",
+  content: "Content: what you say",
+  delivery: "Delivery: how you say it",
 };
 
 export function channelLabel(channel: Channel): string {

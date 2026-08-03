@@ -138,14 +138,14 @@ describe("archiveStatusPill", () => {
 
   it("labels a planned row as a preserved slot", () => {
     const pill = archiveStatusPill("planned");
-    expect(pill?.label).toBe("Not started — slot preserved");
+    expect(pill?.label).toBe("Not started, slot preserved");
   });
 
   it("labels scoring, failed, and insufficient rows honestly", () => {
     expect(archiveStatusPill("scoring")?.label).toBe("Scoring…");
     expect(archiveStatusPill("failed")?.label).toBe("Scoring failed");
     expect(archiveStatusPill("insufficient")?.label).toBe(
-      "Not scored — not enough evidence",
+      "Not scored: not enough evidence",
     );
   });
 

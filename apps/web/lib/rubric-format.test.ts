@@ -19,11 +19,11 @@ describe("formatWeight", () => {
 
 describe("channelLabel", () => {
   it("names the transcript channel", () => {
-    expect(channelLabel("content")).toBe("Content — what you say");
+    expect(channelLabel("content")).toBe("Content: what you say");
   });
 
   it("names the raw-audio channel", () => {
-    expect(channelLabel("delivery")).toBe("Delivery — how you say it");
+    expect(channelLabel("delivery")).toBe("Delivery: how you say it");
   });
 });
 

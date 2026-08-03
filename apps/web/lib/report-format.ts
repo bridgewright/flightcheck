@@ -81,7 +81,7 @@ const ARCHIVE_STATUS_PILLS: Record<
   { label: string; className: string } | null
 > = {
   planned: {
-    label: "Not started — slot preserved",
+    label: "Not started, slot preserved",
     className:
       "bg-neutral-100 text-neutral-600 dark:bg-neutral-800 dark:text-neutral-400",
   },
@@ -94,11 +94,11 @@ const ARCHIVE_STATUS_PILLS: Record<
     className: "bg-red-100 text-red-900 dark:bg-red-950 dark:text-red-200",
   },
   failed_permanent: {
-    label: "Closed — not scored",
+    label: "Closed, not scored",
     className: "bg-red-100 text-red-900 dark:bg-red-950 dark:text-red-200",
   },
   insufficient: {
-    label: "Not scored — not enough evidence",
+    label: "Not scored: not enough evidence",
     className: "bg-red-100 text-red-900 dark:bg-red-950 dark:text-red-200",
   },
   scored: null,

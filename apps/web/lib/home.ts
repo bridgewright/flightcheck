@@ -163,7 +163,7 @@ export function verdictLine(
   const measurement = `${name} ${weakest.score.toFixed(1)}`;
   const detail =
     scores.length > 1
-      ? `${measurement} — the lowest of your ${scores.length} dimensions. This session focuses there.`
+      ? `${measurement}, the lowest of your ${scores.length} dimensions. This session focuses there.`
       : `${measurement}. This session focuses there.`;
   return { headline, detail, text: `Last verdict: ${headline} ${detail}` };
 }
@@ -284,7 +284,7 @@ export function scoringStageLine(sessions: StageSession[]): string | null {
     scoring.scoring_stage === null
       ? undefined
       : STAGE_PHRASES[scoring.scoring_stage];
-  return phrase === undefined ? `${base}.` : `${base} — ${phrase}.`;
+  return phrase === undefined ? `${base}.` : `${base}: ${phrase}.`;
 }
 
 /**
@@ -391,7 +391,7 @@ export function effectiveTotalSessions(
 /** The one unlock sentence, derived from lib/pricing so the button can never
  * disagree with the price page. */
 export function unlockCtaLabel(): string {
-  return `Unlock all ${PACKAGE_SESSIONS} sessions — ${PRICE_DISPLAY}`;
+  return `Unlock all ${PACKAGE_SESSIONS} sessions for ${PRICE_DISPLAY}`;
 }
 
 /** Where the unlock CTA sends the user: checkout for this exact package. */
@@ -429,7 +429,7 @@ export function expiryLine(pkg: PaywallState, now: Date): string | null {
     return null;
   }
   if (days <= 0) {
-    return "This package has expired — reports stay available, but new sessions can't start.";
+    return "This package has expired. Reports stay available, but new sessions can't start.";
   }
   return days === 1 ? "1 day left on this package." : `${days} days left on this package.`;
 }

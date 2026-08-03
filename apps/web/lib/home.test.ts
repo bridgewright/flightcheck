@@ -228,7 +228,7 @@ describe("verdictLine", () => {
       { "communication-delivery": "Communication Delivery" },
     );
     expect(line?.text).toBe(
-      "Last verdict: Not yet ready. Communication Delivery 2.5 — the lowest of your 2 dimensions. This session focuses there.",
+      "Last verdict: Not yet ready. Communication Delivery 2.5, the lowest of your 2 dimensions. This session focuses there.",
     );
     expect(line?.headline).toBe("Not yet ready.");
   });
@@ -241,7 +241,7 @@ describe("verdictLine", () => {
       ]),
     );
     expect(line?.text).toBe(
-      "Last verdict: Approaching. Communication delivery 2.5 — the lowest of your 2 dimensions. This session focuses there.",
+      "Last verdict: Approaching. Communication delivery 2.5, the lowest of your 2 dimensions. This session focuses there.",
     );
   });
 
@@ -367,7 +367,7 @@ describe("scoringStageLine", () => {
         stageSession(1, "scored"),
         stageSession(2, "scoring", "content-judge"),
       ]),
-    ).toBe("Session 02 is being scored — scoring content.");
+    ).toBe("Session 02 is being scored: scoring content.");
   });
 
   it("translates every coarse worker stage", () => {
@@ -380,12 +380,12 @@ describe("scoringStageLine", () => {
       "compile",
     ].map((stage) => scoringStageLine([stageSession(3, "scoring", stage)]));
     expect(lines).toEqual([
-      "Session 03 is being scored — fetching your recording.",
-      "Session 03 is being scored — transcribing your answers.",
-      "Session 03 is being scored — measuring delivery.",
-      "Session 03 is being scored — scoring content.",
-      "Session 03 is being scored — scoring delivery.",
-      "Session 03 is being scored — writing your report.",
+      "Session 03 is being scored: fetching your recording.",
+      "Session 03 is being scored: transcribing your answers.",
+      "Session 03 is being scored: measuring delivery.",
+      "Session 03 is being scored: scoring content.",
+      "Session 03 is being scored: scoring delivery.",
+      "Session 03 is being scored: writing your report.",
     ]);
   });
 
@@ -405,7 +405,7 @@ describe("scoringStageLine", () => {
         stageSession(1, "scoring", "transcribe"),
         stageSession(2, "scoring", "compile"),
       ]),
-    ).toBe("Session 02 is being scored — writing your report.");
+    ).toBe("Session 02 is being scored: writing your report.");
   });
 });
 
@@ -559,7 +559,7 @@ describe("isUnpaid", () => {
 
 describe("unlockCtaLabel", () => {
   it("names the full session count and the price from lib/pricing", () => {
-    expect(unlockCtaLabel()).toBe("Unlock all 6 sessions — $49");
+    expect(unlockCtaLabel()).toBe("Unlock all 6 sessions for $49");
   });
 });
 
@@ -649,7 +649,7 @@ describe("expiryLine", () => {
         now,
       ),
     ).toBe(
-      "This package has expired — reports stay available, but new sessions can't start.",
+      "This package has expired. Reports stay available, but new sessions can't start.",
     );
   });
 });
