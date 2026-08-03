@@ -1,17 +1,25 @@
 import Link from "next/link";
 
-import { DELETION_TIMELINE_DAYS, deletionMailto } from "@/app/legal/policy";
+import { deletionMailto } from "@/app/legal/policy";
 import MicCheck from "@/components/MicCheck";
 import OrderHistory from "@/components/OrderHistory";
 import Shell from "@/components/Shell";
 import { LABEL, PRIMARY_BUTTON } from "@/lib/ui";
 import { getViewer } from "@/lib/viewer";
 
+import DeleteAccountSection from "./delete-account";
+import EmailChangeSection from "./email-change";
+
 // S12. Deliberately small: account facts, the microphone check, one honest
-// paragraph about recordings, the deletion intake, and sign-out. No profile
-// editing, no theme toggle — those do not exist yet, and a settings page
-// that hints at more than the product does would be lying. Deletion v0.5 is
-// a manual mailto process and the copy says so plainly (self-serve is v0.6).
+// paragraph about recordings, the two account actions, and sign-out. No
+// profile editing, no theme toggle — those do not exist yet, and a settings
+// page that hints at more than the product does would be lying.
+//
+// v0.6 turns both account actions into real ones: deletion runs on the
+// customer's own click (F-34) instead of an email to support, and the
+// sign-in address can be changed (F-35). Both are client components because
+// both need in-place state — a confirmation the user types, an outcome that
+// is honestly conditional — and neither is a navigation.
 
 // The proxy matcher normally redirects signed-out visitors to /login before
 // this renders (pinned in tests/settings-gate.test.ts). This is the fallback
@@ -64,6 +72,10 @@ export default async function SettingsPage() {
           </p>
         </Section>
 
+        <Section label="Change sign-in email">
+          <EmailChangeSection accountEmail={viewer.email} />
+        </Section>
+
         <Section label="Order history">
           <OrderHistory userId={viewer.id} />
         </Section>
@@ -86,19 +98,10 @@ export default async function SettingsPage() {
         </Section>
 
         <Section label="Delete account & data">
-          <p className="text-sm text-neutral-600 dark:text-neutral-400">
-            Deletion is a manual process right now: email us from your account
-            address and within {DELETION_TIMELINE_DAYS} days we delete the
-            account with every recording, transcript, report, and order
-            attached to it — then confirm by reply. The email below arrives
-            with the request prefilled.
-          </p>
-          <a
-            href={deletionMailto(viewer.email)}
-            className="self-start rounded-md border border-neutral-300 px-4 py-1.5 text-sm dark:border-neutral-700"
-          >
-            Request deletion by email
-          </a>
+          <DeleteAccountSection
+            accountEmail={viewer.email}
+            supportHref={deletionMailto(viewer.email)}
+          />
         </Section>
 
         <Section label="Sign out">
