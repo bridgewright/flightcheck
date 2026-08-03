@@ -1,6 +1,7 @@
 // Pure helpers behind the home dashboard and the package page. JSX-free and
 // free of any server-only import, so vitest exercises them directly and both
 // screens compose the same logic instead of each deriving its own.
+import { PACKAGE_SESSIONS, PRICE_DISPLAY, TRIAL_SESSIONS } from "@/lib/pricing";
 import type {
   PackageStatus,
   SessionReport,
@@ -344,4 +345,136 @@ export function packagePill(
  * packages are not all six sessions. */
 export function exhaustedSessionsLine(totalSessions: number): string {
   return `All ${totalSessions} sessions of this package are used.`;
+}
+
+// --- Payments (v0.5): effective quota, expiry, receipts ------------------
+//
+// The trial model: the FIRST package per account starts as a 1-session
+// trial; $49 unlocks the SAME package to its full quota. These helpers are
+// the single UI chokepoint for that policy — every surface that renders a
+// session count or an expiry line derives it here, mirroring the worker's
+// quota chokepoint, so the two cannot drift screen by screen.
+
+/** The paid-state slice of a package. PackageSummary and PackageRow both
+ * satisfy it structurally; the fields are optional because rows serialized
+ * by a pre-v0.5 worker omit them (absence = not trial, unpaid). */
+export interface PaywallState {
+  is_trial?: boolean;
+  paid_at?: string | null;
+  expires_at?: string | null;
+}
+
+/** A trial whose unlock has not been bought yet — the state every unlock
+ * CTA keys on. is_trial stays true after payment; paid_at is what flips. */
+export function isUnpaidTrial(pkg: PaywallState): boolean {
+  return (pkg.is_trial ?? false) && !pkg.paid_at;
+}
+
+/**
+ * How many sessions the package offers RIGHT NOW: the trial quota until an
+ * unpaid trial is paid, the package's own quota otherwise. Every rendered
+ * session count goes through here — a "1 of 6" on a trial would promise
+ * five sessions the user has not bought.
+ */
+export function effectiveTotalSessions(
+  pkg: PaywallState & { total_sessions: number },
+): number {
+  return isUnpaidTrial(pkg) ? TRIAL_SESSIONS : pkg.total_sessions;
+}
+
+/** The one unlock sentence, derived from lib/pricing so the button can never
+ * disagree with the price page. */
+export function unlockCtaLabel(): string {
+  return `Unlock all ${PACKAGE_SESSIONS} sessions — ${PRICE_DISPLAY}`;
+}
+
+/** Where the unlock CTA sends the user: checkout for this exact package. */
+export function checkoutHref(packageId: string): string {
+  return `/checkout?pkg=${encodeURIComponent(packageId)}`;
+}
+
+const DAY_MS = 24 * 60 * 60 * 1000;
+
+/**
+ * Whole days until the package expires, rounding partial days up (a window
+ * with 25 hours left is honestly "2 days", not a surprise cutoff), or null
+ * when no expiry applies: the 30-day window starts at payment, so unpaid
+ * packages — trials above all — carry no countdown.
+ */
+export function expiryRemainingDays(pkg: PaywallState, now: Date): number | null {
+  if (!pkg.paid_at || !pkg.expires_at) {
+    return null;
+  }
+  const expiresMs = new Date(pkg.expires_at).getTime();
+  if (Number.isNaN(expiresMs)) {
+    return null;
+  }
+  return Math.ceil((expiresMs - now.getTime()) / DAY_MS);
+}
+
+/**
+ * The remaining-days line for home and package surfaces, or null when no
+ * expiry applies. Expiry blocks NEW session starts only — artifacts stay
+ * viewable — and the expired line says exactly that.
+ */
+export function expiryLine(pkg: PaywallState, now: Date): string | null {
+  const days = expiryRemainingDays(pkg, now);
+  if (days === null) {
+    return null;
+  }
+  if (days <= 0) {
+    return "This package has expired — reports stay available, but new sessions can't start.";
+  }
+  return days === 1 ? "1 day left on this package." : `${days} days left on this package.`;
+}
+
+/**
+ * A receipt row's amount: minor units rendered in the order's own currency
+ * ("$49.00"), a bare decimal when the worker stored no currency, an honest
+ * dash when it stored no amount. Never invents a symbol.
+ */
+export function formatOrderAmount(
+  amountMinor: number | null,
+  currency: string | null,
+): string {
+  if (amountMinor === null) {
+    return "—";
+  }
+  const amount = amountMinor / 100;
+  if (!currency) {
+    return amount.toFixed(2);
+  }
+  try {
+    return new Intl.NumberFormat("en-US", {
+      style: "currency",
+      currency: currency.toUpperCase(),
+    }).format(amount);
+  } catch {
+    return `${amount.toFixed(2)} ${currency.toUpperCase()}`;
+  }
+}
+
+// Receipts outlive seasons: unlike the session list's month-day stamp, an
+// order row always carries its year.
+const ORDER_DATE_FORMAT = new Intl.DateTimeFormat("en-US", {
+  month: "short",
+  day: "numeric",
+  year: "numeric",
+  timeZone: "UTC",
+});
+
+export function formatOrderDate(iso: string | null): string | null {
+  if (!iso) {
+    return null;
+  }
+  const at = new Date(iso);
+  return Number.isNaN(at.getTime()) ? null : ORDER_DATE_FORMAT.format(at);
+}
+
+/** The worker's order status word as UI copy: capitalized, dash when absent. */
+export function orderStatusLabel(status: string | null): string {
+  if (!status) {
+    return "—";
+  }
+  return status.charAt(0).toUpperCase() + status.slice(1);
 }

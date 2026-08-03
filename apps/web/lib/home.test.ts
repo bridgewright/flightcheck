@@ -3,16 +3,25 @@ import { describe, expect, it } from "vitest";
 import {
   NAV_TABS,
   activeNavTab,
+  checkoutHref,
+  effectiveTotalSessions,
   exhaustedSessionsLine,
+  expiryLine,
+  expiryRemainingDays,
+  formatOrderAmount,
+  formatOrderDate,
   formatSessionDate,
   greetingName,
+  isUnpaidTrial,
   journeyLegs,
   latestVerdict,
   nextSessionNumber,
+  orderStatusLabel,
   packageDisplayTitle,
   packagePill,
   scoringStageLine,
   switchHref,
+  unlockCtaLabel,
   verdictLine,
   verdictPhrase,
 } from "@/lib/home";
@@ -495,5 +504,180 @@ describe("exhaustedSessionsLine", () => {
     expect(exhaustedSessionsLine(4)).toBe(
       "All 4 sessions of this package are used.",
     );
+  });
+});
+
+// --- v0.5 payments: effective quota, expiry, receipts --------------------
+
+describe("effectiveTotalSessions", () => {
+  it("caps an unpaid trial at the trial quota", () => {
+    expect(
+      effectiveTotalSessions({ is_trial: true, paid_at: null, total_sessions: 6 }),
+    ).toBe(1);
+  });
+
+  it("returns the full quota once the trial is paid", () => {
+    expect(
+      effectiveTotalSessions({
+        is_trial: true,
+        paid_at: "2026-08-03T12:00:00Z",
+        total_sessions: 6,
+      }),
+    ).toBe(6);
+  });
+
+  it("returns the package's own quota for a non-trial", () => {
+    expect(
+      effectiveTotalSessions({ is_trial: false, paid_at: null, total_sessions: 4 }),
+    ).toBe(4);
+  });
+
+  it("treats rows from a pre-v0.5 worker (fields absent) as not trial", () => {
+    expect(effectiveTotalSessions({ total_sessions: 6 })).toBe(6);
+  });
+});
+
+describe("isUnpaidTrial", () => {
+  it("is true only for a trial without a payment", () => {
+    expect(isUnpaidTrial({ is_trial: true, paid_at: null })).toBe(true);
+    expect(isUnpaidTrial({ is_trial: true, paid_at: "2026-08-03T12:00:00Z" })).toBe(false);
+    expect(isUnpaidTrial({ is_trial: false, paid_at: null })).toBe(false);
+    expect(isUnpaidTrial({})).toBe(false);
+  });
+});
+
+describe("unlockCtaLabel", () => {
+  it("names the full session count and the price from lib/pricing", () => {
+    expect(unlockCtaLabel()).toBe("Unlock all 6 sessions — $49");
+  });
+});
+
+describe("checkoutHref", () => {
+  it("targets /checkout with the package id encoded", () => {
+    expect(checkoutHref("pkg 1/x")).toBe("/checkout?pkg=pkg%201%2Fx");
+  });
+});
+
+describe("expiryRemainingDays", () => {
+  const now = new Date("2026-08-03T12:00:00Z");
+
+  it("is null when the package carries no expiry", () => {
+    expect(
+      expiryRemainingDays({ paid_at: "2026-08-01T00:00:00Z", expires_at: null }, now),
+    ).toBeNull();
+    expect(expiryRemainingDays({ paid_at: "2026-08-01T00:00:00Z" }, now)).toBeNull();
+  });
+
+  it("is null while unpaid — the window starts at payment, trials show no line", () => {
+    expect(
+      expiryRemainingDays(
+        { is_trial: true, paid_at: null, expires_at: "2026-09-02T12:00:00Z" },
+        now,
+      ),
+    ).toBeNull();
+  });
+
+  it("counts whole days remaining, rounding partial days up", () => {
+    expect(
+      expiryRemainingDays(
+        { paid_at: "2026-08-03T12:00:00Z", expires_at: "2026-09-02T12:00:00Z" },
+        now,
+      ),
+    ).toBe(30);
+    expect(
+      expiryRemainingDays(
+        { paid_at: "2026-07-05T11:00:00Z", expires_at: "2026-08-04T11:00:00Z" },
+        now,
+      ),
+    ).toBe(1);
+  });
+
+  it("goes to zero and below once expired", () => {
+    expect(
+      expiryRemainingDays(
+        { paid_at: "2026-07-02T12:00:00Z", expires_at: "2026-08-01T12:00:00Z" },
+        now,
+      ),
+    ).toBe(-2);
+  });
+
+  it("is null for an unparseable expiry date", () => {
+    expect(
+      expiryRemainingDays({ paid_at: "2026-08-01T00:00:00Z", expires_at: "soon" }, now),
+    ).toBeNull();
+  });
+});
+
+describe("expiryLine", () => {
+  const now = new Date("2026-08-03T12:00:00Z");
+
+  it("is null when no expiry applies", () => {
+    expect(expiryLine({ is_trial: true, paid_at: null }, now)).toBeNull();
+    expect(expiryLine({ paid_at: "2026-08-01T00:00:00Z", expires_at: null }, now)).toBeNull();
+  });
+
+  it("counts down the remaining days, singular and plural", () => {
+    expect(
+      expiryLine(
+        { paid_at: "2026-08-03T12:00:00Z", expires_at: "2026-09-02T12:00:00Z" },
+        now,
+      ),
+    ).toBe("30 days left on this package.");
+    expect(
+      expiryLine(
+        { paid_at: "2026-07-05T11:00:00Z", expires_at: "2026-08-04T11:00:00Z" },
+        now,
+      ),
+    ).toBe("1 day left on this package.");
+  });
+
+  it("says expired honestly once the window has passed", () => {
+    expect(
+      expiryLine(
+        { paid_at: "2026-07-02T12:00:00Z", expires_at: "2026-08-01T12:00:00Z" },
+        now,
+      ),
+    ).toBe(
+      "This package has expired — reports stay available, but new sessions can't start.",
+    );
+  });
+});
+
+describe("formatOrderAmount", () => {
+  it("renders minor units as the currency's display amount", () => {
+    expect(formatOrderAmount(4900, "usd")).toBe("$49.00");
+    expect(formatOrderAmount(4900, "USD")).toBe("$49.00");
+  });
+
+  it("renders a bare decimal when the currency is unknown", () => {
+    expect(formatOrderAmount(1234, null)).toBe("12.34");
+  });
+
+  it("falls back without crashing on a malformed currency code", () => {
+    expect(formatOrderAmount(4900, "not-a-code")).toBe("49.00 NOT-A-CODE");
+  });
+
+  it("shows an honest dash when the amount is unknown", () => {
+    expect(formatOrderAmount(null, "usd")).toBe("—");
+  });
+});
+
+describe("formatOrderDate", () => {
+  it("renders an absolute date with the year — receipts outlive seasons", () => {
+    expect(formatOrderDate("2026-08-03T12:00:00Z")).toBe("Aug 3, 2026");
+  });
+
+  it("is null for missing or unparseable dates", () => {
+    expect(formatOrderDate(null)).toBeNull();
+    expect(formatOrderDate("someday")).toBeNull();
+  });
+});
+
+describe("orderStatusLabel", () => {
+  it("capitalizes the worker's status word and dashes the unknown", () => {
+    expect(orderStatusLabel("paid")).toBe("Paid");
+    expect(orderStatusLabel("refunded")).toBe("Refunded");
+    expect(orderStatusLabel(null)).toBe("—");
+    expect(orderStatusLabel("")).toBe("—");
   });
 });
