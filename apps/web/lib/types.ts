@@ -205,24 +205,6 @@ export interface TranscriptSegment {
 
 // --- v0.6 ---------------------------------------------------------------
 
-// Mirror of scorer.api.routers.preview.PreviewDimension / RubricPreview: the
-// bar a JD compiles to, as the landing page shows it to someone who has not
-// signed up. What is absent is the point — no question bank, no BARS
-// anchors, no research summary, no citations, and nothing persisted server
-// side. Declared in Phase 0 so the preview endpoint and the web route cannot
-// drift; the field names match the worker's model exactly.
-export interface RubricPreviewDimension {
-  key: string;
-  name: string;
-  weight: number;
-  channel: Channel;
-}
-
-export interface RubricPreview {
-  role_title: string;
-  company: string | null;
-  dimensions: RubricPreviewDimension[];
-}
 
 // Mirror of the worker's GET /api/metrics/usage (F-13): the operator's
 // answer to "how many sessions completed, how fast, how much of the package

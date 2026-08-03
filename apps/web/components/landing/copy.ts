@@ -35,41 +35,6 @@ export const HERO = {
   secondaryCta: "See a real report",
 } as const;
 
-/**
- * The hero's right pane (F-45). Its prose lives here with the rest so the
- * register test can reach it — a sentence hidden in markup is a sentence
- * nothing checks.
- */
-export const PREVIEW_WIDGET = {
-  eyebrow: "Before you sign up",
-  heading: "See the bar this job is scored against",
-  placeholder: "Paste the job description you're applying to.",
-  submit: "Show me the bar",
-  submitting: "Compiling the bar",
-  hint: "Free, no account, nothing saved.",
-  tooLong: "That is longer than the preview reads. Paste the requirements section.",
-  compiling: "Reading the job description and weighing what it turns on.",
-  resultLabel: "Compiled bar",
-  verdictLine: "This is your bar. Sign in to face it.",
-  cta: "Sign in and start",
-  retry: "Try again",
-  signIn: "Sign in and compile it for real",
-  // What the paid compile adds is anchors and sources — NOT the question
-  // bank. DECISIONS 015 seals that bank on every surface, so promising it
-  // here would be selling something the product deliberately never shows.
-  footnote:
-    "The full compile adds the scoring anchors and the sources behind every " +
-    "dimension. The questions themselves stay sealed — a bar you can rehearse " +
-    "is not a bar.",
-  contentChannel: "What you say",
-  deliveryChannel: "How you say it",
-} as const;
-
-/** "A bit more — 40 more characters." Written here so the register sees it. */
-export function tooShortHint(missing: number): string {
-  return `A bit more — ${missing} more characters.`;
-}
-
 export interface Step {
   title: string;
   detail: string;

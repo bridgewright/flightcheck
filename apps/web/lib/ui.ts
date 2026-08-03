@@ -89,14 +89,6 @@ export const ERROR_TEXT = "text-sm text-red-600 dark:text-red-400";
 export const FIELD =
   "w-full rounded-md border border-neutral-300 px-3 py-2.5 dark:border-neutral-700 dark:bg-neutral-900";
 
-// --- Data display --------------------------------------------------------
-
-// A weight bar: the track is the whole, the fill is the share. Used by the
-// landing rubric preview; the report's own gauges are ReadinessGauge's.
-export const METER_TRACK =
-  "h-1.5 w-full overflow-hidden rounded-full bg-neutral-200 dark:bg-neutral-800";
-export const METER_FILL = "h-full rounded-full bg-neutral-900 dark:bg-white";
-
 // --- Framed screens ------------------------------------------------------
 //
 // Product screenshots are the proof layer of a features section, and framed

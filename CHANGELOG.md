@@ -19,22 +19,15 @@ survives its own history rather than a customer discovering it did not.
   stated honestly: the new address is not your sign-in address until it is
   confirmed.
 
-### Added — try it before you sign up
+### Added — the landing page a stranger actually reads
 
-- **Paste a job description on the landing page and see the bar.** The
-  compiled rubric preview — dimensions and weights — comes back without an
-  account, without a session, and without storing anything. No candidate-side
-  product shows you the standard before you commit to it.
-- It is also an unauthenticated model call, so it is guarded like one: a
-  per-visitor window at the edge, a length cap enforced before any model
-  call, a global daily ceiling, a concurrency slot, and a deadline. Above the
-  ceiling it says the preview is busy and points you at the real thing — the
-  degraded state is written as carefully as the happy path.
-- The landing page itself was rebuilt for screen parity with what the market
-  ships: a four-step how-it-works, framed product screenshots, an FAQ that
-  answers the six questions people actually ask, and itemized pricing. What
-  unlocks for $49 is now listed **before** the button, with the refund line
-  next to it.
+- Rebuilt for screen parity with what the market ships: a four-step
+  how-it-works, framed product screenshots, an FAQ that answers the six
+  questions people actually ask, and itemized pricing. What unlocks for $49
+  is listed **before** the button, with the refund line next to it.
+- The landing also briefly carried a live pre-signup rubric preview. It
+  shipped, ran in production, and was removed the same day — see "Not
+  shipped, and why".
 
 ### Added — the operator's instruments
 
@@ -121,6 +114,8 @@ survives its own history rather than a customer discovering it did not.
 - DECISIONS 028: one live session per package, released by the hard cut, and
   what that costs a customer whose tab crashed.
 - DECISIONS 029: the capability window — revocation now, expiry not yet.
+- DECISIONS 030: the landing rubric preview is removed the day it shipped —
+  the placement was the defect, and what the removal costs is written down.
 
 ### Not shipped, and why
 
@@ -130,6 +125,17 @@ survives its own history rather than a customer discovering it did not.
   release gate. Shipping an unvalidated judge change is precisely the
   regression that surfaces late and expensively, so it waits for a gate
   rather than riding this one degraded.
+- **The pre-signup rubric preview (F-45) shipped and was rolled back the same
+  day.** Paste a job description on the landing page, see the bar it is
+  scored against, without an account. It worked — a real posting came back as
+  four weighted dimensions in under eight seconds, and its guards held. On
+  the page it read as an unexplained box: a bare textarea and a disabled
+  button, offered before the page had said what this product is. The
+  interaction arrived ahead of the argument for it. Removed whole rather than
+  restyled, because the fault was placement, and the design pass rebuilds
+  this page next (DECISIONS 030, which also records what the removal gives
+  up — it was genuine competitive white space — and what it buys back: the
+  product now exposes no unauthenticated model call at all).
 - Data export, the IndexedDB upload stash, and per-user worker authorization
   remain v0.7.
 

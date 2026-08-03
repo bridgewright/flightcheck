@@ -18,7 +18,6 @@ import type {
   OrderRow,
   PackageRow,
   PackageStatus,
-  RubricPreview,
   SessionRow,
   SessionStatus,
   TranscriptSegment,
@@ -340,11 +339,11 @@ export async function incrementSecretMint(sessionId: string): Promise<number> {
 
 // --- v0.6 ----------------------------------------------------------------
 //
-// Client half of three endpoints Phase 0 wired and the v0.6 tracks
-// implement. All three surface failure the same way everything else here
-// does — the typed WorkerError, whose `code` is what callers switch on. That
-// is what lets the landing page tell "the preview is busy" apart from "the
-// worker is down" without parsing a message.
+// Client half of the endpoints Phase 0 wired and the v0.6 tracks implement.
+// (Phase 0 wired three; the rubric preview's client went with F-45 —
+// DECISIONS 030.) Both surface failure the same way everything else here
+// does — the typed WorkerError, whose `code` is what callers switch on, so a
+// caller can tell a refusal from an outage without parsing a message.
 
 /**
  * Delete an account and every artifact of it (F-34).
@@ -365,28 +364,6 @@ export async function deleteAccount(userId: string): Promise<void> {
   }
 }
 
-/**
- * Compile a JD into the preview of its bar (F-45), for a visitor who has
- * not signed up.
- *
- * Deliberately cheaper than the real compile: dimensions and weights, no
- * research sweep, no question bank, nothing persisted. The signal is not
- * optional decoration — the widget fires while someone is still editing
- * their JD, and an abandoned preview must stop costing a model call rather
- * than race the next one.
- */
-export async function previewRubric(
-  jdText: string,
-  signal?: AbortSignal,
-): Promise<RubricPreview> {
-  const path = "/api/preview/rubric";
-  const response = await workerFetch(path, {
-    method: "POST",
-    body: JSON.stringify({ jd_text: jdText }),
-    signal,
-  });
-  return workerJson(`POST ${path}`, response);
-}
 
 /**
  * The operator's usage numbers (F-13): completion rate, p50 latencies, and

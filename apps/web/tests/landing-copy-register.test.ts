@@ -10,13 +10,11 @@ import {
   HERO,
   HOW_IT_WORKS,
   PLACEHOLDER_LABEL,
-  PREVIEW_WIDGET,
   PRICING,
   PRICING_LINES,
   SCREENSHOTS,
   SESSION_MINUTES,
   TRIAL_MICROCOPY,
-  tooShortHint,
 } from "@/components/landing/copy";
 import { EXPIRY_DAYS, PACKAGE_SESSIONS, PRICE_DISPLAY } from "@/lib/pricing";
 
@@ -46,8 +44,6 @@ const PROSE: string[] = [
   CLOSING.heading,
   CLOSING.body,
   CLOSING.cta,
-  ...Object.values(PREVIEW_WIDGET),
-  tooShortHint(40),
   PLACEHOLDER_LABEL,
   ...HOW_IT_WORKS.flatMap((step) => [step.title, step.detail]),
   ...PRICING_LINES.flatMap((line) => [line.label, line.detail]),

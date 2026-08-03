@@ -56,13 +56,6 @@ EXEMPT = {
     # An operator harness run once per release gate, by hand, with the output
     # in front of them -- not a customer's job on a worker thread.
     "bakeoff/discrimination.py": "offline eval harness, not the product path",
-    # The one model call a stranger can trigger without an account. Retrying it
-    # would double the spend an anonymous visitor can force on the failure path
-    # -- the exact lever F-45's guards exist to hold shut -- so a bad reply
-    # degrades to the honest "did not come back in a shape we can show" state
-    # instead. No customer work is at risk: nothing is persisted and nobody has
-    # paid for a preview.
-    "api/preview.py": "unauthenticated pre-signup preview; retry amplifies spend",
 }
 
 
@@ -114,7 +107,7 @@ def test_every_model_call_in_the_tree_is_wrapped_in_backoff():
 
     The listed-modules version of this test could not fail for a call site
     added in a file nobody had thought to list -- and this batch is adding
-    exactly such a file (Track D's rubric preview). The population is now
+    exactly such a file. The population is now
     every module in the tree minus a two-entry allowlist with reasons.
     """
     unguarded = []

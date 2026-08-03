@@ -6,8 +6,7 @@
 // Fetch is stubbed — nothing here (or anywhere in tests) calls a live worker.
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-import { WorkerError, deleteAccount, previewRubric, usageMetrics } from "@/lib/worker";
-import type { RubricPreview } from "@/lib/types";
+import { WorkerError, deleteAccount, usageMetrics } from "@/lib/worker";
 
 interface RecordedCall {
   url: string;
@@ -62,50 +61,6 @@ describe("deleteAccount", () => {
     expect((err as WorkerError).code).toBe("not-implemented");
     expect((err as WorkerError).detail).toBe("account deletion is not available yet");
     expect((err as WorkerError).message).toBe("worker DELETE /api/account failed: 501");
-  });
-});
-
-describe("previewRubric", () => {
-  const preview: RubricPreview = {
-    role_title: "Senior Product Analyst",
-    company: "ExampleCorp",
-    dimensions: [
-      { key: "metric-definition", name: "Metric definition", weight: 0.4, channel: "content" },
-      { key: "clarity", name: "Clarity under pressure", weight: 0.6, channel: "delivery" },
-    ],
-  };
-
-  it("posts the JD text and returns the compiled preview", async () => {
-    nextResponse = jsonResponse(preview);
-    const result = await previewRubric("We are hiring an analyst.");
-    expect(calls[0].url).toBe("https://worker.example.test/api/preview/rubric");
-    expect(calls[0].init?.method).toBe("POST");
-    expect(JSON.parse(String(calls[0].init?.body))).toEqual({
-      jd_text: "We are hiring an analyst.",
-    });
-    expect(result).toEqual(preview);
-  });
-
-  it("forwards an abort signal so the landing widget can cancel", async () => {
-    // The widget fires on a paste and the visitor keeps typing; an
-    // abandoned preview must stop costing a model call, not race the next.
-    const controller = new AbortController();
-    nextResponse = jsonResponse(preview);
-    await previewRubric("We are hiring an analyst.", controller.signal);
-    expect(calls[0].init?.signal).toBe(controller.signal);
-  });
-
-  it("surfaces the busy state as a WorkerError carrying the worker's code", async () => {
-    // The honest degraded state above the daily ceiling is part of the
-    // feature: the landing page reads status + code, never the message.
-    nextResponse = jsonResponse(
-      { error: "preview is busy — sign in to compile yours for real", code: "preview-busy" },
-      429,
-    );
-    const err = await previewRubric("We are hiring.").catch((e: unknown) => e);
-    expect(err).toBeInstanceOf(WorkerError);
-    expect((err as WorkerError).status).toBe(429);
-    expect((err as WorkerError).code).toBe("preview-busy");
   });
 });
 

@@ -29,7 +29,7 @@ from scorer.api.deps import Deps
 from scorer.api.guards import AttemptCounter, FixedWindowLimiter
 from scorer.api.reaper import reap_stuck_safely
 from scorer.api.requestid import install_request_id
-from scorer.api.routers import account, ops, orders, packages, preview, sessions
+from scorer.api.routers import account, ops, orders, packages, sessions
 from scorer.api.storage import Storage
 from scorer.config import load_product_config
 from scorer.intake.jd import fetch_jd
@@ -122,7 +122,7 @@ def create_app(db: Database, storage: Storage, client: GenAIClientLike) -> FastA
     # /healthz first and outside the /api router: unprefixed and public, so
     # Railway's health check needs no token.
     app.include_router(ops.build_public_router(deps))
-    for module in (packages, sessions, orders, account, preview, ops):
+    for module in (packages, sessions, orders, account, ops):
         api.include_router(module.build_router(deps))
     app.include_router(api)
     return app

@@ -767,3 +767,41 @@ screen in the product.*
   one already recorded.
 - **Revisit when:** the heartbeat from 028 exists — the same signal that
   tells us a room is alive is the one that can safely bound its token.
+
+## 030 — the landing rubric preview is removed, the day it shipped (2026-08-03)
+
+*Closes F-45. Reverses the v0.6 batch's headline landing feature.*
+
+- **Decision:** the pre-signup rubric preview comes out whole — the hero
+  widget, the web route and its guards, the worker's preview module and its
+  router. The hero returns to a single column that makes the argument in
+  words. Nothing about it is kept behind a flag.
+- **Why:** on the page it read as an unexplained box. A small eyebrow, a bare
+  textarea, and a button that is correctly disabled until you type something
+  — offered to a stranger *before* the page had told them what this product
+  is. The interaction arrived ahead of the argument for it, so a visitor met
+  a form with no reason to fill it in. The engineering was sound and the
+  guards held in production; the placement was the defect, and a widget that
+  needs the surrounding page to explain it is not a hero.
+- **What this gives up, stated plainly so nobody rediscovers it as a
+  surprise:** this was real competitive white space. No candidate-side
+  product in the surveyed set shows the scoring bar before signup, and
+  "paste the JD you are actually facing and see the bar" is still the
+  strongest one-line argument this product has. Removing it is a trade, not
+  a cleanup.
+- **What it buys back:** the product no longer exposes any unauthenticated
+  model call. The per-visitor window, the global daily ceiling, the
+  concurrency slot and the deadline existed only to hold that one lever shut;
+  they go with it, and so does the class of abuse they were built for.
+- **Rejected — restyle it in place now:** the fault is placement and framing,
+  not pixels, and F-21 rebuilds this page anyway. Keeping a confusing widget
+  live in order to rework it twice is worse than removing it once.
+- **Rejected — keep the endpoint, drop the widget:** an unauthenticated model
+  call with no caller is attack surface with no product behind it.
+- **Rejected — put it behind a flag:** dead code on the landing page is how a
+  half-decision survives a release, and the guards would still need
+  maintaining for something nobody can reach.
+- **Revisit when:** the landing makes its case before it asks for anything,
+  and there is a point on the page where "now see the bar for your own job
+  description" is the obvious next step rather than the opening move. F-21 is
+  where that either becomes true or does not.

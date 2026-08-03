@@ -19,7 +19,7 @@ from fastapi.testclient import TestClient
 from fakes import FakeDatabase, FakeGenAI, FakeStorage
 from scorer.api.app import create_app
 from scorer.api.deps import Deps
-from scorer.api.routers import account, ops, orders, packages, preview, sessions
+from scorer.api.routers import account, ops, orders, packages, sessions
 
 TOKEN = "test-worker-token"
 AUTH = {"Authorization": f"Bearer {TOKEN}"}
@@ -39,7 +39,7 @@ def client() -> TestClient:
 # --- the module contract -------------------------------------------------
 
 
-ROUTER_MODULES = (packages, sessions, orders, account, preview, ops)
+ROUTER_MODULES = (packages, sessions, orders, account, ops)
 
 
 @pytest.mark.parametrize(
@@ -102,21 +102,21 @@ def test_healthz_is_public_and_not_under_the_api_prefix(client):
 
 
 # Every endpoint Phase 0 wired ahead of its track is now implemented: DELETE
-# /api/account by F-34, POST /api/preview/rubric by F-45, GET
-# /api/metrics/usage by F-13. The 501 table and its test retired with them.
+# /api/account by F-34 and GET /api/metrics/usage by F-13, and the 501 table
+# retired with them. POST /api/preview/rubric was the third; F-45 was rolled
+# back whole the same day it shipped (DECISIONS 030), router included.
 # What stays pinned here is what a track may never change while implementing
 # an endpoint — where it lives and who may reach it. The request contracts
-# moved to tests/test_api_account.py, test_api_preview.py and test_api_usage.py.
+# moved to tests/test_api_account.py and tests/test_api_usage.py.
 WIRED = (
     ("DELETE", "/api/account", {"params": {"user_id": "user-1"}}),
-    ("POST", "/api/preview/rubric", {"json": {"jd_text": "We are hiring."}}),
     ("GET", "/api/metrics/usage", {}),
 )
 
 
 @pytest.mark.parametrize(
     "method,path,kwargs", WIRED,
-    ids=["account-delete", "preview-rubric", "metrics-usage"],
+    ids=["account-delete", "metrics-usage"],
 )
 def test_wired_endpoint_is_behind_the_bearer_token(client, method, path, kwargs):
     assert client.request(method, path, **kwargs).status_code == 401
@@ -127,23 +127,3 @@ def test_account_deletion_requires_the_user_id(client):
     # handled unevenly by proxies); a missing id is a 422, never a
     # delete-everyone.
     assert client.delete("/api/account", headers=AUTH).status_code == 422
-
-
-def test_rubric_preview_requires_jd_text_and_refuses_extra_keys(client):
-    assert client.post("/api/preview/rubric", json={}, headers=AUTH).status_code == 422
-    over = client.post(
-        "/api/preview/rubric",
-        json={"jd_text": "We are hiring.", "user_id": "user-1"},
-        headers=AUTH,
-    )
-    assert over.status_code == 422
-
-
-def test_rubric_preview_shape_carries_dimensions_and_weights_only():
-    # Declared in Phase 0 so Track D and the web route cannot drift. What is
-    # absent is the point: no question bank, no anchors, no research summary.
-    fields = set(preview.RubricPreview.model_fields)
-    assert fields == {"role_title", "company", "dimensions"}
-    assert set(preview.PreviewDimension.model_fields) == {
-        "key", "name", "weight", "channel",
-    }
