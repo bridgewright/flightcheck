@@ -292,3 +292,29 @@ Format per entry: Context · Options · Choice · Why · Rejected because · Rev
   prompt change riding a 40-commit batch, checkable only at the gate.
 - **Revisit when:** the next eval-gated release — the judge-authored
   headline and the strengths/weaknesses pass go through it together.
+
+## 017 — merchant of record: Polar, verified for a KR individual seller (2026-08-03)
+
+- **Decision:** payments run through Polar as merchant of record — hosted
+  checkout only, provisioning driven by the `order.paid` webhook. The
+  choice was settled empirically the same day: a Korean individual seller
+  completed Polar signup, Stripe identity verification, and payout-account
+  onboarding (South Korea, business type "individual") end to end. The
+  product is listed at $49 one-time ("Interview package", per-JD, 30 days,
+  6 sessions). Provisioning never mints package token links (012 holds).
+- **Why:** decision 004 chose the MoR shape but left the provider open.
+  Of the candidates, Polar was the only one whose Korea payout support
+  was verifiable in public docs, and its fee on a $49 sale (≈ $3.7 with
+  an international card, ~7.5%) sits under the ~10% revisit bar in 004.
+  Lemon Squeezy carries an acknowledged migration path onto Stripe
+  Managed Payments after the Stripe acquisition — a greenfield
+  integration onto a platform that has pre-announced its own successor.
+  Paddle's support for KR individual sellers could not be verified.
+- **Rejected — Lemon Squeezy:** best webhook ergonomics
+  (`meta.custom_data`), but building on a pre-announced migration is
+  deferred rework; KR payout method also unverified.
+- **Rejected — Paddle:** strongest tax machinery, unverifiable KR
+  individual onboarding, slowest review reputation for small sellers.
+- **Revisit when:** Polar's store review rejects the account; fees rise
+  past ~10% effective; or payout reliability to KR proves poor in the
+  first months of real settlement.
