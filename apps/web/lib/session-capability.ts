@@ -58,5 +58,5 @@ export function sessionCapability(
  * things the candidate needs: the session is not lost, and what to do. */
 export const CAPABILITY_ENDED_MESSAGE =
   "Access to this session has ended. It has not been scored and it does " +
-  "not count against your package — start a new session from your home " +
+  "not count against your package. Start a new session from your home " +
   "screen, or write to us if this looks wrong.";

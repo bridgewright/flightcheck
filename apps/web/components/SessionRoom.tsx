@@ -772,8 +772,8 @@ export default function SessionRoom({
 
       {phase === "connecting" && (
         <p className="text-ink-faint">
-          Connecting to your interviewer… Morgan speaks first — no need to
-          say hello.
+          Connecting to your interviewer… Morgan speaks first, so there is no
+          need to say hello.
         </p>
       )}
 
@@ -797,7 +797,7 @@ export default function SessionRoom({
           </div>
           {elapsedS < 15 && (
             <p className="mt-2 text-sm text-ink-faint">
-              Morgan will greet you in a moment — you don&apos;t need to
+              Morgan will greet you in a moment, so you don&apos;t need to
               speak first.
             </p>
           )}
@@ -846,7 +846,7 @@ export default function SessionRoom({
           </p>
           <p className="mt-1 text-sm">{error.message}</p>
           <p className="mt-1 text-sm text-ink-faint">
-            Do not close this tab — retry until the upload succeeds.
+            Do not close this tab. Retry until the upload succeeds.
           </p>
           <button
             type="button"

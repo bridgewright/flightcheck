@@ -113,7 +113,7 @@ export function classifyMicFailure(name: string): MicFailureKind {
 export const MIC_FAILURE_LINES: Record<MicFailureKind, string> = {
   denied:
     "Microphone access is blocked. The interview cannot run without a " +
-    "microphone — allow access for this site in your browser settings, " +
+    "microphone. Allow access for this site in your browser settings, " +
     "then try again.",
   "no-device":
     "No microphone was found. Connect one, or pick a different input " +
@@ -132,7 +132,7 @@ export const RECORDER_UNAVAILABLE_MESSAGE =
  * state inside the start gesture. Try-again first: the retry click is a
  * fresh gesture, which is exactly what a suspended AudioContext needs. */
 export const AUDIO_START_FAILURE_MESSAGE =
-  "The browser's audio system could not be started. Try again — if it " +
+  "The browser's audio system could not be started. Try again. If it " +
   "keeps failing, reload the page.";
 
 /** How long the room waits for AudioContext.resume() before treating the

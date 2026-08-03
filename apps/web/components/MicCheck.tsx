@@ -136,7 +136,7 @@ export default function MicCheck() {
           </div>
           <p className="text-sm text-ink-muted">
             {state.deviceLabel ? `${state.deviceLabel} is live.` : "Your microphone is live."}{" "}
-            Say something — the bar should move as you speak.
+            Say something. The bar should move as you speak.
           </p>
           <button type="button" onClick={stopCheck} className="self-start text-sm underline underline-offset-4">
             Stop the check
