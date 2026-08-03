@@ -28,7 +28,11 @@ from scorer.api.quota import sessions_used
 from scorer.api.responses import rate_limited
 from scorer.intake.jd import JdFetchError
 from scorer.intake.profile import extract_pdf_text
-from scorer.promptsafe import strip_hidden_text
+from scorer.promptsafe import (
+    classify_injection,
+    profile_refusal_message,
+    strip_hidden_text,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -158,6 +162,24 @@ def build_router(deps: Deps) -> APIRouter:
         # chokepoint — the stored jd_text is the cleaned text, so prompts,
         # dedup, and rubric-reuse all see the same version.
         jd_text = strip_hidden_text(jd_text)
+        # F-11b: a document that is an instruction set rather than a job
+        # description is refused HERE, before the insert and before any
+        # model call. The rubric it would compile IS the bar the customer
+        # is then measured against, so quietly compiling one an attacker
+        # wrote is not a prompt-safety inconvenience -- it is the product
+        # selling a verdict against the wrong standard.
+        verdict = classify_injection(jd_text)
+        if verdict.refused:
+            # Signals, never the text: an operator log must not become a
+            # place attacker-controlled content gets replayed.
+            logger.warning(
+                "refused a job description that reads as instructions "
+                "(user_id=%s signals=%s)", body.user_id, list(verdict.signals))
+            return JSONResponse(
+                status_code=422,
+                content={"error": verdict.message,
+                         "code": "jd-not-a-job-description"},
+            )
         if len(jd_text) > limits.jd_text_max_chars:
             # A fetched page can be over the cap too; same honest rejection.
             return JSONResponse(
@@ -175,6 +197,25 @@ def build_router(deps: Deps) -> APIRouter:
             linkedin_text = _extract_pdf_upload(body.linkedin_pdf_b64, "LinkedIn")
         if linkedin_text is not None:
             linkedin_text = strip_hidden_text(linkedin_text)
+        # F-11b, the second vector: resume/LinkedIn text becomes the
+        # candidate_profile, which is interpolated into the interviewer's
+        # SYSTEM prompt. A crafted "name" is a persona injection, so the
+        # source documents face the same door as the JD.
+        for label, text in (("resume", resume_text),
+                            ("LinkedIn profile", linkedin_text)):
+            if text is None:
+                continue
+            profile_verdict = classify_injection(text)
+            if profile_verdict.refused:
+                logger.warning(
+                    "refused a %s that reads as instructions (user_id=%s "
+                    "signals=%s)", label, body.user_id,
+                    list(profile_verdict.signals))
+                return JSONResponse(
+                    status_code=422,
+                    content={"error": profile_refusal_message(label),
+                             "code": "profile-not-a-document"},
+                )
         # Trial model (F-24): the account's FIRST package is the trial. The
         # flag is cosmetic-plus-records -- the money chokepoint is paid_at
         # (effective_total_sessions) -- but the web renders trial state from
