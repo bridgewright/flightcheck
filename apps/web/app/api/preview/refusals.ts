@@ -94,3 +94,21 @@ function isRefusalCode(code: string): code is PreviewRefusalCode {
 export function refusalFor(code: string): PreviewRefusal {
   return isRefusalCode(code) ? REFUSALS[code] : REFUSALS["preview-failed"];
 }
+
+/**
+ * The refusal for a code the WORKER sent back.
+ *
+ * One code is translated on the way through, and it matters. The worker's
+ * `preview-rate-limited` cannot be a statement about this visitor: the
+ * worker's client is this app, so every browser on earth arrives from the
+ * same handful of egress addresses and that window is a SERVICE-level bound.
+ * The per-visitor window is ./guard.ts, and it has already passed by the time
+ * we call out. Rendering "that is a few previews in a short while" to someone
+ * on their first paste would be a sentence about somebody else — this file's
+ * whole premise is that the visitor did nothing wrong. Service saturation is
+ * "busy", which is both true and the same thing we say when the slots or the
+ * day's ceiling are the reason.
+ */
+export function refusalForWorker(code: string): PreviewRefusal {
+  return refusalFor(code === "preview-rate-limited" ? "preview-busy" : code);
+}

@@ -10,7 +10,7 @@ import Section from "@/components/landing/Section";
 import Showcase from "@/components/landing/Showcase";
 import { CLOSING } from "@/components/landing/copy";
 import Shell from "@/components/Shell";
-import { LINK, MUTED } from "@/lib/ui";
+import { LINK, MUTED, PAGE_HEADING } from "@/lib/ui";
 import { getViewer } from "@/lib/viewer";
 import { publicMetadata } from "./site";
 
@@ -76,9 +76,7 @@ export default async function LandingPage() {
 
       <Section>
         <div className="flex flex-col items-center gap-5 text-center">
-          <h2 className="text-2xl font-bold tracking-tight text-balance">
-            {CLOSING.heading}
-          </h2>
+          <h2 className={PAGE_HEADING}>{CLOSING.heading}</h2>
           <CtaRow label={CLOSING.cta} align="center" />
         </div>
       </Section>

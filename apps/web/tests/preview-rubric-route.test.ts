@@ -137,6 +137,23 @@ describe("POST /api/preview/rubric", () => {
     expect(body.error).toMatch(/sign in/i);
   });
 
+  it("never blames the visitor for a limit the worker hit on its own", async () => {
+    // The worker's burst window keys on ITS client, which is this app — so
+    // "rate limited" there is service-level saturation, not this visitor
+    // asking too often (that window is ../guard.ts and it passed). A first
+    // paste must not be answered with "that is a few previews in a short
+    // while", which would be a sentence about somebody else.
+    previewRubric.mockRejectedValue(
+      new FakeWorkerError(429, "preview-rate-limited", "service window"),
+    );
+    const res = await POST(request({ jd_text: JD }));
+    expect(res.status).toBe(429);
+    const body = await res.json();
+    expect(body.code).toBe("preview-busy");
+    expect(body.error).not.toMatch(/a few previews/i);
+    expect(body.error).toMatch(/busy/i);
+  });
+
   it("turns an unexpected worker failure into one calm state", async () => {
     previewRubric.mockRejectedValue(new FakeWorkerError(500, "unknown", "boom"));
     const res = await POST(request({ jd_text: JD }));

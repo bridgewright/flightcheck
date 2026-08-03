@@ -107,6 +107,32 @@ describe("the landing copy register", () => {
     expect(all).not.toContain("almost ready");
   });
 
+  it("never promises the question bank the product deliberately seals", () => {
+    // DECISIONS 015: /rubric shows dimensions, weights, signals, and anchors
+    // and NEVER question_bank — a candidate who rehearses the literal probes
+    // gets a verdict about their rehearsal. A landing sentence that sells
+    // "the questions" is therefore selling something no paying customer ever
+    // receives, which is the worst kind of copy defect: one the buyer only
+    // discovers after paying.
+    const all = PROSE.join(" ").toLowerCase();
+    for (const promise of [
+      "the questions behind",
+      "adds the questions",
+      "see the questions",
+      "question bank",
+    ]) {
+      expect(all, `promises the sealed bank: ${promise}`).not.toContain(promise);
+    }
+  });
+
+  it("does not claim more evidence than the judges actually attach", () => {
+    // content/judge.py drops quotes that do not verify against the
+    // transcript, and delivery evidence is timestamps rather than words. An
+    // absolute "every judgment is quoted" outruns both.
+    const all = PROSE.join(" ").toLowerCase();
+    expect(all).not.toContain("every judgment is quoted");
+  });
+
   it("says what the trial is under the CTAs", () => {
     expect(TRIAL_MICROCOPY).toContain("free");
     expect(TRIAL_MICROCOPY.toLowerCase()).toContain("no card");

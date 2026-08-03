@@ -3,7 +3,7 @@ import Link from "next/link";
 
 import ReportView from "@/components/ReportView";
 import Shell from "@/components/Shell";
-import { PRIMARY_BUTTON } from "@/lib/ui";
+import { DIVIDER, MUTED, NOTICE, PAGE_HEADING, PRIMARY_BUTTON } from "@/lib/ui";
 import { getViewer } from "@/lib/viewer";
 import sampleJson from "@/public/sample-report.json";
 
@@ -31,17 +31,22 @@ export default async function SampleReportPage() {
   return (
     <Shell viewer={viewer}>
       <div className="flex flex-col gap-8">
+<<<<<<< HEAD
         <div className="rounded-md border border-neutral-300 bg-neutral-50 p-4 text-sm dark:border-neutral-700 dark:bg-neutral-900">
           Sample report from a real session run by the developer. flightcheck
           has no external users yet, so no customer&rsquo;s session is on
           display here.
+=======
+        <div className={NOTICE}>
+          Sample report from a real practice session (anonymized).
+>>>>>>> 2cee8d5 (fix(review): stop the landing selling what the product seals)
         </div>
-        <h1 className="text-3xl font-bold tracking-tight">
+        <h1 className={PAGE_HEADING}>
           What your report looks like
         </h1>
         <ReportView report={sample.report} dimensions={sample.dimensions} />
-        <div className="flex flex-col items-start gap-3 border-t border-neutral-200 pt-8 dark:border-neutral-800">
-          <p className="text-sm text-neutral-600 dark:text-neutral-400">
+        <div className={`${DIVIDER} flex flex-col items-start gap-3 border-t pt-8`}>
+          <p className={`${MUTED} text-sm`}>
             Every report is scored against a rubric compiled from the job description
             you paste — not this one.
           </p>

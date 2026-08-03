@@ -10,7 +10,7 @@ import {
   PREVIEW_WINDOW_MS,
   clientKey,
 } from "../guard";
-import { refusalFor } from "../refusals";
+import { refusalFor, refusalForWorker } from "../refusals";
 import type { PreviewRefusal } from "../refusals";
 
 // The landing page's rubric preview (F-45) — the only route in this app that
@@ -84,11 +84,13 @@ export async function POST(request: Request): Promise<NextResponse> {
     if (err instanceof WorkerError) {
       // The worker's refusals are the honest degraded states this feature
       // ships with (busy, over the ceiling, timed out). Carry the CODE across
-      // the hop so the widget can switch on it; the sentence is ours.
+      // the hop so the widget can switch on it; the sentence is ours, and a
+      // worker-side rate limit is service-level rather than this visitor's
+      // doing (see refusalForWorker).
       console.error(
         `preview: worker refused (${err.status} ${err.code})`,
       );
-      return refuse(refusalFor(err.code));
+      return refuse(refusalForWorker(err.code));
     }
     // A transport failure, an unconfigured worker, anything else. The message
     // can carry hostnames and header values, so it is logged and dropped.

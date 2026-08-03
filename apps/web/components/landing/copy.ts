@@ -54,9 +54,13 @@ export const PREVIEW_WIDGET = {
   cta: "Sign in and start",
   retry: "Try again",
   signIn: "Sign in and compile it for real",
+  // What the paid compile adds is anchors and sources — NOT the question
+  // bank. DECISIONS 015 seals that bank on every surface, so promising it
+  // here would be selling something the product deliberately never shows.
   footnote:
-    "The full compile adds the questions, the scoring anchors, and the sources " +
-    "behind every dimension.",
+    "The full compile adds the scoring anchors and the sources behind every " +
+    "dimension. The questions themselves stay sealed — a bar you can rehearse " +
+    "is not a bar.",
   contentChannel: "What you say",
   deliveryChannel: "How you say it",
 } as const;
@@ -77,7 +81,7 @@ export const HOW_IT_WORKS: Step[] = [
     detail:
       "The one you are actually applying to. It compiles into that role's " +
       "bar: the dimensions a real interview scores, weighted by how much " +
-      "each one counts, with the questions behind them.",
+      "each one counts, with the scoring anchors and the sources behind them.",
   },
   {
     title: "Talk to your interviewer",
@@ -88,9 +92,14 @@ export const HOW_IT_WORKS: Step[] = [
   },
   {
     title: "Read the report",
+    // "Every judgment is quoted back" was an overclaim: content quotes are
+    // verified against the transcript and dropped when they do not match
+    // (content/judge.py), and delivery evidence is timestamps into your own
+    // audio rather than words. Say which is which.
     detail:
-      "Two scores, kept apart: what you said, and how you said it. Every " +
-      "judgment is quoted back from your own answer, so you can argue with it.",
+      "Two scores, kept apart: what you said, and how you said it. Content " +
+      "judgments quote your own words back; delivery ones point at the " +
+      "timestamps, so you can argue with either.",
   },
   {
     title: "Go again until the verdict changes",
@@ -244,11 +253,14 @@ export const FAQ: FaqEntry[] = [
   },
   {
     question: "Do I need a headset, or will speakers do?",
+    // The session room recommends headphones on its own ready screen
+    // (components/SessionRoom.tsx). Claiming here that headphones are never
+    // mentioned would contradict the product one click later.
     answer:
-      "Either. Both setups are first-class here: the interviewer handles the " +
-      "echo an open speaker creates, so you are never asked to wear headphones " +
-      "to make the product work. Use whatever you would use in the real " +
-      "interview.",
+      "Either. Open speakers work — turn detection is built to survive the " +
+      "echo your speakers put back into the microphone, and nothing is gated " +
+      "on wearing anything. Headphones remove that echo at the source, so the " +
+      "session room recommends them; that is the whole of the difference.",
   },
 ];
 

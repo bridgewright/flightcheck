@@ -7,9 +7,16 @@
 // needs. The F-21 pass re-points these to a light-first pastel system with a
 // ~10% scale-up, and the test of whether that hedge worked is simple: F-21
 // should be able to rewrite the strings in this file and have the landing,
-// pricing, checkout, legal, and login screens follow without one component
-// being re-authored. tests/landing-token-discipline.test.ts holds the line
-// by failing on a raw colour utility in those components.
+// pricing, checkout, legal, sample-report, and login screens follow without
+// one component being re-authored.
+//
+// Enforced, not hoped for: the "styles from the token module" cases in
+// tests/landing-copy-register.test.ts fail on a raw colour utility or a
+// `dark:` variant anywhere under components/landing/. That test covers the
+// landing components only — the app/ screens above were brought onto tokens
+// by hand and are not yet gated, so a raw literal reintroduced in app/
+// checkout, legal, or sample-report would pass CI. Widening the scan to those
+// files is a v0.7 item.
 //
 // Rule of thumb for adding one: colour, surface, border, and display type
 // belong here. Structure (grid, flex, order, w-full, gap) stays inline at the

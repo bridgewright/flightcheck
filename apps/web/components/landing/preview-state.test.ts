@@ -127,4 +127,17 @@ describe("readRefusal", () => {
     const refusal = readRefusal("<html><body>502 Bad Gateway</body></html>");
     expect(refusal.message).not.toContain("<html>");
   });
+
+  it("does not mistake a prototype key for a refusal code", () => {
+    // A bare `ACTIONS[code]` lookup resolves "constructor", "toString" and
+    // friends up the prototype chain to a function — which reads as a KNOWN
+    // code and hands the body's own sentence straight to the visitor. The
+    // action it produced was not even one of the three the widget renders, so
+    // the panel lost its button as well.
+    for (const code of ["constructor", "toString", "__proto__", "hasOwnProperty"]) {
+      const refusal = readRefusal({ error: "upstream says whatever it likes", code });
+      expect(refusal.message, code).not.toContain("upstream says");
+      expect(["edit", "retry", "sign-in"], code).toContain(refusal.action);
+    }
+  });
 });

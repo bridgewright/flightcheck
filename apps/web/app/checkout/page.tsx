@@ -9,7 +9,7 @@ import { resolveActivePackage } from "@/lib/active-package";
 import { ACTIVE_PACKAGE_COOKIE, packageDisplayTitle } from "@/lib/home";
 import { PolarConfigError, createCheckout } from "@/lib/polar";
 import { PRICE_DISPLAY } from "@/lib/pricing";
-import { LABEL, MUTED, PRIMARY_BUTTON } from "@/lib/ui";
+import { LABEL, LINK, MUTED, PAGE_HEADING, PRIMARY_BUTTON } from "@/lib/ui";
 import type { Viewer } from "@/lib/viewer";
 import { getViewer } from "@/lib/viewer";
 import type { PackageSummary } from "@/lib/worker";
@@ -46,7 +46,7 @@ function SignedOut() {
   return (
     <Shell viewer={null}>
       <div className="flex flex-col items-center gap-4 py-16 text-center">
-        <h1 className="text-2xl font-bold tracking-tight text-balance">
+        <h1 className={PAGE_HEADING}>
           Sign in to unlock your package.
         </h1>
         <Link href="/login?next=/checkout" className={PRIMARY_BUTTON}>
@@ -69,18 +69,18 @@ function CheckoutUnavailable({
   return (
     <Shell viewer={viewer}>
       <div className="mx-auto flex w-full max-w-md flex-col pt-4">
-        <h1 className="text-2xl font-bold tracking-tight text-balance">
+        <h1 className={PAGE_HEADING}>
           Checkout can&apos;t open right now.
         </h1>
-        <p className="mt-3 text-neutral-600 dark:text-neutral-400">{reason}</p>
-        <p className="mt-2 text-sm text-neutral-600 dark:text-neutral-400">
+        <p className={`${MUTED} mt-3`}>{reason}</p>
+        <p className={`${MUTED} mt-2 text-sm`}>
           Nothing was charged. Your package and its reports are unchanged.
         </p>
         <div className="mt-7 flex flex-wrap items-center gap-4">
           <Link href="/home" className={PRIMARY_BUTTON}>
             Back to your sessions
           </Link>
-          <Link href="/pricing" className="text-sm underline underline-offset-4">
+          <Link href="/pricing" className={`${LINK} text-sm`}>
             Pricing
           </Link>
         </div>
@@ -103,7 +103,7 @@ function ConfirmUnlock({
   return (
     <Shell viewer={viewer}>
       <div className="mx-auto flex w-full max-w-md flex-col items-start pt-4">
-        <h1 className="text-2xl font-bold tracking-tight text-balance">
+        <h1 className={PAGE_HEADING}>
           Unlock this package.
         </h1>
         <div className="mt-4">
@@ -163,10 +163,10 @@ export default async function CheckoutPage({
     return (
       <Shell viewer={viewer}>
         <div className="mx-auto flex w-full max-w-md flex-col pt-4">
-          <h1 className="text-2xl font-bold tracking-tight text-balance">
+          <h1 className={PAGE_HEADING}>
             Nothing to unlock yet.
           </h1>
-          <p className="mt-3 text-neutral-600 dark:text-neutral-400">
+          <p className={`${MUTED} mt-3`}>
             The {PRICE_DISPLAY} unlock applies to an existing package. Start
             with the job description you&apos;re applying to — your first
             session is a free trial.
@@ -185,10 +185,10 @@ export default async function CheckoutPage({
     return (
       <Shell viewer={viewer}>
         <div className="mx-auto flex w-full max-w-md flex-col pt-4">
-          <h1 className="text-2xl font-bold tracking-tight text-balance">
+          <h1 className={PAGE_HEADING}>
             This package is already unlocked.
           </h1>
-          <p className="mt-3 text-neutral-600 dark:text-neutral-400">
+          <p className={`${MUTED} mt-3`}>
             Every session it offers is available — there is nothing to pay for
             here.
           </p>

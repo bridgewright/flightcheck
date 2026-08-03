@@ -351,7 +351,16 @@ class PreviewGate:
                 self._slots.release()
 
         thread = threading.Thread(target=runner, name="rubric-preview", daemon=True)
-        thread.start()
+        try:
+            thread.start()
+        except BaseException:
+            # runner() never ran, so nothing will release the slot it holds.
+            # Leaking here would retire a slot permanently and, after
+            # max_concurrency of them, take the whole preview down until the
+            # next deploy -- a self-inflicted outage on the one endpoint a
+            # stranger sees first.
+            self._slots.release()
+            raise
         thread.join(self._limits.timeout_s)
         if thread.is_alive():
             raise PreviewTimeout()

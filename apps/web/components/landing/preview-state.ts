@@ -120,7 +120,14 @@ export function readRefusal(body: unknown): PreviewRefusalView {
     return { message: FALLBACK_MESSAGE, action: "retry" };
   }
   const { error, code } = body as { error?: unknown; code?: unknown };
-  const known = typeof code === "string" ? ACTIONS[code] : undefined;
+  // hasOwnProperty, not a bare index: `ACTIONS["constructor"]` resolves up the
+  // prototype chain to a function, which would read as a KNOWN code and let
+  // the body's own `error` string render as if it were our copy. An
+  // unrecognised code has to fall through to the sentence we wrote.
+  const known =
+    typeof code === "string" && Object.prototype.hasOwnProperty.call(ACTIONS, code)
+      ? ACTIONS[code]
+      : undefined;
   return {
     message: known !== undefined && typeof error === "string" ? error : FALLBACK_MESSAGE,
     action: known ?? "retry",
