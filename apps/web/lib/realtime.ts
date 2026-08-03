@@ -70,6 +70,16 @@ export function recordingStoragePath(
  */
 export const MAX_RECORDING_BYTES = 50 * 1024 * 1024;
 
+/**
+ * Server-side ceiling on a recording that has already reached storage. Set
+ * above MAX_RECORDING_BYTES on purpose: the browser cap is the one that
+ * shapes honest uploads, and this one only has to catch a client that
+ * ignored it. The 10 MB of headroom keeps an edge-case honest upload — a
+ * container quirk, a long overtime session — from being refused after the
+ * interview is already over and unrepeatable.
+ */
+export const MAX_STORED_RECORDING_BYTES = 60 * 1024 * 1024;
+
 // packages.id is a Postgres gen_random_uuid() column
 // (docs/supabase/migrations/001_init.sql), so anything that is not a
 // canonical UUID is hostile input. Validating BEFORE storage-key

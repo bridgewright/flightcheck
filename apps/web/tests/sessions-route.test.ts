@@ -6,12 +6,13 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 // recording's storage path is derived server-side from the authorized
 // session row, never accepted from the client.
 
-const { getViewer, authorizeSession, authorizeViewerSession, completeSession } =
+const { getViewer, authorizeSession, authorizeViewerSession, completeSession, list } =
   vi.hoisted(() => ({
     getViewer: vi.fn(),
     authorizeSession: vi.fn(),
     authorizeViewerSession: vi.fn(),
     completeSession: vi.fn(),
+    list: vi.fn(),
   }));
 
 vi.mock("@/lib/viewer", () => ({ getViewer }));
@@ -19,6 +20,9 @@ vi.mock("@/lib/worker", () => ({
   authorizeSession,
   authorizeViewerSession,
   completeSession,
+}));
+vi.mock("@supabase/supabase-js", () => ({
+  createClient: () => ({ storage: { from: () => ({ list }) } }),
 }));
 
 import * as route from "@/app/api/sessions/[id]/route";
@@ -43,7 +47,10 @@ beforeEach(() => {
   authorizeSession.mockReset();
   authorizeViewerSession.mockReset();
   completeSession.mockReset();
+  list.mockReset();
   vi.restoreAllMocks();
+  // Default: an ordinary recording, well under the cap.
+  list.mockResolvedValue({ data: [{ metadata: { size: 4 * 1024 * 1024 } }], error: null });
 });
 
 describe("session route exposes no unauthenticated GET", () => {
@@ -131,6 +138,41 @@ describe("POST /api/sessions/[id] complete with viewer ownership (no token)", ()
     authorizeViewerSession.mockResolvedValue({ ok: false, status: 502 });
     const res = await POST(...completeRequest({ action: "complete" }));
     expect(res.status).toBe(502);
+    errorSpy.mockRestore();
+  });
+});
+
+// The blob goes straight from the browser to Supabase Storage, so the only
+// server checkpoint that sees a real byte count is this one — after the
+// upload, before the scoring spend.
+describe("POST /api/sessions/[id] complete enforces the stored recording cap", () => {
+  it("refuses to score an oversize recording", async () => {
+    const errorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+    authorizeSession.mockResolvedValue({ ok: true, value: { session: SESSION } });
+    list.mockResolvedValue({
+      data: [{ metadata: { size: 61 * 1024 * 1024 } }],
+      error: null,
+    });
+    const res = await POST(...completeRequest({ action: "complete", token: "tok-1" }));
+    expect(res.status).toBe(413);
+    expect(completeSession).not.toHaveBeenCalled();
+    expect(list).toHaveBeenCalledWith(`packages/${SESSION.package_id}`, {
+      search: "session-2.webm",
+      limit: 1,
+    });
+    errorSpy.mockRestore();
+  });
+
+  it("scores anyway when the size cannot be read", async () => {
+    // Fail-open on purpose: the interview is already over and cannot be
+    // redone, so a storage hiccup must not cost the customer their session.
+    const errorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+    authorizeSession.mockResolvedValue({ ok: true, value: { session: SESSION } });
+    list.mockResolvedValue({ data: null, error: { message: "listing unavailable" } });
+    completeSession.mockResolvedValue("accepted");
+    const res = await POST(...completeRequest({ action: "complete", token: "tok-1" }));
+    expect(res.status).toBe(202);
+    expect(completeSession).toHaveBeenCalled();
     errorSpy.mockRestore();
   });
 });

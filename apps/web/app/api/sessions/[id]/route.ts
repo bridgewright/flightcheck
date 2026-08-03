@@ -1,4 +1,5 @@
 // No GET: session reports are served only via authorized server pages — do not add an unauthenticated proxy.
+import { createClient } from "@supabase/supabase-js";
 import { NextResponse } from "next/server";
 
 import { getViewer } from "@/lib/viewer";
@@ -8,7 +9,36 @@ import {
   completeSession,
 } from "@/lib/worker";
 
-import { recordingStoragePath } from "../../../../lib/realtime";
+import {
+  MAX_STORED_RECORDING_BYTES,
+  recordingStoragePath,
+} from "../../../../lib/realtime";
+
+// Size of the uploaded object, or null when it cannot be determined.
+//
+// The blob never passes through a web route — the browser PUTs it straight
+// to Supabase Storage with a signed URL — so this is where the server first
+// sees a real byte count. createSignedUploadUrl cannot carry a size limit,
+// which leaves the storage listing as the only way to ask.
+async function storedRecordingBytes(storagePath: string): Promise<number | null> {
+  const cut = storagePath.lastIndexOf("/");
+  const supabase = createClient(
+    process.env.SUPABASE_URL as string,
+    process.env.SUPABASE_SERVICE_ROLE_KEY as string,
+  );
+  const { data, error } = await supabase.storage
+    .from("recordings")
+    .list(storagePath.slice(0, cut), {
+      search: storagePath.slice(cut + 1),
+      limit: 1,
+    });
+  if (error || !data?.length) {
+    console.error("session complete: could not read the recording size", error);
+    return null;
+  }
+  const size = data[0].metadata?.size;
+  return typeof size === "number" ? size : null;
+}
 
 // POST {action: "complete"} → worker /api/sessions/{id}/complete, which flips
 // the session to "scoring" and kicks the scoring pipeline.
@@ -77,6 +107,17 @@ export async function POST(
     session = access.value.session;
   }
   const audioPath = recordingStoragePath(session.package_id, session.index);
+  // Only a positively observed oversize is refused. An unreadable size fails
+  // open: the interview is over and cannot be redone, so a storage hiccup
+  // must never cost the customer the session they already sat through.
+  const bytes = await storedRecordingBytes(audioPath);
+  if (bytes !== null && bytes > MAX_STORED_RECORDING_BYTES) {
+    console.error(`session complete: recording is ${bytes} bytes, over the cap`);
+    return NextResponse.json(
+      { error: "that recording is too large to score" },
+      { status: 413 },
+    );
+  }
   try {
     const result = await completeSession(id, audioPath);
     if (result === "already-scored") {
