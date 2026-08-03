@@ -96,9 +96,9 @@ export default async function CheckoutSuccessPage({
           Payment confirmed.
         </h1>
         <p className="mt-3 text-ink-muted">
-          All {PACKAGE_SESSIONS} sessions of this package are unlocked for the
-          next {EXPIRY_DAYS} days: same job description, same rubric, fresh
-          topics every session.
+          All {PACKAGE_SESSIONS} sessions of this package are unlocked: same job
+          description, same rubric, fresh topics every session. They stay open
+          for {EXPIRY_DAYS} days.
         </p>
         <div className="mt-7 flex flex-wrap items-center gap-4">
           <Link href="/home" className={PRIMARY_BUTTON}>

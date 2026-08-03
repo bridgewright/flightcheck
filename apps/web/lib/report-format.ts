@@ -80,10 +80,13 @@ const ARCHIVE_STATUS_PILLS: Record<
   // In progress, which is what blush marks everywhere in the product.
   scoring: { label: "Scoring…", className: CHIP_BLUSH },
   // These three are real failures of ours, which is the one job alarm has.
+  // One separator between them, deliberately: they render as siblings in the
+  // same column, and a comma, a colon, and nothing at all across three
+  // adjacent pills reads as three different voices.
   failed: { label: "Scoring failed", className: CHIP_ALARM },
   failed_permanent: { label: "Closed, not scored", className: CHIP_ALARM },
   insufficient: {
-    label: "Not scored: not enough evidence",
+    label: "Not scored, not enough evidence",
     className: CHIP_ALARM,
   },
   scored: null,

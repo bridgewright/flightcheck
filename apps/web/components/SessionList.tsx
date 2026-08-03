@@ -1,39 +1,21 @@
 import Link from "next/link";
 
 import { formatSessionDate } from "@/lib/home";
-import type { SessionStatus } from "@/lib/types";
+import { archiveStatusPill } from "@/lib/report-format";
 import type { SessionSummary } from "@/lib/worker";
-import { CHIP, CHIP_ALARM, CHIP_BLUSH, EMPTY_RULE, LABEL, SCORE_NUMBER, TABLE_ROW } from "@/lib/ui";
+import { EMPTY_RULE, LABEL, SCORE_NUMBER, TABLE_ROW } from "@/lib/ui";
 
 // A session that is not scored yet still has something true to say about
-// itself. "failed" is shown, not hidden: the product's promise is the bar,
-// and a session that could not be scored is part of the record.
-const PILLS: Record<SessionStatus, { label: string; className: string } | null> = {
-  planned: {
-    label: "Not started",
-    className: CHIP,
-  },
-  scoring: {
-    label: "Scoring…",
-    className: CHIP_BLUSH,
-  },
-  failed: {
-    label: "Scoring failed",
-    className: CHIP_ALARM,
-  },
-  insufficient: {
-    label: "Not scored: not enough evidence",
-    className: CHIP_ALARM,
-  },
-  failed_permanent: {
-    label: "Closed, not scored",
-    className: CHIP_ALARM,
-  },
-  scored: null,
-};
+// itself. "failed" is shown, not hidden: the product's promise is the bar, and
+// a session that could not be scored is part of the record.
+//
+// The table lives in lib/report-format.ts. There was a second copy here, and
+// the two had already drifted: a `planned` session read "Not started" in this
+// list and "Not started, slot preserved" everywhere else, so the same session
+// described itself differently depending on which screen the reader was on.
 
 function Outcome({ session }: { session: SessionSummary }) {
-  const pill = PILLS[session.status];
+  const pill = archiveStatusPill(session.status);
   if (pill) {
     return (
       <span

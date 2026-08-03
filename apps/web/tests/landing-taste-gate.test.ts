@@ -17,9 +17,16 @@ import { HERO, TRIAL_MICROCOPY } from "@/components/landing/copy";
 // bare. v0.6 already demonstrated what happens to a landing rule that is
 // written down but not executed by CI, which is why these are here.
 //
-// The scope is deliberately this track's files. A tree-wide version of the dash
-// ban lives with the design-system gate and carries its own exemption list;
-// this one has no exemptions because none of these files needs any.
+// The scope here is this track's files, and it is stricter than the tree-wide
+// rule rather than a subset of it: these files may not carry the character in
+// their comments either, because they are where a stranger's first impression
+// is assembled and where a dash reappears first.
+//
+// An earlier version of this header said a tree-wide dash ban "lives with the
+// design-system gate". It did not exist, and about a hundred rewritten strings
+// went ungated behind that sentence. It exists now, in
+// `tests/token-vocabulary.test.ts`, over strings and JSX text across `app/`,
+// `components/` and `lib/`, with a two-entry exemption list.
 //
 // taste-skill 4.7 (layout discipline), 4.8 (visual assets), 9.F and 9.G.
 

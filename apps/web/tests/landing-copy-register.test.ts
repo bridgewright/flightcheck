@@ -9,10 +9,8 @@ import {
   FAQ,
   HERO,
   HOW_IT_WORKS,
-  PLACEHOLDER_LABEL,
   PRICING,
   PRICING_LINES,
-  SCREENSHOTS,
   SESSION_MINUTES,
   TRIAL_MICROCOPY,
 } from "@/components/landing/copy";
@@ -44,11 +42,9 @@ const PROSE: string[] = [
   CLOSING.heading,
   CLOSING.body,
   CLOSING.cta,
-  PLACEHOLDER_LABEL,
   ...HOW_IT_WORKS.flatMap((step) => [step.title, step.detail]),
   ...PRICING_LINES.flatMap((line) => [line.label, line.detail]),
   ...FAQ.flatMap((entry) => [entry.question, entry.answer]),
-  ...SCREENSHOTS.flatMap((shot) => [shot.title, shot.caption]),
 ];
 
 // Words that would each, on their own, undo the product's central claim.

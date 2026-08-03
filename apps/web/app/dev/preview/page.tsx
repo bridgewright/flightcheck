@@ -109,7 +109,7 @@ const TRANSCRIPT: TranscriptSegment[] = [
     14,
     52,
     "candidate",
-    "Uh, first of all, I think I'll I'll do interview with our customer, because, uh, the most important thing is to map the whole customer service process (who do what, and when) before we talk about any model at all.",
+    "Uh, first of all, I think I'll I'll do interview with our customer, because, uh, the most important thing is to map the whole customer service process, who does what and when, before we talk about any model at all.",
   ),
   seg(
     55,
@@ -133,7 +133,7 @@ const TRANSCRIPT: TranscriptSegment[] = [
     133,
     189,
     "candidate",
-    "Um, we used a subsidiary indicator (the score that the LLM model actually made based on the transcripts) and we, uh, we compared it against the QA team's own sampled reviews. When the two disagreed we read those calls together with the customer, and that was, uh, that was how we calibrated it.",
+    "Um, we used a subsidiary indicator, the score the LLM model actually made from the transcripts, and we, uh, we compared it against the QA team's own sampled reviews. When the two disagreed we read those calls together with the customer, and that was, uh, that was how we calibrated it.",
   ),
   seg(
     192,

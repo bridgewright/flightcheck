@@ -244,9 +244,8 @@ select:focus-visible {
 }
 
 /* The hero cloud. The stylesheet declares no gradient at all, and this is not
- * an exception to that: it is an image reference. The product's two real
- * gradients both live outside this file, in `hero-bloom.svg`'s radial stops
- * and in `PLACEHOLDER_HATCH`.
+ * an exception to that: it is an image reference. The product's one real
+ * gradient lives outside this file, in `hero-bloom.svg`'s radial stops.
  *
  * An earlier reading of the reference concluded it had no background field at
  * all, because a scan of its computed styles found no CSS gradient anywhere.

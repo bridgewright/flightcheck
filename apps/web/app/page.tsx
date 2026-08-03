@@ -16,17 +16,20 @@ import { publicMetadata } from "./site";
 // market's top three actually ship, minus everything in the dossier's AVOID
 // list.
 //
-// The order is the argument: the hero shows the bar for YOUR job before
-// asking for anything, how-it-works explains the loop, the screenshots prove
-// it exists, the price is itemized inline rather than hidden behind a click,
-// and the FAQ answers the six objections on the page instead of in a policy
-// link. Every block re-offers one CTA, and all but the hero carry the trial
-// microcopy under it.
+// The order is the argument: the hero states the claim and asks for nothing,
+// how-it-works explains the loop, the price is itemized inline rather than
+// hidden behind a click, and the close re-offers the one CTA. Every block but
+// the hero carries the trial microcopy under its CTA.
 //
-// Six layout families for six blocks, which is what keeps the page from
-// reading as one template repeated: an asymmetric split hero, a numbered
-// sequence in unequal pairs, a two-up frame gallery, a card beside prose, an
-// accordion, and a centered close. No family appears twice.
+// Four blocks, not six. This comment described a two-up screenshot gallery and
+// an on-page FAQ accordion for a while after both had gone: the gallery was
+// removed with the hero screenshot, and the FAQ moved to its own /faq route
+// when the page was cut down. Nothing enforces a comment, so it went stale
+// silently while the file it describes was three blocks shorter than it said.
+//
+// The rule that does still hold is that no layout family repeats: a
+// single-column hero, a numbered sequence in unequal pairs, a card beside
+// prose, and a centered close.
 //
 // All prose lives in components/landing/copy.ts, where the register test can
 // hold it to honest and calm; every number comes from lib/pricing.ts and

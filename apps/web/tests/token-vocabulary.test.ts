@@ -67,6 +67,20 @@ function emitted(source: string): string {
     );
 }
 
+/**
+ * Files allowed to keep a dash in a string, and why. Both are prose nobody
+ * reads on a screen.
+ */
+const DASH_EXEMPT: Record<string, string> = {
+  "lib/session-room.ts":
+    "the silence-nudge prompts, which are instructions to the interviewer " +
+    "model rather than copy. Rewording them changes the live interviewer and " +
+    "is an evals-gated behaviour change, not a register fix.",
+  "app/api/webhooks/polar/route.ts":
+    "two console.error strings on the fail-closed paths. They reach a server " +
+    "log, never a reader.",
+};
+
 const PALETTE =
   "neutral|gray|grey|slate|zinc|stone|red|orange|amber|yellow|lime|green|" +
   "emerald|teal|cyan|sky|blue|indigo|violet|purple|fuchsia|pink|rose|white|black";
@@ -112,6 +126,31 @@ describe("every screen speaks the token vocabulary", () => {
     expect(offenders(source, /\[#[0-9a-fA-F]{3,8}\]|\[(?:rgb|hsl|oklch|oklab)a?\(/)).toEqual([]);
   });
 
+  it.each(FILES)("%s puts no dash in a sentence a reader sees", (file) => {
+    if (file in DASH_EXEMPT) return;
+    const source = readFileSync(join(webRoot, file), "utf8");
+    // The em-dash pass rewrote about 110 user-visible strings, and the only
+    // gate that survived it covered `app/page.tsx`, `components/landing/*` and
+    // `components/motion/*`. That gate's own header said a tree-wide version
+    // "lives with the design-system gate"; it did not exist. Roughly a hundred
+    // rewritten strings were ungated, which is how the rewrite would have come
+    // undone one sentence at a time.
+    //
+    // Strings and JSX text only, not comments. The landing gate bans the
+    // character in its comments too and that is right for the files a reader's
+    // first impression is assembled from, but the tree carries about 360
+    // comment lines using it as an aside, and rewriting explanations wholesale
+    // to satisfy a copy rule would damage more than it protects.
+    const body = emitted(source);
+    const strings = [
+      ...(body.match(/"(?:[^"\\\n]|\\.)*"/g) ?? []),
+      ...(body.match(/'(?:[^'\\\n]|\\.)*'/g) ?? []),
+      ...(body.match(/`(?:[^`\\]|\\.)*`/g) ?? []),
+      ...(body.match(/>[^<>{}]*</g) ?? []),
+    ];
+    expect(strings.filter((s) => /[—–]/.test(s))).toEqual([]);
+  });
+
   it.each(FILES)("%s paints no gradient of its own", (file) => {
     const source = readFileSync(join(webRoot, file), "utf8");
     // design-system.test.ts holds the stylesheet to zero gradients, and that
@@ -139,16 +178,31 @@ describe("every screen speaks the token vocabulary", () => {
 });
 
 describe("the exemptions are a list, not a loophole", () => {
-  it("names a reason for each", () => {
-    for (const [file, reason] of Object.entries(EXEMPT)) {
+  it.each([
+    ["colour and type", EXEMPT],
+    ["the dash", DASH_EXEMPT],
+  ])("the %s list names a reason for each", (_which, list) => {
+    for (const [file, reason] of Object.entries(list)) {
       expect(reason.length, `${file} is exempt without a reason`).toBeGreaterThan(40);
       // An exemption for a file that no longer exists is a hole nobody is watching.
       expect(() => statSync(join(webRoot, file))).not.toThrow();
     }
   });
 
-  it("keeps the list short enough to read", () => {
+  it("keeps both lists short enough to read", () => {
     expect(Object.keys(EXEMPT).length).toBeLessThanOrEqual(3);
+    expect(Object.keys(DASH_EXEMPT).length).toBeLessThanOrEqual(3);
+  });
+
+  it("still needs every dash exemption it claims", () => {
+    // An exemption that has stopped being load-bearing is a standing permission
+    // nobody re-examines. If the file no longer has a dash, the entry goes.
+    for (const file of Object.keys(DASH_EXEMPT)) {
+      const source = readFileSync(join(webRoot, file), "utf8");
+      expect(source, `${file} is exempt from the dash rule but no longer needs to be`).toMatch(
+        /[—–]/,
+      );
+    }
   });
 });
 

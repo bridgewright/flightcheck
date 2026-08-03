@@ -27,7 +27,9 @@
 //   destructive actions and true errors. Nothing else is coloured.
 //
 //   Depth. Group with whitespace, then a hairline, then a ground change, in
-//   that order. Two shadows exist for the few things that genuinely lift.
+//   that order. One shadow exists, for the one thing that genuinely floats:
+//   the account menu. A second was declared for cards that lift and no card
+//   ever lifted, so it went.
 //
 // Spec: plans/2026-08-03-f21-design-spec.md (private workspace).
 
@@ -88,7 +90,7 @@ export const DANGER_BUTTON =
 /** The link. One token, because the two that were here differed only in a
  * decoration neither reader could see: `decoration-ink/25` was 1.61:1 against
  * paper and `decoration-hairline` was 1.23:1. Both were the sole thing marking
- * the link as a link, and the second was worse than an accident — `hairline`
+ * the link as a link, and the second was worse than an accident: `hairline`
  * is declared in globals.css as decorative and deliberately under 3:1, so a
  * link was resting its whole affordance on a token that says in writing it
  * cannot carry one.
@@ -276,22 +278,10 @@ export const EMPTY_RULE = "inline-block h-px w-5 bg-hairline align-middle";
 // ones read as product while raw crops read as decoration. Chrome first, then
 // the capture.
 
-export const SCREEN_FRAME =
-  "overflow-hidden rounded-surface border border-hairline bg-surface";
-export const SCREEN_CHROME =
-  "flex items-center gap-1.5 border-b border-hairline bg-paper-sunk px-2.5 py-1.5";
-export const SCREEN_DOT = "size-1.5 rounded-full bg-hairline";
-export const SCREEN_BODY = "aspect-video w-full bg-paper-sunk";
-
-/** A hatch that cannot be mistaken for a product screenshot. currentColor
- * keeps it legible without a variant, and it is a CSS value rather than a
- * utility class so Tailwind cannot silently drop it. */
-export const PLACEHOLDER_HATCH =
-  "repeating-linear-gradient(45deg, transparent, transparent 10px," +
-  " color-mix(in srgb, currentColor 8%, transparent) 10px," +
-  " color-mix(in srgb, currentColor 8%, transparent) 20px)";
-
-// --- Rhythm ---------------------------------------------------------------
+// The framed-screenshot tokens and the placeholder hatch were here, and are
+// gone with the components that used them. Nothing in the product renders a
+// simulated browser chrome now, which is the point: the landing shows what the
+// product says rather than a picture of a screen it has not captured.
 
 /** The hero cloud. Full-bleed and *absolute*, so its edges fall off-screen
  * instead of drawing a rectangle, and so it stays in the hero: `fixed` was the
@@ -299,9 +289,8 @@ export const PLACEHOLDER_HATCH =
  * lives in globals.css because it is an image reference rather than a utility
  * composition. One element per page, in the hero.
  *
- * It is not a CSS gradient and the stylesheet declares none. The gradients in
- * the product are both outside it: the radial stops inside `hero-bloom.svg`,
- * and `PLACEHOLDER_HATCH` above. */
+ * It is not a CSS gradient and the stylesheet declares none. The product's one
+ * gradient is outside this file, in `hero-bloom.svg`'s radial stops. */
 export const HERO_BLOOM = "hero-bloom";
 
 /** Vertical space between landing blocks. The reference's pages are mostly

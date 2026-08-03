@@ -85,70 +85,19 @@ export const HOW_IT_WORKS: Step[] = [
   },
 ];
 
-export interface Screenshot {
-  key: string;
-  title: string;
-  caption: string;
-  /**
-   * The captured screen, or null while there is nothing honest to show.
-   *
-   * Real captures land after the F-21 design pass restyles the product.
-   * Shipping a screenshot of a UI we are about to replace would be a picture
-   * of something the buyer will never see. Until then the frame renders a
-   * labelled placeholder that could not be mistaken for a product shot. The
-   * swap is a file into public/screens/ and one string here; no component
-   * changes.
-   */
-  src: string | null;
-}
-
-export const SCREENSHOTS: Screenshot[] = [
-  {
-    key: "rubric",
-    title: "The compiled bar",
-    caption: "Every dimension, its weight, and the source behind it.",
-    src: null,
-  },
-  {
-    key: "room",
-    title: "The session room",
-    caption: "Mic check, a visible clock, and the transcript as you speak.",
-    src: null,
-  },
-  {
-    key: "report",
-    title: "The scored report",
-    caption: "Content and delivery scored separately, with your own words as evidence.",
-    src: null,
-  },
-  {
-    key: "progress",
-    title: "Progress across sessions",
-    caption: "Where you started, where you are, and what still holds the verdict down.",
-    src: null,
-  },
-];
-
-export const PLACEHOLDER_LABEL = "Screenshot pending. Captured after the design pass.";
-
-/**
- * The one screen the hero shows beside the claim.
- *
- * It is the report, and it is the same entry the showcase renders further down
- * rather than a second copy of it: the hero's job is to show the product's
- * output once, immediately, and two captions that drifted apart would be a
- * page arguing with itself. Resolved by key so that reordering the showcase
- * cannot silently repoint the hero at a different screen.
- */
-export const HERO_SCREEN: Screenshot = screenNamed("report");
-
-function screenNamed(key: string): Screenshot {
-  const shot = SCREENSHOTS.find((entry) => entry.key === key);
-  if (!shot) {
-    throw new Error(`no landing screenshot is named ${key}`);
-  }
-  return shot;
-}
+// There is no screenshot machinery here any more.
+//
+// A `Screenshot` interface, four captioned entries, a `PLACEHOLDER_LABEL`, a
+// `HERO_SCREEN` resolved by key, and the `ScreenFrame` and `Showcase`
+// components that rendered them all lived here and were imported by nothing.
+// The hero's screenshot was removed by the user twice, and the showcase block
+// went with the landing rebuild.
+//
+// They are deleted rather than parked. The placeholder read "Captured after
+// the design pass", and the design pass is this one, so the promise had gone
+// stale in place. Re-adding a captured screen should be a decision someone
+// makes with a real file in hand, not a rediscovery of scaffolding that was
+// waiting quietly for it.
 
 export interface PricingLine {
   label: string;
@@ -199,9 +148,17 @@ export interface FaqEntry {
 }
 
 /**
- * The six questions people actually ask before paying. Objections die on the
- * page, not in a docs link. The answers here are the same promises the legal
- * pages make, in plainer words.
+ * The six questions people actually ask before paying, answered at /faq.
+ *
+ * They used to sit on the landing page itself, under the heading "objections
+ * die on the page, not in a docs link". That was the right instinct and the
+ * wrong page: six accordion rows were most of the length the user asked to be
+ * cut, and an accordion FAQ is on the design skills' list of patterns that
+ * read as generic. They are one click away and no longer behind a policy PDF,
+ * which was the part that mattered.
+ *
+ * The answers here are the same promises the legal pages make, in plainer
+ * words.
  */
 export const FAQ: FaqEntry[] = [
   {

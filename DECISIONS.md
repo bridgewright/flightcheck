@@ -805,3 +805,43 @@ screen in the product.*
   and there is a point on the page where "now see the bar for your own job
   description" is the obvious next step rather than the opening move. F-21 is
   where that either becomes true or does not.
+
+## 031 — two client dependencies, and the boundary they are allowed to cross (2026-08-04)
+
+*F-21. The product's first runtime client dependencies.*
+
+- **Decision:** `motion` and `@phosphor-icons/react` enter the web app, under
+  two rules. Motion is confined to three leaf components under
+  `components/motion/` that take only presentational props and render their
+  children; every screen using them stays a server component. Icons are
+  imported from `@phosphor-icons/react/ssr`, the tree-shaken server entry, and
+  only where a glyph carries state a word would carry worse — a disclosure
+  caret, an accordion's plus and minus.
+- **Why motion:** the scroll-reveal rhythm is the part of the reference the
+  user named explicitly and it cannot be faked with CSS alone at this quality.
+  `IntersectionObserver` plus a class toggle was the alternative, and it is
+  what we would have written: about eighty lines of our own observer,
+  reduced-motion handling, and cleanup, in a component that must not leak the
+  observer across route changes. That is a worse trade than a dependency whose
+  entire job is that problem.
+- **Why the icons:** two glyphs. The honest reckoning is that this is a large
+  dependency for a small need, and it is justified only by `/ssr` making the
+  cost proportional: nothing but the imported glyphs reaches the bundle. If it
+  ever stops being two glyphs and starts being a set, this becomes an inlined
+  SVG file instead.
+- **What this costs:** the RSC boundary is now something to defend rather than
+  something the architecture guarantees. `79838fd` closed a leak where a
+  signed-in screen handed a start capability to a client component, and every
+  client component added since is a place that could recur.
+  `tests/room-token-hygiene.test.ts` and `tests/token-in-href.test.ts` watch
+  for it; a new client component is a review item, not a routine addition.
+- **Rejected — hand-rolled reveals:** see above. We would own the bugs and
+  save nothing a reader can perceive.
+- **Rejected — no motion at all:** tried first, and it is the version the user
+  compared unfavourably to the reference. Stillness read as unfinished rather
+  than as restraint.
+- **Rejected — an icon font:** a second loading strategy, a flash of missing
+  glyph, and no tree-shaking.
+- **Revisit when:** either dependency is used by more than the surfaces listed
+  here, or a client component appears that takes anything but presentational
+  props. Both are conditions a reviewer can check rather than judgement calls.
