@@ -2,7 +2,30 @@
 
 ## [Unreleased]
 
-### Added — payments: the trial-then-unlock package (v0.5)
+## [0.5.0] — 2026-08-03
+
+The payments release: a live merchant-of-record checkout, the
+trial-then-unlock package behind it, and the complete signed-in webapp that
+had to exist before charging for anything was honest — accounts, a session
+archive with transcripts and voice replay, a progress screen, and the legal
+surfaces.
+
+**On the version numbers.** 0.3 (report quality) and 0.4 (session history)
+were planned as their own releases (DECISIONS 008). Both shipped — as internal
+milestones inside the 2026-08-02 and 2026-08-03 parallel batches — and neither
+was ever tagged. No `v0.3.0` or `v0.4.0` exists, and none is being created
+retroactively: a tag invented after the fact is a decoration, not a release
+rhythm. Both are folded into this section, which therefore carries three
+bundles of work, and headings below name the milestone where it helps. The tag
+line of record is v0.1.0 → v0.2.0 → v0.5.0.
+
+### Added — payments: the trial-then-unlock package
+- **Read this before the rest of the section: no sale has happened.** The
+  live path was verified by the operator's own $49 purchase, provisioned end
+  to end and then self-refunded with the receipt kept — a self-test, not a
+  sale, with zero external customers and zero revenue. Exactly one order
+  exists and it is the project owner's own. What is proven here is that the
+  payment path works, nothing about demand.
 - Real payments, through Polar as merchant of record: checkout happens on
   Polar's hosted page — the app never renders a card field — and a
   signature-verified, replay-safe `order.paid` webhook unlocks the
@@ -21,6 +44,14 @@
 - Receipts: an order history (date, amount, status) in settings.
 - Packages whose rubric compilation failed get a "Retry compile" action
   instead of a dead end.
+- Fixed in production the same evening (`84e3434`): every real `order.paid`
+  delivery returned 403 while a locally signed, spec-compliant payload
+  verified green. Polar signs with the literal secret string, not the
+  base64-decoded key bytes the Standard Webhooks spec describes. Verification
+  now accepts any derivation of the *same* secret — spec bytes, the full
+  string, or the after-prefix string — so a tampered payload still matches
+  nothing. The lesson is recorded in RETRO.md: a signature test that signs
+  with your own code only proves you are self-consistent.
 
 ### Fixed — the session room on Safari and iOS
 - Recorder construction moved inside the failure path with a container
@@ -105,7 +136,7 @@
 - Settings: account details, a microphone check, an honest note about
   recordings and data, and sign-out.
 
-### Added — accounts, landing, home (v0.4 core)
+### Added — accounts, landing, home (the 0.4 milestone, never tagged)
 - Sign-in with Google or a passwordless email link (Supabase Auth). No
   passwords exist anywhere in the product. Interviews now require sign-in;
   a package binds to the first signed-in account that opens it, and a
@@ -127,7 +158,7 @@
   answers in, the interviewer replies in English — one warm invitation
   back the first time, no comment after that, and a plain ask-again if an
   answer wasn't understandable. The English session is the training.
-- All v0.4 screens ship in the product's plain neutral baseline
+- All the milestone's screens ship in the product's plain neutral baseline
   (light/dark adaptive). A branded visual identity was prototyped
   (night/aviation direction) and deliberately shelved: features first,
   design applied across the whole app in one dedicated pass later.
@@ -227,10 +258,19 @@
   overlap yielding stays an instruction-level behavior.
 
 ### Decisions
+
+Every entry added to DECISIONS.md since the v0.2.0 tag, in order. Completed
+2026-08-03 during the release audit: the index had stopped at 016 and omitted
+every payments entry the sections above cite by number.
+
 - DECISIONS 009: `server_vad` + `create_response: false` chosen over
   `semantic_vad` by measured bake-off (semantic_vad never committed complete
   test answers and interrupted an 8 s thinking pause at ~4.4 s).
-- DECISIONS 010: rubric reuse for identical JDs.
+- DECISIONS 010: rubric reuse for identical JDs — narrowed on 2026-08-03,
+  once accounts existed, to same-account reuse only; a global match would
+  have copied one customer's resume-derived profile onto another's package.
+- DECISIONS 011: a response armed before a suspension gap (backgrounded tab,
+  throttled timers, machine sleep) is dropped rather than fired on return.
 - DECISIONS 012: canonical URLs are login-scoped ids; token links demoted
   to claim/redirect addresses.
 - DECISIONS 013: transcripts persist before judging; audio and transcript
@@ -239,6 +279,56 @@
   and the slot survives.
 - DECISIONS 015: the rubric page conceals the question bank.
 - DECISIONS 016: report headline is compile-side deterministic this batch.
+- DECISIONS 017: merchant of record is Polar — settled empirically, by a
+  Korean individual seller completing signup, identity verification, and
+  payout onboarding end to end; the only candidate whose KR payout support
+  could be verified. Lemon Squeezy and Paddle rejected, with reasons.
+- DECISIONS 018: $49 USD on every surface from one constant, and the
+  trial-then-unlock package — including the open record that the worker's
+  quota chokepoint keys on `paid_at` alone, so *every* unpaid package grants
+  the one-session trial, not only an account's first.
+- DECISIONS 019: the 30-day window starts at payment and closes every route
+  into the interview room — resumes of unfinished sessions included, which
+  the entry originally understated and corrects in place. Reports,
+  transcripts, and replays stay readable forever, and a session already in
+  flight still gets scored. Trials never expire.
+- DECISIONS 020: retention and deletion v0 — privacy page, mailto intake,
+  operator-run purge tool, and the refund rule that the verdict itself is
+  never refund grounds.
+- DECISIONS 021: prompt-injection stance — fence now, detect later; the
+  detection heuristics and the injection eval suite are F-11b (v0.6).
+- Amended rather than superseded in this window: 008 (its v0.3 → v0.4 → v0.5
+  version map did not survive contact — see the note under the 0.5.0 heading),
+  012 and 013 (revisit conditions fired and are answered in place), and 016
+  (revisit fired and was deliberately *not* acted on — the judge-authored
+  report fields still ship as empty defaults).
+- DECISIONS 022: accounts are Supabase Auth with passwordless email links
+  and no passwords stored anywhere — logged retroactively during the release
+  audit, which found the second-largest architecture decision of this arc
+  unrecorded while much smaller ones were.
+- DECISIONS 023: Polar's live webhook signs with the literal secret string,
+  not the base64 bytes its own documented scheme describes, so verification
+  accepts any derivation of the *same* secret — a tampered payload still
+  matches nothing. Found only because real deliveries 403'd while a locally
+  signed spec-compliant payload verified green.
+- DECISIONS 024: the default track executor becomes the Codex CLI, with
+  Claude assigned to design-open tracks — supersedes 007, whose revisit
+  condition had fired at v0.2 and gone unrecorded until this audit.
+
+### Evals (release gate: `scorer-evals` exit 0)
+- 2026-08-03: layer 1 rubric discrimination accuracy 1.0 (baseline 0.8,
+  N=3 triplets).
+- 2026-08-03: layer 3 delivery discrimination judge accuracy 1.0
+  (baseline 0.8, N=2 clip triplets); the DSP path ran clean on both
+  triplets — recorded, still not gated.
+- One run, first attempt, exit 0 — no re-runs, nothing omitted. Numbers of
+  record committed verbatim in `evals/reports/2026-08-03-v05-gate.md`
+  (generated `evals/out/` artifacts are gitignored).
+- The report also states what the gate does *not* cover: the rubric compiler
+  is never invoked, so the v0.5 JD truncation and the intake hidden-text
+  strip have unit tests but no gate coverage; nor are the scoring-eligibility
+  gate, report field quality, or the package/payment lifecycle exercised. The
+  injection eval suite that closes the first gap is F-11b, in v0.6.
 
 ## [0.2.0] — 2026-08-01
 
@@ -301,6 +391,21 @@ scores.
 - DECISIONS 008: v0.2 ships product depth before payments — versions ship
   one bundle each; the PRD's original metrics stay as written, with the
   timeline shift logged honestly.
+
+### Tag boundary (noted 2026-08-03)
+
+The `v0.1.0` tag was not cut on the date of its release notes. It was created
+on 2026-08-01 at `62ee785`, six days later, so it already contains the
+2026-07-29 commits that *this* 0.2.0 section documents — the concurrent
+content judge (`aaa3d80`), the Gemini request timeout (`d440ef0`), scoring
+progress stages (`de7da70`), and the deploy runbook (`b42198b`). Check it:
+`git tag --contains aaa3d80` prints both `v0.1.0` and `v0.2.0`. The 0.1.0
+heading below is dated by its release notes; the tag object is dated
+2026-08-01.
+
+Nothing is being re-tagged or rewritten to tidy this. The overlap is a true
+record of how the releases were actually cut, and correcting the section
+boundaries by editing history would trade a small inaccuracy for a large one.
 
 ## [0.1.0] — 2026-07-26
 
