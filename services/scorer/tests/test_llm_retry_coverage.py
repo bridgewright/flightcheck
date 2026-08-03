@@ -43,9 +43,34 @@ from scorer.schemas import (
 
 SRC = Path(resilience_module.__file__).parent
 
-# Every module that talks to the model on the production path. The eval-only
-# harnesses (bakeoff/, evals_l*/) are deliberately absent: they are operator
-# tools run once per gate, not customer-facing jobs.
+_NETWORK_CALLS = {"generate_content", "upload"}
+
+# The only two modules allowed to call the model without backoff, each for a
+# stated reason. Everything else is DISCOVERED, not listed: a hand-written
+# list of call sites cannot fail when a NEW module ships an unguarded call,
+# which is the failure this suite exists to prevent.
+EXEMPT = {
+    # The compatibility wrapper IS the call being retried; retrying inside it
+    # would multiply every caller's budget by itself.
+    "genai_compat.py": "the client wrapper every retried call goes through",
+    # An operator harness run once per release gate, by hand, with the output
+    # in front of them -- not a customer's job on a worker thread.
+    "bakeoff/discrimination.py": "offline eval harness, not the product path",
+}
+
+
+def _module_paths() -> list[str]:
+    """Every module under src/scorer that makes a model call, discovered."""
+    found = []
+    for path in sorted(SRC.rglob("*.py")):
+        relative = path.relative_to(SRC).as_posix()
+        if relative in EXEMPT:
+            continue
+        if _model_calls(ast.parse(path.read_text())):
+            found.append(relative)
+    return found
+
+
 PRODUCTION_LLM_MODULES = [
     "content/transcribe.py",
     "content/judge.py",
@@ -55,8 +80,6 @@ PRODUCTION_LLM_MODULES = [
     "research/sweep.py",
     "api/pipeline.py",
 ]
-
-_NETWORK_CALLS = {"generate_content", "upload"}
 
 
 def _model_calls(tree: ast.AST) -> list[ast.Call]:
@@ -79,24 +102,34 @@ def _guarded_calls(tree: ast.AST) -> set[int]:
     return guarded
 
 
-@pytest.mark.parametrize("relative", PRODUCTION_LLM_MODULES)
-def test_every_production_model_call_is_wrapped_in_backoff(relative):
-    tree = ast.parse((SRC / relative).read_text())
-    calls = _model_calls(tree)
-    assert calls, f"{relative} was listed as an LLM call site but makes none"
-    guarded = _guarded_calls(tree)
-    unguarded = [
-        f"{relative}:{call.lineno} {call.func.attr}"  # type: ignore[union-attr]
-        for call in calls if id(call) not in guarded
-    ]
+def test_every_model_call_in_the_tree_is_wrapped_in_backoff():
+    """Discovered, not listed, so a NEW module cannot slip through.
+
+    The listed-modules version of this test could not fail for a call site
+    added in a file nobody had thought to list -- and this batch is adding
+    exactly such a file (Track D's rubric preview). The population is now
+    every module in the tree minus a two-entry allowlist with reasons.
+    """
+    unguarded = []
+    for relative in _module_paths():
+        tree = ast.parse((SRC / relative).read_text())
+        guarded = _guarded_calls(tree)
+        unguarded += [
+            f"{relative}:{call.lineno} {call.func.attr}"  # type: ignore[union-attr]
+            for call in _model_calls(tree) if id(call) not in guarded
+        ]
     assert unguarded == [], (
         "these model calls would lose a customer's work to one transient "
-        f"provider failure: {unguarded}"
+        f"provider failure: {unguarded}. Wrap them in call_with_retry, or "
+        f"add the module to EXEMPT with the reason it is not on the "
+        "customer's path."
     )
 
 
-def test_the_audited_call_site_count_is_still_covered():
-    """The audit counted seven; pin the real number so a new one is noticed."""
+def test_the_known_call_sites_are_all_still_present():
+    """Pins the audited population so a call site cannot quietly disappear
+    into a helper the discovery walk classifies differently."""
+    assert set(PRODUCTION_LLM_MODULES) <= set(_module_paths())
     total = sum(
         len(_model_calls(ast.parse((SRC / relative).read_text())))
         for relative in PRODUCTION_LLM_MODULES
