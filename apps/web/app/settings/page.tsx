@@ -83,7 +83,7 @@ export default async function SettingsPage() {
         <Section label="Audio check">
           <p className="text-sm text-ink-muted">
             Your interviewer hears you through this microphone. Check it here before a
-            session — speakers or headphones both work.
+            session. Speakers or headphones both work.
           </p>
           <MicCheck />
         </Section>
@@ -92,7 +92,7 @@ export default async function SettingsPage() {
           <p className="text-sm text-ink-muted">
             Your session recordings are kept in private storage, tied to your account.
             They exist so your delivery can be scored from the raw audio and so you can
-            replay a session next to its report — nothing else. They are never public
+            replay a session next to its report. Nothing else. They are never public
             and never used outside your own reports.
           </p>
         </Section>

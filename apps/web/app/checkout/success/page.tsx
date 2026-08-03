@@ -35,12 +35,12 @@ function Confirming({ viewer }: { viewer: Viewer | null }) {
           Confirming your payment&hellip;
         </h1>
         <p className="mt-3 text-ink-muted">
-          Polar is telling us about your payment now — usually a few seconds.
-          This page updates by itself; there is nothing else to do.
+          Polar is telling us about your payment now. That usually takes a few
+          seconds. This page updates by itself; there is nothing else to do.
         </p>
         <p className="mt-2 text-sm text-ink-muted">
           Taking longer than a minute? The confirmation sometimes lags the
-          charge. Your payment is safe either way — leave this page open or
+          charge. Your payment is safe either way. Leave this page open or
           come back later.
         </p>
       </div>
@@ -97,7 +97,7 @@ export default async function CheckoutSuccessPage({
         </h1>
         <p className="mt-3 text-ink-muted">
           All {PACKAGE_SESSIONS} sessions of this package are unlocked for the
-          next {EXPIRY_DAYS} days — same job description, same rubric, fresh
+          next {EXPIRY_DAYS} days: same job description, same rubric, fresh
           topics every session.
         </p>
         <div className="mt-7 flex flex-wrap items-center gap-4">

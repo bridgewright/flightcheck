@@ -168,7 +168,7 @@ export default async function CheckoutPage({
           </h1>
           <p className={`${MUTED} mt-3`}>
             The {PRICE_DISPLAY} unlock applies to an existing package. Start
-            with the job description you&apos;re applying to — your first
+            with the job description you&apos;re applying to. Your first
             session is a free trial.
           </p>
           <div className="mt-7">
@@ -189,7 +189,7 @@ export default async function CheckoutPage({
             This package is already unlocked.
           </h1>
           <p className={`${MUTED} mt-3`}>
-            Every session it offers is available — there is nothing to pay for
+            Every session it offers is available. There is nothing to pay for
             here.
           </p>
           <div className="mt-7">

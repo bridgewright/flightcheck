@@ -23,7 +23,7 @@ export default async function CheckoutCancelPage() {
           Checkout canceled.
         </h1>
         <p className="mt-3 text-ink-muted">
-          Nothing was charged. Your package is exactly as you left it — the
+          Nothing was charged. Your package is exactly as you left it: the
           trial session and every report stay available, and you can unlock
           the full package whenever it suits you.
         </p>

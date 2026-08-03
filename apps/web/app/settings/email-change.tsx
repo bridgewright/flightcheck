@@ -62,7 +62,7 @@ export default function EmailChangeSection({
       <p className="text-sm text-ink-muted">
         We send a confirmation link to the new address, and your current
         address may receive one too. The change takes effect only once every
-        link we send has been opened — so a typo here cannot lock you out.
+        link we send has been opened, so a typo here cannot lock you out.
       </p>
       <label className="flex flex-col gap-2 text-sm">
         <span className="text-ink-muted">New email address</span>

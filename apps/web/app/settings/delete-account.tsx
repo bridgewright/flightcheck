@@ -19,7 +19,7 @@ import { DANGER_BUTTON, ERROR_TEXT, FIELD, SECONDARY_BUTTON } from "@/lib/ui";
 // exists. There is no signed-in surface left to route to.
 
 const SUPPORT_LINE =
-  "Your data is deleted. The sign-in record could not be removed automatically — email support and we will finish it.";
+  "Your data is deleted. The sign-in record could not be removed automatically. Email support and we will finish it.";
 
 export default function DeleteAccountSection({
   accountEmail,
@@ -121,7 +121,7 @@ export default function DeleteAccountSection({
       </ul>
       <p className="text-sm text-ink-muted">
         There is no undo and no grace period. Days left on a paid package are
-        not refunded — nothing survives to restore them to.
+        not refunded, because nothing survives to restore them to.
       </p>
       <label className="flex flex-col gap-2 text-sm">
         <span className="text-ink-muted">
