@@ -12,6 +12,7 @@ import base64
 import logging
 import os
 import secrets
+from datetime import datetime
 from typing import Annotated
 
 import httpx
@@ -24,9 +25,10 @@ from fastapi import (
     HTTPException,
 )
 from fastapi.responses import JSONResponse
+from postgrest.exceptions import APIError as PostgrestAPIError
 from pydantic import BaseModel, ConfigDict
 
-from scorer.api.db import Database, PackageRow, SessionRow
+from scorer.api.db import Database, OrderRow, PackageRow, SessionRow
 from scorer.api.pipeline import compile_package, score_session
 from scorer.api.quota import (
     RETRIABLE_STATUSES,
@@ -66,6 +68,22 @@ class CreateSessionRequest(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     package_id: str
+
+
+class MarkPaidRequest(BaseModel):
+    """Order details the web's Polar webhook forwards (worker.ts
+    PaidOrderBody mirrors this shape field-for-field). paid_at anchors the
+    30-day expiry window at the payment moment, never at processing time."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    user_id: str
+    polar_order_id: str
+    polar_checkout_id: str | None = None
+    amount_minor: int | None = None
+    currency: str | None = None
+    status: str | None = None
+    paid_at: str
 
 
 class CompleteSessionRequest(BaseModel):
@@ -239,6 +257,72 @@ def create_app(db: Database, storage: Storage, client: GenAIClientLike) -> FastA
                 linkedin_text=linkedin_text,
             )
         return {"package_id": row.id, "access_token": row.access_token}
+
+    @api.post("/packages/{package_id}/paid")
+    def mark_package_paid(package_id: str, body: MarkPaidRequest):
+        """Provision a Polar payment: order row + paid package state.
+
+        Replay-safe twice over: polar_order_id is the idempotency key (a
+        known order short-circuits before any write), and set_package_paid
+        is first-write-wins, so a replay can never move the expiry window.
+        """
+        try:
+            package = db.get_package(package_id)
+        except KeyError as exc:
+            raise HTTPException(status_code=404, detail="package not found") from exc
+        try:
+            datetime.fromisoformat(body.paid_at)
+        except ValueError as exc:
+            raise HTTPException(
+                status_code=422,
+                detail="paid_at must be an ISO-8601 timestamp",
+            ) from exc
+        if package.user_id is not None and package.user_id != body.user_id:
+            # A webhook that resolved the wrong account must not provision
+            # anything: refuse loudly, write nothing.
+            return JSONResponse(
+                status_code=409,
+                content={
+                    "error": "order user does not match the package owner",
+                    "code": "user-mismatch",
+                },
+            )
+        existing = db.find_order_by_polar_id(body.polar_order_id)
+        if existing is not None:
+            return {"package_id": package_id, "order_id": existing.id,
+                    "duplicate": True}
+        try:
+            order = db.insert_order(OrderRow(
+                user_id=body.user_id,
+                package_id=package_id,
+                polar_order_id=body.polar_order_id,
+                polar_checkout_id=body.polar_checkout_id,
+                amount_minor=body.amount_minor,
+                currency=body.currency,
+                status=body.status,
+            ))
+        except (ValueError, PostgrestAPIError):
+            # Lost an insert race with a concurrent delivery of the same
+            # order (unique polar_order_id): the winner's row is the answer.
+            raced = db.find_order_by_polar_id(body.polar_order_id)
+            if raced is None:
+                raise
+            return {"package_id": package_id, "order_id": raced.id,
+                    "duplicate": True}
+        db.set_package_paid(package_id, order.id, body.paid_at)
+        logger.info(
+            "package %s provisioned paid (order_id=%s)", package_id, order.id
+        )
+        return {"package_id": package_id, "order_id": order.id,
+                "duplicate": False}
+
+    @api.get("/orders")
+    def list_orders(user_id: str) -> dict:
+        """A user's orders, newest first — the OrderHistory receipts feed."""
+        return {"orders": [
+            order.model_dump(mode="json")
+            for order in db.list_orders_for_user(user_id)
+        ]}
 
     @api.get("/packages/by-token/{access_token}")
     def get_package_by_token(access_token: str) -> PackageRow:
