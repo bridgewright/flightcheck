@@ -4,5 +4,12 @@
 [phases.setup]
 nixPkgs = ["...", "ffmpeg"]
 
+# Pin uv for the image build. Railway's builder briefly stopped supplying
+# NIXPACKS_UV_VERSION (2026-08-03), turning the install step into the invalid
+# "pip install uv==" and failing every build; an explicit version is
+# reproducible and immune to that platform drift.
+[variables]
+NIXPACKS_UV_VERSION = "0.10.3"
+
 [start]
 cmd = "uv run python -m scorer.api.app"
