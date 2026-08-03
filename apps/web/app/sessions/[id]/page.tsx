@@ -27,7 +27,7 @@ import {
   type SessionDetailState,
 } from "@/lib/transcript";
 import type { Rubric, SessionReport, TranscriptSegment } from "@/lib/types";
-import { PRIMARY_BUTTON } from "@/lib/ui";
+import { DIVIDER, PRIMARY_BUTTON } from "@/lib/ui";
 import type { Viewer } from "@/lib/viewer";
 import { getViewer } from "@/lib/viewer";
 import type { SessionProgressEntry } from "@/lib/worker";
@@ -170,11 +170,11 @@ function NotFound({ viewer }: { viewer: Viewer }) {
   return (
     <Shell viewer={viewer}>
       <div className="flex flex-col items-center gap-4 py-16 text-center">
-        <Icon name="search" className="size-8 text-neutral-400" />
+        <Icon name="search" className="size-8 text-ink-faint" />
         <h1 className="text-2xl font-bold tracking-tight text-balance">
           Session not found
         </h1>
-        <p className="max-w-md text-sm text-neutral-600 dark:text-neutral-400">
+        <p className="max-w-md text-sm text-ink-muted">
           This link doesn&apos;t match any session on your account. Check the
           address, or head back to your sessions.
         </p>
@@ -191,11 +191,11 @@ function Unreachable({ viewer }: { viewer: Viewer }) {
     <Shell viewer={viewer}>
       <PollRefresh intervalMs={5000} />
       <div className="flex flex-col items-center gap-3 py-16 text-center">
-        <Icon name="offline" className="size-8 text-neutral-400" />
+        <Icon name="offline" className="size-8 text-ink-faint" />
         <h1 className="text-2xl font-bold tracking-tight text-balance">
           Can&apos;t reach this session right now.
         </h1>
-        <p className="max-w-md text-sm text-neutral-600 dark:text-neutral-400">
+        <p className="max-w-md text-sm text-ink-muted">
           Your account is fine — the service that holds your sessions is briefly
           unreachable, most often during a restart. This page retries by itself;
           leave it open.
@@ -217,7 +217,7 @@ function ContextLine({
   date: string | null;
 }) {
   return (
-    <p className="text-xs font-semibold tracking-wide text-neutral-500 uppercase">
+    <p className="text-xs font-semibold tracking-wide text-ink-faint uppercase">
       {roleTitle ?? "Your interview package"} · Session {index} of {total}
       {date ? ` · ${date}` : ""}
     </p>
@@ -226,7 +226,7 @@ function ContextLine({
 
 function CtaBlock({ href, label }: { href: string; label: string }) {
   return (
-    <div className="border-t border-neutral-200 pt-8 dark:border-neutral-800">
+    <div className={`border-t pt-8 ${DIVIDER}`}>
       <Link href={href} className={`${PRIMARY_BUTTON} inline-flex items-center gap-2`}>
         {label}
         <Icon name="arrow" className="size-4" />
@@ -253,7 +253,7 @@ function TrajectoryHeader({
       ? report.overall_score - previous.overall
       : null;
   return (
-    <section className={`rounded-lg border p-6 ${verdictClasses(report.verdict)}`}>
+    <section className={`rounded-surface border p-6 ${verdictClasses(report.verdict)}`}>
       <p className="text-sm uppercase tracking-wide">Verdict</p>
       <p className="text-3xl font-bold">
         {VERDICT_LABELS[report.verdict]}
@@ -394,7 +394,7 @@ export default async function SessionDetailPage({
               date={date}
             />
             {state === "limited" ? (
-              <div className="rounded-md border border-amber-300 bg-amber-50 p-4 text-sm text-amber-950 dark:border-amber-800 dark:bg-amber-950 dark:text-amber-100">
+              <div className="rounded-surface border border-accent bg-accent-wash p-4 text-sm text-accent">
                 <p className="font-semibold">Scored on limited evidence</p>
                 <p className="mt-1">{report.limits_note}</p>
               </div>
@@ -468,7 +468,7 @@ export default async function SessionDetailPage({
             <Icon name={STATE_ICONS[narrowState]} className="mt-1 size-6" />
             {heading[narrowState]}
           </h1>
-          <p className="max-w-prose text-sm text-neutral-600 dark:text-neutral-400">
+          <p className="max-w-prose text-sm text-ink-muted">
             {stage ?? body[narrowState]}
           </p>
         </header>

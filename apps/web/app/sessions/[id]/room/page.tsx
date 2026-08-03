@@ -48,7 +48,7 @@ export default async function SessionRoomPage({
       return (
         <main className="mx-auto max-w-2xl p-8">
           <h1 className="text-xl font-semibold">The room is unavailable right now</h1>
-          <p className="mt-2 text-neutral-500">
+          <p className="mt-2 text-ink-faint">
             The scoring service could not be reached. Nothing is lost —
             reload in a moment.
           </p>
@@ -58,7 +58,7 @@ export default async function SessionRoomPage({
     return (
       <main className="mx-auto max-w-2xl p-8">
         <h1 className="text-xl font-semibold">Session unavailable</h1>
-        <p className="mt-2 text-neutral-500">
+        <p className="mt-2 text-ink-faint">
           This session does not exist or is not part of your account. Go back
           to your home and start a new session.
         </p>
@@ -69,7 +69,7 @@ export default async function SessionRoomPage({
     return (
       <main className="mx-auto max-w-2xl p-8">
         <h1 className="text-xl font-semibold">This session is closed</h1>
-        <p className="mt-2 text-neutral-500">{CAPABILITY_ENDED_MESSAGE}</p>
+        <p className="mt-2 text-ink-faint">{CAPABILITY_ENDED_MESSAGE}</p>
         <Link href="/home" className={`${PRIMARY_BUTTON} mt-6 inline-block`}>
           Back to your sessions
         </Link>

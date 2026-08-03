@@ -51,7 +51,7 @@ function Unreachable({ viewer }: { viewer: Viewer }) {
         <h1 className="text-2xl font-bold tracking-tight text-balance">
           Can&apos;t reach your progress right now.
         </h1>
-        <p className="max-w-md text-sm text-neutral-600 dark:text-neutral-400">
+        <p className="max-w-md text-sm text-ink-muted">
           Your sessions are safe — the service that holds them is briefly
           unreachable, most often during a restart. This page retries by
           itself; leave it open.
@@ -68,7 +68,7 @@ function NoPackages({ viewer }: { viewer: Viewer }) {
         <h1 className="text-2xl font-bold tracking-tight text-balance">
           Progress starts with a package.
         </h1>
-        <p className="max-w-md text-neutral-600 dark:text-neutral-400">
+        <p className="max-w-md text-ink-muted">
           Paste the job description you&apos;re applying to, run your sessions, and
           this page tracks how your readiness moves between them.
         </p>
@@ -92,7 +92,7 @@ function Heading({
       <h1 className="text-center text-2xl font-bold tracking-tight text-balance">
         Your progress
       </h1>
-      <p className="mb-6 text-center text-sm text-neutral-600 dark:text-neutral-400">
+      <p className="mb-6 text-center text-sm text-ink-muted">
         {pkg.role_title ?? "Your interview package"} · {scoredCount} of{" "}
         {pkg.total_sessions} sessions scored
       </p>
@@ -111,7 +111,7 @@ function StartCta({
 }) {
   if (next === null) {
     return (
-      <p className="mt-9 text-center text-sm text-neutral-500">
+      <p className="mt-9 text-center text-sm text-ink-faint">
         All {pkg.total_sessions} sessions used.
       </p>
     );
@@ -150,7 +150,7 @@ function PartialProgress({
           score={latest?.overall ?? null}
           verdict={latest?.verdict ?? null}
         />
-        <p className="max-w-md text-center text-sm text-neutral-600 dark:text-neutral-400">
+        <p className="max-w-md text-center text-sm text-ink-muted">
           Trend data is briefly unreachable, so this shows your latest score
           only. This page retries by itself; leave it open.
         </p>
@@ -219,7 +219,7 @@ export default async function ProgressPage({
             score={latest?.overall ?? null}
             verdict={latest?.verdict ?? null}
           />
-          <p className="max-w-md text-center text-sm text-neutral-600 dark:text-neutral-400">
+          <p className="max-w-md text-center text-sm text-ink-muted">
             {scored.length === 0
               ? "Your first scored session sets the baseline. Trends need two."
               : "Trends appear after your second scored session."}

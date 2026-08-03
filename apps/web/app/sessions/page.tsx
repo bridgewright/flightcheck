@@ -13,7 +13,7 @@ import {
   VERDICT_LABELS,
   verdictPillClasses,
 } from "@/lib/report-format";
-import { PRIMARY_BUTTON } from "@/lib/ui";
+import { EMPTY_RULE, PRIMARY_BUTTON, QUIET_LINK } from "@/lib/ui";
 import type { Viewer } from "@/lib/viewer";
 import { getViewer } from "@/lib/viewer";
 import type { PackageSummary, SessionSummary } from "@/lib/worker";
@@ -48,7 +48,7 @@ function Unreachable({ viewer }: { viewer: Viewer }) {
         <h1 className="text-2xl font-bold tracking-tight text-balance">
           Can&apos;t reach your sessions right now.
         </h1>
-        <p className="max-w-md text-sm text-neutral-600 dark:text-neutral-400">
+        <p className="max-w-md text-sm text-ink-muted">
           Your account is fine — the service that holds your sessions is briefly
           unreachable, most often during a restart. This page retries by itself;
           leave it open.
@@ -65,7 +65,7 @@ function NoPackages({ viewer }: { viewer: Viewer }) {
         <h1 className="text-2xl font-bold tracking-tight text-balance">
           No sessions yet.
         </h1>
-        <p className="max-w-md text-neutral-600 dark:text-neutral-400">
+        <p className="max-w-md text-ink-muted">
           Sessions live inside an interview package. Paste the job description
           you&apos;re applying to and your first one is ready in about two minutes.
         </p>
@@ -89,7 +89,7 @@ function VerdictCell({ session }: { session: SessionSummary }) {
         {VERDICT_LABELS[session.verdict]}
       </span>
     ) : (
-      <span className="text-neutral-500">Scored</span>
+      <span className="text-ink-faint">Scored</span>
     );
   }
   const stage =
@@ -101,7 +101,7 @@ function VerdictCell({ session }: { session: SessionSummary }) {
       >
         {pill.label}
       </span>
-      {stage ? <span className="text-xs text-neutral-500">{stage}</span> : null}
+      {stage ? <span className="text-xs text-ink-faint">{stage}</span> : null}
     </span>
   );
 }
@@ -110,7 +110,7 @@ function RowLinks({ session }: { session: SessionSummary }) {
   const detail = (label: string) => (
     <Link
       href={`/sessions/${session.id}`}
-      className="text-xs underline underline-offset-4"
+      className={`${QUIET_LINK} text-xs`}
     >
       {label}
     </Link>
@@ -124,7 +124,7 @@ function RowLinks({ session }: { session: SessionSummary }) {
         {detail("View")}
         <Link
           href={`/sessions/${session.id}/room`}
-          className="text-xs underline underline-offset-4"
+          className={`${QUIET_LINK} text-xs`}
         >
           Retry
         </Link>
@@ -143,7 +143,7 @@ function ArchiveTable({ sessions }: { sessions: SessionSummary[] }) {
     <div className="overflow-x-auto">
       <table className="w-full border-collapse text-left text-sm">
         <thead>
-          <tr className="border-b border-neutral-200 text-xs tracking-wide text-neutral-500 uppercase dark:border-neutral-800">
+          <tr className="border-b border-hairline text-xs tracking-wide text-ink-faint uppercase">
             <th className="py-2 pr-4 font-semibold">#</th>
             <th className="py-2 pr-4 font-semibold">Date</th>
             <th className="py-2 pr-4 font-semibold">Outcome</th>
@@ -164,26 +164,32 @@ function ArchiveTable({ sessions }: { sessions: SessionSummary[] }) {
             return (
               <tr
                 key={session.id}
-                className="border-b border-neutral-200 dark:border-neutral-800"
+                className="border-b border-hairline"
               >
-                <td className={`${CELL} text-xs text-neutral-500 tabular-nums`}>
+                <td className={`${CELL} text-xs text-ink-faint tabular-nums`}>
                   {String(session.index).padStart(2, "0")}
                 </td>
-                <td className={`${CELL} whitespace-nowrap text-neutral-600 dark:text-neutral-400`}>
-                  {formatSessionDate(session.created_at) ?? "—"}
+                <td className={`${CELL} whitespace-nowrap text-ink-muted`}>
+                  {formatSessionDate(session.created_at) ?? (
+                    <span className={EMPTY_RULE} aria-hidden="true" />
+                  )}
                 </td>
                 <td className={CELL}>
                   <VerdictCell session={session} />
                 </td>
                 <td className={`${CELL} font-semibold tabular-nums`}>
                   {session.overall === null ? (
-                    <span className="font-normal text-neutral-500">—</span>
+                    <span className={EMPTY_RULE} aria-hidden="true" />
                   ) : (
                     session.overall.toFixed(1)
                   )}
                 </td>
-                <td className={`${CELL} text-neutral-500 tabular-nums`}>
-                  {delta === undefined ? "—" : formatDelta(delta)}
+                <td className={`${CELL} text-ink-faint tabular-nums`}>
+                  {delta === undefined ? (
+                    <span className={EMPTY_RULE} aria-hidden="true" />
+                  ) : (
+                    formatDelta(delta)
+                  )}
                 </td>
                 <td className="py-3 align-top">
                   <RowLinks session={session} />
@@ -211,16 +217,16 @@ function PackageGroup({
     <section className="flex flex-col gap-2">
       <h3 className="text-sm font-semibold">
         {pkg.role_title ?? "Untitled package"}
-        <span className="ml-2 font-normal text-neutral-500">
+        <span className="ml-2 font-normal text-ink-faint">
           {pkg.sessions_used} of {pkg.total_sessions} used
         </span>
       </h3>
       {sessions === null ? (
-        <p className="text-sm text-neutral-600 dark:text-neutral-400">
+        <p className="text-sm text-ink-muted">
           Couldn&apos;t load this package&apos;s sessions right now.
         </p>
       ) : sessions.length === 0 ? (
-        <p className="text-sm text-neutral-600 dark:text-neutral-400">
+        <p className="text-sm text-ink-muted">
           No sessions in this package yet.
         </p>
       ) : (
@@ -230,15 +236,17 @@ function PackageGroup({
             .map((session) => (
               <li
                 key={session.id}
-                className="grid grid-cols-[7rem_1fr_auto_auto] items-baseline gap-3.5 border-b border-neutral-200 py-2.5 text-sm dark:border-neutral-800"
+                className="grid grid-cols-[7rem_1fr_auto_auto] items-baseline gap-3.5 border-b border-hairline py-2.5 text-sm"
               >
-                <span className="text-neutral-600 dark:text-neutral-400">
-                  {formatSessionDate(session.created_at) ?? "—"}
+                <span className="text-ink-muted">
+                  {formatSessionDate(session.created_at) ?? (
+                    <span className={EMPTY_RULE} aria-hidden="true" />
+                  )}
                 </span>
                 <VerdictCell session={session} />
                 <span className="font-semibold tabular-nums">
                   {session.overall === null ? (
-                    <span className="font-normal text-neutral-500">—</span>
+                    <span className={EMPTY_RULE} aria-hidden="true" />
                   ) : (
                     session.overall.toFixed(1)
                   )}
@@ -309,20 +317,20 @@ export default async function SessionsPage({
       {anyScoring || anyFailedFetch ? <PollRefresh intervalMs={5000} /> : null}
 
       <h1 className="text-2xl font-bold tracking-tight">Sessions</h1>
-      <p className="mt-1 text-sm text-neutral-600 dark:text-neutral-400">
+      <p className="mt-1 text-sm text-ink-muted">
         {active.role_title ?? "Your interview package"} · {active.sessions_used} of{" "}
         {active.total_sessions} sessions used
       </p>
 
       <div className="mt-6">
         {activeSessions === null ? (
-          <p className="text-sm text-neutral-600 dark:text-neutral-400">
+          <p className="text-sm text-ink-muted">
             Couldn&apos;t load this package&apos;s sessions right now — this page
             retries by itself.
           </p>
         ) : activeSessions.length === 0 ? (
           <div className="flex flex-col items-start gap-4 py-6">
-            <p className="text-sm text-neutral-600 dark:text-neutral-400">
+            <p className="text-sm text-ink-muted">
               Nothing here yet — your first session appears the moment you finish
               it.
             </p>
@@ -337,7 +345,7 @@ export default async function SessionsPage({
 
       {others.length > 0 ? (
         <section className="mt-10 flex flex-col gap-6">
-          <h2 className="text-xs font-semibold tracking-wide text-neutral-500 uppercase">
+          <h2 className="text-xs font-semibold tracking-wide text-ink-faint uppercase">
             Other packages
           </h2>
           {others.map((candidate, i) => (
