@@ -254,7 +254,6 @@ export default async function HomePage({
           ) : (
             <StartSessionButton
               packageId={active.id}
-              token={active.access_token}
               label={`Start session ${next}`}
             />
           )

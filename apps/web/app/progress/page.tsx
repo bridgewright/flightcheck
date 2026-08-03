@@ -120,7 +120,6 @@ function StartCta({
     <div className="mt-9 flex justify-center">
       <StartSessionButton
         packageId={pkg.id}
-        token={pkg.access_token}
         label={`Start session ${next}`}
       />
     </div>

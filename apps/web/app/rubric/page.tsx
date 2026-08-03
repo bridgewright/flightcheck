@@ -197,7 +197,7 @@ export default async function RubricPage({
             <p className="text-sm text-neutral-600 dark:text-neutral-400">
               Session {next} of {total} is next.
             </p>
-            <StartSessionButton packageId={pkg.id} token={pkg.access_token} />
+            <StartSessionButton packageId={pkg.id} />
           </>
         )}
       </div>

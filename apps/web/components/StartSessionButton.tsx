@@ -12,7 +12,12 @@ export default function StartSessionButton({
   label = "Start session",
 }: {
   packageId: string;
-  token: string;
+  // Optional on purpose. A signed-in page must NOT pass one: the token would
+  // be serialized into that page's RSC payload, which is how a capability
+  // leaks into browser history and shared HTML. Without it /api/sessions
+  // takes the viewer branch and checks ownership against the account. The
+  // prop stays for the token-claim flow, which has no viewer to check.
+  token?: string;
   /** The CTA wording — pages that know the session number say so. */
   label?: string;
 }) {
@@ -24,12 +29,15 @@ export default function StartSessionButton({
     setStarting(true);
     setFailure(null);
     try {
-      // The package access token rides along: /api/sessions requires it (the
-      // v0.1 capability model) — a bare package UUID must not start sessions.
+      // Send the token only when there is one. Omitting it is the signed-in
+      // path: the route falls through to the viewer branch and proves
+      // ownership against the account instead of against a bearer string.
       const response = await fetch("/api/sessions", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ package_id: packageId, token }),
+        body: JSON.stringify(
+          token ? { package_id: packageId, token } : { package_id: packageId },
+        ),
       });
       const data = (await response.json().catch(() => ({}))) as {
         session_id?: string;
