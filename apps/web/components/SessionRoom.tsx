@@ -8,6 +8,7 @@ import MicCheck from "./MicCheck";
 
 import { MAX_RECORDING_BYTES } from "../lib/realtime";
 import {
+  AUDIO_RESUME_TIMEOUT_MS,
   AUDIO_START_FAILURE_MESSAGE,
   MIC_FAILURE_LINES,
   RECORDER_UNAVAILABLE_MESSAGE,
@@ -15,6 +16,7 @@ import {
   classifyMicFailure,
   containerType,
   pickRecorderMimeType,
+  settledWithinTimeout,
 } from "../lib/session-media";
 import {
   CONNECTION_LOST_MESSAGE,
@@ -272,12 +274,20 @@ export default function SessionRoom({
     let audioCtx = audioCtxRef.current;
     if (!micStream || !audioCtx) {
       try {
-        micStream = await navigator.mediaDevices.getUserMedia({
-          audio: { echoCancellation: true, noiseSuppression: true },
-        });
-        micStreamRef.current = micStream;
-        audioCtx = new AudioContext();
-        audioCtxRef.current = audioCtx;
+        // Create only what is missing: a failed attempt can null the mic
+        // stream while the AudioContext survives, and Safari caps live
+        // AudioContexts — recreating one per retry would strand the old
+        // contexts until construction starts failing.
+        if (!micStream) {
+          micStream = await navigator.mediaDevices.getUserMedia({
+            audio: { echoCancellation: true, noiseSuppression: true },
+          });
+          micStreamRef.current = micStream;
+        }
+        if (!audioCtx) {
+          audioCtx = new AudioContext();
+          audioCtxRef.current = audioCtx;
+        }
       } catch (err) {
         connectingRef.current = false;
         setPhase("ready");
@@ -293,10 +303,17 @@ export default function SessionRoom({
     }
     // Safari (macOS + iOS): a fresh AudioContext starts "suspended" and only
     // a resume() issued inside the user's start gesture reliably runs it —
-    // without this the recording mix and the analysers are silent.
-    try {
-      await audioCtx.resume();
-    } catch {
+    // without this the recording mix and the analysers are silent. The wait
+    // is BOUNDED because a policy-blocked resume() never rejects — its
+    // promise just stays pending (resume() only rejects on a closed
+    // context), which a bare await would turn into a permanent
+    // "Connecting…". Timing out lands in the honest retryable state; the
+    // retry click is a fresh gesture, which resumes the same context.
+    const resumed = await settledWithinTimeout(
+      audioCtx.resume(),
+      AUDIO_RESUME_TIMEOUT_MS,
+    );
+    if (!resumed) {
       connectingRef.current = false;
       setPhase("ready");
       setError({ kind: "connect", message: AUDIO_START_FAILURE_MESSAGE });
@@ -426,6 +443,9 @@ export default function SessionRoom({
           dc.send(greetingTriggerEvent());
         } catch (err) {
           console.error("session room: recorder start failed", err);
+          // If the recorder DID start before a later statement threw, stop
+          // it — nothing may keep recording after the room tears down.
+          if (recorder.state !== "inactive") recorder.stop();
           pcRef.current?.close();
           pcRef.current = null;
           micStreamRef.current?.getTracks().forEach((t) => t.stop());

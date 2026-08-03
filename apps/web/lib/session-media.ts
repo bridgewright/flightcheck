@@ -129,10 +129,40 @@ export const RECORDER_UNAVAILABLE_MESSAGE =
   "Chrome, Edge, Safari, or Firefox and try again.";
 
 /** Shown when the browser's audio system refuses to leave its suspended
- * state inside the start gesture. */
+ * state inside the start gesture. Try-again first: the retry click is a
+ * fresh gesture, which is exactly what a suspended AudioContext needs. */
 export const AUDIO_START_FAILURE_MESSAGE =
-  "The browser's audio system could not be started. Reload the page and " +
-  "try again.";
+  "The browser's audio system could not be started. Try again — if it " +
+  "keeps failing, reload the page.";
+
+/** How long the room waits for AudioContext.resume() before treating the
+ * audio system as blocked. A permitted resume settles in milliseconds; only
+ * a policy-blocked one keeps the promise pending. */
+export const AUDIO_RESUME_TIMEOUT_MS = 3000;
+
+/**
+ * True when `promise` settles (either way) within `timeoutMs`, false
+ * otherwise. Exists for one spec quirk: an AudioContext.resume() blocked by
+ * autoplay policy never REJECTS — the promise just stays pending with the
+ * context suspended (resume() only rejects on a closed context) — so a bare
+ * `await audioCtx.resume()` can hang a session start forever. Racing it
+ * against this bound turns the hang into the honest audio-start failure.
+ * A rejection also returns false: either way the context is not running.
+ */
+export async function settledWithinTimeout(
+  promise: Promise<unknown>,
+  timeoutMs: number,
+): Promise<boolean> {
+  return Promise.race([
+    promise.then(
+      () => true,
+      () => false,
+    ),
+    new Promise<boolean>((resolve) => {
+      setTimeout(() => resolve(false), timeoutMs);
+    }),
+  ]);
+}
 
 /** One calm line at the mic-check step — recording is disclosed before the
  * session, not discovered after it. */

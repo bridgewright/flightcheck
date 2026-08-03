@@ -1,6 +1,7 @@
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 
 import {
+  AUDIO_RESUME_TIMEOUT_MS,
   AUDIO_START_FAILURE_MESSAGE,
   IN_APP_BROWSER_HINT,
   MIC_FAILURE_LINES,
@@ -12,6 +13,7 @@ import {
   containerType,
   missingCapabilities,
   pickRecorderMimeType,
+  settledWithinTimeout,
   unsupportedBrowserMessage,
 } from "@/lib/session-media";
 
@@ -113,6 +115,40 @@ describe("missingCapabilities", () => {
         hasMediaRecorder: false,
       }),
     ).toHaveLength(3);
+  });
+});
+
+// The Web Audio quirk this helper exists for: a resume() blocked by autoplay
+// policy never rejects — the promise stays pending with the context
+// suspended — so the room bounds the wait instead of hanging on
+// "Connecting…" forever.
+describe("settledWithinTimeout", () => {
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  it("is true when the promise resolves inside the window", async () => {
+    await expect(settledWithinTimeout(Promise.resolve("running"), 1000)).resolves.toBe(
+      true,
+    );
+  });
+
+  it("is false when the promise rejects — the context is not running", async () => {
+    await expect(
+      settledWithinTimeout(Promise.reject(new Error("context closed")), 1000),
+    ).resolves.toBe(false);
+  });
+
+  it("is false when nothing settles within the window (the blocked-resume hang)", async () => {
+    vi.useFakeTimers();
+    const foreverPending = new Promise(() => {});
+    const outcome = settledWithinTimeout(foreverPending, AUDIO_RESUME_TIMEOUT_MS);
+    await vi.advanceTimersByTimeAsync(AUDIO_RESUME_TIMEOUT_MS);
+    await expect(outcome).resolves.toBe(false);
+  });
+
+  it("keeps a generous, non-zero bound — a permitted resume settles in milliseconds", () => {
+    expect(AUDIO_RESUME_TIMEOUT_MS).toBeGreaterThanOrEqual(1000);
   });
 });
 
