@@ -2,7 +2,10 @@
 
 **A pre-flight check for your English interview.** Paste the JD you're applying to; flightcheck interviews you by voice against that role's actual bar, scores both *what you said* (transcript) and *how you said it* (raw audio — native speech-to-speech, no transcription in the loop), and tells you honestly whether you're ready.
 
-## v0.5 — live
+## Live
+
+The deployed build tracks `main`, which is ahead of the last tag (`v0.5.0`):
+v0.6 and the design pass are in `CHANGELOG.md` under Unreleased.
 
 - **App:** https://flightcheck.vercel.app
 - **Sample report (no signup):** https://flightcheck.vercel.app/sample-report
@@ -15,12 +18,20 @@
   merchant of record and checkout happens on its page
   ([pricing](https://flightcheck.vercel.app/pricing), DECISIONS #017–#018).
 
-![flightcheck demo: paste a JD, preview the cited rubric, take the voice interview, read the honest report](docs/demo.gif)
+![The flightcheck landing page: the claim "Would you pass the interview today?", a one-line explanation, and two buttons, on warm off-white with a soft pink cloud behind it](docs/landing.jpg)
 
-*Captured at v0.1, four frames: intake, the compiled rubric with its weights
-and sources, the session-room clock, the report. Not in it — sign-in, pricing,
-checkout, the session archive, the progress screen, i.e. everything the
-signed-in app grew afterwards. It gets re-recorded when the visual pass lands.*
+![A scored flightcheck report: the verdict "Approaching 4.27 / 5", a gauge showing overall against the 4.0 Ready bar, a second gauge showing the weakest dimension at 2.5 against the 3.0 floor, and a sentence explaining that the second is what holds the verdict down](docs/report.jpg)
+
+*Two stills from the running app, captured 2026-08-04 at the current design.
+They replace a four-frame GIF recorded at v0.1: it showed a dark interface this
+product no longer has, a verdict rendered as an amber warning badge the design
+system now forbids, and no sign of why 4.27 out of 5 reads as "Approaching".
+Its own caption had promised a re-record "when the visual pass lands", and the
+visual pass has landed. A real screen recording returns with the v1.0 demo,
+which needs a live 20-minute session rather than a screenshot.*
+
+*What these two do not show — sign-in, pricing, checkout, the session archive,
+the progress screen — is everything the signed-in app grew after v0.1.*
 
 ### How it fits together
 
