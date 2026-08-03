@@ -1,37 +1,50 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 900" width="1600" height="900" preserveAspectRatio="xMidYMin slice" aria-hidden="true">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 900" width="1600" height="900" aria-hidden="true">
   <!--
     The hero cloud.
 
-    The reference (ode.com) opens on a large soft pink form with a long tapering
-    tail. It is drawn there as an image, which is why a scan of its computed
-    styles found no CSS gradient and an earlier pass here wrongly concluded it
-    had no background field at all.
+    The reference (ode.com) opens on a large soft pink form with a long
+    tapering tail. It is drawn there as an image, which is why a scan of its
+    computed styles found no CSS gradient and an earlier pass here wrongly
+    concluded it had no background field at all.
 
-    This is that shape, as geometry rather than as a photograph: three ellipses
-    at different angles and opacities, blurred hard enough that no edge of any
-    one of them is findable. Layered CSS radial gradients cannot make the taper,
-    because a radial gradient is always symmetric about its own centre; rotating
-    an ellipse and blurring it can.
+    Built from radial gradients painted into rotated ellipses rather than from
+    a Gaussian blur filter. A first version used feGaussianBlur and rendered
+    nothing at all as a CSS background image: the file served, the browser
+    fetched it, and no pixel appeared. Rather than keep guessing at the filter
+    region, the softness is now in the paint itself, which has no such failure
+    mode. Rotating an ellipse filled with a radial gradient also gives the
+    taper, which layered CSS radial-gradients cannot: a CSS radial gradient is
+    always symmetric about its own centre.
 
-    Kept as an SVG rather than a raster: it is about 1 KB, it scales to any
-    viewport without a second asset, its colour is editable in one place, and it
-    adds no non-MIT binary to a repository whose licence is one of its twelve
-    release gates.
+    Explicit width and height, and no preserveAspectRatio. Both were present in
+    an earlier version and the image rendered nothing at all as a CSS
+    background: the file served 200, the browser fetched it, and no pixel
+    appeared, while a solid colour on the same box painted fine. An SVG with a
+    viewBox but no intrinsic size, asked to `slice`, has no reliable default
+    size as a background image. Giving it real dimensions and letting
+    background-size: cover do the cropping removes the ambiguity, and the
+    cropping was what `slice` was for anyway.
 
-    The colour is --color-bloom (#edc9d8) from app/globals.css. If that token
+    About 1 KB, scales to any viewport, colour editable in one place, and no
+    non-MIT binary in a repository whose licence is one of its release gates.
+
+    The colour is the bloom token (#edc9d8) in app/globals.css. If that token
     moves, this file moves with it; there is no third place to check.
   -->
   <defs>
-    <filter id="soften" x="-30%" y="-30%" width="160%" height="160%" color-interpolation-filters="sRGB">
-      <feGaussianBlur stdDeviation="96" />
-    </filter>
+    <radialGradient id="soft">
+      <stop offset="0%" stop-color="#edc9d8" stop-opacity="0.95" />
+      <stop offset="45%" stop-color="#edc9d8" stop-opacity="0.55" />
+      <stop offset="75%" stop-color="#edc9d8" stop-opacity="0.18" />
+      <stop offset="100%" stop-color="#edc9d8" stop-opacity="0" />
+    </radialGradient>
   </defs>
-  <g filter="url(#soften)" fill="#edc9d8">
-    <!-- The head, high and right of centre, where the reference puts its mass. -->
-    <ellipse cx="1010" cy="300" rx="300" ry="205" opacity="0.85" />
-    <!-- The tail, rotated so the form reads as drifting rather than as a blob. -->
-    <ellipse cx="640" cy="410" rx="470" ry="120" opacity="0.6" transform="rotate(-13 640 410)" />
-    <!-- A third, fainter and lower left, so the falloff is not symmetrical. -->
-    <ellipse cx="330" cy="470" rx="290" ry="150" opacity="0.35" transform="rotate(-8 330 470)" />
-  </g>
+  <!-- The head, high and right of centre, where the reference puts its mass. -->
+  <ellipse cx="1010" cy="290" rx="430" ry="300" fill="url(#soft)" />
+  <!-- The tail, rotated so the form reads as drifting rather than as a blob. -->
+  <ellipse cx="660" cy="400" rx="620" ry="185" fill="url(#soft)" opacity="0.75"
+           transform="rotate(-12 660 400)" />
+  <!-- A third, fainter and lower left, so the falloff is not symmetrical. -->
+  <ellipse cx="300" cy="470" rx="420" ry="230" fill="url(#soft)" opacity="0.45"
+           transform="rotate(-7 300 470)" />
 </svg>

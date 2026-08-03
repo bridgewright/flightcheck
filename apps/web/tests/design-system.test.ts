@@ -263,6 +263,26 @@ describe("the shape rule", () => {
     expect(declaredCss).toMatch(/hero-bloom\.svg/);
     expect(emitted).toContain("HERO_BLOOM");
 
+    // The asset has to be well-formed XML, and this is not a theoretical
+    // check. Three versions of this file rendered nothing at all while
+    // serving a clean 200, because a comment inside it documented the
+    // `-` `-color-bloom` token by name and a double hyphen inside an XML
+    // comment is a parse error. The browser fetched the file, failed to parse
+    // it, and painted nothing; a solid colour on the same box painted fine,
+    // which is what finally separated "the container is wrong" from "the
+    // image is wrong". A malformed SVG fails loudly here instead.
+    const svg = readFileSync(join(webRoot, "public/hero-bloom.svg"), "utf8");
+    const commentBodies = [...svg.matchAll(/<!--([\s\S]*?)-->/g)].map((m) => m[1]);
+    for (const body of commentBodies) {
+      expect(body, "a double hyphen inside an XML comment is a parse error").not.toContain("--");
+    }
+    expect(svg).toContain("<svg");
+    expect(svg).toMatch(/viewBox=/);
+    // Intrinsic dimensions: an SVG with only a viewBox has no reliable default
+    // size as a CSS background image.
+    expect(svg).toMatch(/\bwidth="\d+"/);
+    expect(svg).toMatch(/\bheight="\d+"/);
+
     // It must not be able to draw its own edges, and it must not follow the
     // reader down the page. Full-bleed and absolute: fixed was the first
     // attempt and it tinted every screen below the hero.
