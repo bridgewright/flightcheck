@@ -8,6 +8,8 @@ alter a single refusal.
 from __future__ import annotations
 
 import logging
+from collections.abc import Iterable
+from datetime import UTC, datetime, timedelta
 
 from fastapi import APIRouter, BackgroundTasks, HTTPException
 from fastapi.responses import JSONResponse
@@ -25,6 +27,7 @@ from scorer.api.quota import (
     sessions_used,
 )
 from scorer.api.responses import rate_limited
+from scorer.config import load_product_config
 from scorer.schemas import CandidateProfile
 from scorer.sessionplan.planner import (
     build_interviewer_instructions,
@@ -44,6 +47,36 @@ class CompleteSessionRequest(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     audio_path: str
+
+
+def live_session(rows: Iterable[SessionRow],
+                 hard_cut_minutes: float) -> SessionRow | None:
+    """The session somebody is in RIGHT NOW, or None (F-38).
+
+    Three conditions, all derived from state that already exists:
+
+    * status "planned" -- the interview has not been handed to the scorer
+      yet. A "scoring" row runs on the worker for minutes and must not make
+      the customer wait for their next session.
+    * secret_mints > 0 -- the browser actually connected. Starting a session
+      and closing the tab before entering the room must not lock the
+      package: nothing was spent and nothing is running.
+    * updated_at within the session's own hard cut -- the reaper's staleness
+      notion, reused rather than reinvented. The window is the hard cut
+      because an interview cannot outlive it, so a crashed browser releases
+      the lock when the session it was running would have ended anyway.
+      A row with no clock (pre-lifecycle) is never live, exactly as the
+      reaper treats it.
+    """
+    cutoff = datetime.now(UTC) - timedelta(minutes=hard_cut_minutes)
+    for row in rows:
+        if row.status != "planned" or row.secret_mints < 1:
+            continue
+        if row.updated_at is None:
+            continue
+        if datetime.fromisoformat(row.updated_at) >= cutoff:
+            return row
+    return None
 
 
 def _empty_profile() -> CandidateProfile:
@@ -86,6 +119,10 @@ def build_router(deps: Deps) -> APIRouter:
     complete_limiter = deps.complete_limiter
     resume_attempts = deps.resume_attempts
     score_attempts = deps.score_attempts
+    # The concurrent-session lock's window (F-38). Sourced from the
+    # session's own hard cut rather than a new knob: an interview cannot
+    # run longer than that, so neither can the lock.
+    session_hard_cut_minutes = load_product_config().session.hard_cut_minutes
 
     @router.post("/sessions")
     def create_session(body: CreateSessionRequest):
@@ -115,6 +152,22 @@ def build_router(deps: Deps) -> APIRouter:
                 },
             )
         existing = db.list_sessions(body.package_id)
+        # F-38: one live session per package. Two tabs otherwise both get a
+        # session and both record, and the recording key is derived from the
+        # session index -- so one upload silently overwrites the other and
+        # the report is scored against whichever audio survived.
+        in_progress = live_session(existing, session_hard_cut_minutes)
+        if in_progress is not None:
+            return JSONResponse(
+                status_code=409,
+                content={
+                    "error": ("a session for this package is already in "
+                              "progress — finish it, or wait for it to time "
+                              "out before starting another"),
+                    "code": "session-in-progress",
+                    "session_id": in_progress.id,
+                },
+            )
         retriable = sorted(
             (row for row in existing if row.status in RETRIABLE_STATUSES),
             key=lambda row: row.index,
@@ -230,6 +283,10 @@ def build_router(deps: Deps) -> APIRouter:
         except KeyError as exc:
             raise HTTPException(status_code=404, detail="session not found") from exc
         count = db.increment_secret_mints(session_id)
+        # The mint is the moment the browser joins the room, so it is what
+        # the F-38 lock window should be measured from -- not the moment the
+        # row was created, which may be long before the customer starts.
+        db.touch_updated_at("session", session_id)
         if count > limits.secret_mint_cap:
             return JSONResponse(
                 status_code=429,
