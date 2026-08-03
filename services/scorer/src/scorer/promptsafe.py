@@ -125,14 +125,27 @@ _STRONG_SIGNALS: tuple[tuple[str, str], ...] = (
     ("countermand-original",
      r"(?:do\s+not|don't|never)" + _WS + r"follow" + _WS +
      r"(?:the|any|those)?\s*(?:previous|prior|above|original|earlier|system)"),
+    # The object has to point back at instructions this system was given.
+    # "Forget everything you were told" is an attack; "forget everything you
+    # think you know about hiring" is how a posting opens.
     ("forget-everything",
-     r"forget" + _WS + r"(?:everything|all|about" + _WS + r"the|your|the)"),
+     r"forget" + _WS + r"(?:everything|all|anything)" + _WS +
+     r"(?:you" + _WS + r"(?:were|have" + _WS + r"been)" + _WS + r"told|"
+     r"(?:i|we)" + _WS + r"(?:said|told)|above|before|earlier|previously|"
+     r"prior)|"
+     r"forget" + _WS + r"(?:your|the|any|all)?\s*"
+     r"(?:previous|prior|earlier|above|original|system)?\s*"
+     r"(?:instructions?|rules?|prompts?|guidance)"),
     ("new-instructions",
      r"(?:new|updated|revised|real|actual)" + _WS +
      r"instructions?\s*[:\-]"),
+    # The qualifier is REQUIRED. "Override rules" is what a compliance
+    # posting says an operator may do; "override the previous instructions"
+    # is what an injection says to a model.
     ("override-rules",
-     r"override" + _WS + r"(?:the|all|any)?\s*(?:previous|prior|above|"
-     r"existing|system)?\s*(?:rules?|instructions?|prompts?|constraints?)"),
+     r"override" + _WS + r"(?:the|all|any)?\s*"
+     r"(?:previous|prior|above|existing|system|original|your)" + _WS +
+     r"(?:rules?|instructions?|prompts?|constraints?)"),
     # "you are now a ..." only. Plain "You are an AI engineer" is an
     # ordinary sentence in the postings this product exists to compile.
     ("assume-model-persona",
@@ -141,29 +154,51 @@ _STRONG_SIGNALS: tuple[tuple[str, str], ...] = (
      r"model|llm|chatbot|system|model|bot|bound|restricted|required)\b|"
      r"you" + _WS + r"are" + _WS + r"(?:a|an)" + _WS + r"helpful" + _WS +
      r"(?:ai\s+)?assistant\b"),
-    # Only the extractive/replacing forms. A safety posting that says
-    # "write the system prompt guidelines" is describing the job.
+    # Two forms, and only two. EXTRACTION ("print the system prompt") has no
+    # benign reading at any determiner. MUTATION is an attack only when it
+    # points at the model's OWN prompt: "rewrite the system prompt" is the
+    # day job in a prompt-engineering posting, and those postings are this
+    # product's target market, so "the" cannot be treated as hostile. A
+    # payload that phrases its mutation as "the" is missed here and still
+    # lands inside the F-11a fence -- the cheaper of the two errors, per the
+    # asymmetry this module is built on.
     ("system-prompt-tampering",
-     r"(?:reveal|show|print|repeat|output|dump|replace|rewrite|update|"
-     r"change|ignore|forget)" + _WS + r"(?:me" + _WS + r")?(?:the|your|its)" +
-     _WS + r"(?:system|developer|original)" + _WS +
+     r"(?:reveal|show|print|repeat|output|dump|leak|expose|disclose)" + _WS +
+     r"(?:me" + _WS + r")?(?:the|your|its)" + _WS +
+     r"(?:system|developer|original)" + _WS +
+     r"(?:prompt|message|instructions?|rules?)|"
+     r"(?:replace|rewrite|update|change|ignore|forget|discard|overwrite)" +
+     _WS + r"(?:your|its)" + _WS + r"(?:system|developer|original)" + _WS +
      r"(?:prompt|message|instructions?|rules?)"),
+    # Literal chat-template tokens, plus a role header that occupies its
+    # WHOLE line ("### system", "system:" with nothing after it). A line
+    # that continues -- "System: Ubuntu 22.04" in a stack list -- is a
+    # posting describing itself, not a role marker.
     ("chat-role-marker",
-     r"<\|im_(?:start|end)\|>|\[/?INST\]|<<SYS>>|"
-     r"(?:^|\n)\s*(?:#{1,4}\s*)?(?:system|assistant)\s*(?::|$)"),
+     r"<\|im_(?:start|end)\|>|\[/?INST\]|<<SYS>>|<\|(?:system|assistant)\|>|"
+     r"(?:^|\n)[ \t]*(?:#{1,4}[ \t]*)?(?:system|assistant)[ \t]*:?[ \t]*$"),
 )
 
 # MODERATE: attempts to write the scoring bar or the verdict. Each has a
 # thin benign reading, so one alone is suspicion and two are evidence.
 _MODERATE_SIGNALS: tuple[tuple[str, str], ...] = (
+    # "the" is a determiner here as well as part of "the candidate", so
+    # "award the maximum score" matches -- it did not before, which left the
+    # commonest phrasing of this demand undetected.
     ("perfect-score-demand",
      r"(?:give|assign|award|output|return|set|report)" + _WS +
-     r"(?:the\s+candidate|them|him|her|everyone)?\s*(?:a|an)?\s*"
+     r"(?:(?:the|this)" + _WS + r"candidate|them|him|her|everyone)?\s*"
+     r"(?:a|an|the)?\s*"
      r"(?:perfect|maximum|highest|top|full|5\.0|5)" + _WS +
      r"(?:score|mark|rating|grade)"),
+    # The object is required: a posting may describe a system that
+    # "automatically approves low-risk applications"; an injection tells the
+    # judge to always pass the PERSON.
     ("always-pass-demand",
      r"(?:always|automatically)" + _WS + r"(?:pass|approve|accept|"
-     r"recommend|rate|score)"),
+     r"recommend|rate|score)" + _WS + r"(?:the" + _WS + r"|this" + _WS +
+     r"|every" + _WS + r"|all" + _WS + r")?"
+     r"(?:candidates?|applicants?|them|him|her|everyone|anyone)"),
     ("verdict-override",
      r"(?:verdict|result|outcome)\s*[:=]\s*(?:ready|pass|hire)|"
      r"(?:mark|rate|classify|report|treat)" + _WS +

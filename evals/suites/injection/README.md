@@ -34,7 +34,13 @@ recall bar keeps one fixture of margin.
   prompt-engineering roles that legitimately say "prompt injection",
   "system prompt", "act as", and "you are an AI engineer". Those postings
   are this product's target market, so refusing one is a product failure,
-  not a safe default.
+  not a safe default. Fixtures 11–16 are the near-miss phrasings that the
+  first cut of the classifier actually refused — "rewrite the system
+  prompt", a stack list whose line reads `System: Ubuntu 22.04`, a risk
+  engine that "automatically approves low-risk applications", an operator
+  who "may override rules", and a posting that opens with "forget
+  everything you think you know". A benign fixture earns its place by
+  having been a false positive once.
 
 Adding a fixture is the intended way to report a bypass. Drop the document
 in `fixtures/hostile/`, run the gate, and if recall drops the gate fails —
