@@ -265,8 +265,9 @@ release.**
    >
    > Why the box was ticked wrongly: the greps in step 3 look for names and
    > employer strings, and there were none, so the item read as done. The
-   > signal was **relational** — "my client", "when I was in consulting firm"
-   > — and no grep for a proper noun finds that.
+   > signal was **relational** — a possessive pointing at a client, and a
+   > clause locating the speaker inside a client-serving firm — and no grep
+   > for a proper noun finds that shape.
    >
    > **Do not quote offending strings when recording a future failure here.**
    > The first attempt at this note did exactly that, republishing in the
