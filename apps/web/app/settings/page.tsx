@@ -2,6 +2,7 @@ import Link from "next/link";
 
 import { DELETION_TIMELINE_DAYS, deletionMailto } from "@/app/legal/policy";
 import MicCheck from "@/components/MicCheck";
+import OrderHistory from "@/components/OrderHistory";
 import Shell from "@/components/Shell";
 import { LABEL, PRIMARY_BUTTON } from "@/lib/ui";
 import { getViewer } from "@/lib/viewer";
@@ -61,6 +62,10 @@ export default async function SettingsPage() {
           <p className="text-sm text-neutral-600 dark:text-neutral-400">
             You sign in with a magic link sent to this address. Passwordless, always.
           </p>
+        </Section>
+
+        <Section label="Order history">
+          <OrderHistory userId={viewer.id} />
         </Section>
 
         <Section label="Audio check">
