@@ -1,0 +1,63 @@
+# flightcheck v0.6 pipeline-resilience configuration (F-37).
+#
+# Loaded by scorer.resilience.load_resilience_config(). Separate from
+# product.toml on purpose, following the existing two-file precedent
+# (config/bakeoff.toml): these are worker survival limits, not product
+# terms, and they are tuned from operational evidence rather than from a
+# pricing decision. Every number below is a knob an operator can turn
+# without a code change -- that is the whole reason the file exists.
+
+[retry]
+# Transient backoff for EVERY outbound model call. Before v0.6 exactly one
+# of the LLM call sites had a retry (the content judge); transcription --
+# the most expensive and least replaceable step, because the 20-minute
+# interview it transcribes cannot be re-recorded -- had none.
+# 3 attempts with 2s/4s waits costs at most ~6s of added latency on a run
+# that already takes minutes, and covers the 429/503 blips that dominate.
+max_attempts = 3
+initial_backoff_s = 2.0
+backoff_multiplier = 2.0
+max_backoff_s = 30.0
+# Full-jitter fraction: the wait is delay * (1 + jitter_ratio * random()).
+# Several dimensions of one scoring run retry concurrently, so identical
+# waits would re-collide on the same pressured endpoint.
+jitter_ratio = 0.2
+
+[scoring]
+# ONE scoring job at a time. Measured peak resident memory for a scoring
+# run is ~1.6GB (the recording is downloaded whole and decoded to wav), so
+# two concurrent runs are ~3.2GB -- an OOM that has already killed this
+# worker in production once.
+max_concurrency = 1
+# How long a queued scoring job waits for the slot before giving up. Longer
+# than a typical run so a normal queue drains; short enough that the row
+# fails honestly (and stays retriable) instead of pinning a worker thread.
+queue_wait_s = 900.0
+# Overall job budget, checked between pipeline stages and before every
+# retry attempt. Without it, one job could chain many 480s per-call
+# timeouts and occupy a worker thread for 50+ minutes.
+deadline_s = 1800.0
+# Refuse to START a scoring run when less memory than this is available.
+# Deliberately a headroom floor, not the full ~1.6GB peak: with
+# max_concurrency = 1 the guard's job is to catch a container that is
+# already nearly full (a leak, a stuck previous run), and a floor set at
+# the full peak would refuse every run on a 2GB container. Raise it once
+# the deployed container size is measured -- every job start logs the
+# observed figure so that tuning has data behind it.
+memory_min_available_mb = 512.0
+
+[compile]
+# Compilation is Gemini-bound and cheap on memory (no audio), so it is not
+# serialised the way scoring is; it still gets a deadline so a wedged
+# research sweep cannot hold a thread indefinitely.
+max_concurrency = 4
+queue_wait_s = 600.0
+deadline_s = 1200.0
+# No memory floor: a compile holds text, not a decoded wav.
+memory_min_available_mb = 0.0
+
+[deadletter]
+# Permanently failed jobs kept for the operator endpoint. Bounded because
+# this is process memory: the durable record is the row's own "failed"
+# status plus the emitted log line.
+max_records = 200
