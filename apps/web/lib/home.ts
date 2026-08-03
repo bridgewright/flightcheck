@@ -436,15 +436,18 @@ export function expiryLine(pkg: PaywallState, now: Date): string | null {
 
 /**
  * A receipt row's amount: minor units rendered in the order's own currency
- * ("$49.00"), a bare decimal when the worker stored no currency, an honest
- * dash when it stored no amount. Never invents a symbol.
+ * ("$49.00"), a bare decimal when the worker stored no currency, null when it
+ * stored no amount. Never invents a symbol.
+ *
+ * Null rather than a placeholder character, like formatOrderDate below: the
+ * absence is the caller's to draw, and the caller draws it with EMPTY_RULE.
  */
 export function formatOrderAmount(
   amountMinor: number | null,
   currency: string | null,
-): string {
+): string | null {
   if (amountMinor === null) {
-    return "—";
+    return null;
   }
   const amount = amountMinor / 100;
   if (!currency) {
@@ -477,10 +480,10 @@ export function formatOrderDate(iso: string | null): string | null {
   return Number.isNaN(at.getTime()) ? null : ORDER_DATE_FORMAT.format(at);
 }
 
-/** The worker's order status word as UI copy: capitalized, dash when absent. */
-export function orderStatusLabel(status: string | null): string {
+/** The worker's order status word as UI copy: capitalized, null when absent. */
+export function orderStatusLabel(status: string | null): string | null {
   if (!status) {
-    return "—";
+    return null;
   }
   return status.charAt(0).toUpperCase() + status.slice(1);
 }

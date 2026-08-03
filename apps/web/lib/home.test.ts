@@ -669,7 +669,7 @@ describe("formatOrderAmount", () => {
   });
 
   it("shows an honest dash when the amount is unknown", () => {
-    expect(formatOrderAmount(null, "usd")).toBe("—");
+    expect(formatOrderAmount(null, "usd")).toBeNull();
   });
 });
 
@@ -688,7 +688,7 @@ describe("orderStatusLabel", () => {
   it("capitalizes the worker's status word and dashes the unknown", () => {
     expect(orderStatusLabel("paid")).toBe("Paid");
     expect(orderStatusLabel("refunded")).toBe("Refunded");
-    expect(orderStatusLabel(null)).toBe("—");
-    expect(orderStatusLabel("")).toBe("—");
+    expect(orderStatusLabel(null)).toBeNull();
+    expect(orderStatusLabel("")).toBeNull();
   });
 });

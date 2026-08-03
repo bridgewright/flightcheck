@@ -20,10 +20,14 @@ function Row({ order }: { order: OrderRow }) {
         )}
       </td>
       <td className="py-2.5 pr-4 tabular-nums whitespace-nowrap">
-        {formatOrderAmount(order.amount_minor, order.currency)}
+        {formatOrderAmount(order.amount_minor, order.currency) ?? (
+          <span className={EMPTY_RULE} aria-hidden="true" />
+        )}
       </td>
       <td className={`py-2.5 ${MUTED}`}>
-        {orderStatusLabel(order.status)}
+        {orderStatusLabel(order.status) ?? (
+          <span className={EMPTY_RULE} aria-hidden="true" />
+        )}
       </td>
     </tr>
   );

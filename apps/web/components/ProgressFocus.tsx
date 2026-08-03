@@ -70,7 +70,7 @@ export default function ProgressFocus({
                   <li key={gap} className="border-l-2 border-hairline pl-3">
                     {gap}{" "}
                     <span className="whitespace-nowrap text-ink-faint">
-                      — {gapRecurrenceCount(entries, gap)} reports
+                      ({gapRecurrenceCount(entries, gap)} reports)
                     </span>
                   </li>
                 ))}
