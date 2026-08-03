@@ -35,7 +35,9 @@ export function startFailureView(
   status: number,
   code?: string | null,
 ): StartFailureView {
-  if (code === "insufficient-terminal") {
+  // The worker's live spelling is "session-terminal" (a retired slot after
+  // the resume/re-score caps); "insufficient-terminal" is kept as an alias.
+  if (code === "insufficient-terminal" || code === "session-terminal") {
     return {
       kind: "insufficient-terminal",
       title: "This session cannot be restarted",

@@ -1,7 +1,12 @@
 import { NextResponse } from "next/server";
 
 import { getViewer } from "@/lib/viewer";
-import { authorizePackage, createSession, listPackagesForUser } from "@/lib/worker";
+import {
+  WorkerError,
+  authorizePackage,
+  createSession,
+  listPackagesForUser,
+} from "@/lib/worker";
 
 // The worker's create-session response includes interviewer_instructions and
 // session_plan — the answer key of the interview (question sequence, pressure
@@ -70,6 +75,18 @@ export async function POST(request: Request) {
     // Deliberate strip: session_plan and interviewer_instructions are dropped.
     return NextResponse.json({ session_id: created.session_id });
   } catch (err) {
+    // A typed refusal (exhausted / expired / terminal / rate-limited) is the
+    // worker saying no, not the worker being down — forward status and code
+    // so StartSessionButton can render the honest state instead of an outage.
+    if (err instanceof WorkerError) {
+      console.error(
+        `sessions create: worker refused (status ${err.status}, code ${err.code})`,
+      );
+      return NextResponse.json(
+        { error: "the scoring worker refused to start a session", code: err.code },
+        { status: err.status },
+      );
+    }
     console.error("sessions create: worker create failed", err);
     return NextResponse.json(
       { error: "session creation failed — the scoring worker did not accept the request" },

@@ -40,6 +40,12 @@ describe("startFailureView", () => {
     expect(view.retryable).toBe(false);
   });
 
+  it("maps the worker's live session-terminal spelling to the same closed state, beating the 409 fallback", () => {
+    const view = startFailureView(409, "session-terminal");
+    expect(view.kind).toBe("insufficient-terminal");
+    expect(view.retryable).toBe(false);
+  });
+
   it("maps 429 to a rate-limited state that invites waiting", () => {
     const view = startFailureView(429, "rate-limited");
     expect(view.kind).toBe("rate-limited");

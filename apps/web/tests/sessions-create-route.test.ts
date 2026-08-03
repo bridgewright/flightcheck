@@ -22,13 +22,17 @@ const { getViewer, authorizePackage, createSession, listPackagesForUser } =
   }));
 
 vi.mock("@/lib/viewer", () => ({ getViewer }));
-vi.mock("@/lib/worker", () => ({
+// Spread the real module so WorkerError stays the actual class — the route
+// switches on `instanceof WorkerError` to forward typed worker refusals.
+vi.mock("@/lib/worker", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@/lib/worker")>()),
   authorizePackage,
   createSession,
   listPackagesForUser,
 }));
 
 import { POST } from "@/app/api/sessions/route";
+import { WorkerError } from "@/lib/worker";
 
 function jsonRequest(body: unknown): Request {
   return new Request("http://web.test/api/sessions", {
@@ -132,6 +136,43 @@ describe("POST /api/sessions with viewer ownership (no token)", () => {
     const res = await POST(jsonRequest({ package_id: "pkg-1" }));
     expect(res.status).toBe(502);
     expect(createSession).not.toHaveBeenCalled();
+    errorSpy.mockRestore();
+  });
+});
+
+// The worker saying NO (quota, expiry, a retired slot, a rate limit) must
+// reach StartSessionButton with its status and code intact — collapsed to a
+// generic 502 the honest paywall states can never fire (F-30).
+describe("POST /api/sessions forwarding typed worker refusals", () => {
+  it.each([
+    [409, "package-exhausted"],
+    [410, "package-expired"],
+    [409, "session-terminal"],
+    [429, "rate-limited"],
+  ])("forwards a %i %s refusal with its code", async (status, code) => {
+    const errorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+    getViewer.mockResolvedValue({ id: "viewer-1", email: null });
+    listPackagesForUser.mockResolvedValue([{ id: "pkg-1" }]);
+    createSession.mockRejectedValue(
+      new WorkerError("session create", status, code, null),
+    );
+    const res = await POST(jsonRequest({ package_id: "pkg-1" }));
+    expect(res.status).toBe(status);
+    expect(await res.json()).toEqual({
+      error: "the scoring worker refused to start a session",
+      code,
+    });
+    errorSpy.mockRestore();
+  });
+
+  it("still collapses an untyped failure to the generic 502", async () => {
+    const errorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+    getViewer.mockResolvedValue({ id: "viewer-1", email: null });
+    listPackagesForUser.mockResolvedValue([{ id: "pkg-1" }]);
+    createSession.mockRejectedValue(new Error("connection reset"));
+    const res = await POST(jsonRequest({ package_id: "pkg-1" }));
+    expect(res.status).toBe(502);
+    expect((await res.json()).code).toBeUndefined();
     errorSpy.mockRestore();
   });
 });
