@@ -47,18 +47,35 @@ def test_resilience_config_loads_and_validates():
     assert cfg.deadletter.max_records > 0
 
 
-def test_every_resilience_limit_is_config_not_constant():
-    """The whole point of the file: no tuning knob is a code literal."""
+def test_turning_a_config_knob_changes_what_the_retry_actually_does(monkeypatch):
+    """The whole point of the file: no tuning knob is a code literal.
+
+    Asserting the loaded values are non-None proves nothing -- a validated
+    model cannot produce None. What has to be true is that an operator
+    editing resilience.toml changes behaviour without a code change, so this
+    moves the knob and watches the retry follow it.
+    """
+    import scorer.resilience as resilience_module
+
     cfg = load_resilience_config()
-    knobs = {
-        cfg.retry.max_attempts,
-        cfg.retry.initial_backoff_s,
-        cfg.retry.max_backoff_s,
-        cfg.scoring.queue_wait_s,
-        cfg.scoring.memory_min_available_mb,
-        cfg.compile.queue_wait_s,
-    }
-    assert all(value is not None for value in knobs)
+    patched = cfg.model_copy(update={
+        "retry": cfg.retry.model_copy(update={"max_attempts": 2}),
+    })
+    monkeypatch.setattr(resilience_module, "load_resilience_config",
+                        lambda: patched)
+    attempts = {"n": 0}
+
+    def always_429():
+        attempts["n"] += 1
+        raise _api_error(429)
+
+    with pytest.raises(genai_errors.APIError):
+        # No explicit policy: this is the path every production call site
+        # takes, so it is the one that has to read the file.
+        call_with_retry(always_429, what="probe", sleep=lambda _s: None,
+                        jitter=lambda: 0.0)
+
+    assert attempts["n"] == 2, "the call site ignored the configured budget"
 
 
 # ------------------------------------------------------- transient classes
