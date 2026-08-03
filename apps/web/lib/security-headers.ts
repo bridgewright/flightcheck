@@ -72,8 +72,16 @@ export function contentSecurityPolicy(options: SecurityHeaderOptions): string {
     // See the note above: 'unsafe-inline' is required by Next's inline RSC
     // payload. 'unsafe-eval' is React's dev-only error reconstruction.
     ["script-src", ["'self'", "'unsafe-inline'", ...(isDev ? ["'unsafe-eval'"] : [])]],
-    // Next inlines critical CSS, and two components set a style attribute
-    // for a computed width/height (the mic meter, the score bars).
+    // Next inlines critical CSS, and three things in the product set a style
+    // attribute directly. Two are computed dimensions: the mic meter's level
+    // and the report's score bars. The third is the whole landing page: the
+    // motion layer renders each animated block's `initial` state as an inline
+    // `opacity`/`transform`, so every `data-reveal` element ships one.
+    //
+    // Written out because the count is the thing a future tightening will
+    // check. Anyone reading "two small components" and moving style-src to
+    // hashes would blank the landing page, since those inline styles are
+    // generated per render and cannot be hashed ahead of time.
     ["style-src", ["'self'", "'unsafe-inline'"]],
     ["img-src", ["'self'", "data:", "blob:"]],
     // next/font self-hosts at build; nothing is fetched from a font CDN.

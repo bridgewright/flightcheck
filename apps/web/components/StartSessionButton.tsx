@@ -8,17 +8,10 @@ import { NOTICE, PRIMARY_BUTTON, SUB_HEADING } from "@/lib/ui";
 
 export default function StartSessionButton({
   packageId,
-  token,
   label = "Start session",
 }: {
   packageId: string;
-  // Optional on purpose. A signed-in page must NOT pass one: the token would
-  // be serialized into that page's RSC payload, which is how a capability
-  // leaks into browser history and shared HTML. Without it /api/sessions
-  // takes the viewer branch and checks ownership against the account. The
-  // prop stays for the token-claim flow, which has no viewer to check.
-  token?: string;
-  /** The CTA wording — pages that know the session number say so. */
+  /** The CTA wording: pages that know the session number say so. */
   label?: string;
 }) {
   const router = useRouter();
@@ -29,15 +22,22 @@ export default function StartSessionButton({
     setStarting(true);
     setFailure(null);
     try {
-      // Send the token only when there is one. Omitting it is the signed-in
-      // path: the route falls through to the viewer branch and proves
-      // ownership against the account instead of against a bearer string.
+      // A package id and nothing else. /api/sessions takes its viewer branch
+      // and proves ownership against the signed-in account rather than
+      // against a bearer string, so no capability has to reach the browser
+      // for this button to work.
+      //
+      // This component used to accept an optional `token` and forward it. The
+      // route still honours a token in the body, but that is its server-side
+      // legacy path and it stays until F-10 retires loose tokens; nothing on
+      // the client needs to reach it. The prop was the last channel through
+      // which a package access token could be serialized into an RSC payload,
+      // which is the exact shape 79838fd closed, and it went dead in that same
+      // commit without being removed.
       const response = await fetch("/api/sessions", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(
-          token ? { package_id: packageId, token } : { package_id: packageId },
-        ),
+        body: JSON.stringify({ package_id: packageId }),
       });
       const data = (await response.json().catch(() => ({}))) as {
         session_id?: string;

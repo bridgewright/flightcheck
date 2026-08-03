@@ -54,11 +54,25 @@ describe("signed-in screens do not ship a capability into the client payload", (
     expect(offenders).toEqual([]);
   });
 
-  it("keeps the prop optional so the token-claim flow still compiles", () => {
+  it("takes no token at all, so there is no channel left to leak one", () => {
+    // This assertion used to require the opposite: that the optional `token`
+    // prop survive, "for the token-claim flow, which has no viewer to check".
+    // That reason had expired. /p/[token] is a claim-and-redirect address that
+    // binds the package server-side and never renders this button, and no call
+    // site anywhere passed a token.
+    //
+    // So the prop was dead, and a dead prop here is not harmless: it was the
+    // last channel through which a package access token could be serialized
+    // into an RSC payload, which is exactly the leak 79838fd closed. The guard
+    // above stops a token being passed; this one stops the door existing.
+    //
+    // The route still accepts a token in its body. That is its server-side
+    // legacy path and it is deliberate until F-10 retires loose tokens.
     const source = readFileSync(
       fileURLToPath(new URL("../components/StartSessionButton.tsx", import.meta.url)),
       "utf8",
     );
-    expect(source).toMatch(/token\?:\s*string/);
+    expect(source).not.toMatch(/token\?:\s*string/);
+    expect(source).not.toMatch(/\btoken\b\s*[,:}]/);
   });
 });
