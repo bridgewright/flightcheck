@@ -147,3 +147,20 @@ def test_a_fetched_page_that_is_an_instruction_set_is_refused(client, db, monkey
 
     assert response.status_code == 422
     assert response.json()["code"] == "jd-not-a-job-description"
+
+
+def test_the_cheap_length_check_runs_before_the_scan(client, db):
+    """F-29: an over-limit request must cost nothing, including CPU.
+
+    The length test is O(1) and the injection scan is not, so an oversized
+    document has to be rejected on the cheap one — proven by which of the
+    two messages comes back.
+    """
+    oversized = INSTRUCTION_SET + ("padding " * 20_000)
+
+    response = client.post("/api/packages", headers=AUTH,
+                           json={"jd_text": oversized, "user_id": "user-1"})
+
+    assert response.status_code == 422
+    assert "too long" in response.json()["error"]
+    assert db.packages == {}

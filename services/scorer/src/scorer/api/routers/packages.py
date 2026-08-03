@@ -162,6 +162,17 @@ def build_router(deps: Deps) -> APIRouter:
         # chokepoint — the stored jd_text is the cleaned text, so prompts,
         # dedup, and rubric-reuse all see the same version.
         jd_text = strip_hidden_text(jd_text)
+        if len(jd_text) > limits.jd_text_max_chars:
+            # A fetched page can be over the cap too; same honest rejection.
+            # Deliberately ahead of the injection scan below: the length
+            # check is O(1) and the scan is not, so an oversized document
+            # is rejected on the cheap test (F-29's "an over-limit request
+            # must cost nothing").
+            return JSONResponse(
+                status_code=422,
+                content={"error": "that job description is too long — paste "
+                                  "the posting itself, not the whole page"},
+            )
         # F-11b: a document that is an instruction set rather than a job
         # description is refused HERE, before the insert and before any
         # model call. The rubric it would compile IS the bar the customer
@@ -179,13 +190,6 @@ def build_router(deps: Deps) -> APIRouter:
                 status_code=422,
                 content={"error": verdict.message,
                          "code": "jd-not-a-job-description"},
-            )
-        if len(jd_text) > limits.jd_text_max_chars:
-            # A fetched page can be over the cap too; same honest rejection.
-            return JSONResponse(
-                status_code=422,
-                content={"error": "that job description is too long — paste "
-                                  "the posting itself, not the whole page"},
             )
         resume_text = body.resume_text
         if resume_text is None and body.resume_pdf_b64 is not None:
