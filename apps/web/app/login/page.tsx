@@ -7,17 +7,16 @@ import { useSearchParams } from "next/navigation";
 import { safeNextPath } from "../../lib/auth-redirect";
 import { remainingCooldown, resendLabel } from "../../lib/resend-cooldown";
 import { createClient } from "../../lib/supabase/client";
-import { PRIMARY_BUTTON } from "../../lib/ui";
-
-// The Google provider is not configured yet, so the button dead-ends on a raw
-// error page. The whole OAuth path below stays wired and typechecked; turning
-// it back on once the provider exists is this one line.
-const GOOGLE_AUTH_ENABLED = false;
-
-const FIELD =
-  "w-full rounded-md border border-neutral-300 px-3 py-2.5 dark:border-neutral-700 dark:bg-neutral-900";
-const SECONDARY_BUTTON =
-  "w-full rounded-md border border-neutral-300 px-4 py-2.5 font-medium disabled:cursor-wait disabled:opacity-50 dark:border-neutral-700";
+import {
+  ERROR_TEXT,
+  FIELD,
+  FINE_PRINT,
+  MUTED,
+  PRIMARY_BUTTON,
+  SECONDARY_BUTTON,
+  SUBTLE,
+} from "../../lib/ui";
+import { GOOGLE_AUTH_ENABLED } from "./google-auth";
 
 function LoginForm() {
   const searchParams = useSearchParams();
@@ -88,25 +87,25 @@ function LoginForm() {
           Your interviewer is ready when you are.
         </h1>
         {searchParams.get("error") === "auth" && (
-          <p className="mb-4 text-sm text-red-600" role="alert">
+          <p className={`${ERROR_TEXT} mb-4`} role="alert">
             That sign-in link didn&apos;t work — it may have expired. Try again.
           </p>
         )}
         {error && (
-          <p className="mb-4 text-sm text-red-600" role="alert">
+          <p className={`${ERROR_TEXT} mb-4`} role="alert">
             {error}
           </p>
         )}
         {sentAt !== null ? (
           <div className="flex flex-col gap-4">
             <p>Check your email — we sent you a sign-in link.</p>
-            <p className="text-sm text-neutral-600 dark:text-neutral-400">
+            <p className={`${MUTED} text-sm`}>
               It can take a minute to arrive. If it isn&apos;t there, check
               your spam folder.
             </p>
             <button
               type="button"
-              className={SECONDARY_BUTTON}
+              className={`${SECONDARY_BUTTON} w-full`}
               disabled={pending || remaining > 0}
               onClick={() => void sendLink()}
             >
@@ -118,7 +117,7 @@ function LoginForm() {
             {GOOGLE_AUTH_ENABLED ? (
               <>
                 <button
-                  className={SECONDARY_BUTTON}
+                  className={`${SECONDARY_BUTTON} w-full`}
                   type="button"
                   disabled={pending}
                   onClick={continueWithGoogle}
@@ -127,7 +126,7 @@ function LoginForm() {
                 </button>
                 <div
                   aria-hidden="true"
-                  className="my-5 text-center text-sm text-neutral-500"
+                  className={`${SUBTLE} my-5 text-center`}
                 >
                   or
                 </div>
@@ -154,7 +153,7 @@ function LoginForm() {
                 Send sign-in link
               </button>
             </form>
-            <p className="mt-4 text-xs text-neutral-500">
+            <p className={`${FINE_PRINT} mt-4`}>
               By continuing you agree to the{" "}
               <Link className="underline" href="/legal/terms">
                 Terms
@@ -167,7 +166,7 @@ function LoginForm() {
             </p>
           </>
         )}
-        <p className="mt-6 text-sm text-neutral-600 dark:text-neutral-400">
+        <p className={`${MUTED} mt-6 text-sm`}>
           We only use your email to keep your sessions and reports in one place.
           No spam, no sharing.
         </p>

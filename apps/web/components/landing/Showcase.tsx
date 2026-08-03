@@ -2,8 +2,8 @@ import { SCREENSHOTS } from "./copy";
 import ScreenFrame from "./ScreenFrame";
 
 // The four screens a buyer wants to see before paying: the compiled bar, the
-// room they will sit in, the report they will get, and what progress across
-// six sessions looks like. Framed, because framed screens read as a product
+// room they will sit in, the report they will get, and what progress across a
+// whole package looks like. Framed, because framed screens read as a product
 // and raw crops read as decoration.
 
 export default function Showcase() {
