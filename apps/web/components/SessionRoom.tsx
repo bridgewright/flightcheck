@@ -42,18 +42,17 @@ import {
   speechStateForEvent,
   tickDeltaS,
   timeStatusEvent,
+  unloadWarningFor,
   type GuardEndReason,
+  type RoomPhase,
 } from "../lib/session-room";
 
 const OPENAI_CALLS_URL = "https://api.openai.com/v1/realtime/calls";
 
-type Phase =
-  | "ready"
-  | "connecting"
-  | "live"
-  | "uploading"
-  | "done"
-  | "connection-lost";
+// The phase list lives in lib/session-room.ts so the unload guard there can
+// be exhaustive over it; adding a phase without deciding whether leaving
+// during it loses work is a type error.
+type Phase = RoomPhase;
 
 interface RoomError {
   // "recorder" is the explicit state for the failure the audit found
@@ -672,6 +671,28 @@ export default function SessionRoom({
       if (tickerRef.current) clearInterval(tickerRef.current);
     };
   }, [phase, endSession, endForConnectionLoss]);
+
+  // --- F-38: don't let a tab close throw away an interview ---------------
+  // The recording lives only in this tab until the upload lands, and the
+  // upload retry button is useless to someone who has already closed the
+  // page. The browser's own confirmation dialog is the only thing that can
+  // interrupt a close, so arm it for exactly the phases that hold work the
+  // server does not have yet.
+  useEffect(() => {
+    const warning = unloadWarningFor(phase);
+    if (warning === null) return;
+    const onBeforeUnload = (event: BeforeUnloadEvent) => {
+      // preventDefault is the modern signal; a non-empty returnValue is
+      // what still arms the dialog in Safari and older Chrome. Browsers
+      // show their own wording — the string is the intent, and the tests
+      // pin which phases carry one.
+      event.preventDefault();
+      event.returnValue = warning;
+      return warning;
+    };
+    window.addEventListener("beforeunload", onBeforeUnload);
+    return () => window.removeEventListener("beforeunload", onBeforeUnload);
+  }, [phase]);
 
   // --- Unmount cleanup ---------------------------------------------------
   useEffect(

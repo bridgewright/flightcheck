@@ -373,6 +373,51 @@ export function itemDeleteEvent(itemId: string): string {
   return JSON.stringify({ type: "conversation.item.delete", item_id: itemId });
 }
 
+// --- F-38: leaving the room ----------------------------------------------
+
+/** Every state the room can be in. Declared here, not in the component, so
+ * the unload guard below is exhaustive by construction. */
+export const ROOM_PHASES = [
+  "ready",
+  "connecting",
+  "live",
+  "uploading",
+  "done",
+  "connection-lost",
+] as const;
+
+export type RoomPhase = (typeof ROOM_PHASES)[number];
+
+/**
+ * The warning to show if the tab is closed right now, or null when leaving
+ * costs nothing.
+ *
+ * Two phases hold something the server does not have yet:
+ * - "uploading": the recording exists only in this tab's memory until the
+ *   PUT to storage lands. Closing loses an interview that cannot be redone.
+ * - "live": the interview is in progress. The session row is still
+ *   "planned" and the slot survives (complete is never called), but the
+ *   time the candidate has already spent does not.
+ *
+ * Everything else is safe to leave: nothing is recorded yet ("ready",
+ * "connecting"), or the recording is already with the server ("done"), or
+ * the attempt was explicitly abandoned with the slot preserved
+ * ("connection-lost").
+ */
+export function unloadWarningFor(phase: RoomPhase): string | null {
+  switch (phase) {
+    case "uploading":
+      return "Your recording has not finished uploading. If you leave now it is lost.";
+    case "live":
+      return "Your interview is still running. If you leave now it ends without being scored.";
+    case "ready":
+    case "connecting":
+    case "done":
+    case "connection-lost":
+      return null;
+  }
+}
+
 // --- F-17: connection guard ----------------------------------------------
 
 /** ICE "disconnected" sustained past this is a dead call, not a blip. */
