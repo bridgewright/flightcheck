@@ -4,10 +4,12 @@ import Link from "next/link";
 import JourneyStrip from "@/components/JourneyStrip";
 import PollRefresh from "@/components/PollRefresh";
 import ReadinessGauge from "@/components/ReadinessGauge";
+import RetryCompileButton from "@/components/RetryCompileButton";
 import SessionList from "@/components/SessionList";
 import SessionTicket from "@/components/SessionTicket";
 import Shell from "@/components/Shell";
 import StartSessionButton from "@/components/StartSessionButton";
+import { retryCompileAction } from "@/app/packages/actions";
 import { resolveActivePackage } from "@/lib/active-package";
 import type { VerdictLine } from "@/lib/home";
 import {
@@ -20,7 +22,7 @@ import {
   verdictLine,
 } from "@/lib/home";
 import type { Verdict } from "@/lib/types";
-import { PRIMARY_BUTTON } from "@/lib/ui";
+import { LABEL, PRIMARY_BUTTON } from "@/lib/ui";
 import type { Viewer } from "@/lib/viewer";
 import { getViewer } from "@/lib/viewer";
 import type { PackageSummary, SessionSummary } from "@/lib/worker";
@@ -153,6 +155,43 @@ export default async function HomePage({
   }
   if (!active) {
     return <NoPackages viewer={viewer} />;
+  }
+
+  // A failed compile has no rubric, so the journey strip and the session
+  // ticket would be theater — the honest screen is the failure, a retry,
+  // and a way out.
+  if (active.status === "failed") {
+    return (
+      <Shell viewer={viewer} path="/home" packages={packages} activePackageId={active.id}>
+        <h1 className="text-center text-2xl font-bold tracking-tight text-balance">
+          {greetingName(viewer.email)}
+        </h1>
+        <p className="mb-6 text-center text-sm text-neutral-600 dark:text-neutral-400">
+          {packageDisplayTitle(active.role_title)}
+        </p>
+        <article className="rounded-md border border-neutral-300 dark:border-neutral-700">
+          <div className="flex flex-col gap-3 px-5 py-5">
+            <div className={LABEL}>Compile failed</div>
+            <p className="text-sm text-neutral-600 dark:text-neutral-400">
+              The rubric for this package didn&apos;t compile — most often
+              because the JD page couldn&apos;t be read. Retry the compile, or
+              start over with the JD pasted as text.
+            </p>
+            <div className="flex flex-wrap items-center gap-4">
+              <RetryCompileButton packageId={active.id} action={retryCompileAction} />
+              <Link href="/new" className="text-sm underline underline-offset-4">
+                Start over with a new JD
+              </Link>
+            </div>
+          </div>
+        </article>
+        <p className="mt-9 border-t border-neutral-200 pt-5 text-sm dark:border-neutral-800">
+          <Link href="/packages" className="underline underline-offset-4">
+            All packages
+          </Link>
+        </p>
+      </Shell>
+    );
   }
 
   const total = active.total_sessions;

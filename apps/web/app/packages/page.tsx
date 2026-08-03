@@ -1,7 +1,9 @@
 import Link from "next/link";
 
 import PollRefresh from "@/components/PollRefresh";
+import RetryCompileButton from "@/components/RetryCompileButton";
 import Shell from "@/components/Shell";
+import { retryCompileAction } from "@/app/packages/actions";
 import type { PillTone } from "@/lib/home";
 import {
   latestVerdict,
@@ -109,12 +111,19 @@ function PackageCard({
         {pkg.sessions_used} of {pkg.total_sessions} sessions used
         {verdict !== null ? ` · Last verdict: ${verdictPhrase(verdict)}` : ""}
       </p>
-      <Link
-        href={switchHref(pkg.id, "/home")}
-        className="self-start rounded-md border border-neutral-300 px-4 py-1.5 text-sm dark:border-neutral-700"
-      >
-        Open
-      </Link>
+      <div className="flex flex-wrap items-center gap-3">
+        <Link
+          href={switchHref(pkg.id, "/home")}
+          className="self-start rounded-md border border-neutral-300 px-4 py-1.5 text-sm dark:border-neutral-700"
+        >
+          Open
+        </Link>
+        {/* A failed compile is retryable (the worker re-queues the same JD);
+            the pill lives right where the red status is read. */}
+        {pkg.status === "failed" ? (
+          <RetryCompileButton packageId={pkg.id} action={retryCompileAction} />
+        ) : null}
+      </div>
     </li>
   );
 }
