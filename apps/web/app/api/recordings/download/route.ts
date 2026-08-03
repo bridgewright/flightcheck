@@ -119,7 +119,7 @@ export async function POST(request: Request) {
     // message (internal storage errors are not for the browser).
     console.error("recordings/download: createSignedUrl failed", error);
     return NextResponse.json(
-      { error: "could not prepare the recording — try again" },
+      { error: "could not prepare the recording; try again" },
       { status: 502 },
     );
   }

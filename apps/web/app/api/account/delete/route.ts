@@ -46,7 +46,7 @@ const CONFIRMATION_MISMATCH =
 // worker that positively knows it touched nothing, and only it says so.
 // Running the deletion again converges — both halves are idempotent.
 const WORKER_FAILED =
-  "We could not finish deleting your account. Part of it may already be gone — run the deletion again to finish it.";
+  "We could not finish deleting your account. Part of it may already be gone. Run the deletion again to finish it.";
 
 /**
  * Removes the Supabase auth user. Returns whether it is actually gone.

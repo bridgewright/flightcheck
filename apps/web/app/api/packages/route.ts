@@ -41,7 +41,7 @@ export async function POST(request: Request) {
     }
     console.error("packages create: worker create failed", err);
     return NextResponse.json(
-      { error: "package creation failed — the scoring worker did not accept the request" },
+      { error: "package creation failed: the scoring worker did not accept the request" },
       { status: 502 },
     );
   }

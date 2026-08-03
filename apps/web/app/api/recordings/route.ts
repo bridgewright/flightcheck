@@ -163,7 +163,7 @@ async function mintUploadUrl(packageId: string, index: number) {
     return NextResponse.json(
       {
         error:
-          "this session has already been submitted for scoring — its recording can no longer be replaced",
+          "this session has already been submitted for scoring, so its recording can no longer be replaced",
       },
       { status: 409 },
     );
@@ -183,7 +183,7 @@ async function mintUploadUrl(packageId: string, index: number) {
     // message (internal storage errors are not for the browser).
     console.error("recordings: createSignedUploadUrl failed", error);
     return NextResponse.json(
-      { error: "could not prepare the upload — try again" },
+      { error: "could not prepare the upload; try again" },
       { status: 502 },
     );
   }

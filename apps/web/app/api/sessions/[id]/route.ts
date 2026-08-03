@@ -140,7 +140,7 @@ export async function POST(
   } catch (err) {
     console.error("session complete: worker complete failed", err);
     return NextResponse.json(
-      { error: "completion failed — the scoring worker did not accept the request" },
+      { error: "completion failed: the scoring worker did not accept the request" },
       { status: 502 },
     );
   }

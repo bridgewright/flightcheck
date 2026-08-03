@@ -89,7 +89,7 @@ export async function POST(request: Request) {
     }
     console.error("sessions create: worker create failed", err);
     return NextResponse.json(
-      { error: "session creation failed — the scoring worker did not accept the request" },
+      { error: "session creation failed: the scoring worker did not accept the request" },
       { status: 502 },
     );
   }
