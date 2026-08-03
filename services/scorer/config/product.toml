@@ -28,6 +28,31 @@ min_candidate_words = 200
 full_duration_s = 900.0
 full_candidate_words = 600
 
+[limits]
+# v0.5 guards (F-29/F-30/F-31, F-11a): abuse caps, fixed-window rate limits
+# (per account), input bounds, and stuck-state reaper thresholds. The caps
+# are sized for real candidates -- six sessions per package makes every one
+# of these generous for legitimate use; raising one is a support
+# conversation, not a code change.
+max_packages_per_user = 10
+package_create_window_s = 3600.0
+package_create_per_window = 5
+session_create_window_s = 3600.0
+session_create_per_window = 20
+complete_window_s = 3600.0
+complete_per_window = 10
+secret_mint_cap = 5
+resume_attempt_cap = 3
+score_attempt_cap = 3
+compile_retry_cap = 3
+jd_text_max_chars = 100000
+profile_text_max_chars = 50000
+pdf_b64_max_chars = 8000000
+recording_max_minutes = 35.0
+jd_compile_max_chars = 20000
+reaper_stale_after_s = 1800.0
+reaper_interval_s = 300.0
+
 [report]
 ready_overall = 4.0
 ready_min_dimension = 3.0

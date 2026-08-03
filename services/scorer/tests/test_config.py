@@ -33,6 +33,34 @@ def test_eligibility_thresholds():
     assert config.eligibility.full_candidate_words == 600
 
 
+def test_limits_guard_caps_and_windows():
+    # v0.5 guards (F-29/F-30/F-31): every cap and window is product config,
+    # never a code constant, so tuning a limit is a config change.
+    limits = load_product_config().limits
+    assert limits.max_packages_per_user == 10
+    assert limits.package_create_window_s == 3600
+    assert limits.package_create_per_window == 5
+    assert limits.session_create_window_s == 3600
+    assert limits.session_create_per_window == 20
+    assert limits.complete_window_s == 3600
+    assert limits.complete_per_window == 10
+    assert limits.secret_mint_cap == 5
+    assert limits.resume_attempt_cap == 3
+    assert limits.score_attempt_cap == 3
+    assert limits.compile_retry_cap == 3
+
+
+def test_limits_input_and_lifecycle_bounds():
+    limits = load_product_config().limits
+    assert limits.jd_text_max_chars == 100_000
+    assert limits.profile_text_max_chars == 50_000
+    assert limits.pdf_b64_max_chars == 8_000_000
+    assert limits.recording_max_minutes == 35
+    assert limits.jd_compile_max_chars == 20_000
+    assert limits.reaper_stale_after_s == 1800
+    assert limits.reaper_interval_s == 300
+
+
 def test_report_thresholds_and_forbidden_patterns():
     config = load_product_config()
     assert config.report.ready_overall == 4.0
