@@ -4,7 +4,7 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 
 import type { CreatePackageBody } from "@/lib/types";
-import { ERROR_TEXT, FIELD, PRIMARY_BUTTON } from "@/lib/ui";
+import { ERROR_TEXT, FIELD, PAGE_HEADING, PRIMARY_BUTTON, SECTION_HEADING, FINE_PRINT } from "@/lib/ui";
 
 function fileToBase64(file: File): Promise<string> {
   return new Promise((resolve, reject) => {
@@ -74,11 +74,11 @@ export default function NewPackagePage() {
 
   return (
     <main className="mx-auto flex min-h-screen max-w-2xl flex-col gap-8 px-6 py-16">
-      <h1 className="text-3xl font-bold tracking-tight">Set up your interview package</h1>
+      <h1 className={PAGE_HEADING}>Set up your interview package</h1>
       <form onSubmit={onSubmit} className="flex flex-col gap-8">
         <fieldset className="flex flex-col gap-3">
-          <legend className="mb-2 text-lg font-semibold">Job description (required)</legend>
-          <label className="flex flex-col gap-1 text-sm">
+          <legend className={`${SECTION_HEADING} mb-2`}>Job description (required)</legend>
+          <label className="flex flex-col gap-1 text-fine">
             JD URL
             <input
               type="url"
@@ -88,7 +88,7 @@ export default function NewPackagePage() {
               className={FIELD}
             />
           </label>
-          <label className="flex flex-col gap-1 text-sm">
+          <label className="flex flex-col gap-1 text-fine">
             &hellip;or paste the JD text
             <textarea
               value={jdText}
@@ -100,8 +100,8 @@ export default function NewPackagePage() {
           </label>
         </fieldset>
         <fieldset className="flex flex-col gap-3">
-          <legend className="mb-2 text-lg font-semibold">Resume (optional)</legend>
-          <label className="flex flex-col gap-1 text-sm">
+          <legend className={`${SECTION_HEADING} mb-2`}>Resume (optional)</legend>
+          <label className="flex flex-col gap-1 text-fine">
             Resume PDF
             <input
               type="file"
@@ -109,7 +109,7 @@ export default function NewPackagePage() {
               onChange={(e) => setResumeFile(e.target.files?.[0] ?? null)}
             />
           </label>
-          <label className="flex flex-col gap-1 text-sm">
+          <label className="flex flex-col gap-1 text-fine">
             &hellip;or paste your resume as text
             <textarea
               value={resumeText}
@@ -120,12 +120,12 @@ export default function NewPackagePage() {
           </label>
         </fieldset>
         <fieldset className="flex flex-col gap-3">
-          <legend className="mb-2 text-lg font-semibold">LinkedIn profile (optional)</legend>
-          <p className="text-sm text-ink-faint">
+          <legend className={`${SECTION_HEADING} mb-2`}>LinkedIn profile (optional)</legend>
+          <p className={FINE_PRINT}>
             Export it from LinkedIn: open your profile, then <em>More &gt; Save to PDF</em>.
             Upload that PDF here.
           </p>
-          <label className="flex flex-col gap-1 text-sm">
+          <label className="flex flex-col gap-1 text-fine">
             LinkedIn profile PDF
             <input
               type="file"
@@ -133,7 +133,7 @@ export default function NewPackagePage() {
               onChange={(e) => setLinkedinFile(e.target.files?.[0] ?? null)}
             />
           </label>
-          <label className="flex flex-col gap-1 text-sm">
+          <label className="flex flex-col gap-1 text-fine">
             &hellip;or paste your profile as text
             <textarea
               value={linkedinText}

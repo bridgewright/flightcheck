@@ -8,7 +8,7 @@ import PricingBlock from "@/components/landing/PricingBlock";
 import Section from "@/components/landing/Section";
 import { CLOSING } from "@/components/landing/copy";
 import Shell from "@/components/Shell";
-import { LINK, MUTED, PAGE_HEADING } from "@/lib/ui";
+import { LINK, PAGE_HEADING, SUBTLE } from "@/lib/ui";
 import { getViewer } from "@/lib/viewer";
 import { publicMetadata } from "./site";
 
@@ -53,7 +53,7 @@ export default async function LandingPage() {
       {viewer ? (
         // Two sentences rather than one dash, and the link now names its own
         // destination instead of opening with a status.
-        <p className={`${MUTED} pb-2 text-sm`}>
+        <p className={`${SUBTLE} pb-2`}>
           You are signed in.{" "}
           <Link href="/home" className={LINK}>
             Go to your home
@@ -68,7 +68,7 @@ export default async function LandingPage() {
       <Section label="Pricing" heading="One package per job description.">
         <div className="flex flex-col items-start gap-8 lg:flex-row lg:items-center">
           <PricingBlock />
-          <p className={`${MUTED} max-w-sm text-sm leading-relaxed`}>
+          <p className={`${SUBTLE} max-w-sm`}>
             {CLOSING.body}
           </p>
         </div>

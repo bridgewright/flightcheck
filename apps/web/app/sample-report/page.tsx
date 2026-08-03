@@ -3,7 +3,7 @@ import Link from "next/link";
 
 import ReportView from "@/components/ReportView";
 import Shell from "@/components/Shell";
-import { DIVIDER, MUTED, NOTICE, PAGE_HEADING, PRIMARY_BUTTON } from "@/lib/ui";
+import { DIVIDER, NOTICE, PAGE_HEADING, PRIMARY_BUTTON, SUBTLE } from "@/lib/ui";
 import { getViewer } from "@/lib/viewer";
 import sampleJson from "@/public/sample-report.json";
 
@@ -41,7 +41,7 @@ export default async function SampleReportPage() {
         </h1>
         <ReportView report={sample.report} dimensions={sample.dimensions} />
         <div className={`${DIVIDER} flex flex-col items-start gap-3 border-t pt-8`}>
-          <p className={`${MUTED} text-sm`}>
+          <p className={SUBTLE}>
             Every report is scored against a rubric compiled from the job description
             you paste, not this one.
           </p>

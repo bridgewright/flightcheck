@@ -13,7 +13,7 @@ import StartSessionButton from "@/components/StartSessionButton";
 import { resolveActivePackage } from "@/lib/active-package";
 import { nextSessionNumber } from "@/lib/home";
 import { dimensionTrends, recurringIssues } from "@/lib/progress";
-import { PRIMARY_BUTTON } from "@/lib/ui";
+import { FINE_PRINT, PAGE_HEADING, PRIMARY_BUTTON, SUBTLE } from "@/lib/ui";
 import type { Viewer } from "@/lib/viewer";
 import { getViewer } from "@/lib/viewer";
 import type { PackageProgress, PackageSummary, SessionSummary } from "@/lib/worker";
@@ -32,7 +32,7 @@ function SignedOut() {
   return (
     <Shell viewer={null}>
       <div className="flex flex-col items-center gap-4 py-16 text-center">
-        <h1 className="text-2xl font-bold tracking-tight text-balance">
+        <h1 className={`${PAGE_HEADING} text-balance`}>
           You need to sign in to see your progress.
         </h1>
         <Link href="/login?next=/progress" className={PRIMARY_BUTTON}>
@@ -48,10 +48,10 @@ function Unreachable({ viewer }: { viewer: Viewer }) {
     <Shell viewer={viewer}>
       <PollRefresh intervalMs={5000} />
       <div className="flex flex-col items-center gap-3 py-16 text-center">
-        <h1 className="text-2xl font-bold tracking-tight text-balance">
+        <h1 className={`${PAGE_HEADING} text-balance`}>
           Can&apos;t reach your progress right now.
         </h1>
-        <p className="max-w-md text-sm text-ink-muted">
+        <p className={`${SUBTLE} max-w-md`}>
           Your sessions are safe. The service that holds them is briefly
           unreachable, most often during a restart. This page retries by
           itself; leave it open.
@@ -65,7 +65,7 @@ function NoPackages({ viewer }: { viewer: Viewer }) {
   return (
     <Shell viewer={viewer}>
       <div className="flex flex-col items-center gap-5 py-14 text-center">
-        <h1 className="text-2xl font-bold tracking-tight text-balance">
+        <h1 className={`${PAGE_HEADING} text-balance`}>
           Progress starts with a package.
         </h1>
         <p className="max-w-md text-ink-muted">
@@ -89,10 +89,10 @@ function Heading({
 }) {
   return (
     <>
-      <h1 className="text-center text-2xl font-bold tracking-tight text-balance">
+      <h1 className={`${PAGE_HEADING} text-center text-balance`}>
         Your progress
       </h1>
-      <p className="mb-6 text-center text-sm text-ink-muted">
+      <p className={`${SUBTLE} mb-6 text-center`}>
         {pkg.role_title ?? "Your interview package"} · {scoredCount} of{" "}
         {pkg.total_sessions} sessions scored
       </p>
@@ -111,7 +111,7 @@ function StartCta({
 }) {
   if (next === null) {
     return (
-      <p className="mt-9 text-center text-sm text-ink-faint">
+      <p className={`${FINE_PRINT} mt-9 text-center`}>
         All {pkg.total_sessions} sessions used.
       </p>
     );
@@ -150,7 +150,7 @@ function PartialProgress({
           score={latest?.overall ?? null}
           verdict={latest?.verdict ?? null}
         />
-        <p className="max-w-md text-center text-sm text-ink-muted">
+        <p className={`${SUBTLE} max-w-md text-center`}>
           Trend data is briefly unreachable, so this shows your latest score
           only. This page retries by itself; leave it open.
         </p>
@@ -219,7 +219,7 @@ export default async function ProgressPage({
             score={latest?.overall ?? null}
             verdict={latest?.verdict ?? null}
           />
-          <p className="max-w-md text-center text-sm text-ink-muted">
+          <p className={`${SUBTLE} max-w-md text-center`}>
             {scored.length === 0
               ? "Your first scored session sets the baseline. Trends need two."
               : "Trends appear after your second scored session."}

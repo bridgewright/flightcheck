@@ -81,7 +81,7 @@ function LoginForm() {
   return (
     <main className="flex min-h-screen flex-1 items-center justify-center px-5 py-8">
       <div className="w-full max-w-sm">
-        <div className="mb-12 text-lg">
+        <div className="mb-12 text-section">
           <strong>flight</strong>check
         </div>
         <h1 className={`${PAGE_HEADING} mb-8`}>
@@ -100,7 +100,7 @@ function LoginForm() {
         {sentAt !== null ? (
           <div className="flex flex-col gap-4">
             <p>Check your email. We sent you a sign-in link.</p>
-            <p className={`${MUTED} text-sm`}>
+            <p className={`${MUTED} text-fine`}>
               It can take a minute to arrive. If it isn&apos;t there, check
               your spam folder.
             </p>
@@ -134,7 +134,7 @@ function LoginForm() {
               </>
             ) : null}
             <form onSubmit={sendSignInLink}>
-              <label htmlFor="email" className="mb-2 block text-sm">
+              <label htmlFor="email" className="mb-2 block text-fine">
                 Email
               </label>
               <input
@@ -167,7 +167,7 @@ function LoginForm() {
             </p>
           </>
         )}
-        <p className={`${MUTED} mt-6 text-sm`}>
+        <p className={`${MUTED} mt-6 text-fine`}>
           We only use your email to keep your sessions and reports in one place.
           No spam, no sharing.
         </p>

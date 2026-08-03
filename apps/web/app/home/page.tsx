@@ -27,7 +27,7 @@ import {
   verdictLine,
 } from "@/lib/home";
 import type { Verdict } from "@/lib/types";
-import { CARD, DIVIDER, LABEL, PRIMARY_BUTTON, QUIET_LINK } from "@/lib/ui";
+import { CARD, DIVIDER, FINE_PRINT, LABEL, PAGE_HEADING, PRIMARY_BUTTON, QUIET_LINK, SUBTLE } from "@/lib/ui";
 import type { Viewer } from "@/lib/viewer";
 import { getViewer } from "@/lib/viewer";
 import type { PackageSummary, SessionSummary } from "@/lib/worker";
@@ -42,7 +42,7 @@ function SignedOut() {
   return (
     <Shell viewer={null} path="/home">
       <div className="flex flex-col items-center gap-4 py-16 text-center">
-        <h1 className="text-2xl font-bold tracking-tight text-balance">
+        <h1 className={`${PAGE_HEADING} text-balance`}>
           You need to sign in to see your sessions.
         </h1>
         <Link href="/login?next=/home" className={PRIMARY_BUTTON}>
@@ -60,10 +60,10 @@ function Unreachable({ viewer }: { viewer: Viewer }) {
     <Shell viewer={viewer} path="/home" packages={[]}>
       <PollRefresh intervalMs={5000} />
       <div className="flex flex-col items-center gap-3 py-16 text-center">
-        <h1 className="text-2xl font-bold tracking-tight text-balance">
+        <h1 className={`${PAGE_HEADING} text-balance`}>
           Can&apos;t reach your sessions right now.
         </h1>
-        <p className="max-w-md text-sm text-ink-muted">
+        <p className={`${SUBTLE} max-w-md`}>
           Your account is fine. The service that holds your packages is briefly
           unreachable, most often during a restart. This page retries by itself;
           leave it open.
@@ -77,7 +77,7 @@ function NoPackages({ viewer }: { viewer: Viewer }) {
   return (
     <Shell viewer={viewer} path="/home" packages={[]}>
       <div className="flex flex-col items-center gap-5 py-14 text-center">
-        <h1 className="text-2xl font-bold tracking-tight text-balance">
+        <h1 className={`${PAGE_HEADING} text-balance`}>
           {greetingName(viewer.email)}
         </h1>
         <p className="max-w-md text-ink-muted">
@@ -168,29 +168,29 @@ export default async function HomePage({
   if (active.status === "failed") {
     return (
       <Shell viewer={viewer} path="/home" packages={packages} activePackageId={active.id}>
-        <h1 className="text-center text-2xl font-bold tracking-tight text-balance">
+        <h1 className={`${PAGE_HEADING} text-center text-balance`}>
           {greetingName(viewer.email)}
         </h1>
-        <p className="mb-6 text-center text-sm text-ink-muted">
+        <p className={`${SUBTLE} mb-6 text-center`}>
           {packageDisplayTitle(active.role_title)}
         </p>
         <article className={CARD}>
           <div className="flex flex-col gap-3 px-5 py-5">
             <div className={LABEL}>Compile failed</div>
-            <p className="text-sm text-ink-muted">
+            <p className={SUBTLE}>
               The rubric for this package didn&apos;t compile, most often
               because the JD page couldn&apos;t be read. Retry the compile, or
               start over with the JD pasted as text.
             </p>
             <div className="flex flex-wrap items-center gap-4">
               <RetryCompileButton packageId={active.id} action={retryCompileAction} />
-              <Link href="/new" className={`${QUIET_LINK} text-sm`}>
+              <Link href="/new" className={`${QUIET_LINK} ${SUBTLE}`}>
                 Start over with a new JD
               </Link>
             </div>
           </div>
         </article>
-        <p className={`mt-9 border-t pt-5 text-sm ${DIVIDER}`}>
+        <p className={`mt-9 border-t pt-5 text-fine ${DIVIDER}`}>
           <Link href="/packages" className={QUIET_LINK}>
             All packages
           </Link>
@@ -215,17 +215,17 @@ export default async function HomePage({
     <Shell viewer={viewer} path="/home" packages={packages} activePackageId={active.id}>
       {/* While a session is being scored the stage line advances on its own. */}
       {stageLine !== null ? <PollRefresh intervalMs={5000} /> : null}
-      <h1 className="text-center text-2xl font-bold tracking-tight text-balance">
+      <h1 className={`${PAGE_HEADING} text-center text-balance`}>
         {greetingName(viewer.email)}
       </h1>
       <p
-        className={`${expiry === null ? "mb-6" : "mb-1.5"} text-center text-sm text-ink-muted`}
+        className={`${SUBTLE} ${expiry === null ? "mb-6" : "mb-1.5"} text-center`}
       >
         {packageDisplayTitle(active.role_title)} · {done} of {total} sessions
         done
       </p>
       {expiry !== null ? (
-        <p className="mb-6 text-center text-xs text-ink-faint">{expiry}</p>
+        <p className={`${FINE_PRINT} mb-6 text-center`}>{expiry}</p>
       ) : null}
 
       <div className="mb-7">
@@ -267,7 +267,7 @@ export default async function HomePage({
 
       {/* The switcher in the TopBar replaced the old package list here; one
           quiet link remains for the overview screen. */}
-      <p className={`mt-9 border-t pt-5 text-sm ${DIVIDER}`}>
+      <p className={`mt-9 border-t pt-5 text-fine ${DIVIDER}`}>
         <Link href="/packages" className={QUIET_LINK}>
           All packages
         </Link>

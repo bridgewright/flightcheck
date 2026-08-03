@@ -5,7 +5,7 @@
 // Styled from lib/ui.ts tokens (batch decision D2) so the F-21 design pass
 // re-points a palette rather than re-authoring three legal pages.
 
-import { MUTED, PAGE_HEADING, SUBTLE } from "@/lib/ui";
+import { PAGE_HEADING, SECTION_HEADING, SUBTLE } from "@/lib/ui";
 
 export function LegalPage({
   title,
@@ -36,8 +36,8 @@ export function LegalSection({
 }) {
   return (
     <section className="flex flex-col gap-3">
-      <h2 className="font-semibold tracking-tight">{heading}</h2>
-      <div className={`${MUTED} flex flex-col gap-3 text-sm leading-relaxed`}>
+      <h2 className={SECTION_HEADING}>{heading}</h2>
+      <div className={`${SUBTLE} flex flex-col gap-3`}>
         {children}
       </div>
     </section>

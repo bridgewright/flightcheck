@@ -15,7 +15,7 @@ import {
   verdictPhrase,
 } from "@/lib/home";
 import type { Verdict } from "@/lib/types";
-import { CARD, CHIP, CHIP_BLUSH, PRIMARY_BUTTON, SECONDARY_BUTTON } from "@/lib/ui";
+import { CARD, CHIP, CHIP_BLUSH, FINE_PRINT, PAGE_HEADING, PRIMARY_BUTTON, SECONDARY_BUTTON, SUB_HEADING, SUBTLE } from "@/lib/ui";
 import type { Viewer } from "@/lib/viewer";
 import { getViewer } from "@/lib/viewer";
 import type { PackageSummary } from "@/lib/worker";
@@ -38,7 +38,7 @@ function SignedOut() {
   return (
     <Shell viewer={null} path="/packages">
       <div className="flex flex-col items-center gap-4 py-16 text-center">
-        <h1 className="text-2xl font-bold tracking-tight text-balance">
+        <h1 className={`${PAGE_HEADING} text-balance`}>
           You need to sign in to see your packages.
         </h1>
         <Link href="/login?next=/packages" className={PRIMARY_BUTTON}>
@@ -56,10 +56,10 @@ function Unreachable({ viewer }: { viewer: Viewer }) {
     <Shell viewer={viewer} path="/packages" packages={[]}>
       <PollRefresh intervalMs={5000} />
       <div className="flex flex-col items-center gap-3 py-16 text-center">
-        <h1 className="text-2xl font-bold tracking-tight text-balance">
+        <h1 className={`${PAGE_HEADING} text-balance`}>
           Can&apos;t reach your packages right now.
         </h1>
-        <p className="max-w-md text-sm text-ink-muted">
+        <p className={`${SUBTLE} max-w-md`}>
           Your account is fine. The service that holds your packages is briefly
           unreachable, most often during a restart. This page retries by itself;
           leave it open.
@@ -73,7 +73,7 @@ function Empty({ viewer }: { viewer: Viewer }) {
   return (
     <Shell viewer={viewer} path="/packages" packages={[]}>
       <div className="flex flex-col items-center gap-5 py-14 text-center">
-        <h1 className="text-2xl font-bold tracking-tight text-balance">
+        <h1 className={`${PAGE_HEADING} text-balance`}>
           No packages yet.
         </h1>
         <p className="max-w-md text-ink-muted">
@@ -102,7 +102,7 @@ function PackageCard({
   return (
     <li className={`${CARD} flex flex-col gap-3 p-5`}>
       <div className="flex items-start justify-between gap-3">
-        <h2 className="font-semibold text-balance">
+        <h2 className={`${SUB_HEADING} text-balance`}>
           {packageDisplayTitle(pkg.role_title)}
         </h2>
         <span
@@ -111,12 +111,12 @@ function PackageCard({
           {pill.label}
         </span>
       </div>
-      <p className="text-sm text-ink-muted tabular-nums">
+      <p className={`${SUBTLE} tabular-nums`}>
         {pkg.sessions_used} of {total} sessions used
         {verdict !== null ? ` · Last verdict: ${verdictPhrase(verdict)}` : ""}
       </p>
       {expiry !== null ? (
-        <p className="text-xs text-ink-faint">{expiry}</p>
+        <p className={FINE_PRINT}>{expiry}</p>
       ) : null}
       <div className="flex flex-wrap items-center gap-3">
         <Link
@@ -165,7 +165,7 @@ export default async function PackagesPage() {
   return (
     <Shell viewer={viewer} path="/packages" packages={packages}>
       <div className="mb-6 flex flex-wrap items-center justify-between gap-4">
-        <h1 className="text-2xl font-bold tracking-tight">Your packages</h1>
+        <h1 className={PAGE_HEADING}>Your packages</h1>
         <Link href="/new" className={PRIMARY_BUTTON}>
           New package
         </Link>

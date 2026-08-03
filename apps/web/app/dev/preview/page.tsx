@@ -15,7 +15,7 @@ import {
   verdictLine,
 } from "@/lib/home";
 import type { TimestampedObservation, TranscriptSegment } from "@/lib/types";
-import { PRIMARY_BUTTON } from "@/lib/ui";
+import { LABEL, PAGE_HEADING, PRIMARY_BUTTON, FINE_PRINT } from "@/lib/ui";
 import type { SessionSummary } from "@/lib/worker";
 import sampleJson from "@/public/sample-report.json";
 
@@ -176,8 +176,8 @@ function Section({
   return (
     <section className="flex flex-col gap-5 border-t border-hairline pt-8">
       <header>
-        <h2 className="font-mono text-sm font-semibold">{title}</h2>
-        <p className="mt-1 text-xs text-ink-faint">{note}</p>
+        <h2 className={LABEL}>{title}</h2>
+        <p className={`${FINE_PRINT} mt-1`}>{note}</p>
       </header>
       {children}
     </section>
@@ -205,8 +205,8 @@ export default function DevPreviewPage() {
   return (
     <main className="mx-auto flex max-w-3xl flex-col gap-10 px-6 py-10">
       <header>
-        <h1 className="text-2xl font-bold tracking-tight">Component preview</h1>
-        <p className="mt-2 text-sm text-ink-muted">
+        <h1 className={PAGE_HEADING}>Component preview</h1>
+        <p className="mt-2 text-fine text-ink-muted">
           Dev-only. Dashboard and report components rendered from checked-in
           fixtures: no worker, no account, no live session. This route 404s in
           production.
