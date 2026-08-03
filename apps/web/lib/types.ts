@@ -185,6 +185,12 @@ export interface SessionRow {
   // because older serializations omit them.
   updated_at?: string | null;
   secret_mints?: number;
+  // v0.6 (migration 006): capability-token lifetime for the package
+  // access_token that unlocks the room. Null expiry means "no expiry" (the
+  // pre-006 behaviour) and null revocation means "never revoked". The worker
+  // serializes both as null until F-12 starts populating them.
+  access_token_expires_at?: string | null;
+  token_revoked_at?: string | null;
 }
 
 // One turn of the verbatim session transcript (scorer schemas.TranscriptSegment),

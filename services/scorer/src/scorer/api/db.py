@@ -109,6 +109,14 @@ class SessionRow(BaseModel):
     # secret_mints counts realtime-secret mints for the per-session cap.
     updated_at: str | None = None
     secret_mints: int = 0
+    # v0.6 (migration 006): capability-token lifetime for the room's package
+    # access_token. Both NULL by default -- a null expiry means "no expiry",
+    # which is the pre-006 behaviour, and a null revocation means "never
+    # revoked". Declared here so the seam is typed; the hot session read
+    # (SESSION_COLUMNS) does not fetch them yet, so reads carry None until
+    # Track C (F-12) turns the columns on.
+    access_token_expires_at: str | None = None
+    token_revoked_at: str | None = None
 
 
 class OrderRow(BaseModel):
