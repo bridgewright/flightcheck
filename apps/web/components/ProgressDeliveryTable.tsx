@@ -56,21 +56,21 @@ export default function ProgressDeliveryTable({
   }
   return (
     <section>
-      <h2 className={`${LABEL} mb-2.5 font-semibold`}>
+      <h2 className={`${LABEL} mb-2.5`}>
         Delivery trends
       </h2>
       <div className="overflow-x-auto">
-        <table className="w-full text-sm">
+        <table className="w-full text-fine">
           <thead>
-            <tr className="border-b border-hairline text-xs text-ink-faint">
-              <th scope="col" className="py-2 pr-3 text-left font-medium">
+            <tr className={`border-b border-hairline ${LABEL}`}>
+              <th scope="col" className="py-2 pr-3 text-left">
                 Measure
               </th>
               {scored.map((entry) => (
                 <th
                   key={entry.session_id}
                   scope="col"
-                  className="py-2 pl-3 text-right font-medium"
+                  className="py-2 pl-3 text-right"
                 >
                   S{entry.index}
                 </th>
@@ -85,7 +85,7 @@ export default function ProgressDeliveryTable({
                   row.secondary ? "text-ink-faint" : ""
                 }`}
               >
-                <th scope="row" className="py-2.5 pr-3 text-left font-normal">
+                <th scope="row" className="py-2.5 pr-3 text-left">
                   {row.label}
                 </th>
                 {scored.map((entry) => (

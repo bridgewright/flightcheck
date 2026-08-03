@@ -3,7 +3,7 @@ import { trajectoryCells } from "@/components/progress-view";
 import { VERDICT_LABELS } from "@/lib/report-format";
 import type { SessionStatus } from "@/lib/types";
 import type { SessionProgressEntry } from "@/lib/worker";
-import { CARD, EMPTY_RULE, LABEL } from "@/lib/ui";
+import { CARD, EMPTY_RULE, LABEL, SCORE_NUMBER } from "@/lib/ui";
 
 // What an unscored column can truthfully say about itself. "failed" and
 // "insufficient" are shown, not hidden — an attempt that produced no score
@@ -27,21 +27,21 @@ function CellBody({ cell }: { cell: TrajectoryCell }) {
   }
   if (cell.status !== "scored") {
     return (
-      <div className="py-1 text-[11px] leading-tight text-ink-faint">
+      <div className="py-1 text-[11px] text-ink-faint">
         {STATUS_WORDS[cell.status]}
       </div>
     );
   }
   return (
     <>
-      <div className="text-lg font-bold tabular-nums">
+      <div className={`${SCORE_NUMBER} text-section`}>
         {cell.overall === null ? (
           <span className={EMPTY_RULE} aria-hidden="true" />
         ) : (
           cell.overall.toFixed(1)
         )}
       </div>
-      <div className="text-[11px] leading-tight text-ink-muted">
+      <div className="text-[11px] text-ink-muted">
         {cell.verdict === null ? "Scored" : VERDICT_LABELS[cell.verdict]}
       </div>
     </>
@@ -63,7 +63,7 @@ export default function ProgressTrajectory({
   }
   return (
     <section>
-      <h2 className={`${LABEL} mb-2.5 font-semibold`}>
+      <h2 className={`${LABEL} mb-2.5`}>
         Trajectory
       </h2>
       <ol className="flex gap-2 overflow-x-auto pb-1">
@@ -72,7 +72,7 @@ export default function ProgressTrajectory({
             key={cell.index}
             className={`${CARD} min-w-[84px] flex-1 px-2 py-2.5 text-center`}
           >
-            <div className="mb-1 text-[10px] font-semibold tracking-wide text-ink-faint uppercase">
+            <div className={`${LABEL} mb-1`}>
               S{cell.index}
             </div>
             <CellBody cell={cell} />

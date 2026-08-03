@@ -42,17 +42,17 @@ export default function ProgressFocus({
   const empty = issues.weakDimensions.length === 0 && issues.gaps.length === 0;
   return (
     <section>
-      <h2 className={`${LABEL} mb-2.5 font-semibold`}>
+      <h2 className={`${LABEL} mb-2.5`}>
         Recurring focus
       </h2>
       {empty ? (
-        <p className={`text-sm ${MUTED}`}>
+        <p className={`text-fine ${MUTED}`}>
           Nothing recurring yet. This section fills in when the same gap shows
           up in two or more reports, or a dimension stays among your two lowest
           across consecutive scored sessions.
         </p>
       ) : (
-        <div className="flex flex-col gap-4 text-sm">
+        <div className="flex flex-col gap-4 text-fine">
           {issues.weakDimensions.length > 0 ? (
             <ul className="flex flex-col gap-1.5">
               {issues.weakDimensions.map((key) => (

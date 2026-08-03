@@ -39,7 +39,7 @@ export default async function OrderHistory({ userId }: { userId: string }) {
     orders = await listOrders(userId);
   } catch {
     return (
-      <p className={`text-sm ${MUTED}`}>
+      <p className={`text-fine ${MUTED}`}>
         Your payment history can&apos;t be loaded right now. Nothing is lost.
         Try again in a moment.
       </p>
@@ -48,7 +48,7 @@ export default async function OrderHistory({ userId }: { userId: string }) {
 
   if (orders.length === 0) {
     return (
-      <p className={`text-sm ${MUTED}`}>
+      <p className={`text-fine ${MUTED}`}>
         No payments yet. When you unlock a package, the receipt appears here.
       </p>
     );
@@ -56,12 +56,12 @@ export default async function OrderHistory({ userId }: { userId: string }) {
 
   return (
     <div className="overflow-x-auto">
-      <table className="w-full text-left text-sm">
+      <table className="w-full text-left text-fine">
         <thead>
           <tr>
-            <th className={`${LABEL} py-1.5 pr-4 font-semibold`}>Date</th>
-            <th className={`${LABEL} py-1.5 pr-4 font-semibold`}>Amount</th>
-            <th className={`${LABEL} py-1.5 font-semibold`}>Status</th>
+            <th className={`${LABEL} py-1.5 pr-4`}>Date</th>
+            <th className={`${LABEL} py-1.5 pr-4`}>Amount</th>
+            <th className={`${LABEL} py-1.5`}>Status</th>
           </tr>
         </thead>
         <tbody>

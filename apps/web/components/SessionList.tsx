@@ -3,7 +3,7 @@ import Link from "next/link";
 import { formatSessionDate } from "@/lib/home";
 import type { SessionStatus } from "@/lib/types";
 import type { SessionSummary } from "@/lib/worker";
-import { CHIP, CHIP_BLUSH, EMPTY_RULE, LABEL, TABLE_ROW } from "@/lib/ui";
+import { CHIP, CHIP_BLUSH, EMPTY_RULE, LABEL, SCORE_NUMBER, TABLE_ROW } from "@/lib/ui";
 
 // A session that is not scored yet still has something true to say about
 // itself. "failed" is shown, not hidden: the product's promise is the bar,
@@ -46,7 +46,7 @@ function Outcome({ session }: { session: SessionSummary }) {
   return session.overall === null ? (
     <span className={EMPTY_RULE} aria-hidden="true" />
   ) : (
-    <span className="font-semibold tabular-nums">{session.overall.toFixed(1)}</span>
+    <span className={SCORE_NUMBER}>{session.overall.toFixed(1)}</span>
   );
 }
 
@@ -63,11 +63,11 @@ export default function SessionList({
   const newestFirst = [...sessions].sort((a, b) => b.index - a.index);
   return (
     <section>
-      <h2 className={`${LABEL} mb-2.5 font-semibold`}>
+      <h2 className={`${LABEL} mb-2.5`}>
         Your sessions
       </h2>
       {newestFirst.length === 0 ? (
-        <p className="text-sm text-ink-muted">
+        <p className="text-fine text-ink-muted">
           Nothing here yet. Your first session appears the moment you finish it.
         </p>
       ) : (
@@ -80,9 +80,9 @@ export default function SessionList({
               <li key={session.id} className={TABLE_ROW}>
                 <Link
                   href={`/sessions/${session.id}`}
-                  className="grid grid-cols-[36px_1fr_auto_auto] items-center gap-3.5 py-3 text-sm hover:bg-paper-sunk"
+                  className="grid grid-cols-[36px_1fr_auto_auto] items-center gap-3.5 py-3 text-fine hover:bg-paper-sunk"
                 >
-                  <span className="text-xs text-ink-faint tabular-nums">
+                  <span className="text-fine text-ink-faint tabular-nums">
                     {String(session.index).padStart(2, "0")}
                   </span>
                   <span className="text-ink-muted">
@@ -90,7 +90,7 @@ export default function SessionList({
                   </span>
                   <Outcome session={session} />
                   {session.report_available ? (
-                    <span className="text-xs underline underline-offset-4">
+                    <span className="text-fine underline underline-offset-4">
                       Report
                     </span>
                   ) : (
