@@ -22,6 +22,7 @@ from fastapi.testclient import TestClient
 from fakes import FakeDatabase, FakeGenAI, FakeStorage
 from scorer.api.app import create_app
 from scorer.api.db import OrderRow
+from scorer.api.deletion import recording_key
 from scorer.schemas import QuestionSpec, SessionPlan
 
 TOKEN = "test-worker-token"
@@ -55,7 +56,10 @@ def _seed(db: FakeDatabase, user_id: str, *, sessions: int = 2) -> dict:
     paths = []
     for index in range(1, sessions + 1):
         session = db.create_session(package.id, index, _plan())
-        path = f"packages/{package.id}/{session.id}.webm"
+        # The real contract key (api/deletion.recording_key), which is what
+        # the web mints the upload URL for and what /complete copies onto
+        # the row -- not an invented shape.
+        path = recording_key(package.id, index)
         db.set_session_status(session.id, "scored", audio_path=path)
         paths.append(path)
     db.insert_order(OrderRow(user_id=user_id, package_id=package.id,
@@ -102,6 +106,26 @@ def test_deleting_an_account_that_owns_nothing_succeeds(world):
     assert body == {"deleted": {"packages": 0, "sessions": 0, "orders": 0,
                                 "recordings": 0}}
     assert world["db"].packages != {}   # the real account is untouched
+
+
+def test_a_recording_no_session_row_names_is_deleted_too(world):
+    # The upload lands before /complete writes audio_path, so a failed
+    # complete leaves a real customer recording in the bucket that no row
+    # points at. The endpoint promises "every recording"; this is the one
+    # that used to survive it.
+    db = world["db"]
+    package_id = world["seeded"]["package_id"]
+    db.create_session(package_id, 3, _plan())      # no audio_path ever written
+    stranded = recording_key(package_id, 3)
+    world["storage"].recordings[stranded] = b"audio"
+
+    response = world["client"].delete("/api/account", params={"user_id": "user-a"},
+                                      headers=AUTH)
+
+    assert response.status_code == 200
+    assert world["storage"].recordings == {}
+    # Counted honestly: two keys the rows named, not the swept third.
+    assert response.json()["deleted"]["recordings"] == 2
 
 
 def test_deleting_one_account_leaves_the_others_alone(world):

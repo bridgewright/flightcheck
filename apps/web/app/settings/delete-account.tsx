@@ -45,8 +45,11 @@ export default function DeleteAccountSection({
         body: JSON.stringify({ confirmEmail: typed }),
       });
     } catch {
+      // A request that never came back is not a request that never ran, so
+      // this cannot promise the account is untouched. The server-side
+      // branches say which of the two happened when they can.
       setError(
-        "We could not reach the server, so nothing was deleted. Try again in a moment.",
+        "We could not reach the server, so the deletion may not have finished. Try again in a moment.",
       );
       setPending(false);
       return;
@@ -58,7 +61,7 @@ export default function DeleteAccountSection({
     if (!response.ok) {
       setError(
         body.error ??
-          "The deletion did not go through, so nothing was deleted. Try again in a moment.",
+          "The deletion did not finish. Try again in a moment.",
       );
       setPending(false);
       return;

@@ -39,8 +39,14 @@ interface DeleteBody {
 
 const CONFIRMATION_MISMATCH =
   "That is not the address on this account, so nothing was deleted.";
-const WORKER_UNREACHABLE =
-  "We could not reach the service that holds your data, so nothing was deleted. Try again in a few minutes.";
+// Deliberately NOT "nothing was deleted". This branch is every failure the
+// worker did not describe: a request that timed out may still have run, and
+// the deletion removes recordings before rows, so a call that broke partway
+// leaves the account partly gone. Only the typed 503 below comes from a
+// worker that positively knows it touched nothing, and only it says so.
+// Running the deletion again converges — both halves are idempotent.
+const WORKER_FAILED =
+  "We could not finish deleting your account. Part of it may already be gone — run the deletion again to finish it.";
 
 /**
  * Removes the Supabase auth user. Returns whether it is actually gone.
@@ -108,7 +114,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: err.detail }, { status: 503 });
     }
     console.error("account delete: worker deletion failed", err);
-    return NextResponse.json({ error: WORKER_UNREACHABLE }, { status: 502 });
+    return NextResponse.json({ error: WORKER_FAILED }, { status: 502 });
   }
 
   const signInRecordRemoved = await removeSignInRecord(user.id);

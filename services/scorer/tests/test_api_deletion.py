@@ -27,6 +27,7 @@ from scorer.api.deletion import (
     collect_deletion_plan,
     describe_plan,
     execute_deletion,
+    recording_key,
 )
 from scorer.schemas import QuestionSpec, SessionPlan
 
@@ -49,14 +50,21 @@ def _plan() -> SessionPlan:
 
 def _seed_user(db: FakeDatabase, user_id: str, *, sessions_with_audio: int = 1,
                sessions_without_audio: int = 0) -> dict:
-    """One package for user_id with the requested sessions and one order."""
+    """One package for user_id with the requested sessions and one order.
+
+    Audio paths are the real contract key (recording_key), because that is
+    what production writes: the web mints the signed upload URL for that key
+    and /complete copies it onto the row. A fixture that invented a
+    different shape would make the derived-key sweep look like it always
+    finds something new, which is the opposite of the truth.
+    """
     package = db.create_package("JD text", None, user_id=user_id)
     session_ids, audio_paths = [], []
     index = 0
     for _ in range(sessions_with_audio):
         index += 1
         session = db.create_session(package.id, index, _plan())
-        path = f"packages/{package.id}/{session.id}.webm"
+        path = recording_key(package.id, index)
         db.set_session_status(session.id, "scored", audio_path=path)
         session_ids.append(session.id)
         audio_paths.append(path)
@@ -108,6 +116,75 @@ def test_plan_keeps_audioless_sessions_in_rows_but_not_in_recordings():
 
     assert sorted(plan.session_ids) == sorted(seeded["session_ids"])
     assert plan.recording_paths == seeded["audio_paths"]
+
+
+# --- recordings the rows do not name -----------------------------------------
+
+
+def test_a_session_with_no_audio_path_still_gets_its_key_swept():
+    # The row is written by /complete, which runs AFTER the browser has
+    # already PUT the blob. An audio_path-less session is exactly the shape
+    # of "the upload landed and the complete call did not", so its contract
+    # key has to be swept or that recording survives the deletion forever.
+    db = FakeDatabase()
+    seeded = _seed_user(db, "user-a", sessions_with_audio=0,
+                        sessions_without_audio=1)
+
+    plan = collect_deletion_plan(db, "user-a")
+
+    assert plan.recording_paths == []
+    assert plan.orphan_recording_paths == [
+        recording_key(seeded["package_id"], 1)]
+
+
+def test_a_key_the_rows_already_name_is_not_swept_twice():
+    db = FakeDatabase()
+    _seed_user(db, "user-a", sessions_with_audio=2)
+
+    plan = collect_deletion_plan(db, "user-a")
+
+    assert plan.orphan_recording_paths == []
+    assert len(plan.storage_keys) == len(set(plan.storage_keys)) == 2
+
+
+def test_an_upload_whose_complete_call_never_landed_is_deleted():
+    # The end-to-end version of the gap: a real blob in the bucket that no
+    # row points at. /settings promises "every recording, deleted from
+    # private storage", so this must not survive.
+    db = FakeDatabase()
+    seeded = _seed_user(db, "user-a", sessions_with_audio=1,
+                        sessions_without_audio=1)
+    stranded = recording_key(seeded["package_id"], 2)
+    storage = FakeStorage(recordings={seeded["audio_paths"][0]: b"audio",
+                                      stranded: b"audio"})
+
+    execute_deletion(db, storage, collect_deletion_plan(db, "user-a"))
+
+    assert storage.recordings == {}
+    assert stranded in storage.removed
+
+
+def test_the_reported_recording_count_stays_the_one_we_measured():
+    # Swept keys are not counted: the storage protocol cannot tell "removed"
+    # from "was never there", so counting them would show the customer a
+    # number nobody measured.
+    db = FakeDatabase()
+    _seed_user(db, "user-a", sessions_with_audio=1, sessions_without_audio=3)
+    storage = _storage_for(db)
+
+    outcome = execute_deletion(db, storage, collect_deletion_plan(db, "user-a"))
+
+    assert outcome.recordings_deleted == 1
+
+
+def test_the_sweep_never_reaches_another_accounts_package():
+    db = FakeDatabase()
+    _seed_user(db, "user-a", sessions_with_audio=0, sessions_without_audio=1)
+    survivor = _seed_user(db, "user-b", sessions_with_audio=1)
+
+    plan = collect_deletion_plan(db, "user-a")
+
+    assert all(survivor["package_id"] not in key for key in plan.storage_keys)
 
 
 def test_plan_for_an_unknown_user_is_empty():
@@ -190,14 +267,32 @@ def test_execute_on_an_empty_plan_touches_nothing():
     assert outcome.total == 0
 
 
-def test_execute_skips_the_bucket_when_the_user_has_no_recordings():
+def test_execute_skips_the_bucket_when_there_is_no_session_at_all():
+    # No sessions means no key to derive, so there is nothing to ask storage
+    # about. (A session with no audio_path is a different case -- its blob
+    # may be sitting in the bucket unindexed, so its key IS swept.)
     db = FakeDatabase()
-    _seed_user(db, "user-a", sessions_with_audio=0, sessions_without_audio=2)
+    db.create_package("JD text", None, user_id="user-a")
     storage = FakeStorage()
 
     outcome = execute_deletion(db, storage, collect_deletion_plan(db, "user-a"))
 
     assert storage.remove_calls == []   # no pointless round trip
+    assert outcome.recordings_deleted == 0
+    assert db.packages == {}
+
+
+def test_audioless_sessions_still_cost_exactly_one_storage_call():
+    db = FakeDatabase()
+    seeded = _seed_user(db, "user-a", sessions_with_audio=0,
+                        sessions_without_audio=2)
+    storage = FakeStorage()
+
+    outcome = execute_deletion(db, storage, collect_deletion_plan(db, "user-a"))
+
+    assert storage.remove_calls == [
+        [recording_key(seeded["package_id"], 1),
+         recording_key(seeded["package_id"], 2)]]
     assert outcome.recordings_deleted == 0
     assert db.sessions == {}
 
@@ -290,6 +385,19 @@ def test_describe_plan_lists_everything_that_would_be_deleted():
     assert seeded["audio_paths"][0] in text
 
 
+def test_describe_plan_marks_the_swept_keys_as_derived_not_as_findings():
+    # The operator must not read "1 derived recording key" as "one orphaned
+    # recording exists" -- it is a key we are sweeping blind.
+    db = FakeDatabase()
+    seeded = _seed_user(db, "user-a", sessions_with_audio=0,
+                        sessions_without_audio=1)
+
+    text = describe_plan(collect_deletion_plan(db, "user-a"))
+
+    assert "derived recording key(s) also swept (may hold nothing)" in text
+    assert recording_key(seeded["package_id"], 1) in text
+
+
 def test_describe_plan_says_so_when_there_is_nothing_to_delete():
     assert "Nothing" in describe_plan(collect_deletion_plan(FakeDatabase(), "nobody"))
 
@@ -298,3 +406,4 @@ def test_an_empty_plan_is_empty_and_a_populated_one_is_not():
     assert DeletionPlan(user_id="u").is_empty
     assert not DeletionPlan(user_id="u", order_ids=["o-1"]).is_empty
     assert not DeletionPlan(user_id="u", recording_paths=["p"]).is_empty
+    assert not DeletionPlan(user_id="u", orphan_recording_paths=["p"]).is_empty

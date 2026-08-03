@@ -173,6 +173,30 @@ describe("POST /api/account/delete when the worker refuses", () => {
     }
   });
 
+  it("does not claim nothing was deleted when it cannot know", async () => {
+    // The worker removes recordings before rows, so a call that broke
+    // partway — or timed out after running — leaves the account partly
+    // gone. Only the typed 503 comes from a worker that positively knows
+    // it touched nothing; every other failure must stop short of that
+    // claim and point at the retry, which converges.
+    const errorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+    try {
+      for (const failure of [
+        new MockWorkerError(500, "unknown", null),
+        new Error("fetch failed"),
+      ]) {
+        deleteAccount.mockRejectedValue(failure);
+        const body = await (
+          await POST(request({ confirmEmail: ACCOUNT.email }))
+        ).json();
+        expect(body.error.toLowerCase()).not.toContain("nothing was deleted");
+        expect(body.error.toLowerCase()).toContain("may already be gone");
+      }
+    } finally {
+      errorSpy.mockRestore();
+    }
+  });
+
   it("keeps the account intact when the worker is unreachable", async () => {
     const errorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
     try {
