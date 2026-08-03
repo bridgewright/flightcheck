@@ -9,7 +9,7 @@ import {
   MUTED,
   PANEL,
   PROSE_WIDTH,
-  QUIET_LINK,
+  LINK,
   SECTION_HEADING,
   SUBTLE,
 } from "@/lib/ui";
@@ -96,7 +96,7 @@ export default function RubricView({ rubric }: { rubric: Rubric }) {
                       href={citation.url}
                       target="_blank"
                       rel="noreferrer"
-                      className={QUIET_LINK}
+                      className={LINK}
                     >
                       {citation.title}
                     </a>

@@ -2,7 +2,7 @@ import Link from "next/link";
 
 import { LEGAL_LINKS, SUPPORT_EMAIL, supportMailto } from "@/app/legal/policy";
 import TopBar from "@/components/TopBar";
-import { DIVIDER, QUIET_LINK } from "@/lib/ui";
+import { DIVIDER, LINK } from "@/lib/ui";
 import type { Viewer } from "@/lib/viewer";
 import type { PackageSummary } from "@/lib/worker";
 
@@ -61,14 +61,14 @@ export default function Shell({
             <Link
               key={link.href}
               href={link.href}
-              className={QUIET_LINK}
+              className={LINK}
             >
               {link.label}
             </Link>
           ))}
           <a
             href={supportMailto()}
-            className={QUIET_LINK}
+            className={LINK}
           >
             Support: {SUPPORT_EMAIL}
           </a>

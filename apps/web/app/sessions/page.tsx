@@ -13,7 +13,7 @@ import {
   VERDICT_LABELS,
   verdictPillClasses,
 } from "@/lib/report-format";
-import { EMPTY_RULE, FINE_PRINT, LABEL, PAGE_HEADING, PRIMARY_BUTTON, QUIET_LINK, SCORE_NUMBER, SUB_HEADING, SUBTLE, TABLE_HEAD } from "@/lib/ui";
+import { EMPTY_RULE, FINE_PRINT, LABEL, PAGE_HEADING, PRIMARY_BUTTON, LINK, SCORE_NUMBER, SUB_HEADING, SUBTLE, TABLE_HEAD } from "@/lib/ui";
 import type { Viewer } from "@/lib/viewer";
 import { getViewer } from "@/lib/viewer";
 import type { PackageSummary, SessionSummary } from "@/lib/worker";
@@ -110,7 +110,7 @@ function RowLinks({ session }: { session: SessionSummary }) {
   const detail = (label: string) => (
     <Link
       href={`/sessions/${session.id}`}
-      className={`${QUIET_LINK} text-fine`}
+      className={`${LINK} text-fine`}
     >
       {label}
     </Link>
@@ -124,7 +124,7 @@ function RowLinks({ session }: { session: SessionSummary }) {
         {detail("View")}
         <Link
           href={`/sessions/${session.id}/room`}
-          className={`${QUIET_LINK} text-fine`}
+          className={`${LINK} text-fine`}
         >
           Retry
         </Link>

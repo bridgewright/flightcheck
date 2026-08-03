@@ -14,12 +14,12 @@ function BarDot({ point }: { point: TrendPoint }) {
   const pct = Math.min(Math.max(point.score / SCORE_MAX, 0), 1) * 100;
   return (
     <span
-      className="flex h-8 w-2 items-end overflow-hidden rounded-sm bg-paper-sunk"
+      className="flex h-8 w-2 items-end overflow-hidden rounded-full bg-paper-sunk"
       title={`Session ${point.index}: ${point.score.toFixed(1)}`}
     >
       <span
         aria-hidden="true"
-        className="w-full rounded-sm bg-ink-muted"
+        className="w-full rounded-full bg-ink-muted"
         style={{ height: `${pct}%` }}
       />
       <span className="sr-only">

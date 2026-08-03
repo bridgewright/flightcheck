@@ -1,4 +1,4 @@
-import { readFileSync } from "node:fs";
+import { readdirSync, readFileSync, statSync } from "node:fs";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -76,6 +76,21 @@ const declaredCss = globals.replace(/\/\*[\s\S]*?\*\//g, (block) =>
 const emitted = withoutComments(uiTokens);
 const COLOURS = declaredColours(globals);
 
+/** Every screen source, for the checks that have to look at the whole tree
+ * rather than at the token module. */
+function walk(dir: string): string[] {
+  const out: string[] = [];
+  for (const entry of readdirSync(join(webRoot, dir))) {
+    const rel = `${dir}/${entry}`;
+    if (statSync(join(webRoot, rel)).isDirectory()) out.push(...walk(rel));
+    else if (/\.(tsx?|css)$/.test(entry)) out.push(rel);
+  }
+  return out;
+}
+const FILES = [...walk("app"), ...walk("components"), ...walk("lib")].filter(
+  (f) => !/\.test\.tsx?$/.test(f),
+);
+
 // Every ground a body string may sit on, including the pastel chips.
 const GROUNDS = ["paper", "paper-sunk", "surface", "sky", "blush", "ready-wash", "alarm-wash"];
 const INKS = ["ink", "ink-muted", "ink-faint", "ready", "alarm"];
@@ -89,15 +104,94 @@ describe("the design tokens exist where the system says they do", () => {
     }
   });
 
-  it("declares the two elevation tokens, warm-tinted rather than black", () => {
-    const shadows = globals.match(/--shadow-(?:raise|float)\s*:[^;]+;/g) ?? [];
-    expect(shadows.length).toBe(2);
-    for (const decl of shadows) {
-      // A pure-black shadow on a warm ground reads as dirt.
-      expect(decl, `${decl} uses a black shadow`).not.toMatch(/rgb\(\s*0\s+0\s+0/);
-    }
+  it("declares one elevation token, warm-tinted rather than black", () => {
+    // One, not two. A `- -shadow-raise` was declared here for "cards that
+    // genuinely lift" and nothing in the product ever lifted: every grouping
+    // resolved to whitespace, a hairline, or a ground change, which is the
+    // order the stylesheet states. It and its `CARD_RAISED` token were removed
+    // rather than left standing as an offer no screen took up.
+    //
+    // What remains is the account menu, which floats over the page rather than
+    // sitting in it, and is the only thing that does.
+    const shadows = globals.match(/--shadow-[a-z-]+\s*:[^;]+;/g) ?? [];
+    expect(shadows.length, "an elevation token came back").toBe(1);
+    // A pure-black shadow on a warm ground reads as dirt.
+    expect(shadows[0], `${shadows[0]} uses a black shadow`).not.toMatch(/rgb\(\s*0\s+0\s+0/);
+    // And it has to still be reachable from the token module.
+    expect(emitted, "nothing consumes the float shadow").toContain("shadow-float");
   });
 });
+
+/**
+ * Every `token/NN` opacity modifier in the tree, with the ground it renders
+ * over and the bar it has to clear.
+ *
+ * The matrix below reads the declared values, which is why it could not see
+ * these: `text-ink/60` is not a declared colour, it is one composited at paint
+ * time, and Phase 4 found two of them under the bar in twelve render sites —
+ * a secondary control label at 3.73:1 and, worse, that control's border at
+ * 1.99:1, which was the only thing marking it as a control at rest.
+ *
+ * So the rule is not "no opacity modifiers". It is: an opacity modifier must
+ * say what it sits on and what bar applies, and then get computed. A new one
+ * that skips this table fails the test below with instructions.
+ *
+ * `bar: null` is for a purely decorative edge, and it has to be argued for in
+ * the note, not just asserted.
+ */
+const COMPOSITES: {
+  utility: string;
+  ink: string;
+  alpha: number;
+  ground: string;
+  bar: number | null;
+  note: string;
+}[] = [
+  {
+    utility: "bg-ink/6",
+    ink: "ink",
+    alpha: 0.06,
+    ground: "paper",
+    bar: null,
+    // STEP_NUMERAL. This is a ground, not a mark: the numeral on it is
+    // `text-ink`, and the row below checks that pairing rather than this one.
+    note: "the tint behind a step numeral, whose own ink is checked as text",
+  },
+  {
+    utility: "bg-paper/95",
+    ink: "paper",
+    alpha: 0.95,
+    ground: "paper",
+    bar: null,
+    // TranscriptView's sticky footer. A ground with a backdrop blur under it;
+    // what scrolls beneath is arbitrary, and the 5% is there so the reader can
+    // tell the bar is floating rather than to let anything through.
+    note: "a sticky bar's ground, blurred, over arbitrary scrolled content",
+  },
+  {
+    utility: "border-alarm/25",
+    ink: "alarm",
+    alpha: 0.25,
+    ground: "alarm-wash",
+    bar: null,
+    // ALARM_NOTICE. A container edge, not a control boundary, so 1.4.11 does
+    // not reach it. What identifies the notice is its heading and its wash,
+    // both of which clear AA on their own; the edge only has to be findable
+    // once you are looking at it. If a control ever takes this token, the
+    // bar becomes 3 and this row has to change with it.
+    note: "a non-interactive notice edge; the notice is identified by its text",
+  },
+];
+
+/** `ink` composited onto `ground` at `alpha`, as a hex. */
+function composite(ink: string, ground: string, alpha: number): string {
+  const mix = [1, 3, 5].map((i) => {
+    const a = parseInt(ink.slice(i, i + 2), 16);
+    const b = parseInt(ground.slice(i, i + 2), 16);
+    return Math.round(a * alpha + b * (1 - alpha));
+  });
+  return `#${mix.map((c) => c.toString(16).padStart(2, "0")).join("")}`.toUpperCase();
+}
 
 describe("contrast, computed from the declared values", () => {
   it.each(INKS)("%s clears AA on every ground", (ink) => {
@@ -107,6 +201,41 @@ describe("contrast, computed from the declared values", () => {
         ratio,
         `--color-${ink} on --color-${ground} is ${ratio.toFixed(2)}:1, below AA 4.5`,
       ).toBeGreaterThanOrEqual(4.5);
+    }
+  });
+
+  it("computes every opacity modifier in the tree, and lets none go undeclared", () => {
+    // Find them rather than trust the table. A modifier that exists in the
+    // source and not in COMPOSITES is the failure mode this is written for.
+    const found = new Set<string>();
+    const sources = [emitted, ...FILES.map((f) => withoutComments(readFileSync(join(webRoot, f), "utf8")))];
+    const names = Object.keys(COLOURS).join("|");
+    const modifier = new RegExp(
+      `\\b(?:text|bg|border|decoration|divide|ring|outline)-(?:${names})/\\d+`,
+      "g",
+    );
+    for (const source of sources) {
+      for (const hit of source.match(modifier) ?? []) found.add(hit);
+    }
+
+    const declared = new Set(COMPOSITES.map((c) => c.utility));
+    const undeclared = [...found].filter((u) => !declared.has(u));
+    expect(
+      undeclared,
+      "an opacity modifier renders a colour nothing computes: add it to COMPOSITES with the ground it sits on and the bar it must clear",
+    ).toEqual([]);
+
+    for (const entry of COMPOSITES) {
+      expect(found, `COMPOSITES lists ${entry.utility}, which no longer renders`).toContain(
+        entry.utility,
+      );
+      if (entry.bar === null) continue;
+      const painted = composite(COLOURS[entry.ink], COLOURS[entry.ground], entry.alpha);
+      const ratio = contrast(painted, COLOURS[entry.ground]);
+      expect(
+        ratio,
+        `${entry.utility} paints ${painted} on --color-${entry.ground}: ${ratio.toFixed(2)}:1, below ${entry.bar}`,
+      ).toBeGreaterThanOrEqual(entry.bar);
     }
   });
 
@@ -124,8 +253,25 @@ describe("contrast, computed from the declared values", () => {
   });
 
   it("keeps the dark control and the focus ring legible", () => {
+    // The filled control: paper label on an ink fill.
     expect(contrast(COLOURS.paper, COLOURS.ink)).toBeGreaterThanOrEqual(4.5);
-    expect(contrast(COLOURS.ink, COLOURS.paper)).toBeGreaterThanOrEqual(3);
+
+    // The focus ring is `outline: 2px solid var(--color-ink)` drawn outside the
+    // element, so what it has to be visible against is the ground the element
+    // sits on, not the element. Every ground, because keyboard focus reaches
+    // controls inside cards and sunk panels too.
+    //
+    // The line this replaces asserted ink-on-paper a second time with the
+    // arguments swapped, against a 3:1 bar it had already cleared at 4.5:1 on
+    // the line above. Contrast is symmetric, so it could not fail unless its
+    // neighbour failed first.
+    for (const ground of ["paper", "paper-sunk", "surface"]) {
+      const ratio = contrast(COLOURS.ink, COLOURS[ground]);
+      expect(
+        ratio,
+        `the focus ring on --color-${ground} is ${ratio.toFixed(2)}:1, below 3`,
+      ).toBeGreaterThanOrEqual(3);
+    }
   });
 });
 
@@ -226,7 +372,13 @@ describe("the shape rule", () => {
     // Making every button a pill is a large part of why they read as thick.
     expect(declaredCss).toContain("--radius-control:");
     expect(declaredCss).toContain("--radius-surface:");
-    for (const button of ["PRIMARY_BUTTON", "CTA_BUTTON", "SECONDARY_BUTTON", "DANGER_BUTTON"]) {
+    for (const button of [
+      "PRIMARY_BUTTON",
+      "CTA_BUTTON",
+      "SECONDARY_BUTTON",
+      "CTA_SECONDARY_BUTTON",
+      "DANGER_BUTTON",
+    ]) {
       const block = emitted.split("export const ").find((b) => b.startsWith(button));
       expect(block, `${button} is missing`).toBeDefined();
       expect(block, `${button} is a full pill`).not.toMatch(/rounded-full/);
@@ -242,7 +394,7 @@ describe("the shape rule", () => {
     const shell = emitted.split(/(?:export )?const /).find((b) => b.startsWith("CHIP_SHELL"));
     expect(shell, "CHIP_SHELL is missing").toBeDefined();
     expect(shell).toContain("rounded-full");
-    for (const chip of ["CHIP_SKY", "CHIP_BLUSH", "CHIP", "CHIP_READY"]) {
+    for (const chip of ["CHIP_SKY", "CHIP_BLUSH", "CHIP", "CHIP_READY", "CHIP_ALARM"]) {
       const block = emitted.split("export const ").find((b) => b.startsWith(`${chip} `));
       expect(block, `${chip} is missing`).toBeDefined();
       expect(block, `${chip} does not compose the shared chip shell`).toContain("CHIP_SHELL");
@@ -278,6 +430,20 @@ describe("the shape rule", () => {
     }
     expect(svg).toContain("<svg");
     expect(svg).toMatch(/viewBox=/);
+
+    // The one colour literal allowed to live outside globals.css, and the
+    // reason it is allowed: an SVG loaded through background-image gets no
+    // access to the page's custom properties, so it cannot read the token. The
+    // token is still the declaration of record, and this is what keeps the two
+    // from drifting. Every stop must be the bloom value and nothing else.
+    const svgHexes = new Set(
+      [...svg.matchAll(/stop-color="(#[0-9a-fA-F]{6})"/g)].map((m) => m[1].toUpperCase()),
+    );
+    expect(svgHexes.size, "hero-bloom.svg paints more than one colour").toBe(1);
+    expect(
+      [...svgHexes][0],
+      "hero-bloom.svg has drifted from the --color-bloom token",
+    ).toBe(COLOURS.bloom);
     // Intrinsic dimensions: an SVG with only a viewBox has no reliable default
     // size as a CSS background image.
     expect(svg).toMatch(/\bwidth="\d+"/);

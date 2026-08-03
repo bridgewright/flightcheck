@@ -20,7 +20,7 @@ import {
   MUTED,
   PAGE_HEADING,
   PRIMARY_BUTTON,
-  QUIET_LINK,
+  LINK,
   SECTION_HEADING,
   SUBTLE,
 } from "@/lib/ui";
@@ -130,7 +130,7 @@ export default async function RubricPage({
           <p className={MUTED}>
             Rubric compilation failed, most often because the JD page could
             not be read. No charge, nothing saved.{" "}
-            <Link href="/new" className={QUIET_LINK}>
+            <Link href="/new" className={LINK}>
               Try again
             </Link>{" "}
             with the JD pasted as text instead of a URL.

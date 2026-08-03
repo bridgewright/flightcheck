@@ -25,7 +25,7 @@ import {
   LABEL,
   MUTED,
   PROSE_WIDTH,
-  QUIET_LINK,
+  LINK,
   SCORE_DENOMINATOR,
   SCORE_NUMBER,
   SECTION_HEADING,
@@ -162,7 +162,7 @@ function DimensionBody({ score }: { score: DimensionScore }) {
           ))}
           {score.evidence_quotes.length > MAX_QUOTES && (
             <details>
-              <summary className={`${SUBTLE} ${QUIET_LINK} cursor-pointer`}>
+              <summary className={`${SUBTLE} ${LINK} cursor-pointer`}>
                 Show {score.evidence_quotes.length - MAX_QUOTES} more quotes
               </summary>
               <div className="mt-2 flex flex-col gap-2">
@@ -336,7 +336,7 @@ export function ReportObservations({
       </ol>
       {observations.length > MAX_TIMELINE && (
         <details>
-          <summary className={`${SUBTLE} ${QUIET_LINK} cursor-pointer`}>
+          <summary className={`${SUBTLE} ${LINK} cursor-pointer`}>
             Show the full timeline ({observations.length} observations)
           </summary>
           <ol className="mt-3 flex flex-col gap-3">

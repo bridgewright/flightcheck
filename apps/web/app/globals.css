@@ -112,10 +112,14 @@
 
   /* --- Depth ----------------------------------------------------------- */
   /* Group with whitespace, then a hairline, then a ground change, in that
-     order. These exist for the few things that genuinely lift. Tinted with the
-     ink hue, because a pure-black shadow on a warm ground reads as dirt. */
+     order. Exactly one thing in the product is past that order and genuinely
+     floats: the account menu, which sits over the page rather than in it.
+     Tinted with the ink hue, because a pure-black shadow on a warm ground
+     reads as dirt.
 
-  --shadow-raise: 0 1px 2px rgb(60 46 42 / 0.04), 0 6px 18px rgb(60 46 42 / 0.05);
+     There was a second, softer shadow here for "cards that lift". Nothing ever
+     lifted, so it and its token were removed rather than left as an offer. */
+
   --shadow-float: 0 2px 4px rgb(60 46 42 / 0.05), 0 12px 32px rgb(60 46 42 / 0.09);
 
   /* --- Type steps ------------------------------------------------------ */
@@ -239,7 +243,10 @@ select:focus-visible {
   outline-offset: 2px;
 }
 
-/* The hero cloud, and the only gradient in the product.
+/* The hero cloud. The stylesheet declares no gradient at all, and this is not
+ * an exception to that: it is an image reference. The product's two real
+ * gradients both live outside this file, in `hero-bloom.svg`'s radial stops
+ * and in `PLACEHOLDER_HATCH`.
  *
  * An earlier reading of the reference concluded it had no background field at
  * all, because a scan of its computed styles found no CSS gradient anywhere.

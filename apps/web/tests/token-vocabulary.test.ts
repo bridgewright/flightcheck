@@ -112,6 +112,24 @@ describe("every screen speaks the token vocabulary", () => {
     expect(offenders(source, /\[#[0-9a-fA-F]{3,8}\]|\[(?:rgb|hsl|oklch|oklab)a?\(/)).toEqual([]);
   });
 
+  it.each(FILES)("%s paints no gradient of its own", (file) => {
+    const source = readFileSync(join(webRoot, file), "utf8");
+    // design-system.test.ts holds the stylesheet to zero gradients, and that
+    // check was described in two places as if it bound the product. It binds
+    // one file. A screen could reach for `bg-[linear-gradient(...)]` or
+    // `bg-linear-to-r` and pass every gate in the batch, which is exactly the
+    // purple-to-blue AI wash the design skills name as the first tell.
+    //
+    // The product's two real gradients are both deliberate and neither is a
+    // class: the radial stops inside `public/hero-bloom.svg`, and
+    // `PLACEHOLDER_HATCH`, which is a CSS value passed through `style` so that
+    // it reads as a hatch and can never be mistaken for a screenshot.
+    expect(
+      offenders(source, /-\[(?:repeating-)?(?:linear|radial|conic)-gradient/),
+    ).toEqual([]);
+    expect(offenders(source, /\bbg-(?:gradient|linear|radial|conic)-to-[a-z]+\b/)).toEqual([]);
+  });
+
   it.each(FILES)("%s sizes type from the scale, not from pixels", (file) => {
     const source = readFileSync(join(webRoot, file), "utf8");
     // The root is 87.5%, so the scale multiplies the reader's own browser

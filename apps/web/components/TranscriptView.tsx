@@ -11,7 +11,7 @@ import {
   MUTED,
   PANEL,
   PROSE_WIDTH,
-  QUIET_LINK,
+  LINK,
   SECTION_HEADING,
 } from "@/lib/ui";
 
@@ -47,7 +47,7 @@ function Timestamp({
       type="button"
       onClick={() => onSeek(atS)}
       aria-label={`Play the recording from ${label}`}
-      className={`${TIMESTAMP} ${QUIET_LINK} cursor-pointer hover:text-ink`}
+      className={`${TIMESTAMP} ${LINK} cursor-pointer hover:text-ink`}
     >
       {label}
     </button>

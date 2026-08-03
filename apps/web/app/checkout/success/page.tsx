@@ -7,7 +7,7 @@ import Shell from "@/components/Shell";
 import { resolveActivePackage } from "@/lib/active-package";
 import { ACTIVE_PACKAGE_COOKIE } from "@/lib/home";
 import { EXPIRY_DAYS, PACKAGE_SESSIONS } from "@/lib/pricing";
-import { PAGE_HEADING, PRIMARY_BUTTON, QUIET_LINK, SUBTLE } from "@/lib/ui";
+import { PAGE_HEADING, PRIMARY_BUTTON, LINK, SUBTLE } from "@/lib/ui";
 import type { Viewer } from "@/lib/viewer";
 import { getViewer } from "@/lib/viewer";
 import type { PackageSummary } from "@/lib/worker";
@@ -104,7 +104,7 @@ export default async function CheckoutSuccessPage({
           <Link href="/home" className={PRIMARY_BUTTON}>
             Start your next session
           </Link>
-          <Link href="/settings" className={`${QUIET_LINK} ${SUBTLE}`}>
+          <Link href="/settings" className={`${LINK} ${SUBTLE}`}>
             Receipts
           </Link>
         </div>

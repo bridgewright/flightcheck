@@ -27,7 +27,7 @@ import {
   verdictLine,
 } from "@/lib/home";
 import type { Verdict } from "@/lib/types";
-import { CARD, DIVIDER, FINE_PRINT, LABEL, PAGE_HEADING, PRIMARY_BUTTON, QUIET_LINK, SUBTLE } from "@/lib/ui";
+import { CARD, DIVIDER, FINE_PRINT, LABEL, PAGE_HEADING, PRIMARY_BUTTON, LINK, SUBTLE } from "@/lib/ui";
 import type { Viewer } from "@/lib/viewer";
 import { getViewer } from "@/lib/viewer";
 import type { PackageSummary, SessionSummary } from "@/lib/worker";
@@ -184,14 +184,14 @@ export default async function HomePage({
             </p>
             <div className="flex flex-wrap items-center gap-4">
               <RetryCompileButton packageId={active.id} action={retryCompileAction} />
-              <Link href="/new" className={`${QUIET_LINK} ${SUBTLE}`}>
+              <Link href="/new" className={`${LINK} ${SUBTLE}`}>
                 Start over with a new JD
               </Link>
             </div>
           </div>
         </article>
         <p className={`mt-9 border-t pt-5 text-fine ${DIVIDER}`}>
-          <Link href="/packages" className={QUIET_LINK}>
+          <Link href="/packages" className={LINK}>
             All packages
           </Link>
         </p>
@@ -268,7 +268,7 @@ export default async function HomePage({
       {/* The switcher in the TopBar replaced the old package list here; one
           quiet link remains for the overview screen. */}
       <p className={`mt-9 border-t pt-5 text-fine ${DIVIDER}`}>
-        <Link href="/packages" className={QUIET_LINK}>
+        <Link href="/packages" className={LINK}>
           All packages
         </Link>
       </p>

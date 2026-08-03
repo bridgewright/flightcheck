@@ -108,9 +108,15 @@ describe("the hero is one moment", () => {
     // This assertion is the thing that stops a third one appearing. It is
     // deliberately about the shape of the hero, not about one component name.
     expect(hero).not.toContain("ScreenFrame");
-    expect(hero).not.toMatch(/\bimg\b|<Image\b/);
+    // Every way of putting a picture there, not just the two that were used.
+    // An inline <svg> and a CSS background both cleared the earlier version of
+    // this check, which named `img` and a grid column and nothing else.
+    expect(hero).not.toMatch(/\bimg\b|<Image\b|<svg\b|<video\b|<canvas\b|<picture\b/);
+    expect(hero).not.toMatch(/bg-\[url\(|backgroundImage/);
     // No side-by-side split: a second column is where the last two arrived.
+    // Flex is the other way to build one, and it was open until now.
     expect(hero).not.toMatch(/\bgrid-cols-\d|\bcol-span-\d/);
+    expect(hero).not.toMatch(/\bflex-row\b|\bmd:flex-row\b|\blg:flex-row\b/);
 
     // And still nothing that takes a keystroke, which is the DECISIONS 030
     // half and the half that has never changed.

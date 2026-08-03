@@ -85,12 +85,20 @@ export const CTA_SECONDARY_BUTTON =
 export const DANGER_BUTTON =
   `inline-flex items-center justify-center gap-2 rounded-control bg-alarm px-4 py-2 text-paper ${ACTION_LABEL} ${PRESS} disabled:cursor-wait disabled:opacity-50`;
 
+/** The link. One token, because the two that were here differed only in a
+ * decoration neither reader could see: `decoration-ink/25` was 1.61:1 against
+ * paper and `decoration-hairline` was 1.23:1. Both were the sole thing marking
+ * the link as a link, and the second was worse than an accident — `hairline`
+ * is declared in globals.css as decorative and deliberately under 3:1, so a
+ * link was resting its whole affordance on a token that says in writing it
+ * cannot carry one.
+ *
+ * `field` is the token that exists for this: a boundary that has to be
+ * visible, asserted at 3:1 or better on every ground. Hover still goes to full
+ * ink, so the distinction the pair was reaching for survives as a state rather
+ * than as two names. */
 export const LINK =
-  "underline decoration-ink/25 underline-offset-4 transition-colors duration-300 ease-[cubic-bezier(0.165,0.84,0.44,1)] hover:decoration-ink";
-
-/** A link that should read as body text until it is wanted. */
-export const QUIET_LINK =
-  "underline decoration-hairline underline-offset-4 transition-colors duration-300 ease-[cubic-bezier(0.165,0.84,0.44,1)] hover:decoration-ink";
+  "underline decoration-field underline-offset-4 transition-colors duration-300 ease-[cubic-bezier(0.165,0.84,0.44,1)] hover:decoration-ink";
 
 // --- Type -----------------------------------------------------------------
 //
@@ -114,9 +122,6 @@ export const MUTED = "text-ink-muted";
 /** Quieter still: microcopy under a control, captions, footnotes. */
 export const SUBTLE = "text-fine text-ink-muted";
 export const FINE_PRINT = "text-fine text-ink-faint";
-
-/** The faint ink on its own, for cases that need the colour without a size. */
-export const FAINT = "text-ink-faint";
 
 /** The reading measure. Past about 68 characters the eye loses the line. */
 export const PROSE_WIDTH = "max-w-[68ch]";
@@ -195,10 +200,12 @@ export const EVIDENCE_QUOTE =
 /** The default bordered container: pricing card, framed screenshot, FAQ row. */
 export const CARD = "rounded-surface border border-hairline bg-surface";
 
-/** A card that genuinely lifts off the page. Used sparingly, never as a
- * default: most grouping wants whitespace, not elevation. */
-export const CARD_RAISED =
-  "rounded-surface border border-hairline bg-surface shadow-raise";
+// There is no raised card. One was written here on the reasoning that a system
+// should offer elevation "for the few things that genuinely lift", and then
+// nothing lifted: every grouping in the product turned out to want whitespace,
+// a hairline, or a ground change. A token nothing renders is a claim the design
+// makes that no screen has to keep, so it went, and `- -shadow-raise` with it.
+// The floating shadow survives because the account menu genuinely floats.
 
 /** A filled surface for content that is a sample, an aside, or a placeholder:
  * visibly a step back from the page it sits on. */
@@ -286,10 +293,15 @@ export const PLACEHOLDER_HATCH =
 
 // --- Rhythm ---------------------------------------------------------------
 
-/** The hero cloud, and the only gradient in the product. Full-bleed and
- * fixed, so its edges fall off-screen instead of drawing a rectangle; the
- * class itself lives in globals.css because it is a gradient, not a utility
- * composition. One element per page, in the hero. */
+/** The hero cloud. Full-bleed and *absolute*, so its edges fall off-screen
+ * instead of drawing a rectangle, and so it stays in the hero: `fixed` was the
+ * first attempt and it tinted every screen the reader scrolled to. The class
+ * lives in globals.css because it is an image reference rather than a utility
+ * composition. One element per page, in the hero.
+ *
+ * It is not a CSS gradient and the stylesheet declares none. The gradients in
+ * the product are both outside it: the radial stops inside `hero-bloom.svg`,
+ * and `PLACEHOLDER_HATCH` above. */
 export const HERO_BLOOM = "hero-bloom";
 
 /** Vertical space between landing blocks. The reference's pages are mostly

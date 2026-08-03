@@ -4,7 +4,7 @@ import { forbidden, redirect } from "next/navigation";
 
 import Shell from "@/components/Shell";
 import { claimAction } from "@/lib/package-claim";
-import { PAGE_HEADING, QUIET_LINK } from "@/lib/ui";
+import { PAGE_HEADING, LINK } from "@/lib/ui";
 import { getViewer } from "@/lib/viewer";
 import { authorizePackage, packageOwnerId } from "@/lib/worker";
 
@@ -93,7 +93,7 @@ export default async function PackageClaimPage({
           <h1 className={PAGE_HEADING}>Package not found</h1>
           <p className="text-ink-muted">
             This link does not match any interview package. Check the URL, or{" "}
-            <Link href="/new" className={QUIET_LINK}>
+            <Link href="/new" className={LINK}>
               start a new one
             </Link>
             .

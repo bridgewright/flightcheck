@@ -2,7 +2,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 
 import PollRefresh from "@/components/PollRefresh";
-import { PAGE_HEADING, QUIET_LINK } from "@/lib/ui";
+import { PAGE_HEADING, LINK } from "@/lib/ui";
 import { authorizeSession } from "@/lib/worker";
 
 export const dynamic = "force-dynamic";
@@ -19,7 +19,7 @@ function NotFound() {
       <h1 className={PAGE_HEADING}>Report not found</h1>
       <p className="text-ink-muted">
         This link does not match any session report. Check the URL, or{" "}
-        <Link href="/new" className={QUIET_LINK}>
+        <Link href="/new" className={LINK}>
           start a new package
         </Link>
         .
