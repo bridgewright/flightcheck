@@ -11,6 +11,7 @@ from fastapi.testclient import TestClient
 from factories import ready_package
 from fakes import FakeDatabase, FakeGenAI, FakeStorage
 from scorer.api.app import create_app
+from scorer.api.db import OrderRow
 
 TOKEN = "test-worker-token"
 AUTH = {"Authorization": f"Bearer {TOKEN}"}
@@ -109,6 +110,69 @@ def test_paid_survives_a_lost_insert_race():
     assert replay.status_code == 200
     assert replay.json()["duplicate"] is True
     assert len(db.orders) == 1
+
+
+def test_paid_replay_heals_a_delivery_that_died_after_the_order_insert():
+    # Crash window: the first delivery inserted the order row, then the
+    # worker died before set_package_paid. The order exists, the package is
+    # unpaid, and every replay finds the order — the replay path must
+    # re-assert the paid flip instead of short-circuiting past the repair.
+    db = FakeDatabase()
+    package = ready_package(db, is_trial=True)
+    orphan = db.insert_order(OrderRow(
+        user_id="user-1", package_id=package.id,
+        polar_order_id="polar-order-1",
+    ))
+    assert db.get_package(package.id).paid_at is None
+    client = _client(db)
+
+    replay = client.post(f"/api/packages/{package.id}/paid",
+                         json=ORDER_BODY, headers=AUTH)
+
+    assert replay.status_code == 200
+    assert replay.json() == {"package_id": package.id,
+                             "order_id": orphan.id, "duplicate": True}
+    assert len(db.orders) == 1                       # no second order row
+    healed = db.get_package(package.id)
+    assert healed.paid_at == ORDER_BODY["paid_at"]   # the flip finally landed
+    assert healed.total_sessions == 6
+    assert healed.order_id == orphan.id
+
+
+def test_paid_replay_for_a_different_package_is_refused():
+    # One Polar order provisions exactly one package: a replay aimed at a
+    # different package_id must refuse loudly, never claim (or heal) it.
+    db = FakeDatabase()
+    paid_package = ready_package(db, user_id="user-1")
+    other_package = ready_package(db, user_id="user-1")
+    client = _client(db)
+    assert client.post(f"/api/packages/{paid_package.id}/paid",
+                       json=ORDER_BODY, headers=AUTH).status_code == 200
+
+    response = client.post(f"/api/packages/{other_package.id}/paid",
+                           json=ORDER_BODY, headers=AUTH)
+
+    assert response.status_code == 409
+    assert response.json()["code"] == "order-package-mismatch"
+    assert db.get_package(other_package.id).paid_at is None
+    assert len(db.orders) == 1
+
+
+def test_paid_rejects_a_timezone_naive_timestamp():
+    # A naive paid_at would silently shift the 30-day window by the sender's
+    # UTC offset; the money anchor demands an explicit offset.
+    db = FakeDatabase()
+    package = ready_package(db)
+    client = _client(db)
+    response = client.post(
+        f"/api/packages/{package.id}/paid",
+        json={**ORDER_BODY, "paid_at": "2026-08-03T12:00:00"},
+        headers=AUTH,
+    )
+    assert response.status_code == 422
+    assert "offset" in response.json()["detail"]
+    assert db.orders == {}
+    assert db.get_package(package.id).paid_at is None
 
 
 def test_paid_unknown_package_is_404_and_writes_nothing():

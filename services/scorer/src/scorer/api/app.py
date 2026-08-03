@@ -415,21 +415,31 @@ def create_app(db: Database, storage: Storage, client: GenAIClientLike) -> FastA
     def mark_package_paid(package_id: str, body: MarkPaidRequest):
         """Provision a Polar payment: order row + paid package state.
 
-        Replay-safe twice over: polar_order_id is the idempotency key (a
-        known order short-circuits before any write), and set_package_paid
-        is first-write-wins, so a replay can never move the expiry window.
+        Replay-safe twice over: polar_order_id is the idempotency key, and
+        set_package_paid is first-write-wins, so a replay can never move the
+        expiry window. A replay of a KNOWN order re-asserts the paid flip
+        (never skips it): a crash between insert_order and set_package_paid
+        would otherwise leave a paid-for package locked at one session with
+        every retry short-circuiting past the repair.
         """
         try:
             package = db.get_package(package_id)
         except KeyError as exc:
             raise HTTPException(status_code=404, detail="package not found") from exc
         try:
-            datetime.fromisoformat(body.paid_at)
+            paid_at = datetime.fromisoformat(body.paid_at)
         except ValueError as exc:
             raise HTTPException(
                 status_code=422,
                 detail="paid_at must be an ISO-8601 timestamp",
             ) from exc
+        if paid_at.tzinfo is None:
+            # The money anchor must be unambiguous: a naive timestamp would
+            # silently shift the 30-day window by the sender's UTC offset.
+            raise HTTPException(
+                status_code=422,
+                detail="paid_at must carry an explicit UTC offset",
+            )
         if package.user_id is not None and package.user_id != body.user_id:
             # A webhook that resolved the wrong account must not provision
             # anything: refuse loudly, write nothing.
@@ -440,8 +450,31 @@ def create_app(db: Database, storage: Storage, client: GenAIClientLike) -> FastA
                     "code": "user-mismatch",
                 },
             )
+
+        def _order_package_mismatch(order: OrderRow) -> JSONResponse:
+            # One Polar order provisions exactly one package: answering
+            # "duplicate" for a different package_id would claim (and with
+            # the heal below, mark) the wrong package as paid.
+            logger.warning(
+                "polar order %s already provisioned package %s; refusing "
+                "replay aimed at package %s",
+                body.polar_order_id, order.package_id, package_id,
+            )
+            return JSONResponse(
+                status_code=409,
+                content={
+                    "error": "this Polar order provisioned a different package",
+                    "code": "order-package-mismatch",
+                },
+            )
+
         existing = db.find_order_by_polar_id(body.polar_order_id)
         if existing is not None:
+            if existing.package_id != package_id:
+                return _order_package_mismatch(existing)
+            # Replay heal: first-write-wins makes this a no-op on an
+            # already-paid package and a repair on one orphaned mid-crash.
+            db.set_package_paid(package_id, existing.id, body.paid_at)
             return {"package_id": package_id, "order_id": existing.id,
                     "duplicate": True}
         try:
@@ -456,10 +489,15 @@ def create_app(db: Database, storage: Storage, client: GenAIClientLike) -> FastA
             ))
         except (ValueError, PostgrestAPIError):
             # Lost an insert race with a concurrent delivery of the same
-            # order (unique polar_order_id): the winner's row is the answer.
+            # order (unique polar_order_id): the winner's row is the answer,
+            # and the paid flip is re-asserted in case the winner dies
+            # between its insert and its own set_package_paid.
             raced = db.find_order_by_polar_id(body.polar_order_id)
             if raced is None:
                 raise
+            if raced.package_id != package_id:
+                return _order_package_mismatch(raced)
+            db.set_package_paid(package_id, raced.id, body.paid_at)
             return {"package_id": package_id, "order_id": raced.id,
                     "duplicate": True}
         db.set_package_paid(package_id, order.id, body.paid_at)
