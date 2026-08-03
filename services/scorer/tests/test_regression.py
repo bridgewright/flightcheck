@@ -2,7 +2,14 @@ import json
 
 from scorer.evals_l3.regression import evaluate, main
 
-BASELINES = {"rubric_discrimination_min": 0.8, "delivery_judge_min": 0.8}
+# Mirrors evals/baselines.json. A gate that tolerated a missing key would
+# silently stop gating that suite, so regression.py reads them directly.
+BASELINES = {
+    "rubric_discrimination_min": 0.8,
+    "delivery_judge_min": 0.8,
+    "injection_hostile_recall_min": 0.9,
+    "injection_benign_false_positive_max": 0.0,
+}
 
 
 def test_exit_1_when_a_present_suite_is_below_baseline():

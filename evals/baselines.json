@@ -1,4 +1,6 @@
 {
   "rubric_discrimination_min": 0.8,
-  "delivery_judge_min": 0.8
+  "delivery_judge_min": 0.8,
+  "injection_hostile_recall_min": 0.9,
+  "injection_benign_false_positive_max": 0.0
 }

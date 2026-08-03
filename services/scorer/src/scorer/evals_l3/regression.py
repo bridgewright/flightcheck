@@ -1,12 +1,18 @@
 """Regression gate CLI (console script: scorer-evals).
 
-Runs evals layer 1 (rubric discrimination) and layer 3 (delivery
-discrimination) when their inputs exist, compares accuracies against the
-committed evals/baselines.json, and writes evals/out/regression.json.
+Runs evals layer 1 (rubric discrimination), layer 3 (delivery
+discrimination), and the F-11b injection-defence suite when their inputs
+exist, compares them against the committed evals/baselines.json, and writes
+evals/out/regression.json.
 
 Absent inputs are VISIBLE: a suite with no inputs is reported as SKIPPED in
 the output (exit 0), never silently passing. A present suite below its
 baseline fails the gate (exit 1).
+
+The two judge suites cost model credit; the injection suite is
+deterministic and costs nothing, which is deliberate -- the defence it
+measures is a classifier at intake, so its gate can run on every release
+rather than being something the operator hesitates to spend on.
 """
 from __future__ import annotations
 
@@ -15,6 +21,7 @@ import json
 from pathlib import Path
 
 from scorer.env import load_env, require_key
+from scorer.evals_injection import run_injection_suite
 from scorer.evals_l1.golden import judge_discrimination
 from scorer.evals_l3.delivery_check import run_delivery_discrimination
 from scorer.schemas import Rubric
@@ -25,7 +32,8 @@ DEFAULT_EVALS_ROOT = REPO_ROOT / "evals"
 
 
 def evaluate(
-    l1_result: dict | None, l3_result: dict | None, baselines: dict
+    l1_result: dict | None, l3_result: dict | None, baselines: dict,
+    injection_result: dict | None = None,
 ) -> tuple[dict, int]:
     """Pure gate decision: per-suite verdicts plus the process exit code."""
     suites: dict[str, dict] = {}
@@ -62,6 +70,35 @@ def evaluate(
             "dsp_pass": l3_result["dsp_pass"],
             "triplets": triplets,
             "baseline": l3_baseline,
+        }
+    recall_baseline = baselines["injection_hostile_recall_min"]
+    fp_ceiling = baselines["injection_benign_false_positive_max"]
+    if injection_result is None:
+        suites["injection_defence"] = {
+            "status": "SKIPPED",
+            "reason": "no fixtures in evals/suites/injection/fixtures",
+            "baseline": recall_baseline,
+            "false_positive_ceiling": fp_ceiling,
+        }
+    else:
+        recall = injection_result["hostile_recall"]
+        false_positive_rate = injection_result["benign_false_positive_rate"]
+        # Both directions gate, and the ceiling on false positives is the
+        # strict one: a missed instruction set is still fenced, while a
+        # refused real posting is a paying customer told their job
+        # description is an attack.
+        passed = recall >= recall_baseline and false_positive_rate <= fp_ceiling
+        suites["injection_defence"] = {
+            "status": "PASS" if passed else "FAIL",
+            "hostile_recall": recall,
+            "hostile_total": injection_result["hostile_total"],
+            "benign_false_positive_rate": false_positive_rate,
+            "benign_total": injection_result["benign_total"],
+            "baseline": recall_baseline,
+            "false_positive_ceiling": fp_ceiling,
+            # Named so a failing gate says WHICH fixture moved.
+            "misses": injection_result["misses"],
+            "false_positives": injection_result["false_positives"],
         }
     exit_code = 1 if any(s["status"] == "FAIL" for s in suites.values()) else 0
     return {"suites": suites, "exit_code": exit_code}, exit_code
@@ -128,8 +165,14 @@ def main(argv: list[str] | None = None) -> int:
     if has_clips:
         l3_result = run_delivery_discrimination(clips_dir, _client())
         (out_dir / "delivery_discrimination.json").write_text(json.dumps(l3_result, indent=2))
+    # Deterministic and free: it always runs, and never touches _client().
+    injection_result = run_injection_suite(evals_root / "suites" / "injection")
+    if injection_result is not None:
+        (out_dir / "injection_defence.json").write_text(
+            json.dumps(injection_result, indent=2))
 
-    doc, exit_code = evaluate(l1_result, l3_result, baselines)
+    doc, exit_code = evaluate(l1_result, l3_result, baselines,
+                              injection_result=injection_result)
     if l1_failure is not None:
         doc["suites"]["rubric_discrimination"] = l1_failure
         doc["exit_code"] = 1
