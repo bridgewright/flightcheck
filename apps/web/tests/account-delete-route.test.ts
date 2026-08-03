@@ -1,4 +1,4 @@
-// DELETE /api/account — the web half of F-34 self-serve deletion.
+// POST /api/account/delete — the web half of F-34 self-serve deletion.
 //
 // This route is the only place in the product that destroys data on a
 // customer's own click, so the ordering it enforces is the whole point:
@@ -54,13 +54,13 @@ vi.mock("@/lib/supabase/server", () => ({
 vi.mock("@/lib/worker", () => ({ WorkerError: MockWorkerError, deleteAccount }));
 vi.mock("@supabase/supabase-js", () => ({ createClient: createAdminClient }));
 
-import { DELETE } from "@/app/api/account/route";
+import { POST } from "@/app/api/account/delete/route";
 
 const ACCOUNT = { id: "user-1", email: "person@example.com" };
 
 function request(body?: unknown): Request {
-  return new Request("http://web.test/api/account", {
-    method: "DELETE",
+  return new Request("http://web.test/api/account/delete", {
+    method: "POST",
     ...(body === undefined ? {} : { body: JSON.stringify(body) }),
   });
 }
@@ -75,9 +75,9 @@ beforeEach(() => {
   adminDeleteUser.mockResolvedValue({ error: null });
 });
 
-describe("DELETE /api/account", () => {
+describe("POST /api/account/delete", () => {
   it("deletes the data, then the sign-in record, then signs out", async () => {
-    const response = await DELETE(request({ confirmEmail: ACCOUNT.email }));
+    const response = await POST(request({ confirmEmail: ACCOUNT.email }));
 
     expect(response.status).toBe(200);
     expect(await response.json()).toEqual({ ok: true, signInRecordRemoved: true });
@@ -92,7 +92,7 @@ describe("DELETE /api/account", () => {
   });
 
   it("takes the account id from the session, never from the request", async () => {
-    await DELETE(request({ confirmEmail: ACCOUNT.email, userId: "someone-else" }));
+    await POST(request({ confirmEmail: ACCOUNT.email, userId: "someone-else" }));
 
     expect(deleteAccount).toHaveBeenCalledExactlyOnceWith(ACCOUNT.id);
     expect(adminDeleteUser).toHaveBeenCalledExactlyOnceWith(ACCOUNT.id);
@@ -101,7 +101,7 @@ describe("DELETE /api/account", () => {
   it("refuses an anonymous caller before anything happens", async () => {
     getUser.mockResolvedValue({ data: { user: null }, error: null });
 
-    const response = await DELETE(request({ confirmEmail: ACCOUNT.email }));
+    const response = await POST(request({ confirmEmail: ACCOUNT.email }));
 
     expect(response.status).toBe(401);
     expect(deleteAccount).not.toHaveBeenCalled();
@@ -109,7 +109,7 @@ describe("DELETE /api/account", () => {
   });
 
   it("refuses when the typed confirmation does not match the account", async () => {
-    const response = await DELETE(request({ confirmEmail: "someone@example.com" }));
+    const response = await POST(request({ confirmEmail: "someone@example.com" }));
 
     expect(response.status).toBe(400);
     expect(deleteAccount).not.toHaveBeenCalled();
@@ -118,7 +118,7 @@ describe("DELETE /api/account", () => {
 
   it("refuses a request with no confirmation at all", async () => {
     for (const body of [undefined, {}, { confirmEmail: "" }, { confirmEmail: 7 }]) {
-      const response = await DELETE(request(body));
+      const response = await POST(request(body));
       expect(response.status).toBe(400);
     }
     expect(deleteAccount).not.toHaveBeenCalled();
@@ -129,14 +129,14 @@ describe("DELETE /api/account", () => {
     // these by hand rather than the route guessing.
     getUser.mockResolvedValue({ data: { user: { id: "user-1", email: null } }, error: null });
 
-    const response = await DELETE(request({ confirmEmail: "" }));
+    const response = await POST(request({ confirmEmail: "" }));
 
     expect(response.status).toBe(400);
     expect(deleteAccount).not.toHaveBeenCalled();
   });
 });
 
-describe("DELETE /api/account when the worker refuses", () => {
+describe("POST /api/account/delete when the worker refuses", () => {
   it("passes the worker's honest 'nothing was deleted' through", async () => {
     deleteAccount.mockRejectedValue(
       new MockWorkerError(
@@ -146,7 +146,7 @@ describe("DELETE /api/account when the worker refuses", () => {
       ),
     );
 
-    const response = await DELETE(request({ confirmEmail: ACCOUNT.email }));
+    const response = await POST(request({ confirmEmail: ACCOUNT.email }));
     const body = await response.json();
 
     expect(response.status).toBe(503);
@@ -162,7 +162,7 @@ describe("DELETE /api/account when the worker refuses", () => {
     try {
       deleteAccount.mockRejectedValue(new MockWorkerError(500, "unknown", null));
 
-      const response = await DELETE(request({ confirmEmail: ACCOUNT.email }));
+      const response = await POST(request({ confirmEmail: ACCOUNT.email }));
 
       expect(response.status).toBe(502);
       expect(adminDeleteUser).not.toHaveBeenCalled();
@@ -178,7 +178,7 @@ describe("DELETE /api/account when the worker refuses", () => {
     try {
       deleteAccount.mockRejectedValue(new Error("fetch failed"));
 
-      const response = await DELETE(request({ confirmEmail: ACCOUNT.email }));
+      const response = await POST(request({ confirmEmail: ACCOUNT.email }));
 
       expect(response.status).toBe(502);
       expect(adminDeleteUser).not.toHaveBeenCalled();
@@ -188,13 +188,13 @@ describe("DELETE /api/account when the worker refuses", () => {
   });
 });
 
-describe("DELETE /api/account when the sign-in record survives", () => {
+describe("POST /api/account/delete when the sign-in record survives", () => {
   it("reports the truth and still signs the customer out", async () => {
     const errorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
     try {
       adminDeleteUser.mockResolvedValue({ error: { message: "admin unavailable" } });
 
-      const response = await DELETE(request({ confirmEmail: ACCOUNT.email }));
+      const response = await POST(request({ confirmEmail: ACCOUNT.email }));
       const body = await response.json();
 
       // The data IS gone — claiming otherwise would send the customer
@@ -215,7 +215,7 @@ describe("DELETE /api/account when the sign-in record survives", () => {
     try {
       adminDeleteUser.mockRejectedValue(new Error("network down"));
 
-      const response = await DELETE(request({ confirmEmail: ACCOUNT.email }));
+      const response = await POST(request({ confirmEmail: ACCOUNT.email }));
 
       expect(await response.json()).toEqual({ ok: true, signInRecordRemoved: false });
     } finally {
@@ -228,7 +228,7 @@ describe("DELETE /api/account when the sign-in record survives", () => {
     try {
       delete process.env.SUPABASE_SERVICE_ROLE_KEY;
 
-      const response = await DELETE(request({ confirmEmail: ACCOUNT.email }));
+      const response = await POST(request({ confirmEmail: ACCOUNT.email }));
 
       expect(await response.json()).toEqual({ ok: true, signInRecordRemoved: false });
       expect(createAdminClient).not.toHaveBeenCalled();

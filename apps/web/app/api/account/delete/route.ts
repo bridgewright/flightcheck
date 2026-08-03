@@ -9,6 +9,14 @@ import { WorkerError, deleteAccount } from "@/lib/worker";
 // to support; the destructive part is unchanged (one shared implementation in
 // the worker's api/deletion.py), what changed is who can trigger it.
 //
+// POST on an action path rather than DELETE on the resource, for the same
+// reason Phase 0 gave the worker endpoint a query parameter instead of a
+// body: a DELETE carrying a body is accepted unevenly by proxies and
+// clients. The typed confirmation has to ride in a body — it is the
+// customer's own address, which has no business in a URL that access logs
+// keep — so the method has to be one that carries bodies everywhere. Every
+// other action route in this app is POST + JSON too.
+//
 // The order here is the safety property, not an implementation detail:
 //
 //   1. identity comes from the SESSION — never from the request body, so
@@ -64,7 +72,7 @@ async function removeSignInRecord(userId: string): Promise<boolean> {
   }
 }
 
-export async function DELETE(request: Request) {
+export async function POST(request: Request) {
   const supabase = await createClient();
   const {
     data: { user },

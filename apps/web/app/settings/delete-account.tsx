@@ -39,8 +39,8 @@ export default function DeleteAccountSection({
     setError(null);
     let response: Response;
     try {
-      response = await fetch("/api/account", {
-        method: "DELETE",
+      response = await fetch("/api/account/delete", {
+        method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ confirmEmail: typed }),
       });

@@ -63,6 +63,15 @@ describe("deletion confirmation", () => {
     expect(deleteSection).toContain("ACCOUNT_DELETION_REMOVES");
   });
 
+  it("posts to an action path instead of DELETE-with-a-body", () => {
+    // Same reasoning Phase 0 used for the worker endpoint: a DELETE
+    // carrying a body is accepted unevenly by proxies and clients, and the
+    // typed confirmation is the customer's own address, which has no
+    // business in a URL that access logs keep.
+    expect(deleteSection).toContain('"/api/account/delete"');
+    expect(deleteSection).toContain('method: "POST"');
+  });
+
   it("leaves the signed-in surface with a full navigation, not a router push", () => {
     // Every cached RSC payload in this tab describes an account that no
     // longer exists; a client-side push would render one of them.
