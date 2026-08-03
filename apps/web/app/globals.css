@@ -103,7 +103,12 @@
      time. These are the two measures the product has, and the shell, the top
      bar, and the footer all take them from here. */
   --container-shell: 92rem; /* about 1290px */
-  --container-reading: 46rem; /* long-form: reports, legal, settings */
+  /* Long-form: reports, legal, settings. This is the page frame, not the line
+     length. Prose inside caps itself at PROSE_WIDTH (68ch), so a wider frame
+     buys the gauge, the score row, and the dimension cards their space without
+     lengthening a single line of reading. It was 46rem and the report sat in a
+     644px column with the rest of a 1900px screen empty on either side. */
+  --container-reading: 64rem; /* about 900px */
 
   /* --- Depth ----------------------------------------------------------- */
   /* Group with whitespace, then a hairline, then a ground change, in that
