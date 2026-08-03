@@ -9,6 +9,7 @@ import ProgressTrajectory from "@/components/ProgressTrajectory";
 import { dimensionMeta, scoredInOrder } from "@/components/progress-view";
 import ReadinessGauge from "@/components/ReadinessGauge";
 import Shell from "@/components/Shell";
+import StartSessionButton from "@/components/StartSessionButton";
 import { resolveActivePackage } from "@/lib/active-package";
 import { nextSessionNumber } from "@/lib/home";
 import { dimensionTrends, recurringIssues } from "@/lib/progress";
@@ -117,9 +118,11 @@ function StartCta({
   }
   return (
     <div className="mt-9 flex justify-center">
-      <Link href={`/p/${pkg.access_token}`} className={PRIMARY_BUTTON}>
-        Start session {next}
-      </Link>
+      <StartSessionButton
+        packageId={pkg.id}
+        token={pkg.access_token}
+        label={`Start session ${next}`}
+      />
     </div>
   );
 }
