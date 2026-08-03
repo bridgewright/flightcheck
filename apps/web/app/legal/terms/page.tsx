@@ -19,9 +19,9 @@ import { publicMetadata } from "../../site";
 
 export const metadata: Metadata = publicMetadata({
   path: "/legal/terms",
-  title: "Terms of Service — flightcheck",
+  title: "Terms of Service: flightcheck",
   description:
-    "What you are buying, what we promise, and what we refuse to promise — including why an honest verdict is never grounds for a refund.",
+    "What you are buying, what we promise, and what we refuse to promise, including why an honest verdict is never grounds for a refund.",
 });
 
 export default async function TermsPage() {
@@ -55,13 +55,13 @@ export default async function TermsPage() {
             details.
           </p>
         </LegalSection>
-        <LegalSection heading="The verdict is honest — that is the product">
+        <LegalSection heading="The verdict is honest. That is the product">
           <p>
             Our verdicts are &ldquo;Not yet ready&rdquo;, &ldquo;Approaching&rdquo;,
             and &ldquo;Ready&rdquo;, and they mean what they say. We calibrate
             them against the bar of the role you pasted, not against what would
-            feel encouraging. A verdict you disagree with — including a
-            &ldquo;Not yet ready&rdquo; on your final session — is the product
+            feel encouraging. A verdict you disagree with, including a
+            &ldquo;Not yet ready&rdquo; on your final session, is the product
             working as designed, and is not grounds for a refund (see the{" "}
             <a className="underline" href="/legal/refund">
               refund policy
@@ -73,13 +73,13 @@ export default async function TermsPage() {
         <LegalSection heading="Your part">
           <p>
             You need a browser with a working microphone, and sessions are
-            conducted in English. Keep your sign-in link to yourself — anyone
+            conducted in English. Keep your sign-in link to yourself. Anyone
             holding it can use your sessions. Use this hosted service for your
             own interview preparation; do not probe it, scrape it, or resell
             access to it. That restriction covers the hosted service only:
             flightcheck&apos;s source code is published separately under the
             MIT license, and nothing here takes away the rights that license
-            grants you over the code — including running, modifying, and
+            grants you over the code, including running, modifying, and
             selling your own copy.
           </p>
         </LegalSection>

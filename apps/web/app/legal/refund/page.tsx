@@ -13,9 +13,9 @@ import { publicMetadata } from "../../site";
 
 export const metadata: Metadata = publicMetadata({
   path: "/legal/refund",
-  title: "Refund Policy — flightcheck",
+  title: "Refund Policy: flightcheck",
   description:
-    "Technical failure on our side is refundable. A verdict you did not like is not — and that is what makes the verdicts worth anything.",
+    "Technical failure on our side is refundable. A verdict you did not like is not, and that is what makes the verdicts worth anything.",
 });
 
 export default async function RefundPage() {
@@ -25,7 +25,7 @@ export default async function RefundPage() {
       <LegalPage title="Refund Policy" updated="August 3, 2026">
         <LegalSection heading="Try before you pay">
           <p>
-            Your first package starts as a trial with a full session — real
+            Your first package starts as a trial with a full session: real
             interviewer, real scoring, real report. That trial exists so that
             by the time you pay {PRICE_DISPLAY}, you already know exactly what
             you are buying.
@@ -34,8 +34,8 @@ export default async function RefundPage() {
         <LegalSection heading="What we refund">
           <p>
             If a technical failure on our side keeps you from using what you
-            paid for — sessions that will not start, audio that will not
-            record, scoring that never returns — tell us within{" "}
+            paid for (sessions that will not start, audio that will not
+            record, scoring that never returns), tell us within{" "}
             {REFUND_WINDOW_DAYS} days of payment and we will fix it or refund
             you. Write to{" "}
             <a className="underline" href={supportMailto()}>
@@ -52,7 +52,7 @@ export default async function RefundPage() {
             exists to tell you the truth about whether you would pass, and
             &ldquo;Not yet ready&rdquo; is often that truth. If a disappointing
             verdict were refundable, you would have to wonder whether we
-            soften them to keep the money — and then no verdict would be worth
+            soften them to keep the money, and then no verdict would be worth
             anything. Sessions you have used, and packages that reached the
             end of their validity window, are likewise not refundable.
           </p>

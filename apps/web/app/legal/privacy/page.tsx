@@ -17,7 +17,7 @@ import { publicMetadata } from "../../site";
 
 export const metadata: Metadata = publicMetadata({
   path: "/legal/privacy",
-  title: "Privacy Policy — flightcheck",
+  title: "Privacy Policy: flightcheck",
   description:
     "Exactly what we hold, why we hold it, and how to make us delete it. Recordings exist because delivery is scored from raw audio.",
 });
@@ -29,7 +29,7 @@ export default async function PrivacyPage() {
       <LegalPage title="Privacy Policy" updated="August 3, 2026">
         <LegalSection heading="What we collect">
           <p>
-            Your email address (it is how you sign in — we use magic links, no
+            Your email address (it is how you sign in; we use magic links, no
             passwords), the job description and any resume or profile text you
             paste in, the audio recordings of your sessions, the transcripts
             made from them, the reports we score from both, and your order
@@ -40,8 +40,8 @@ export default async function PrivacyPage() {
         </LegalSection>
         <LegalSection heading="Why recordings exist and how long we keep them">
           <p>
-            Delivery scoring works on the raw audio — pace, hesitation,
-            pronunciation are gone once speech becomes text — and replay next
+            Delivery scoring works on the raw audio, because pace, hesitation,
+            and pronunciation are gone once speech becomes text. Replay next
             to the report is how you hear what the report describes. So
             recordings, transcripts, and reports are kept in private storage,
             tied to your account, for as long as the account exists. They are
@@ -63,7 +63,7 @@ export default async function PrivacyPage() {
             processor (as merchant of record) handles checkout so we never see
             card details, AI model providers process session audio and
             transcripts to conduct and score your sessions, and an
-            error-monitoring service receives crash reports from our servers —
+            error-monitoring service receives crash reports from our servers:
             record identifiers and stack traces, with its personal-data
             collection switched off, so no recording, transcript, or report
             content reaches it. Each receives only what its job requires.
