@@ -1,14 +1,16 @@
 import Link from "next/link";
 
+import { DELETION_TIMELINE_DAYS, deletionMailto } from "@/app/legal/policy";
 import MicCheck from "@/components/MicCheck";
 import Shell from "@/components/Shell";
 import { LABEL, PRIMARY_BUTTON } from "@/lib/ui";
 import { getViewer } from "@/lib/viewer";
 
 // S12. Deliberately small: account facts, the microphone check, one honest
-// paragraph about recordings, and sign-out. No profile editing, no deletion
-// flow, no theme toggle — none of those exist yet, and a settings page that
-// hints at more than the product does would be lying.
+// paragraph about recordings, the deletion intake, and sign-out. No profile
+// editing, no theme toggle — those do not exist yet, and a settings page
+// that hints at more than the product does would be lying. Deletion v0.5 is
+// a manual mailto process and the copy says so plainly (self-serve is v0.6).
 
 // The proxy matcher normally redirects signed-out visitors to /login before
 // this renders (pinned in tests/settings-gate.test.ts). This is the fallback
@@ -76,6 +78,22 @@ export default async function SettingsPage() {
             replay a session next to its report — nothing else. They are never public
             and never used outside your own reports.
           </p>
+        </Section>
+
+        <Section label="Delete account & data">
+          <p className="text-sm text-neutral-600 dark:text-neutral-400">
+            Deletion is a manual process right now: email us from your account
+            address and within {DELETION_TIMELINE_DAYS} days we delete the
+            account with every recording, transcript, report, and order
+            attached to it — then confirm by reply. The email below arrives
+            with the request prefilled.
+          </p>
+          <a
+            href={deletionMailto(viewer.email)}
+            className="self-start rounded-md border border-neutral-300 px-4 py-1.5 text-sm dark:border-neutral-700"
+          >
+            Request deletion by email
+          </a>
         </Section>
 
         <Section label="Sign out">
