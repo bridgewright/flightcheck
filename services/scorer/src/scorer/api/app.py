@@ -8,11 +8,13 @@ Long jobs run as BackgroundTasks: POST returns 202 and clients poll GET.
 """
 from __future__ import annotations
 
+import asyncio
 import base64
 import binascii
 import logging
 import os
 import secrets
+from contextlib import asynccontextmanager, suppress
 from datetime import datetime
 from typing import Annotated
 
@@ -40,6 +42,7 @@ from scorer.api.quota import (
     is_expired,
     sessions_used,
 )
+from scorer.api.reaper import reap_stuck_safely
 from scorer.api.storage import Storage
 from scorer.config import load_product_config
 from scorer.intake.jd import JdFetchError, fetch_jd
@@ -188,9 +191,32 @@ def _rate_limited(action: str) -> JSONResponse:
 
 
 def create_app(db: Database, storage: Storage, client: GenAIClientLike) -> FastAPI:
-    app = FastAPI(title="flightcheck scorer worker")
-    api = APIRouter(prefix="/api", dependencies=[Depends(_require_worker_token)])
     limits = load_product_config().limits
+
+    async def _reaper_loop() -> None:
+        while True:
+            await asyncio.sleep(limits.reaper_interval_s)
+            await asyncio.to_thread(
+                reap_stuck_safely, db, stale_after_s=limits.reaper_stale_after_s
+            )
+
+    @asynccontextmanager
+    async def lifespan(_app: FastAPI):
+        # Startup pass: rows orphaned by the PREVIOUS container die now,
+        # not one reaper interval into this one. Then the periodic task.
+        await asyncio.to_thread(
+            reap_stuck_safely, db, stale_after_s=limits.reaper_stale_after_s
+        )
+        task = asyncio.create_task(_reaper_loop())
+        try:
+            yield
+        finally:
+            task.cancel()
+            with suppress(asyncio.CancelledError):
+                await task
+
+    app = FastAPI(title="flightcheck scorer worker", lifespan=lifespan)
+    api = APIRouter(prefix="/api", dependencies=[Depends(_require_worker_token)])
 
     # Per-user fixed windows plus per-row attempt counters (see guards.py on
     # why process-local is honest here). Keys fall back to the package id for

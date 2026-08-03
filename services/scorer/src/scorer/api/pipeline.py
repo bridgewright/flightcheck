@@ -35,6 +35,20 @@ from scorer.schemas import CandidateProfile, GenAIClientLike, SessionReport
 logger = logging.getLogger(__name__)
 
 
+def _set_session_status(db: Database, session_id: str, status: str,
+                        audio_path: str | None = None) -> None:
+    """Status write + updated_at touch: every transition refreshes the clock
+    so the stuck-state reaper only ever sees truly abandoned rows."""
+    db.set_session_status(session_id, status, audio_path=audio_path)
+    db.touch_updated_at("session", session_id)
+
+
+def _set_scoring_stage(db: Database, session_id: str, stage: str) -> None:
+    """Stage write + touch: a long scoring run stays visibly alive."""
+    db.set_scoring_stage(session_id, stage)
+    db.touch_updated_at("session", session_id)
+
+
 class JdFacts(BaseModel):
     """Role title and company extracted from the JD (run_sweep needs both)."""
 
@@ -122,10 +136,12 @@ def compile_package(
         findings = run_sweep(row.jd_text, facts.role_title, facts.company, client)
         rubric = compile_rubric(row.jd_text, profile, findings, corpus, fewshots, client)
         db.set_package_rubric(package_id, rubric, status="ready")
+        db.touch_updated_at("package", package_id)
     except Exception:
         # Worker boundary: record the failure, never crash the background job.
         logger.exception("package compile failed: package_id=%s", package_id)
         db.set_package_rubric(package_id, None, status="failed")
+        db.touch_updated_at("package", package_id)
 
 
 def score_session(
@@ -149,7 +165,7 @@ def score_session(
     swallow-and-log background job (_score_session_job).
     """
     try:
-        db.set_session_status(session_id, "scoring")
+        _set_session_status(db, session_id, "scoring")
         row = db.get_session(session_id)
         package = db.get_package(row.package_id)
         rubric = package.rubric
@@ -160,7 +176,7 @@ def score_session(
             )
         product = load_product_config()
         with tempfile.TemporaryDirectory(prefix="flightcheck-session-") as tmp:
-            db.set_scoring_stage(session_id, "download")
+            _set_scoring_stage(db, session_id, "download")
             local = storage.download_recording(row.audio_path, Path(tmp))
             wav = ensure_wav(local)
             # Duration ceiling at scoring intake (F-29), BEFORE the first
@@ -175,9 +191,9 @@ def score_session(
                     session_id, duration_s / 60.0,
                     product.limits.recording_max_minutes,
                 )
-                db.set_session_status(session_id, "failed")
+                _set_session_status(db, session_id, "failed")
                 return None
-            db.set_scoring_stage(session_id, "transcribe")
+            _set_scoring_stage(db, session_id, "transcribe")
             segments = transcribe_verbatim(wav, client)
             # Persisted immediately, BEFORE any judge runs: the 20-minute
             # interview is not repeatable, so a judge failure later must
@@ -196,18 +212,18 @@ def score_session(
                     "ending insufficient with zero judge calls",
                     session_id, duration_s,
                 )
-                db.set_session_status(session_id, "insufficient")
+                _set_session_status(db, session_id, "insufficient")
                 return None
-            db.set_scoring_stage(session_id, "delivery-metrics")
+            _set_scoring_stage(db, session_id, "delivery-metrics")
             metrics = compute_delivery_metrics(wav, segments)
-            db.set_scoring_stage(session_id, "content-judge")
+            _set_scoring_stage(db, session_id, "content-judge")
             content_scores = score_content(rubric, segments, client)
             delivery_dims = [d for d in rubric.dimensions if d.channel == "delivery"]
-            db.set_scoring_stage(session_id, "delivery-judge")
+            _set_scoring_stage(db, session_id, "delivery-judge")
             delivery_scores, observations = judge_delivery(
                 wav, metrics, delivery_dims, client
             )
-        db.set_scoring_stage(session_id, "compile")
+        _set_scoring_stage(db, session_id, "compile")
         report = compile_report(
             session_id,
             rubric,
@@ -217,10 +233,10 @@ def score_session(
             eligibility=eligibility,
         )
         db.save_report(session_id, report)
-        db.set_session_status(session_id, "scored")
+        _set_session_status(db, session_id, "scored")
         return report
     except Exception:
         # Worker boundary: record the failure, then let the caller decide.
         logger.exception("session scoring failed: session_id=%s", session_id)
-        db.set_session_status(session_id, "failed")
+        _set_session_status(db, session_id, "failed")
         raise
