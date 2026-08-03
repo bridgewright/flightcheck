@@ -1,7 +1,12 @@
 import { NextResponse } from "next/server";
 
 import { getViewer } from "@/lib/viewer";
-import { authorizeSession, authorizeViewerSession } from "@/lib/worker";
+import {
+  WorkerError,
+  authorizeSession,
+  authorizeViewerSession,
+  incrementSecretMint,
+} from "@/lib/worker";
 
 import { clientSecretRequestBody } from "../../../lib/realtime";
 
@@ -71,6 +76,20 @@ export async function POST(request: Request) {
       { error: "session has no interviewer instructions" },
       { status: 502 },
     );
+  }
+  // Per-session connection cap (v0.5): count this mint against the session
+  // before OpenAI is called. Only an authorized caller reaches this line,
+  // so the counter cannot be pumped anonymously.
+  try {
+    await incrementSecretMint(body.sessionId);
+  } catch (err) {
+    if (err instanceof WorkerError && err.status === 429) {
+      return NextResponse.json(
+        { error: "Too many connection attempts for this session." },
+        { status: 429 },
+      );
+    }
+    console.error("realtime-secret: secret-mint counter unavailable", err);
   }
   const mintRes = await fetch(OPENAI_CLIENT_SECRETS_URL, {
     method: "POST",
