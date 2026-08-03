@@ -6,14 +6,30 @@ import { DspConflictBadge } from "@/components/ReportView";
 import { formatTimestamp } from "@/lib/report-format";
 import { transcriptTimeline } from "@/lib/transcript";
 import type { TimestampedObservation, TranscriptSegment } from "@/lib/types";
+import {
+  FINE_PRINT,
+  MUTED,
+  PANEL,
+  PROSE_WIDTH,
+  QUIET_LINK,
+  SECTION_HEADING,
+} from "@/lib/ui";
 
 // The session transcript with the judge's delivery observations inlined at
 // their timestamps, plus the recording itself in a sticky native <audio>
-// element. Timestamps are buttons that seek the audio — the transcript and
+// element. Timestamps are buttons that seek the audio: the transcript and
 // the replay are one instrument, not two sections. All grouping/interleaving
 // logic lives in lib/transcript.ts; this component only renders and seeks.
 
 const SPEAKER_LABELS = { interviewer: "Interviewer", candidate: "You" } as const;
+
+// LABEL bakes its own ink in, and this label carries two: the candidate's turns
+// are the ones being scored and read at full ink, the interviewer's step back.
+// So it composes the same type step from the system rather than overriding a
+// token's colour with a second colour utility.
+const SPEAKER = "font-mono text-label uppercase";
+
+const TIMESTAMP = "font-mono text-fine tabular-nums text-ink-faint";
 
 function Timestamp({
   atS,
@@ -24,18 +40,14 @@ function Timestamp({
 }) {
   const label = formatTimestamp(atS);
   if (onSeek === null) {
-    return (
-      <span className="font-mono text-xs text-neutral-500 tabular-nums">
-        {label}
-      </span>
-    );
+    return <span className={TIMESTAMP}>{label}</span>;
   }
   return (
     <button
       type="button"
       onClick={() => onSeek(atS)}
       aria-label={`Play the recording from ${label}`}
-      className="cursor-pointer font-mono text-xs text-neutral-500 tabular-nums underline decoration-neutral-300 underline-offset-2 hover:text-neutral-900 dark:decoration-neutral-700 dark:hover:text-neutral-100"
+      className={`${TIMESTAMP} ${QUIET_LINK} cursor-pointer hover:text-ink`}
     >
       {label}
     </button>
@@ -50,7 +62,7 @@ export default function TranscriptView({
   unavailableNote = "Transcript unavailable for this session.",
 }: {
   /** Null = no transcript is stored (sessions scored before transcripts were
-   * persisted, or the fetch failed — the page words the note accordingly). */
+   * persisted, or the fetch failed, and the page words the note accordingly). */
   segments: TranscriptSegment[] | null;
   observations: TimestampedObservation[];
   /** Signed download URL for the session recording, minted server-side. */
@@ -78,15 +90,11 @@ export default function TranscriptView({
 
   return (
     <section className="flex flex-col gap-4">
-      <h2 className="text-xl font-semibold">Transcript</h2>
+      <h2 className={SECTION_HEADING}>Transcript</h2>
       {segments === null ? (
-        <p className="text-sm text-neutral-600 dark:text-neutral-400">
-          {unavailableNote}
-        </p>
+        <p className={MUTED}>{unavailableNote}</p>
       ) : timeline.length === 0 ? (
-        <p className="text-sm text-neutral-600 dark:text-neutral-400">
-          This session&rsquo;s transcript is empty.
-        </p>
+        <p className={MUTED}>This session&rsquo;s transcript is empty.</p>
       ) : (
         <ol className="flex flex-col gap-4">
           {timeline.map((entry, i) =>
@@ -95,23 +103,25 @@ export default function TranscriptView({
                 <div className="flex items-baseline gap-2.5">
                   <Timestamp atS={entry.turn.start_s} onSeek={seek} />
                   <span
-                    className={`text-xs font-semibold uppercase tracking-wide ${
+                    className={`${SPEAKER} ${
                       entry.turn.speaker === "candidate"
-                        ? "text-neutral-900 dark:text-neutral-100"
-                        : "text-neutral-500"
+                        ? "text-ink"
+                        : "text-ink-faint"
                     }`}
                   >
                     {SPEAKER_LABELS[entry.turn.speaker]}
                   </span>
                 </div>
-                <p className="text-sm leading-relaxed text-neutral-700 dark:text-neutral-300">
-                  {entry.turn.text}
-                </p>
+                <p className={`${MUTED} ${PROSE_WIDTH}`}>{entry.turn.text}</p>
               </li>
             ) : (
+              // A delivery observation, annotating the turn it sits beside.
+              // A sunk ground says "this is a note about the transcript" the
+              // way a margin note does; it is not a warning, and this product
+              // keeps alarm for destructive actions and real errors.
               <li
                 key={i}
-                className="flex items-baseline gap-2.5 rounded-md border-l-2 border-amber-300 bg-amber-50/60 px-3 py-2 text-sm text-amber-950 dark:border-amber-800 dark:bg-amber-950/40 dark:text-amber-100"
+                className={`${PANEL} flex items-baseline gap-2.5 px-3 py-2 text-fine`}
               >
                 <Timestamp atS={entry.observation.at_s} onSeek={seek} />
                 <span>
@@ -127,9 +137,9 @@ export default function TranscriptView({
       )}
 
       {audioUrl !== null ? (
-        <div className="sticky bottom-0 mt-2 border-t border-neutral-200 bg-white/95 py-3 backdrop-blur dark:border-neutral-800 dark:bg-neutral-950/95">
+        <div className="sticky bottom-0 mt-2 border-t border-hairline bg-paper/95 py-3 backdrop-blur">
           {/* preload="none": the signed URL is fetched when the user presses
-              play, not on page load — recordings run to tens of MB. */}
+              play, not on page load, because recordings run to tens of MB. */}
           <audio
             ref={audioRef}
             controls
@@ -137,7 +147,7 @@ export default function TranscriptView({
             src={audioUrl}
             className="w-full"
           />
-          <p className="mt-1.5 text-xs text-neutral-500">{audioCaption}</p>
+          <p className={`${FINE_PRINT} mt-1.5`}>{audioCaption}</p>
         </div>
       ) : null}
     </section>
