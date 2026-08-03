@@ -276,6 +276,44 @@ def test_a_compile_failure_is_dead_lettered_and_the_package_fails(
     assert (entry.kind, entry.subject_id) == ("compile", package.id)
 
 
+def test_a_real_compile_failure_reaches_the_dead_letter(collaborators, tmp_path,
+                                                        monkeypatch):
+    """Review finding: the wrapper never sees a compile failure.
+
+    compile_package handles its own failure and does NOT re-raise, so a test
+    that monkeypatches compile_package proves the wrapper works and nothing
+    about the product. This one drives the REAL pipeline into the failure
+    that actually happens in production -- the provider call dies -- and
+    asserts the operator can still see it. Before the fix this recorded
+    nothing: the package read "failed" and /api/ops/dead-letters was empty.
+    """
+    monkeypatch.setenv("SCORER_CORPUS_DIR", str(tmp_path))
+    db, storage, client = collaborators
+    package = db.create_package("a real job description", None, user_id="user-1")
+
+    # FakeGenAI with no canned replies: the first real model call raises.
+    compile_package_job(package.id, db, storage, client, resume_text=None,
+                        linkedin_text=None)
+
+    assert db.get_package(package.id).status == "failed"
+    entry = default_log().recent()[0]
+    assert (entry.kind, entry.subject_id, entry.reason) == (
+        "compile", package.id, REASON_PIPELINE_ERROR)
+
+
+def test_a_compile_failure_is_dead_lettered_exactly_once(collaborators, tmp_path,
+                                                         monkeypatch):
+    """Both halves record, so the pair must not double-count one failure."""
+    monkeypatch.setenv("SCORER_CORPUS_DIR", str(tmp_path))
+    db, storage, client = collaborators
+    package = db.create_package("a real job description", None, user_id="user-1")
+
+    compile_package_job(package.id, db, storage, client, resume_text=None,
+                        linkedin_text=None)
+
+    assert default_log().total_recorded == 1
+
+
 def test_the_row_failure_write_can_itself_fail_without_killing_the_worker(
     monkeypatch, collaborators
 ):

@@ -17,6 +17,7 @@ from google.genai import types
 from pydantic import BaseModel, ConfigDict
 
 from scorer.api.db import Database
+from scorer.api.deadletter import default_log, reason_for
 from scorer.api.storage import Storage
 from scorer.audio_utils import ensure_wav
 from scorer.config import load_product_config
@@ -163,9 +164,14 @@ def compile_package(
         rubric = compile_rubric(row.jd_text, profile, findings, corpus, fewshots, client)
         db.set_package_rubric(package_id, rubric, status="ready")
         db.touch_updated_at("package", package_id)
-    except Exception:
+    except Exception as exc:
         # Worker boundary: record the failure, never crash the background job.
+        # Dead-lettered HERE because this handler swallows -- api/jobs.py's
+        # wrapper never sees the exception, so without this a failed compile
+        # would set the row to "failed" and show up in no operator view.
         logger.exception("package compile failed: package_id=%s", package_id)
+        default_log().record("compile", package_id, exc,
+                             reason=reason_for(exc))
         db.set_package_rubric(package_id, None, status="failed")
         db.touch_updated_at("package", package_id)
 

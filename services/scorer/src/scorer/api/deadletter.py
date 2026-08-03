@@ -14,6 +14,12 @@ Two halves, deliberately:
   carrying the stable "dead-letter" marker so log-based alerting (Track C's
   F-36 wiring) has something unambiguous to key on.
 
+Both entry points record: the job wrappers (api/jobs.py) catch what escapes
+a pipeline, and compile_package -- which handles its own failure and does
+not re-raise -- records before it swallows. Otherwise the commonest failure
+in the product, a compile that dies on a provider error, would set the row
+to "failed" and appear nowhere an operator looks.
+
 The in-process half is explicitly not durable: it is bounded process memory
 and empties on restart. That is the honest trade available without a new
 table, and it is the half that answers "what just broke", which is the
@@ -29,7 +35,12 @@ from typing import Literal
 
 from pydantic import BaseModel, ConfigDict
 
-from scorer.resilience import load_resilience_config
+from scorer.resilience import (
+    DeadlineExceeded,
+    MemoryTooLow,
+    SlotUnavailable,
+    load_resilience_config,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -41,6 +52,19 @@ REASON_PIPELINE_ERROR = "pipeline-error"
 REASON_DEADLINE = "deadline"
 REASON_NO_SLOT = "no-slot"
 REASON_LOW_MEMORY = "low-memory"
+
+
+def reason_for(exc: BaseException) -> str:
+    """The stable reason for a failure. Here rather than in api/jobs.py so
+    a pipeline that handles its own failure classifies it the same way the
+    job wrapper would."""
+    if isinstance(exc, DeadlineExceeded):
+        return REASON_DEADLINE
+    if isinstance(exc, SlotUnavailable):
+        return REASON_NO_SLOT
+    if isinstance(exc, MemoryTooLow):
+        return REASON_LOW_MEMORY
+    return REASON_PIPELINE_ERROR
 
 
 class DeadLetter(BaseModel):

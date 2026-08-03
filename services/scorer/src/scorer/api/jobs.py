@@ -38,21 +38,12 @@ import threading
 import time
 
 from scorer.api.db import Database
-from scorer.api.deadletter import (
-    REASON_DEADLINE,
-    REASON_LOW_MEMORY,
-    REASON_NO_SLOT,
-    REASON_PIPELINE_ERROR,
-    default_log,
-)
+from scorer.api.deadletter import default_log, reason_for
 from scorer.api.pipeline import compile_package, score_session
 from scorer.api.storage import Storage
 from scorer.api.usage import scoring_latency
 from scorer.resilience import (
     ConcurrencySlot,
-    DeadlineExceeded,
-    MemoryTooLow,
-    SlotUnavailable,
     deadline_scope,
     load_resilience_config,
     require_memory,
@@ -92,16 +83,6 @@ def reset_slots() -> None:
     """Drop the cached gates (tests only; nothing in production calls it)."""
     with _slots_lock:
         _slots.clear()
-
-
-def _reason_for(exc: BaseException) -> str:
-    if isinstance(exc, DeadlineExceeded):
-        return REASON_DEADLINE
-    if isinstance(exc, SlotUnavailable):
-        return REASON_NO_SLOT
-    if isinstance(exc, MemoryTooLow):
-        return REASON_LOW_MEMORY
-    return REASON_PIPELINE_ERROR
 
 
 def _fail_session_if_unsettled(db: Database, session_id: str) -> None:
@@ -161,7 +142,8 @@ def score_session_job(
             # it resets on restart.
             scoring_latency().record(time.monotonic() - started)
     except Exception as exc:
-        default_log().record("scoring", session_id, exc, reason=_reason_for(exc))
+        default_log().record("scoring", session_id, exc,
+                             reason=reason_for(exc))
         _fail_session_if_unsettled(db, session_id)
         logger.exception("background scoring failed: session_id=%s", session_id)
 
@@ -196,6 +178,7 @@ def compile_package_job(
                 linkedin_text=linkedin_text,
             )
     except Exception as exc:
-        default_log().record("compile", package_id, exc, reason=_reason_for(exc))
+        default_log().record("compile", package_id, exc,
+                             reason=reason_for(exc))
         _fail_package_if_unsettled(db, package_id)
         logger.exception("background compile failed: package_id=%s", package_id)
