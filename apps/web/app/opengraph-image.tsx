@@ -21,16 +21,22 @@ import { HERO } from "@/components/landing/copy";
 // the one screen it has to edit by hand.
 
 export const alt =
-  "flightcheck — practice interviews scored against the bar of the job you are applying to";
+  "flightcheck: practice interviews scored against the bar of the job you are applying to";
 
 export const size = { width: 1200, height: 630 };
 
 export const contentType = "image/png";
 
-const INK = "#171717";
-const MUTED_INK = "#737373";
-const PAPER = "#ffffff";
-const RULE = "#e5e5e5";
+// Kept in step with app/globals.css by hand, which is what the note above
+// promised F-21 would have to do. These four are the only literals in the
+// product outside the token file; satori runs before Tailwind exists, so a
+// var() here would render as nothing. The Ready word takes the sage that
+// marks that one verdict everywhere else.
+const INK = "#221f1a";
+const MUTED_INK = "#5f5b52";
+const PAPER = "#faf9f5";
+const RULE = "#e4e1d7";
+const READY = "#4a6b4f";
 
 const VERDICTS = ["Not yet ready", "Approaching", "Ready"];
 
@@ -76,7 +82,7 @@ export default function Image() {
                 {index > 0 ? <span>·</span> : null}
                 <span
                   style={{
-                    color: index === VERDICTS.length - 1 ? INK : MUTED_INK,
+                    color: index === VERDICTS.length - 1 ? READY : MUTED_INK,
                     fontWeight: index === VERDICTS.length - 1 ? 600 : 400,
                   }}
                 >

@@ -1,40 +1,240 @@
 @import "tailwindcss";
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
+/* Dark mode is opt-in by class, and the product never sets the class.
+   Tailwind v4's default `dark:` variant is `prefers-color-scheme: dark`, which
+   is a property of the reader's machine rather than of this stylesheet. So a
+   light-only palette declared here would still have been overpainted by every
+   `dark:` utility left anywhere in the tree, and the pass that removes those
+   utilities cannot land in the same commit as the palette.
+
+   Redefining the variant against a class nothing applies makes every surviving
+   `dark:` inert immediately, so no intermediate commit ever serves a page that
+   is half warm-paper and half cold-grey. It also means a `dark:` reintroduced
+   later fails silently rather than visibly, which is why the token gate treats
+   one as an error. */
+@custom-variant dark (&:where(.dark, .dark *));
+
+/* The design system, F-21. Every colour, type step, radius, and shadow in the
+   product is declared here and nowhere else; lib/ui.ts composes them into the
+   handful of class strings screens are allowed to use.
+   Spec: plans/2026-08-03-f21-design-spec.md (private workspace).
+
+   Two things about this file are load-bearing.
+
+   First, it is light only. That is a decision, not an omission: there is no
+   dark block to drift out of sync and no `dark:` variant anywhere in the
+   product to maintain. Adding a dark scheme later is one @media block against
+   these same variables, which is why the values live here as tokens rather
+   than inline in components.
+
+   Second, the palette's contrast is checked rather than asserted.
+   tests/design-system.test.ts parses the hexes below and computes the full
+   ink-on-ground matrix; every text token clears WCAG AA on every ground, and
+   --color-field clears the 3:1 that a control boundary needs. Change a value
+   here and the test tells you what it cost. */
+
+@theme {
+  /* --- Grounds -------------------------------------------------------- */
+
+  /* The page: warm off-white, barely-there warmth rather than cream. */
+  --color-paper: #faf9f5;
+  /* A step back. Samples, placeholders, table heads, chrome. */
+  --color-paper-sunk: #f2f0e9;
+  /* A step forward. Cards that genuinely lift, menus. */
+  --color-surface: #ffffff;
+
+  /* --- Lines ---------------------------------------------------------- */
+
+  /* Dividers and card edges. 1.24:1 against paper, so DECORATIVE ONLY: it
+     may never be the only thing identifying an interactive control. */
+  --color-hairline: #e4e1d7;
+  /* Inputs and control boundaries, where WCAG 1.4.11 wants 3:1. */
+  --color-field: #8f8a7c;
+
+  /* --- Ink ------------------------------------------------------------ */
+
+  --color-ink: #221f1a;
+  --color-ink-muted: #5f5b52;
+  --color-ink-faint: #6d6859;
+
+  /* --- The one brand accent, and two reserved semantics ---------------- */
+  /* One accent carries every interactive and emphatic use. Sage appears only
+     on the Ready verdict, alarm only on destructive actions and true errors.
+     Three hues, three documented jobs; drifting outside that is a review
+     failure, not a preference. */
+
+  --color-accent: #9e4f58;
+  --color-accent-wash: #f6e7e6;
+  --color-ready: #4a6b4f;
+  --color-ready-wash: #e7ede6;
+  --color-alarm: #a03a2e;
+  --color-alarm-wash: #f8e7e3;
+
+  /* --- Shape ----------------------------------------------------------- */
+  /* One documented radius rule: interactive is a full pill, surfaces are
+     12px, inputs are 8px. Mixed systems are only defensible with a written
+     rule, and this is the rule. */
+
+  --radius-surface: 0.75rem;
+  --radius-field: 0.5rem;
+
+  /* --- Depth ----------------------------------------------------------- */
+  /* Grouping is done with whitespace, then a hairline, then a ground change,
+     in that order. These two exist for the cases where something genuinely
+     lifts off the page. Tinted with the ink hue, because a pure-black shadow
+     on a warm ground reads as dirt. */
+
+  --shadow-raise: 0 1px 2px rgb(34 31 26 / 0.04), 0 8px 24px rgb(34 31 26 / 0.05);
+  --shadow-float: 0 2px 4px rgb(34 31 26 / 0.05), 0 16px 40px rgb(34 31 26 / 0.09);
+
+  /* --- Type steps ------------------------------------------------------ */
+  /* Tracking is size-specific, never one value: display type reads too loose
+     as it grows and wants negative tracking, small caps want positive. Body
+     sizes stay on Tailwind's defaults; only the roles the product actually
+     names get a step here. */
+
+  --text-display: clamp(2.25rem, 4.4vw, 3.5rem);
+  --text-display--line-height: 1.05;
+  --text-display--letter-spacing: -0.025em;
+
+  --text-verdict: clamp(2.5rem, 5vw, 4rem);
+  --text-verdict--line-height: 1;
+  --text-verdict--letter-spacing: -0.025em;
+
+  --text-page: 2rem;
+  --text-page--line-height: 1.15;
+  --text-page--letter-spacing: -0.02em;
+
+  --text-section: 1.5rem;
+  --text-section--line-height: 1.2;
+  --text-section--letter-spacing: -0.015em;
+
+  --text-fine: 0.8125rem;
+  --text-fine--line-height: 1.5;
+
+  --text-label: 0.6875rem;
+  --text-label--line-height: 1.4;
+  --text-label--letter-spacing: 0.14em;
+  --text-label--font-weight: 600;
 }
 
+/* Font families resolve through the variables next/font sets in layout.tsx,
+   so they have to be `inline` — the utility must emit the var() reference
+   rather than the value Tailwind sees at build time. */
 @theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
+  --font-serif: var(--font-newsreader);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+:root {
+  /* Light only. Stated to the browser as well as to the stylesheet, so form
+     controls, scrollbars, and the address bar agree with the page. */
+  color-scheme: light;
+}
+
+html {
+  /* The ~10% scale-up, in one line and one place.
+     "What 110% browser zoom shows today should be the new 100%."
+
+     A percentage rather than a pixel value on purpose: it multiplies the
+     reader's own browser text-size setting instead of overriding it. Tailwind
+     v4 derives spacing from --spacing: 0.25rem, so type and rhythm scale
+     together and no screen needs a compensating tweak. Breakpoints are
+     unaffected: rem inside a media query resolves against the initial root
+     size by spec, so md stays at 768px.
+
+     If something breaks at 110%, it was already fragile. Fix it structurally;
+     do not shrink it back locally. */
+  font-size: 110%;
+  scroll-behavior: smooth;
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
+  background: var(--color-paper);
+  color: var(--color-ink);
   /* The Geist variables are wired in app/layout.tsx via next/font; the
      fallbacks only apply while the font file is still loading. */
   font-family: var(--font-geist-sans), Arial, Helvetica, sans-serif;
+  line-height: 1.65;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* The serif arrives through a named type token (DISPLAY_HEADING, PAGE_HEADING,
+   SECTION_HEADING, VERDICT_*), never through an element selector.
+
+   Binding it to h1/h2/h3 was the first thing tried and it is wrong: a heading
+   is a document-structure choice, and the type step is a design choice, and
+   tying them together means an <h3> carrying SUB_HEADING gets serif from the
+   stylesheet while its token says Geist. Two sources, one element, silently
+   disagreeing. Elements stay unstyled; the token decides. */
+.font-serif {
+  font-optical-sizing: auto;
+}
+
+/* Headlines should not strand a single word on the last line; paragraphs
+   should not strand one either, more cheaply. */
+h1,
+h2,
+h3 {
+  text-wrap: balance;
+}
+
+p {
+  text-wrap: pretty;
 }
 
 /* One focus treatment for the whole product, so keyboard users get the same
-   ring on every surface instead of the browser default. The foreground token
-   keeps it legible in both themes. */
+   ring on every surface instead of the browser default. Ink on paper is
+   15.59:1, well past the 3:1 a focus indicator needs. */
 a:focus-visible,
 button:focus-visible,
 summary:focus-visible,
 input:focus-visible,
-textarea:focus-visible {
-  outline: 2px solid var(--foreground);
+textarea:focus-visible,
+select:focus-visible {
+  outline: 2px solid var(--color-ink);
   outline-offset: 2px;
+}
+
+/* The gradient accent the brief asks for, in its entirety: one soft blush
+   field behind the top of the landing page and behind the closing block.
+   Not a decoration set. It is pointer-events-none, it never sits under body
+   text at a strength that touches contrast, and there is no gradient text,
+   no mesh orbs, and no per-card gradient anywhere in the product. */
+.ambient-wash {
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  background:
+    radial-gradient(
+      60% 55% at 78% 8%,
+      color-mix(in oklab, var(--color-accent) 13%, transparent),
+      transparent 70%
+    ),
+    radial-gradient(
+      45% 40% at 10% 0%,
+      color-mix(in oklab, var(--color-accent) 7%, transparent),
+      transparent 70%
+    );
+}
+
+/* Scroll-entry motion is driven by motion/react in client leaves, which
+   handles prefers-reduced-motion through useReducedMotion. This is the
+   backstop for transitions that never pass through a component: a CSS
+   transition added to a token string cannot ask React whether to run. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+
+  html {
+    scroll-behavior: auto;
+  }
 }
