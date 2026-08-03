@@ -824,11 +824,11 @@ screen in the product.*
   reduced-motion handling, and cleanup, in a component that must not leak the
   observer across route changes. That is a worse trade than a dependency whose
   entire job is that problem.
-- **Why the icons:** two glyphs. The honest reckoning is that this is a large
-  dependency for a small need, and it is justified only by `/ssr` making the
-  cost proportional: nothing but the imported glyphs reaches the bundle. If it
-  ever stops being two glyphs and starts being a set, this becomes an inlined
-  SVG file instead.
+- **Why the icons:** three glyphs, in two components. The honest reckoning is
+  that this is a large dependency for a small need, and it is justified only by
+  `/ssr` making the cost proportional: nothing but the imported glyphs reaches
+  the bundle. If it ever stops being a handful and starts being a set, this
+  becomes an inlined SVG file instead.
 - **What this costs:** the RSC boundary is now something to defend rather than
   something the architecture guarantees. `79838fd` closed a leak where a
   signed-in screen handed a start capability to a client component, and every

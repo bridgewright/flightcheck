@@ -38,8 +38,15 @@
   /* Dividers and card edges. 1.23:1 against paper, so DECORATIVE ONLY: it may
      never be the only thing identifying an interactive control. */
   --color-hairline: #e7e4dc;
-  /* Inputs and control boundaries, where WCAG 1.4.11 wants 3:1. */
-  --color-field: #8c8579;
+  /* Inputs and control boundaries, where WCAG 1.4.11 wants 3:1.
+     Darkened from #8c8579 on 2026-08-04. That value cleared 3:1 on every flat
+     ground and was measured at 2.83:1 over the hero cloud, which is where both
+     hero CTAs actually sit; the secondary one has no fill, so this border is
+     the only thing saying it is a control. The alternative was fading the
+     cloud, and the cloud is the half of the pastel language the user asked for
+     by name. A slightly deeper control edge costs nothing and improves every
+     other ground at the same time. */
+  --color-field: #817a6f;
 
   /* --- Ink ------------------------------------------------------------ */
 

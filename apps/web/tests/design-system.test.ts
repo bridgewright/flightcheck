@@ -91,6 +91,26 @@ const FILES = [...walk("app"), ...walk("components"), ...walk("lib")].filter(
   (f) => !/\.test\.tsx?$/.test(f),
 );
 
+/**
+ * The hero cloud, composited over paper at its strongest stop.
+ *
+ * This is a ground, and until now no gate knew it. The declared-value matrix
+ * sees only flat tokens, so everything sitting over the bloom — the hero
+ * claim, its subtext, both CTAs and their borders — was measured against paper
+ * it is not actually on. A Round 2 reviewer sampled the real painted pixels
+ * under the landing's one link and read 2.98 to 3.01:1 across twelve
+ * viewports, which is the 3:1 bar landing on the coin.
+ *
+ * The opacity is READ FROM THE SVG rather than written here, because the two
+ * have drifted before: the stylesheet described the strongest stop as 40% when
+ * it was 95%. If someone deepens the cloud, this ground darkens with it and
+ * the matrix below fails, which is the property that was missing.
+ */
+const bloomSvg = readFileSync(join(webRoot, "public/hero-bloom.svg"), "utf8");
+const bloomPeak = Math.max(
+  ...[...bloomSvg.matchAll(/stop-opacity="([\d.]+)"/g)].map((m) => Number(m[1])),
+);
+
 // Every ground a body string may sit on, including the pastel chips.
 const GROUNDS = ["paper", "paper-sunk", "surface", "sky", "blush", "ready-wash", "alarm-wash"];
 const INKS = ["ink", "ink-muted", "ink-faint", "ready", "alarm"];
@@ -206,7 +226,31 @@ function composite(ink: string, ground: string, alpha: number): string {
   return `#${mix.map((c) => c.toString(16).padStart(2, "0")).join("")}`.toUpperCase();
 }
 
+/** The bloom ground, derived once the colours and `composite` are in hand. */
+function bloomGround(): string {
+  return composite(COLOURS.bloom, COLOURS.paper, bloomPeak);
+}
+
 describe("contrast, computed from the declared values", () => {
+  it("keeps the hero legible over the cloud, not only over paper", () => {
+    const ground = bloomGround();
+    for (const ink of INKS) {
+      const ratio = contrast(COLOURS[ink], ground);
+      expect(
+        ratio,
+        `--color-${ink} on the bloom (${ground}, peak ${bloomPeak}) is ${ratio.toFixed(2)}:1, below AA 4.5`,
+      ).toBeGreaterThanOrEqual(4.5);
+    }
+    // And the boundary token, because both hero CTAs are drawn on this ground
+    // and the secondary one has no fill: its border is the only thing saying
+    // it is a control.
+    const border = contrast(COLOURS.field, ground);
+    expect(
+      border,
+      `--color-field on the bloom (${ground}, peak ${bloomPeak}) is ${border.toFixed(2)}:1, below 3`,
+    ).toBeGreaterThanOrEqual(3);
+  });
+
   it.each(INKS)("%s clears AA on every ground", (ink) => {
     for (const ground of GROUNDS) {
       const ratio = contrast(COLOURS[ink], COLOURS[ground]);

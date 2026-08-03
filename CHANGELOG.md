@@ -22,9 +22,14 @@ survives its own history rather than a customer discovering it did not.
 ### Added — the landing page a stranger actually reads
 
 - Rebuilt for screen parity with what the market ships: a four-step
-  how-it-works, framed product screenshots, an FAQ that answers the six
-  questions people actually ask, and itemized pricing. What unlocks for $49
-  is listed **before** the button, with the refund line next to it.
+  how-it-works, itemized pricing, and answers to the six questions people
+  actually ask. What unlocks for $49 is listed **before** the button, with
+  the refund line next to it.
+- Then cut down again in the design pass, which is worth stating rather than
+  quietly restating the result: the framed product screenshots and the
+  on-page FAQ accordion both came out. The screenshots were placeholders
+  promising captures "after the design pass", and the FAQ moved to `/faq`,
+  which is one click rather than a policy PDF.
 - The landing also briefly carried a live pre-signup rubric preview. It
   shipped, ran in production, and was removed the same day — see "Not
   shipped, and why".

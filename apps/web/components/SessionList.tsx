@@ -11,8 +11,14 @@ import { EMPTY_RULE, LABEL, SCORE_NUMBER, TABLE_ROW } from "@/lib/ui";
 //
 // The table lives in lib/report-format.ts. There was a second copy here, and
 // the two had already drifted: a `planned` session read "Not started" in this
-// list and "Not started, slot preserved" everywhere else, so the same session
-// described itself differently depending on which screen the reader was on.
+// list and "Not started, slot preserved" on the detail page, so the same
+// session described itself differently depending on which screen the reader
+// was on.
+//
+// ProgressTrajectory keeps a third, deliberately shorter set ("Not started",
+// "Closed") because its cells are one column of a scrolling strip and the long
+// forms do not fit. That is a real constraint rather than drift, and it is
+// recorded here so the next person does not consolidate it by reflex.
 
 function Outcome({ session }: { session: SessionSummary }) {
   const pill = archiveStatusPill(session.status);

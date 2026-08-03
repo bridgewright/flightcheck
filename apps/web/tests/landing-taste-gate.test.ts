@@ -136,7 +136,10 @@ describe("the hero is one moment", () => {
     expect(surface.length, "the hero surface collapsed to a single file").toBeGreaterThan(1);
     const hero = surface.join("\n");
 
-    expect(hero).not.toContain("ScreenFrame");
+    // Not `expect(hero).not.toContain("ScreenFrame")`. That component was
+    // deleted, so importing it is a build error and the assertion could no
+    // longer fail through any route a person would take. It sat directly under
+    // a comment promising this rule was about shape rather than one name.
     // Every way of putting a picture there, not just the two that were used.
     expect(hero).not.toMatch(/\bimg\b|<Image\b|<svg\b|<video\b|<canvas\b|<picture\b/);
     expect(hero).not.toMatch(/bg-\[url\(|backgroundImage/);

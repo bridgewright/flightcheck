@@ -18,8 +18,11 @@ import { publicMetadata } from "./site";
 //
 // The order is the argument: the hero states the claim and asks for nothing,
 // how-it-works explains the loop, the price is itemized inline rather than
-// hidden behind a click, and the close re-offers the one CTA. Every block but
-// the hero carries the trial microcopy under its CTA.
+// hidden behind a click, and the close re-offers the one CTA. Two blocks carry
+// a CTA at all: pricing, whose trial line is PRICING.trialNote, and the close,
+// whose TRIAL_MICROCOPY comes through CtaRow. How-it-works is four steps and
+// asks for nothing, which is deliberate and was described here for a while as
+// carrying microcopy it has never had.
 //
 // Four blocks, not six. This comment described a two-up screenshot gallery and
 // an on-page FAQ accordion for a while after both had gone: the gallery was

@@ -240,10 +240,12 @@ describe("every screen speaks the token vocabulary", () => {
     // `bg-linear-to-r` and pass every gate in the batch, which is exactly the
     // purple-to-blue AI wash the design skills name as the first tell.
     //
-    // The product's two real gradients are both deliberate and neither is a
-    // class: the radial stops inside `public/hero-bloom.svg`, and
-    // `PLACEHOLDER_HATCH`, which is a CSS value passed through `style` so that
-    // it reads as a hatch and can never be mistaken for a screenshot.
+    // The product's one real gradient is the radial stops inside
+    // `public/hero-bloom.svg`, which is an asset rather than a class. This
+    // comment named a second, `PLACEHOLDER_HATCH`, for a while after the same
+    // batch deleted it, and it was the third copy of a sentence corrected in
+    // globals.css and lib/ui.ts. That it survived here is the worst of the
+    // three, because this file is the one that decides what CI fails on.
     // Every spelling Tailwind 4.3 accepts, verified against the installed
     // package rather than assumed: bg-linear, bg-radial and bg-conic all
     // exist, and only the linear form takes a `-to-<side>` suffix. The
@@ -252,8 +254,9 @@ describe("every screen speaks the token vocabulary", () => {
     // which anchored on `-[` being followed immediately by the function.
     expect(offenders(source, /-\[(?:[a-z-]+:)?(?:repeating-)?(?:linear|radial|conic)-gradient/)).toEqual([]);
     expect(offenders(source, /\bbg-(?:gradient|linear|radial|conic)\b/)).toEqual([]);
-    // And the inline route, which is how PLACEHOLDER_HATCH worked, so it is
-    // the one a reader of this file already knows about.
+    // And the inline route: `style={{ backgroundImage: ... }}` reaches no
+    // class scan at all, and it is the route the deleted hatch token used, so
+    // it is the one someone reading this history would reach for first.
     expect(offenders(source, /backgroundImage|background-image/)).toEqual([]);
   });
 

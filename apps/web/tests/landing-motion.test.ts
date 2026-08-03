@@ -196,7 +196,12 @@ describe("the entry budget holds the numbers the spec set", () => {
 });
 
 describe("the call sites pass the leaves nothing but presentation", () => {
-  const LEAF_NAMES = ["Reveal", "RevealGroup", "MountReveal"];
+  // RevealGroup is not here because it no longer exists. It was a complete
+// client component with zero call sites: its own comment said "the arithmetic
+// lives here instead of at four call sites" and there were none. Deleted on
+// the same ground as CARD_RAISED and ScreenFrame, and because DECISIONS 031
+// justifies the motion dependency across the components that actually ship.
+const LEAF_NAMES = ["Reveal", "MountReveal"];
   const ALLOWED_PROPS = ["className", "delay", "key"];
 
   const callSites = [
