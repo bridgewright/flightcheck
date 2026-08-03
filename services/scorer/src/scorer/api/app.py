@@ -802,8 +802,11 @@ def main() -> None:
     from scorer.api.storage import SupabaseStorage
     from scorer.env import load_env, require_key
     from scorer.genai_compat import make_client
+    from scorer.observability import init_sentry, setup_logging
 
+    setup_logging()
     load_env()
+    init_sentry()      # no-op unless SENTRY_DSN is set
     require_key("WORKER_API_TOKEN")
     gemini_key = require_key("GEMINI_API_KEY")
     supabase = create_supabase_client()
