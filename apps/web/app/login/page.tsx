@@ -12,6 +12,7 @@ import {
   FIELD,
   FINE_PRINT,
   MUTED,
+  PAGE_HEADING,
   PRIMARY_BUTTON,
   SECONDARY_BUTTON,
   SUBTLE,
@@ -83,7 +84,7 @@ function LoginForm() {
         <div className="mb-12 text-lg">
           <strong>flight</strong>check
         </div>
-        <h1 className="mb-8 text-3xl font-bold tracking-tight text-balance">
+        <h1 className={`${PAGE_HEADING} mb-8`}>
           Your interviewer is ready when you are.
         </h1>
         {searchParams.get("error") === "auth" && (

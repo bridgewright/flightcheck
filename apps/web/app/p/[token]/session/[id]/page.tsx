@@ -1,5 +1,6 @@
 import { redirect } from "next/navigation";
 
+import { PAGE_HEADING } from "@/lib/ui";
 import { authorizeSession } from "@/lib/worker";
 
 // Legacy address. The session room lives at /sessions/[id]/room now; this
@@ -17,7 +18,7 @@ export default async function LegacySessionPage({
   if (!access.ok) {
     return (
       <main className="mx-auto max-w-2xl p-8">
-        <h1 className="text-xl font-semibold">Session unavailable</h1>
+        <h1 className={PAGE_HEADING}>Session unavailable</h1>
         <p className="mt-2 text-ink-faint">
           This session does not exist, is not part of this package, or the
           scoring service is unreachable. Go back to your home and start a
