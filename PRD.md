@@ -176,6 +176,17 @@ Changes to targets are recorded here with date and reason — never silently.
   review followed the restyle; what they found is listed with the release
   rather than folded into it. DECISIONS 031.
 
+- **v0.8 (2026-08-04):** one door — sign-in is **Continue with Google**, and
+  the passwordless email link is removed. The email link made the product's
+  only entrance a message that has to be delivered, on a sender the product
+  does not control and whose own documentation calls it rate-limited and
+  best-effort; every account it created was one undelivered message away from
+  being unreachable, including the accounts that hold paid packages. Google is
+  the account these customers already have, it arrives with the address
+  verified, and it costs no credential store, no reset flow, no mail template
+  and no sender domain. The settings screen loses its change-sign-in-address
+  form with it: the address belongs to the Google account now. DECISIONS 036.
+
 > 2026-08-02: v0.4 scope added above — accounts move ahead of payments
 > because login-gated interviews protect session integrity and per-session
 > cost, and the dashboard is what makes a 6-session package usable. The

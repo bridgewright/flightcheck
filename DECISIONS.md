@@ -518,6 +518,14 @@ line no longer describes practice.*
 audit found that nothing in this log covered the change that gates every
 screen in the product.*
 
+> **Superseded in part on 2026-08-04 by DECISIONS 036.** The passwordless
+> email link described below is **removed**: sign-in is Google, and it is the
+> only door. What still stands is everything this entry decided about identity
+> itself — Supabase Auth as the provider, the `lib/viewer.ts` seam, the proxy's
+> cookie refresh, `safeNextPath`, and `/auth/callback`. "No passwords" also
+> still stands, and by a stronger route than this entry took: the product now
+> holds no credential at all. Read the rest of this entry as history.
+
 - **Decision:** identity is Supabase Auth — the same service that already
   holds the data (006). Sign-in is a **passwordless email link**
   (`signInWithOtp`, then `/auth/callback` exchanges the code for a
@@ -1174,3 +1182,64 @@ they were introduced for.*
   want a dark ground, and that would be its own decision rather than a
   reopening of this one; or a scan starts failing more often than it catches
   anything, which is the signal that a rule is wrong rather than unenforced.
+
+## 036 — one door: sign-in is Google, and the email link is removed (2026-08-04)
+
+- **Decision:** `/login` offers a single action — **Continue with Google**.
+  `signInWithOtp`, the email field, the sent state and the resend cooldown are
+  removed, and so is `NEXT_PUBLIC_GOOGLE_AUTH_ENABLED`: the flag existed
+  because the provider was not configured, and a sign-in button behind a flag
+  is how a login screen ships with no way into it. Configuring the Google
+  provider is therefore a **prerequisite of the deploy, not a follow-up** —
+  with the email link gone there is no second door to fall back to.
+  `/settings` loses the change-sign-in-address form (F-35, shipped in v0.6):
+  under Google the address on the account is the Google account's, and a form
+  here would change our row without changing anyone's credential. Everything
+  022 decided about *how identity is read* stands unchanged — Supabase Auth,
+  the `lib/viewer.ts` seam, the proxy's cookie refresh, `safeNextPath`, and
+  `/auth/callback` exchanging a code for a cookie session.
+- **Why:** passwordless made email delivery the entire auth surface, and 022
+  said so in the sentence that admitted the cost. What that bought in
+  practice: a sender the product does not control, on Supabase's built-in
+  service, which its own documentation describes as rate-limited per hour,
+  best-effort, and not for production use — under a message whose body never
+  said "flightcheck", carried "powered by Supabase", and offered to
+  unsubscribe the customer from their own sign-in link. Google is the account
+  this product's customers already have. It arrives with the address verified,
+  it costs no credential store, no reset flow, no mail template, no sender
+  domain and no DNS, and it removes the failure mode where a paid package sits
+  behind a message that never arrived.
+- **What this costs, unhedged:** a customer with no Google account cannot sign
+  in at all. There is no fallback door by design, and the product does not
+  pretend otherwise.
+- **Rejected — email and password (F-52, proposed and killed the same day):**
+  it would have reversed 022 to buy a credential store, a reset flow, breach
+  exposure, a leaked-password check, a rate limit on the product's first
+  guessable secret, and two further transactional emails — four branded
+  templates, a sender domain and SPF/DKIM/DMARC records — to arrive at the
+  same signed-in state that one Google button reaches. The card is closed as
+  rejected rather than deferred: the work it described is not wanted later
+  either.
+- **Rejected — keeping the email link beside Google:** two doors into one
+  account is the configuration that splits accounts. The same address can
+  arrive by either provider, and Supabase links identities only on a
+  **confirmed** email — an unconfirmed one is a pre-account-takeover risk it
+  deliberately refuses to link — so the split account is the one holding a
+  paid package. Keeping it also keeps the entire email surface it was supposed
+  to justify: the templates, the sender, the throttle. The one real argument
+  for keeping it was the accounts that already exist, and that argument does
+  not survive contact with the data (below).
+- **Rejected — GitHub as a second provider:** offered and declined by the user
+  on 2026-08-04. One door until a customer asks for a second.
+- **Migration — verified, not assumed:** every account in the live project is
+  an email-confirmed `gmail.com` address (`select … from auth.users`, run
+  2026-08-04, n=2). Supabase links a new identity to the existing user when
+  the email is confirmed, so signing in with Google lands on the same
+  `user_id` that already holds the packages, sessions, and the only order on
+  the books. **That is a documented mechanism plus a matching data shape, not
+  an observed sign-in** — it is not verified until a real Google sign-in on
+  production lands on the existing account with its order intact, and that
+  walk is part of shipping this, not a check to be done afterwards.
+- **Revisit when:** a real customer without a usable Google account is turned
+  away — that is the signal for a second provider, and it names which one; or
+  Google's consent screen shows up as friction in real-usage numbers.
