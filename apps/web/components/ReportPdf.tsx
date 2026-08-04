@@ -43,7 +43,7 @@ export default function ReportPdf({ report, meta }: { report: SessionReport; met
         <Text style={styles.title}>flightcheck session report</Text>
         <Text style={styles.context}>Session {meta.sessionNumber} | {meta.sessionDate} | {meta.roleTitle}</Text>
         <Text style={styles.verdict}>{VERDICT_LABELS[report.verdict]}</Text>
-        {report.headline === "" ? null : <Text style={styles.headline}>{report.headline}</Text>}
+        {report.headline ? <Text style={styles.headline}>{report.headline}</Text> : null}
         <Text style={styles.score}>Overall score: {report.overall_score.toFixed(1)} / {MAX_SCORE.toFixed(1)} | Ready bar: {READY_OVERALL.toFixed(1)}</Text>
 
         {report.dimension_scores.map((score) => (

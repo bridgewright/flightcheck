@@ -38,8 +38,17 @@ export async function GET(request: Request, { params }: RouteContext): Promise<R
 
   const { session, pkg } = access.value;
   if (token !== null && sessionCapability(session) !== "active") return responseError(403);
+  // The row's status is what decides whether there is a report to hand over,
+  // because it is what the screen decides on. `eligibility` is a refinement
+  // that arrived with F-04, and reports stored before it have no such key at
+  // all: gating on it alone answered 404 for every report already in the
+  // database, which is a thing no test with a current fixture can see.
   const report = session.report as SessionReport | null;
-  if (report === null || report.eligibility !== "scored") return responseError(404);
+  const ineligible =
+    report !== null && report.eligibility !== undefined && report.eligibility !== "scored";
+  if (report === null || session.status !== "scored" || ineligible) {
+    return responseError(404);
+  }
 
   const packageWithRubric = pkg as typeof pkg & { rubric?: Rubric | null; role_title?: string | null };
   let rubric = packageWithRubric.rubric ?? null;

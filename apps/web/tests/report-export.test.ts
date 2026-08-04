@@ -140,3 +140,31 @@ describe("the export's palette is white, and pinned", () => {
     expect(source).toContain("backgroundColor: WHITE");
   });
 });
+
+describe("a report stored before F-03 and F-04 still exports", () => {
+  it("does not require keys that reports in the database do not have", () => {
+    // Not hypothetical: every scored report in production carries ten keys,
+    // and neither `eligibility` nor `headline` is among them. A route that
+    // demanded `eligibility === "scored"` answered 404 for all of them while
+    // every test with a current fixture passed. The row's status is the
+    // decision the screen makes, so it is the decision the export makes.
+    const source = readFileSync(
+      fileURLToPath(new URL("../app/api/reports/[sessionId]/route.ts", import.meta.url)),
+      "utf8",
+    );
+    expect(source).toContain('session.status !== "scored"');
+    expect(source).toContain("report.eligibility !== undefined");
+
+    const pdf = readFileSync(
+      fileURLToPath(new URL("../components/ReportPdf.tsx", import.meta.url)),
+      "utf8",
+    );
+    const md = readFileSync(
+      fileURLToPath(new URL("../lib/report-markdown.ts", import.meta.url)),
+      "utf8",
+    );
+    // A missing headline is absent, not an empty line where a sentence goes.
+    expect(pdf).toContain("report.headline ?");
+    expect(md).toContain("report.headline || null");
+  });
+});
