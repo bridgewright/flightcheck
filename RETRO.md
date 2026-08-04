@@ -332,6 +332,143 @@ you delegate, own the metadata as deliberately as the diff — a work-sample
 repository whose commit trail is inconsistent about who wrote it is worth
 less than one with fewer commits.
 
+## 2026-08-04 — The design pass, and eleven things that were true on paper
+
+A one-batch restyle that turned into a two-round adversarial review. What
+follows is mostly about the controller's own work, because that is where the
+review found the most.
+
+**The batch closed a gate it had not built.** The design system's whole
+premise was that a house rule only holds as far as CI enforces it: v0.6 had
+run "every track consumes the token module" and it held for the seven landing
+files that had a scan and failed for the forty-three that did not, which
+accumulated about six hundred raw colour literals. So F-21's spec said "leave
+a gate behind", `lib/ui.ts` recorded that the fix was "widening the gate, not
+restating the rule", and the test file opened with "the rule is whatever CI
+fails on". All three were false. Both scans read `lib/ui.ts` alone. A reviewer
+proved it by adding `text-red-600 dark:text-red-300` to a signed-in screen and
+watching the full suite stay green. The lesson is not about scans: **the batch
+wrote down that it had solved the exact problem it was repeating**, and the
+sentence was persuasive enough that nobody re-read it against the code for a
+day.
+
+**Round two found twenty-six defects in round one's fixes.** This is the
+second time that has happened — v0.5's fix batch introduced ten regressions
+that only a second pass caught — so it is no longer a surprise, it is a
+property. Nine of the twenty-six were in gates written the day before, and six
+of those nine shared one cause: **a regex written against the single spelling
+its author had just been looking at.** The hero rule banned `flex-row` while
+`flex` on its own is already a row. The gradient rule demanded a `-to-<side>`
+suffix that Tailwind's radial and conic forms never take. The black-shadow
+check knew `rgb(0 0 0)` and not `rgba(0, 0, 0)`. Each one was verified "by
+injection" when it was written, and each injection used the spelling the
+author had in mind.
+
+The worst of them was not a rule but the thing all six ran through: a comment
+blanker that fired on any `//` not preceded by a colon, **including inside a
+string**, and blanked the rest of that line. One `<div>` carrying a
+template-literal `//status` erased ninety-five characters of live code and
+took four rules with it, silently.
+
+**The accessibility accommodation was the thing that broke the page.** Entry
+motion ships its hidden state in the server HTML, because the server cannot
+know the reader's motion preference before hydration. The client's
+reduced-motion branch returned a plain `<div>` with no style, and React does
+not remove server-rendered attributes the client did not re-declare. So a
+visitor with Reduce Motion enabled got the top bar, the cloud, the footer, and
+**nine invisible blocks** where the page was. The only backstop covered
+JavaScript being disabled, which is a different reader. The test for the
+reduce branch passed throughout, because it regex-matches the component's
+source instead of rendering it.
+
+Worth recording how close this came to being dismissed: the finding arrived
+from a reviewer working in jsdom, and the first check against it was `curl`ing
+the production server for `opacity:0` and finding none. The server had died
+minutes earlier. Zero results from a dead process reads exactly like zero
+results from a clean one, and "I verified it" was one sentence away from being
+written. The rule that saved it was the boring one — look at the output, not
+the exit path.
+
+**The bundler was deleting words out of shipped sentences.** `/rubric` read
+"an overall of 4.0single dimension below 3.0". The source was correct, the
+test printed the correct string, and 1,740 tests passed. The corruption is
+created at build time: a module-scope constant string, `+`-concatenated from
+template literals whose interpolations are all compile-time values, gets
+constant-folded, and folding the chain drops the literal text following the
+last interpolation of each part. A second instance had corrupted the readiness
+gauge's screen-reader sentence to "4.0 out of 5with no dimension below 3.0" —
+what a blind reader was being told the bar is.
+
+**No test in this repository could have caught that**, because every test
+reads source and the defect exists only in the bundle. It was found by opening
+the deployed site and reading it. The gate that now exists reads
+`.next/server`, and when there is no build it says so out loud rather than
+passing quietly.
+
+**The design was being judged 12.5% smaller than it was drawn.** The root was
+`font-size: 87.5%`, chosen so the scale multiplies the reader's own browser
+setting instead of overriding it. That instinct is right and the implementation
+compounds: measured in a real browser whose default is 14px rather than the
+assumed 16px, the product rendered an 11.48px body against a 13.1px target and
+a 784px reading column against 896px. Every screenshot the design was reviewed
+from was smaller than the thing being designed, which is most of why it kept
+reading as "too narrow" no matter how much the containers were widened. Now
+`clamp(14px, 87.5%, 20px)`: still a multiple of the reader's setting, floored
+at the size the design was measured for.
+
+**A scan of computed styles tells you how something is implemented, not what
+it looks like.** The reference's hero carries a large soft pink cloud. Scanning
+its computed styles for `radial-gradient` returned nothing, from which this
+batch concluded it had no background field and reduced the product's whole
+pastel language to one nearly-invisible wash. The cloud is drawn as an image.
+The user's report was "why did all the pastel elements disappear", and the
+check that would have caught it was looking at the page.
+
+**Three renders of nothing, with a clean 200 and no console error.** The
+replacement cloud is an SVG. It served, the browser fetched it twice, and zero
+pixels appeared. The cause was a comment inside the file documenting the
+`--color-bloom` token by name: **a double hyphen inside an XML comment is a
+parse error**, and the browser fails it silently. What separated "the container
+is wrong" from "the image is wrong" was painting the same box solid red.
+
+**The README advertised a product that no longer existed.** The demo GIF at the
+top showed a dark interface (the deployed build rendered dark on a dark-mode
+machine, through `dark:` variants this batch removed), a verdict drawn as an
+amber warning badge the design system now forbids by name, and no sign of why
+4.27 out of 5 reads as "Approaching" — which is the exact confusion this batch
+built a two-track gauge to answer. It was four days stale across three
+releases, and its own caption promised a re-record "when the visual pass
+lands".
+
+**`/faq` was published to crawlers and reachable by nobody.** The objections
+block moved off the landing to its own route, which was added to
+`PUBLIC_ROUTES`, so `sitemap.ts` published it and `robots.ts` allowed it. No
+link was ever built. Two separate files described the click. A customer
+deciding whether to spend $49 could not read the refund answer; Google could.
+
+**What was abandoned.** `QUIET_LINK` and `LINK` turned out to differ only in a
+decoration neither reader could see (1.23:1 and 1.61:1), and the quiet one
+rested a link's entire affordance on the token the stylesheet declares
+decorative and deliberately under 3:1 — so they collapsed into one.
+`CARD_RAISED` and `--shadow-raise` existed for "cards that genuinely lift" and
+nothing ever lifted. `ScreenFrame`, `Showcase` and their four captioned
+screenshot slots were imported by nothing, with a placeholder still promising
+captures "after the design pass". `RevealGroup` was a complete client component
+whose comment claimed four call sites and had zero. Each was deleted rather
+than parked, on the same reasoning: **a token or component nothing renders is
+a claim the design makes that no screen has to keep.**
+
+**What is still not verified.** True phone rendering, because Chrome's minimum
+window width blocked it. The signed-in session detail against real scored data,
+because it needs a live session. `prefers-reduced-motion` toggled by hand in a
+real browser — the blank page was demonstrated from the built server HTML and
+React's documented hydration behaviour, and fixed with a CSS backstop that
+depends on neither. And the in-session interview room, whose pre-connect state
+is verified and whose live state costs a session slot and a realtime call to
+see.
+
+---
+
 ## 2026-08-03 — The ledger at the v0.5 tag
 
 **One order exists, and it is ours.** v0.5 ships payments, and exactly one

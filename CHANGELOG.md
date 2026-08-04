@@ -2,9 +2,15 @@
 
 ## [Unreleased]
 
-The v0.6 batch — "operate at scale". The release where the operator can be
+Two batches, both deployed and neither tagged.
+
+**The v0.6 batch — "operate at scale".** The release where the operator can be
 away for a week: users leave cleanly, links share correctly, and the pipeline
 survives its own history rather than a customer discovering it did not.
+
+**The F-21 design pass**, which restyled every screen and then spent two rounds
+of adversarial review finding out what that had broken. Its sections are at the
+end of this block, under "the design pass".
 
 ### Added — you can leave, and take your data with you
 
@@ -108,6 +114,68 @@ survives its own history rather than a customer discovering it did not.
 - Google sign-in is wired behind its flag, ready for the provider
   configuration.
 
+### Changed — the design pass
+
+- **One design system, and it is enforced rather than described.** Every
+  colour, type step, radius and shadow is declared once in `app/globals.css`
+  and composed in `lib/ui.ts`; a test walks `app/`, `components/` and `lib/`
+  and fails on a raw palette utility, an arbitrary colour, a pixel font size,
+  a CSS gradient, a hand-rolled page column, or a dash in a sentence a reader
+  sees. The previous version of this rule was written down, believed, and
+  scanned exactly one file.
+- **Light only.** The product had `dark:` variants throughout, so it rendered
+  as a different product depending on the reader's operating system setting.
+  It is now one product, and the variant is rebound to a class nothing sets.
+- **The report says why a verdict is what it is.** The sample report shows an
+  overall of 4.27 out of 5 next to the word "Approaching", which reads as a
+  bug until you know the rule has two clauses. It now draws both: overall
+  against the 4.0 Ready bar, and the weakest dimension against the 3.0 floor
+  every dimension has to clear, with a sentence naming the one that decided
+  it. The verdict is not a traffic light, deliberately — rendering "Not yet
+  ready" in red would punish the reader this product exists for.
+- **The judge's finding is marked in each rationale**, bold and underlined, so
+  the point of a paragraph is findable without reading all of it. It is a
+  positional rule (the first sentence) rather than a semantic one: the product
+  does not decide which of a judge's words matter. The version where the judge
+  marks its own span is registered as F-48.
+- **A landing page that says less.** Cut to four blocks. The hero carries the
+  claim, a line, and two buttons, and nothing beside it.
+- **Type scales with the reader again.** The root is `clamp(14px, 87.5%, 20px)`
+  — a multiple of the reader's own browser text size, floored so a browser
+  that ships a smaller default cannot compound it into a page nobody designed.
+
+### Fixed — the design pass
+
+- **A blank page for readers with Reduce Motion enabled.** Entry motion ships
+  its hidden state in the server HTML, and the reduced-motion branch returned
+  an element that never overrode it, so nine blocks on the landing and two on
+  `/faq` stayed at zero opacity forever. The accommodation built for that
+  reader was what blanked the page for them.
+- **Sentences with words missing.** `/rubric` read "an overall of
+  4.0single dimension below 3.0", and the readiness gauge told screen readers
+  "4.0 out of 5with no dimension below 3.0". The source was correct in both
+  cases; the production bundler was folding module-scope strings apart. Now
+  checked against the built output rather than the source.
+- **`/faq` was reachable by search engines and by no visitor.** It is in the
+  footer.
+- **Loading skeletons stood in the wrong column**, so a report jumped 308px
+  wider the moment content arrived — the reflow a skeleton exists to prevent.
+- **The interview room opened in a 588px column** while the rest of the
+  product reads at 896px, along
+  with eight other screens that render without the app chrome and had been
+  missed for the same reason.
+- **Safari lost the order of the how-it-works steps.** The numerals were
+  hidden from screen readers on the grounds that the list carried the order;
+  on WebKit a list with no marker style does not.
+- **Controls that were only visible while hovered.** The secondary button's
+  label sat at 3.73:1 and its border at 1.99:1, and that border is the only
+  thing identifying it as a control. Also the link underline, which was 1.23:1
+  and is now the token that exists for a boundary you have to see.
+- **A purchase button that promised the wrong thing.** "Unlock all 6 sessions
+  for $49" appears only after the trial session is spent, so it is five.
+- **The landing's search-result description still said "a live interviewer"**,
+  a word the hero dropped on purpose because the interviewer is an AI.
+
 ### Decisions
 
 - DECISIONS 025: deletion removes blobs before rows, and a partial failure
@@ -121,9 +189,20 @@ survives its own history rather than a customer discovering it did not.
 - DECISIONS 029: the capability window — revocation now, expiry not yet.
 - DECISIONS 030: the landing rubric preview is removed the day it shipped —
   the placement was the defect, and what the removal costs is written down.
+- DECISIONS 031: the two client dependencies the design pass introduced, the
+  boundary they are allowed to cross, and the condition that revisits them.
 
 ### Not shipped, and why
 
+- **A re-recorded demo.** The design pass replaced the README's four-frame
+  GIF with two stills of the running app, because the GIF showed a dark
+  interface the product no longer has and a verdict styled as a warning badge
+  the design system now forbids. A real screen recording needs a live
+  twenty-minute session and waits for v1.0.
+- **Screenshots of the product.** The four captioned slots the landing was
+  holding were deleted rather than left promising captures "after the design
+  pass" that had already happened. They need a component as well as a file
+  when they return.
 - **Judge-authored report strengths and weaknesses (F-03b) was dropped
   whole.** It needs a judge-prompt change, and validating a judge-prompt
   change needs an eval run that this batch's cost directive batches to the
