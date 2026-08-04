@@ -36,6 +36,13 @@ const EXEMPT: Record<string, string> = {
   "app/opengraph-image.tsx":
     "satori renders the OG card before Tailwind exists, so a var() here would " +
     "draw nothing. Its four hexes are kept in step with globals.css by hand.",
+  "components/ReportPdf.tsx":
+    "a PDF has no stylesheet and no custom properties, so the export cannot " +
+    "read a token; and it is deliberately NOT the paper ground, because a " +
+    "report that is printed or attached is read on white. Its five values are " +
+    "pinned by tests/report-export.test.ts. The first version of this file " +
+    "assembled its hexes from a `#` constant, which passed this scan while " +
+    "declaring nothing: an exemption argued here is the only allowed route.",
 };
 
 function walk(dir: string): string[] {

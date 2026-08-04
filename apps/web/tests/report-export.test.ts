@@ -1,3 +1,5 @@
+import { readFileSync } from "node:fs";
+import { fileURLToPath } from "node:url";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const { getViewer, authorizeSession, authorizeViewerSession } = vi.hoisted(() => ({
@@ -118,5 +120,23 @@ describe("GET /api/reports/[sessionId]", () => {
       params: Promise.resolve({ sessionId: "sess-1" }),
     });
     expect(response.status).toBe(403);
+  });
+});
+
+describe("the export's palette is white, and pinned", () => {
+  it("carries exactly the five declared values and no product colour", () => {
+    // The exemption in token-vocabulary.test.ts buys this file the right to
+    // hold literal colour. This is the bound on it: a report is read on white,
+    // so the paper ground must never arrive here, and a sixth value means
+    // somebody started designing in a file no design gate can see.
+    const source = readFileSync(
+      fileURLToPath(new URL("../components/ReportPdf.tsx", import.meta.url)),
+      "utf8",
+    );
+    const hexes = [...source.matchAll(/"(#[0-9a-fA-F]{6})"/g)].map((m) => m[1]);
+    expect(new Set(hexes)).toEqual(
+      new Set(["#ffffff", "#171717", "#555555", "#333333", "#aaaaaa"]),
+    );
+    expect(source).toContain("backgroundColor: WHITE");
   });
 });

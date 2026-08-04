@@ -70,6 +70,15 @@ export default async function PrivacyPage() {
             content reaches it. Each receives only what its job requires.
           </p>
         </LegalSection>
+        <LegalSection heading="Reports you download">
+          <p>
+            A report you download as PDF or Markdown is generated at the moment
+            you ask for it and streamed straight to you. We do not keep a copy,
+            so there is nothing extra for us to leak and nothing extra for us
+            to delete. The other side of that: the file is yours now, and
+            deleting your account cannot reach it.
+          </p>
+        </LegalSection>
         <LegalSection heading="Deleting your account and data">
           <p>
             You can delete your account yourself, from the{" "}

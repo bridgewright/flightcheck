@@ -40,19 +40,19 @@ import {
 
 export const dynamic = "force-dynamic";
 
-// S8 - the session detail page: the product's core artifact. One session,
+// S8 — the session detail page: the product's core artifact. One session,
 // told honestly: what the verdict was and where it is heading (trajectory),
 // why (dimension cards with deltas), how it sounded (delivery metrics and
 // observations), what was actually said (transcript synced to the recording),
 // and what to do next (drills + one primary action).
 
-// How long the replay URL stays valid - mirrors /api/recordings/download.
+// How long the replay URL stays valid — mirrors /api/recordings/download.
 const AUDIO_TTL_SECONDS = 3600;
 
 /**
  * Mints a signed download URL for the session recording at render time.
  * Best-effort: a missing recording or a storage hiccup hides the player
- * instead of failing the page - the report is the artifact, the replay is
+ * instead of failing the page — the report is the artifact, the replay is
  * the proof.
  */
 async function mintAudioUrl(audioPath: string | null): Promise<string | null> {
@@ -100,7 +100,7 @@ function SignedOut({ sessionId }: { sessionId: string }) {
 // Inline, no dependency, and deliberately drawn with stroke="currentColor"
 // and no colour class of their own: they inherit whatever the surrounding
 // text is, so the F-21 design pass re-points them by re-pointing type
-// colour rather than by re-authoring this file. All decorative - the
+// colour rather than by re-authoring this file. All decorative — the
 // heading beside each one carries the meaning, so they are aria-hidden and
 // a screen reader never announces them.
 
@@ -235,6 +235,9 @@ function CtaBlock({ href, label }: { href: string; label: string }) {
   );
 }
 
+// Two links, not two buttons that fetch: `<a download>` lets the browser
+// stream the file and keep the filename the route sets. A fetch-and-blob
+// would buffer a whole report in the tab and lose both.
 function DownloadControls({ sessionId }: { sessionId: string }) {
   return (
     <div className="flex flex-wrap gap-3">
@@ -256,8 +259,8 @@ function DownloadControls({ sessionId }: { sessionId: string }) {
   );
 }
 
-// The trajectory header: the verdict, the number, and - when a previous
-// scored session exists - how far this one moved against it.
+// The trajectory header: the verdict, the number, and — when a previous
+// scored session exists — how far this one moved against it.
 function TrajectoryHeader({
   report,
   dimensions,
@@ -335,7 +338,7 @@ export default async function SessionDetailPage({
 
   const state = deriveSessionDetailState(session);
 
-  // A planned slot has nothing recorded, transcribed, or scored - skip the
+  // A planned slot has nothing recorded, transcribed, or scored — skip the
   // fetches instead of asking three services for what cannot exist.
   const attempted = state !== "not_started";
 
@@ -374,7 +377,7 @@ export default async function SessionDetailPage({
     rubric = fullPackage?.rubric ?? null;
   }
 
-  // Without the progress feed there is no honest "next session" to promise -
+  // Without the progress feed there is no honest "next session" to promise —
   // the CTA degrades to home rather than guessing a number.
   const nextNumber =
     entries === null ? null : nextSessionNumber(entries, pkg.total_sessions);

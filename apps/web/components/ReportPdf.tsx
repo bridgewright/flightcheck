@@ -1,15 +1,19 @@
 import { Document, Page, StyleSheet, Text, View } from "@react-pdf/renderer";
 
-import { formatTimestamp } from "@/lib/report-format";
+import { formatTimestamp, VERDICT_LABELS } from "@/lib/report-format";
 import type { ReportExportMeta } from "@/lib/report-markdown";
 import type { SessionReport } from "@/lib/types";
+import { MAX_SCORE, READY_OVERALL } from "@/lib/verdict";
 
-const HEX = "#";
-const WHITE = `${HEX}ffffff`;
-const INK = `${HEX}171717`;
-const MUTED_INK = `${HEX}555555`;
-const QUOTE_INK = `${HEX}333333`;
-const RULE = `${HEX}aaaaaa`;
+// The export's own palette, and the one file allowed to hold literal colour
+// (declared in tests/token-vocabulary.test.ts's EXEMPT, with the reason).
+// Deliberately not the product's warm paper: a report that is printed or
+// attached to an email is read on white.
+const WHITE = "#ffffff";
+const INK = "#171717";
+const MUTED_INK = "#555555";
+const QUOTE_INK = "#333333";
+const RULE = "#aaaaaa";
 
 const styles = StyleSheet.create({
   page: { backgroundColor: WHITE, color: INK, fontFamily: "Helvetica", fontSize: 10, lineHeight: 1.45, padding: 42 },
@@ -26,9 +30,6 @@ const styles = StyleSheet.create({
   footer: { borderTopColor: RULE, borderTopWidth: 1, color: MUTED_INK, marginTop: 20, paddingTop: 8 },
 });
 
-const verdictLabel = (verdict: SessionReport["verdict"]): string =>
-  verdict.replace("_", " ").replace(/^./, (letter) => letter.toUpperCase());
-
 const list = (items: string[]) => items.length === 0
   ? <Text>None recorded.</Text>
   : items.map((item) => <Text key={item} style={styles.item}>• {item}</Text>);
@@ -41,13 +42,13 @@ export default function ReportPdf({ report, meta }: { report: SessionReport; met
       <Page size="A4" style={styles.page} wrap>
         <Text style={styles.title}>flightcheck session report</Text>
         <Text style={styles.context}>Session {meta.sessionNumber} | {meta.sessionDate} | {meta.roleTitle}</Text>
-        <Text style={styles.verdict}>{verdictLabel(report.verdict)}</Text>
-        <Text style={styles.headline}>{report.headline}</Text>
-        <Text style={styles.score}>Overall score: {report.overall_score.toFixed(1)} / 5.0 | Ready bar: 4.0</Text>
+        <Text style={styles.verdict}>{VERDICT_LABELS[report.verdict]}</Text>
+        {report.headline === "" ? null : <Text style={styles.headline}>{report.headline}</Text>}
+        <Text style={styles.score}>Overall score: {report.overall_score.toFixed(1)} / {MAX_SCORE.toFixed(1)} | Ready bar: {READY_OVERALL.toFixed(1)}</Text>
 
         {report.dimension_scores.map((score) => (
           <View key={score.dimension_key} style={styles.section}>
-            <Text style={styles.heading}>{nameFor(score.dimension_key)}: {score.score.toFixed(1)} / 5.0</Text>
+            <Text style={styles.heading}>{nameFor(score.dimension_key)}: {score.score.toFixed(1)} / {MAX_SCORE.toFixed(1)}</Text>
             <Text>{score.rationale}</Text>
             {score.evidence_quotes.map((quote) => <Text key={quote} style={styles.quote}>{quote}</Text>)}
           </View>

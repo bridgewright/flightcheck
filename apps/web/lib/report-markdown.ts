@@ -1,5 +1,6 @@
-import { formatTimestamp } from "@/lib/report-format";
+import { formatTimestamp, VERDICT_LABELS } from "@/lib/report-format";
 import type { SessionReport } from "@/lib/types";
+import { MAX_SCORE, READY_OVERALL } from "@/lib/verdict";
 
 export interface ReportDimensionMeta {
   key: string;
@@ -14,9 +15,6 @@ export interface ReportExportMeta {
   dimensions: ReportDimensionMeta[];
 }
 
-const verdictLabel = (verdict: SessionReport["verdict"]): string =>
-  verdict.replace("_", " ").replace(/^./, (letter) => letter.toUpperCase());
-
 const dimensionName = (key: string, dimensions: ReportDimensionMeta[]): string =>
   dimensions.find((dimension) => dimension.key === key)?.name ?? key;
 
@@ -28,7 +26,7 @@ export function reportMarkdown(report: SessionReport, meta: ReportExportMeta): s
   const dimensions = report.dimension_scores.map((score) => {
     const quotes = score.evidence_quotes.map((quote) => `> ${quote}`).join("\n\n");
     return [
-      `## ${dimensionName(score.dimension_key, meta.dimensions)}: ${score.score.toFixed(1)} / 5.0`,
+      `## ${dimensionName(score.dimension_key, meta.dimensions)}: ${score.score.toFixed(1)} / ${MAX_SCORE.toFixed(1)}`,
       score.rationale,
       quotes ? `### Evidence quotes\n\n${quotes}` : "",
     ].filter(Boolean).join("\n\n");
@@ -47,9 +45,9 @@ export function reportMarkdown(report: SessionReport, meta: ReportExportMeta): s
   return [
     "# flightcheck session report",
     `Session ${meta.sessionNumber} | ${meta.sessionDate} | ${meta.roleTitle}`,
-    `## ${verdictLabel(report.verdict)}`,
+    `## ${VERDICT_LABELS[report.verdict]}`,
     report.headline,
-    `Overall score: ${report.overall_score.toFixed(1)} / 5.0 | Ready bar: 4.0`,
+    `Overall score: ${report.overall_score.toFixed(1)} / ${MAX_SCORE.toFixed(1)} | Ready bar: ${READY_OVERALL.toFixed(1)}`,
     dimensions,
     "## Delivery metrics",
     `- Pace: ${Math.round(metrics.wpm_overall)} WPM`,
