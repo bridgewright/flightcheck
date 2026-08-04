@@ -24,6 +24,30 @@
   it landed on the account holding the existing package and order rather than
   on a new empty one.
 
+### Added
+
+- **A scored report leaves the product as a file.** Two controls on a session:
+  **Download PDF** and **Download Markdown**. The PDF is a real file arriving
+  in Downloads, not a print dialog: it is rendered server-side with
+  `@react-pdf/renderer`, on white rather than the product's paper ground,
+  because a report that is printed or attached is read on white. Both formats
+  carry the same facts in the same order, including the limits note verbatim
+  and every evidence quote unparaphrased.
+
+  Nothing is stored: each file is generated when it is asked for and streamed,
+  so the export adds no new place a customer's data lives and nothing extra to
+  delete. The export is exactly as authorized as the page it comes from, and a
+  capability link's export dies with the link.
+
+- **A session that stopped reporting can be reclaimed by its owner** (F-47).
+  The room beats every 15 seconds; a session silent for 60 seconds may be
+  reclaimed from `/home` by the account that owns it, and the slot is not
+  consumed. Before this, a customer whose tab died one minute in waited out the
+  25-minute hard cut with no route back, because that cut was the only thing
+  that released the one-live-session lock (DECISIONS 028). A session with no
+  heartbeat on record behaves exactly as it did before, so nothing already
+  running changes meaning. Migration `007_session_heartbeat.sql`.
+
 ### Removed
 
 - **The change-sign-in-email form on `/settings`** (F-35, shipped in v0.6).
