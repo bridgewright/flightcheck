@@ -119,6 +119,14 @@ def test_fetch_jd_revalidates_every_redirect_hop(monkeypatch):
             )
         raise AssertionError("the non-public redirect target must never be fetched")
 
+    # Resolve each literal to itself, so this test asserts the guard's rule
+    # rather than the machine's DNS. Without it the test passes alone and
+    # fails after any test in this file that patches the resolver, which is
+    # how the most important assertion here became a coin flip.
+    def literal_getaddrinfo(host, port, *args, **kwargs):
+        return [(socket.AF_INET, socket.SOCK_STREAM, 6, "", (host, port or 0))]
+
+    monkeypatch.setattr(socket, "getaddrinfo", literal_getaddrinfo)
     _mock_fetch(monkeypatch, handler)
     with pytest.raises(JdFetchError, match="non-public"):
         fetch_jd("http://8.8.8.8/jd")
