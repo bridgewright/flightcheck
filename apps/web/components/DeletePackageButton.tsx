@@ -69,10 +69,16 @@ export default function DeletePackageButton({
   return (
     <div className="flex flex-col gap-2">
       <p className={SUBTLE}>
-        Delete {title}? This removes its rubric,{" "}
-        {sessionsUsed === 1 ? "its 1 session" : `its ${sessionsUsed} sessions`}{" "}
-        with their reports and transcripts, and every recording, immediately
-        and permanently. There is no undo.
+        {/* A package with nothing in it yet must not be described as losing
+            "its 0 sessions", which is the sentence a count-agnostic template
+            produces and which reads as a bug. */}
+        Delete {title}? This removes its rubric
+        {sessionsUsed === 0
+          ? ""
+          : sessionsUsed === 1
+            ? ", its 1 session with its report and transcript, and its recording"
+            : `, its ${sessionsUsed} sessions with their reports and transcripts, and every recording`}
+        , immediately and permanently. There is no undo.
       </p>
       <p className={FINE_PRINT}>
         Your receipts stay in your order history. A receipt is a record of a

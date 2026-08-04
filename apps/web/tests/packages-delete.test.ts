@@ -36,6 +36,7 @@ describe("the delete control", () => {
     const copy = squish(button);
     expect(copy).toContain("immediately and permanently");
     expect(copy).toContain("There is no undo");
+    expect(copy).toContain("its rubric");
     expect(copy).toContain("every recording");
   });
 
