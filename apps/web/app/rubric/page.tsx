@@ -2,6 +2,8 @@ import { cookies } from "next/headers";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 
+import { packageIdentityDecision } from "@/components/package-identity";
+import PackageIdentity from "@/components/PackageIdentity";
 import PollRefresh from "@/components/PollRefresh";
 import ReadinessGauge from "@/components/ReadinessGauge";
 import RubricView from "@/components/RubricView";
@@ -141,6 +143,13 @@ export default async function RubricPage({
   }
 
   const rubric = pkg.rubric;
+  // The employer line under the role title used to print the compiled
+  // rubric's company field as ad-hoc text, untrimmed. The seat is the
+  // F-56 identity now, fed from the same PackageSummary row every other
+  // surface reads (its company IS the compiled rubric's company), so which
+  // employer a package is for is decided in exactly one place. The
+  // no-company branch keeps the plain line byte for byte.
+  const identity = packageIdentityDecision(active.company, active.jd_url);
   // Effective quota (lib/home): an unpaid package owes 1 session here too.
   const total = effectiveTotalSessions({
     is_trial: pkg.is_trial,
@@ -163,9 +172,19 @@ export default async function RubricPage({
       ) : null}
 
       <h1 className={`${PAGE_HEADING} text-balance`}>{rubric.role_title}</h1>
-      <p className={`${SUBTLE} mt-1`}>
-        {rubric.company ? `${rubric.company} · ` : ""}compiled from your JD
-      </p>
+      {identity === null ? (
+        <p className={`${SUBTLE} mt-1`}>compiled from your JD</p>
+      ) : (
+        <p className={`${SUBTLE} mt-1 flex items-center gap-1.5`}>
+          <PackageIdentity
+            packageId={active.id}
+            company={active.company}
+            jdUrl={active.jd_url}
+            variant="chip"
+          />
+          <span className="whitespace-nowrap">· compiled from your JD</span>
+        </p>
+      )}
 
       {/* The same instrument the report draws, with nothing measured against
           it yet. The two bars a session has to clear are the whole verdict

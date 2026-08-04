@@ -1,6 +1,8 @@
 import { cookies } from "next/headers";
 import Link from "next/link";
 
+import { packageIdentityDecision } from "@/components/package-identity";
+import PackageIdentity from "@/components/PackageIdentity";
 import PollRefresh from "@/components/PollRefresh";
 import Shell from "@/components/Shell";
 import { resolveActivePackage } from "@/lib/active-package";
@@ -213,14 +215,35 @@ function PackageGroup({
   pkg: PackageSummary;
   sessions: SessionSummary[] | null;
 }) {
+  // The employer chip (F-56): a one-line flex heading when the rubric named
+  // a company, the original markup byte for byte when it named none. The
+  // branch key is the same decision PackageIdentity itself consults.
+  const identity = packageIdentityDecision(pkg.company, pkg.jd_url);
   return (
     <section className="flex flex-col gap-2">
-      <h3 className={SUB_HEADING}>
-        {pkg.role_title ?? "Untitled package"}
-        <span className="ml-2 text-ink-faint">
-          {pkg.sessions_used} of {pkg.total_sessions} used
-        </span>
-      </h3>
+      {identity === null ? (
+        <h3 className={SUB_HEADING}>
+          {pkg.role_title ?? "Untitled package"}
+          <span className="ml-2 text-ink-faint">
+            {pkg.sessions_used} of {pkg.total_sessions} used
+          </span>
+        </h3>
+      ) : (
+        <h3 className={`${SUB_HEADING} flex items-center gap-1.5`}>
+          <PackageIdentity
+            packageId={pkg.id}
+            company={pkg.company}
+            jdUrl={pkg.jd_url}
+            variant="chip"
+          />
+          <span className="min-w-0 truncate">
+            {pkg.role_title ?? "Untitled package"}
+          </span>
+          <span className="whitespace-nowrap text-ink-faint">
+            {pkg.sessions_used} of {pkg.total_sessions} used
+          </span>
+        </h3>
+      )}
       {sessions === null ? (
         <p className={SUBTLE}>
           Couldn&apos;t load this package&apos;s sessions right now.
@@ -289,6 +312,7 @@ export default async function SessionsPage({
       cookieStore.get("fc_pkg")?.value ?? null,
     ) ?? packages[0];
   const others = packages.filter((candidate) => candidate.id !== active.id);
+  const identity = packageIdentityDecision(active.company, active.jd_url);
 
   // One fetch per package; a single failing package degrades to a note on its
   // group instead of taking the whole archive down.
@@ -317,10 +341,30 @@ export default async function SessionsPage({
       {anyScoring || anyFailedFetch ? <PollRefresh intervalMs={5000} /> : null}
 
       <h1 className={PAGE_HEADING}>Sessions</h1>
-      <p className={`${SUBTLE} mt-1`}>
-        {active.role_title ?? "Your interview package"} · {active.sessions_used} of{" "}
-        {active.total_sessions} sessions used
-      </p>
+      {/* The active package's identity (F-56): the chip branch is a one-line
+          flex row where a long title truncates and the counter stays whole;
+          the no-company branch keeps today's markup so nothing shifts. */}
+      {identity === null ? (
+        <p className={`${SUBTLE} mt-1`}>
+          {active.role_title ?? "Your interview package"} · {active.sessions_used} of{" "}
+          {active.total_sessions} sessions used
+        </p>
+      ) : (
+        <p className={`${SUBTLE} mt-1 flex items-center gap-1.5`}>
+          <PackageIdentity
+            packageId={active.id}
+            company={active.company}
+            jdUrl={active.jd_url}
+            variant="chip"
+          />
+          <span className="min-w-0 truncate">
+            {active.role_title ?? "Your interview package"}
+          </span>
+          <span className="whitespace-nowrap">
+            · {active.sessions_used} of {active.total_sessions} sessions used
+          </span>
+        </p>
+      )}
 
       <div className="mt-6">
         {activeSessions === null ? (

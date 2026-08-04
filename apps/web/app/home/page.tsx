@@ -2,6 +2,8 @@ import { cookies } from "next/headers";
 import Link from "next/link";
 
 import JourneyStrip from "@/components/JourneyStrip";
+import { packageIdentityDecision } from "@/components/package-identity";
+import PackageIdentity from "@/components/PackageIdentity";
 import PollRefresh from "@/components/PollRefresh";
 import ReadinessGauge from "@/components/ReadinessGauge";
 import ReclaimSessionButton from "@/components/ReclaimSessionButton";
@@ -163,6 +165,13 @@ export default async function HomePage({
     return <NoPackages viewer={viewer} />;
   }
 
+  // The employer chip (F-56). When the rubric named a company the subtitle
+  // becomes a one-line flex row: the chip leads, a long title truncates, and
+  // the session counter stays whole. When it named none, the branch keeps
+  // the line's original markup byte for byte, so nothing shifts. The branch
+  // key is the same decision PackageIdentity itself consults.
+  const identity = packageIdentityDecision(active.company, active.jd_url);
+
   // A failed compile has no rubric, so the journey strip and the session
   // ticket would be theater — the honest screen is the failure, a retry,
   // and a way out.
@@ -172,9 +181,23 @@ export default async function HomePage({
         <h1 className={`${PAGE_HEADING} text-center text-balance`}>
           {greetingName(viewer.email)}
         </h1>
-        <p className={`${SUBTLE} mb-6 text-center`}>
-          {packageDisplayTitle(active.role_title)}
-        </p>
+        {identity === null ? (
+          <p className={`${SUBTLE} mb-6 text-center`}>
+            {packageDisplayTitle(active.role_title)}
+          </p>
+        ) : (
+          <p className={`${SUBTLE} mb-6 flex items-center justify-center gap-1.5`}>
+            <PackageIdentity
+              packageId={active.id}
+              company={active.company}
+              jdUrl={active.jd_url}
+              variant="chip"
+            />
+            <span className="min-w-0 truncate">
+              {packageDisplayTitle(active.role_title)}
+            </span>
+          </p>
+        )}
         <article className={CARD}>
           <div className="flex flex-col gap-3 px-5 py-5">
             <div className={LABEL}>Compile failed</div>
@@ -220,12 +243,31 @@ export default async function HomePage({
       <h1 className={`${PAGE_HEADING} text-center text-balance`}>
         {greetingName(viewer.email)}
       </h1>
-      <p
-        className={`${SUBTLE} ${expiry === null ? "mb-6" : "mb-1.5"} text-center`}
-      >
-        {packageDisplayTitle(active.role_title)} · {done} of {total} sessions
-        done
-      </p>
+      {identity === null ? (
+        <p
+          className={`${SUBTLE} ${expiry === null ? "mb-6" : "mb-1.5"} text-center`}
+        >
+          {packageDisplayTitle(active.role_title)} · {done} of {total} sessions
+          done
+        </p>
+      ) : (
+        <p
+          className={`${SUBTLE} ${expiry === null ? "mb-6" : "mb-1.5"} flex items-center justify-center gap-1.5`}
+        >
+          <PackageIdentity
+            packageId={active.id}
+            company={active.company}
+            jdUrl={active.jd_url}
+            variant="chip"
+          />
+          <span className="min-w-0 truncate">
+            {packageDisplayTitle(active.role_title)}
+          </span>
+          <span className="whitespace-nowrap">
+            · {done} of {total} sessions done
+          </span>
+        </p>
+      )}
       {expiry !== null ? (
         <p className={`${FINE_PRINT} mb-6 text-center`}>{expiry}</p>
       ) : null}

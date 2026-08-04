@@ -4,6 +4,8 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 
 import PricingBlock from "@/components/landing/PricingBlock";
+import { packageIdentityDecision } from "@/components/package-identity";
+import PackageIdentity from "@/components/PackageIdentity";
 import Shell from "@/components/Shell";
 import { resolveActivePackage } from "@/lib/active-package";
 import { ACTIVE_PACKAGE_COOKIE, packageDisplayTitle } from "@/lib/home";
@@ -100,6 +102,12 @@ function ConfirmUnlock({
   viewer: Viewer;
   pkg: PackageSummary;
 }) {
+  // The employer chip (F-56), on the line that says what the charge is for:
+  // a customer holding three packages confirms the company, not just a role
+  // title three of them may share. No company, and the branch keeps the
+  // plain title line byte for byte. The branch key is the same decision
+  // PackageIdentity itself consults.
+  const identity = packageIdentityDecision(pkg.company, pkg.jd_url);
   return (
     <Shell viewer={viewer}>
       <div className="mx-auto flex w-full max-w-md flex-col items-start pt-4">
@@ -108,7 +116,21 @@ function ConfirmUnlock({
         </h1>
         <div className="mt-4">
           <div className={LABEL}>Job description</div>
-          <p className={`${SUB_HEADING} mt-1`}>{packageDisplayTitle(pkg.role_title)}</p>
+          {identity === null ? (
+            <p className={`${SUB_HEADING} mt-1`}>{packageDisplayTitle(pkg.role_title)}</p>
+          ) : (
+            <p className={`${SUB_HEADING} mt-1 flex items-center gap-1.5`}>
+              <PackageIdentity
+                packageId={pkg.id}
+                company={pkg.company}
+                jdUrl={pkg.jd_url}
+                variant="chip"
+              />
+              <span className="min-w-0 truncate">
+                {packageDisplayTitle(pkg.role_title)}
+              </span>
+            </p>
+          )}
         </div>
         <p className={`${SUBTLE} mt-3`}>
           The payment lifts the session quota on this same package. Your rubric,

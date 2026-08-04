@@ -1,6 +1,8 @@
 import { cookies } from "next/headers";
 import Link from "next/link";
 
+import { packageIdentityDecision } from "@/components/package-identity";
+import PackageIdentity from "@/components/PackageIdentity";
 import PollRefresh from "@/components/PollRefresh";
 import ProgressDeliveryTable from "@/components/ProgressDeliveryTable";
 import ProgressDimensionTable from "@/components/ProgressDimensionTable";
@@ -87,15 +89,37 @@ function Heading({
   pkg: PackageSummary;
   scoredCount: number;
 }) {
+  // The employer chip (F-56). With a company the subtitle is a one-line flex
+  // row: chip first, a long title truncates, the scored counter stays whole.
+  // Without one the branch keeps the original markup byte for byte. The
+  // branch key is the same decision PackageIdentity itself consults.
+  const identity = packageIdentityDecision(pkg.company, pkg.jd_url);
   return (
     <>
       <h1 className={`${PAGE_HEADING} text-center text-balance`}>
         Your progress
       </h1>
-      <p className={`${SUBTLE} mb-6 text-center`}>
-        {pkg.role_title ?? "Your interview package"} · {scoredCount} of{" "}
-        {pkg.total_sessions} sessions scored
-      </p>
+      {identity === null ? (
+        <p className={`${SUBTLE} mb-6 text-center`}>
+          {pkg.role_title ?? "Your interview package"} · {scoredCount} of{" "}
+          {pkg.total_sessions} sessions scored
+        </p>
+      ) : (
+        <p className={`${SUBTLE} mb-6 flex items-center justify-center gap-1.5`}>
+          <PackageIdentity
+            packageId={pkg.id}
+            company={pkg.company}
+            jdUrl={pkg.jd_url}
+            variant="chip"
+          />
+          <span className="min-w-0 truncate">
+            {pkg.role_title ?? "Your interview package"}
+          </span>
+          <span className="whitespace-nowrap">
+            · {scoredCount} of {pkg.total_sessions} sessions scored
+          </span>
+        </p>
+      )}
     </>
   );
 }
