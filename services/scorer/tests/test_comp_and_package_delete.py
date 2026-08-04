@@ -89,3 +89,33 @@ class TestPackageDeletionPlan:
         package = db.create_package("jd", None, user_id=None)
         with pytest.raises(PermissionError):
             collect_package_deletion_plan(db, "user-1", package.id)
+
+
+class TestTheConverterKeepsEveryColumn:
+    """The read path that silently dropped comped access.
+
+    _to_package_row names its fields, so a column can exist in the table, in
+    the model, and in the write, and still arrive as None on every read. No
+    test caught it because every test built rows in Python rather than
+    through the converter. This one walks the model instead of a list
+    somebody has to remember to extend.
+    """
+
+    def test_every_model_field_is_read_from_the_row_dict(self):
+        from scorer.api.db import PackageRow, _to_package_row
+
+        row = {
+            "id": "pkg-1", "access_token": "tok", "status": "ready",
+            "jd_text": "jd", "candidate_profile": None, "rubric": None,
+            "user_id": "user-1", "total_sessions": 6, "is_trial": False,
+            "paid_at": "2026-08-01T00:00:00+00:00",
+            "comped_at": "2026-08-04T00:00:00+00:00",
+            "expires_at": "2026-08-31T00:00:00+00:00",
+            "order_id": "ord-1", "updated_at": "2026-08-04T00:00:00+00:00",
+        }
+        converted = _to_package_row(row)
+        for name in PackageRow.model_fields:
+            assert getattr(converted, name) == row[name], (
+                f"_to_package_row drops {name}: it is in the model and in the "
+                "row dict, and the converter does not copy it"
+            )

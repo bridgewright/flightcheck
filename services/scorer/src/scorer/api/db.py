@@ -403,6 +403,13 @@ def _to_package_row(data: dict) -> PackageRow:
         total_sessions=data.get("total_sessions", 6),
         is_trial=data.get("is_trial") or False,
         paid_at=data.get("paid_at"),
+        # Migration 008. Read explicitly like every other column: this
+        # converter names its fields, so a column added to the table and to
+        # the model but not to this list arrives as None forever. That is
+        # exactly what happened when comped access first shipped -- the write
+        # worked, the DB row was right, both test suites were green, and the
+        # screen said "0 of 1" because every read dropped the value here.
+        comped_at=data.get("comped_at"),
         expires_at=data.get("expires_at"),
         order_id=data.get("order_id"),
         updated_at=data.get("updated_at"),
