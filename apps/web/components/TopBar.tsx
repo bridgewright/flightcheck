@@ -2,6 +2,7 @@ import { cookies } from "next/headers";
 import Link from "next/link";
 
 import LightDismiss from "@/components/LightDismiss";
+import PackageIdentity from "@/components/PackageIdentity";
 import {
   ACTIVE_PACKAGE_COOKIE,
   NAV_TABS,
@@ -69,6 +70,19 @@ function PackageSwitcher({
       panelClassName={`${MENU_PANEL} left-0`}
       summary={
         <>
+          {/* The identity stays outside the title's truncating span with a
+              cap of its own, so the mark is never what truncates; the seat
+              collapses (empty:hidden) when PackageIdentity renders null, so
+              a package with no company shows exactly today's trigger with no
+              phantom gap. */}
+          <span className="flex min-w-0 max-w-28 empty:hidden sm:max-w-36">
+            <PackageIdentity
+              packageId={active.id}
+              company={active.company}
+              jdUrl={active.jd_url}
+              variant="row"
+            />
+          </span>
           <span className="max-w-36 truncate sm:max-w-48">
             {packageDisplayTitle(active.role_title)}
           </span>
@@ -86,8 +100,16 @@ function PackageSwitcher({
                 pkg.id === active.id ? "font-medium" : ""
               }`}
             >
-              <span className="truncate">
-                {packageDisplayTitle(pkg.role_title)}
+              <span className="flex min-w-0 items-center gap-1.5">
+                <PackageIdentity
+                  packageId={pkg.id}
+                  company={pkg.company}
+                  jdUrl={pkg.jd_url}
+                  variant="row"
+                />
+                <span className="truncate">
+                  {packageDisplayTitle(pkg.role_title)}
+                </span>
               </span>
               <span className="shrink-0 text-fine text-ink-faint tabular-nums">
                 {pkg.sessions_used}/{pkg.total_sessions}

@@ -8,12 +8,13 @@ const source = readFileSync(
   "utf-8",
 );
 
-// The top bar's half of F-57 (menus that dismiss like menus). The behaviour
-// itself lives in the shared primitive and is tested there:
-// light-dismiss-client.test.ts pins the listener wiring and
-// components/light-dismiss.test.ts the decision. What this file pins is that
-// TopBar actually consumes the primitive, and consumes it the intended way.
-// No DOM harness in this suite, so source is the pin.
+// The top bar's half of F-56 (employer identity in the switcher) and all of
+// F-57 (menus that dismiss like menus). The behaviour itself lives in the
+// shared primitives and is tested there: light-dismiss-client.test.ts pins
+// the listener wiring, components/light-dismiss.test.ts the decision, and
+// package-identity-wiring.test.ts the identity's plumbing. What this file
+// pins is that TopBar actually consumes those primitives, and consumes them
+// the intended way. No DOM harness in this suite, so source is the pin.
 
 describe("both top-bar menus dismiss through LightDismiss (F-57)", () => {
   it("replaces the raw details/summary pairs with the primitive", () => {
@@ -51,5 +52,53 @@ describe("both top-bar menus dismiss through LightDismiss (F-57)", () => {
 
   it("keeps the account trigger's accessible name", () => {
     expect(source).toContain('summaryLabel="Account menu"');
+  });
+});
+
+describe("the switcher names the employer (F-56, top-bar half)", () => {
+  it("seats PackageIdentity in the trigger and in every row, as rows", () => {
+    expect(source).toContain('from "@/components/PackageIdentity"');
+    const seats = source.match(/<PackageIdentity/g) ?? [];
+    expect(seats.length).toBe(2);
+    const rows = source.match(/variant="row"/g) ?? [];
+    expect(rows.length).toBe(2);
+    // The chip variant would dissolve into MENU_ROW's hover ground; the
+    // component's own header records why.
+    expect(source).not.toContain('variant="chip"');
+  });
+
+  it("passes the package fields straight through, no re-derivation", () => {
+    expect(source).toContain("company={active.company}");
+    expect(source).toContain("jdUrl={active.jd_url}");
+    expect(source).toContain("company={pkg.company}");
+    expect(source).toContain("jdUrl={pkg.jd_url}");
+    // The trim/null and mark rules stay behind the component.
+    expect(source).not.toContain("packageIdentityDecision");
+    expect(source).not.toContain("companyMarkHost");
+    expect(source).not.toContain("packageCompanyLine");
+  });
+
+  it("keeps the identity outside the trigger's truncating title span", () => {
+    // The role title truncates as it always has; the identity sits before
+    // that span with its own cap, so the mark is never what truncates.
+    const identity = source.indexOf("company={active.company}");
+    const titleSpan = source.indexOf("max-w-36 truncate sm:max-w-48");
+    expect(identity).toBeGreaterThan(-1);
+    expect(titleSpan).toBeGreaterThan(-1);
+    expect(identity).toBeLessThan(titleSpan);
+    // The cap's seat disappears entirely when the identity renders null, so
+    // a package with no company shows exactly today's trigger, phantom-gap
+    // free.
+    expect(source).toContain("empty:hidden");
+  });
+
+  it("keeps the used/total count on the row's right edge", () => {
+    expect(source).toContain("justify-between");
+    expect(source).toContain("{pkg.sessions_used}/{pkg.total_sessions}");
+    expect(source).toContain(
+      "shrink-0 text-fine text-ink-faint tabular-nums",
+    );
+    // Hover stays the stock MENU_ROW transition.
+    expect(source).toContain("${MENU_ROW} flex");
   });
 });
