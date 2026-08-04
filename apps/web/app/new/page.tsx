@@ -4,7 +4,7 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 
 import type { CreatePackageBody } from "@/lib/types";
-import { ERROR_TEXT, FIELD, PAGE_HEADING, PRIMARY_BUTTON, SECTION_HEADING, FINE_PRINT } from "@/lib/ui";
+import { ERROR_TEXT, FIELD, FINE_PRINT, MAIN_READING, PAGE_HEADING, PRIMARY_BUTTON, SECTION_HEADING } from "@/lib/ui";
 
 function fileToBase64(file: File): Promise<string> {
   return new Promise((resolve, reject) => {
@@ -73,7 +73,7 @@ export default function NewPackagePage() {
   }
 
   return (
-    <main className="mx-auto flex min-h-screen max-w-2xl flex-col gap-8 px-6 py-16">
+    <main className={`${MAIN_READING} flex min-h-dvh flex-col gap-8`}>
       <h1 className={PAGE_HEADING}>Set up your interview package</h1>
       <form onSubmit={onSubmit} className="flex flex-col gap-8">
         <fieldset className="flex flex-col gap-3">

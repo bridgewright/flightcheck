@@ -260,6 +260,37 @@ describe("every screen speaks the token vocabulary", () => {
     expect(offenders(source, /backgroundImage|background-image/)).toEqual([]);
   });
 
+  it.each(FILES)("%s builds no page column of its own", (file) => {
+    const source = emitted(readFileSync(join(webRoot, file), "utf8"));
+    // Nine screens hand-rolled `mx-auto max-w-2xl px-6` and drifted, because
+    // none of them goes through Shell: the four loading skeletons, the session
+    // room, /new, error, not-found, and the capability-link pages. The design
+    // pass moved Shell to max-w-reading / max-w-shell with responsive gutters
+    // and widened the reading measure from 46rem to 64rem, and every one of
+    // these stayed at 588px. The interview room opened in a 588px column with
+    // 445px of blank either side of it.
+    //
+    // `MAIN_READING` and `MAIN_WIDE` are the two page columns. A screen
+    // composes one and adds layout; it does not invent a third.
+    //
+    // Scoped to <main>, deliberately. A centred narrow block INSIDE a page is
+    // ordinary layout: checkout puts its card in a `max-w-md` column on
+    // purpose, and a `max-w-3xl` on a heading is a measure rather than a
+    // column. What drifted was the page column itself, and only <main> carries
+    // one.
+    const offenders: string[] = [];
+    for (const tag of source.matchAll(/<main\b[^>]*/g)) {
+      const attrs = tag[0];
+      if (!/\bmax-w-(?:xs|sm|md|lg|xl|\dxl|\[)/.test(attrs)) continue;
+      const line = source.slice(0, tag.index).split("\n").length;
+      offenders.push(`${line}: ${attrs.replace(/\s+/g, " ").slice(0, 110)}`);
+    }
+    expect(
+      offenders,
+      "compose MAIN_READING or MAIN_WIDE instead of writing a page column by hand",
+    ).toEqual([]);
+  });
+
   it.each(FILES)("%s sizes type from the scale, not from pixels", (file) => {
     const source = readFileSync(join(webRoot, file), "utf8");
     // The root is 87.5%, so the scale multiplies the reader's own browser

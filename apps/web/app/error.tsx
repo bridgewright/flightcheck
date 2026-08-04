@@ -1,12 +1,12 @@
 "use client";
 
-import { PAGE_HEADING, PRIMARY_BUTTON, SUBTLE } from "@/lib/ui";
+import { MAIN_READING, PAGE_HEADING, PRIMARY_BUTTON, SUBTLE } from "@/lib/ui";
 
 // App-level error boundary. Honest copy, no blame-shifting: the failure is
 // ours, reloading usually clears it, and nothing of the user's is lost.
 export default function AppError({ reset }: { error: Error; reset: () => void }) {
   return (
-    <main className="mx-auto flex w-full max-w-2xl flex-col items-center gap-4 px-6 py-24 text-center">
+    <main className={`${MAIN_READING} flex min-h-dvh flex-col items-center justify-center gap-4 text-center`}>
       <div className="text-section">
         <span>flight</span>check
       </div>

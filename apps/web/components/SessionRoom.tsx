@@ -10,6 +10,7 @@ import {
   ALARM_NOTICE,
   CARD,
   DANGER_BUTTON,
+  MAIN_READING,
   PAGE_HEADING,
   PRIMARY_BUTTON,
   SCORE_NUMBER,
@@ -716,11 +717,27 @@ export default function SessionRoom({
   );
 
   return (
-    <main className="mx-auto max-w-2xl p-8">
+    // The same column the rest of the product uses, and the same gutters.
+    //
+    // This was `mx-auto max-w-2xl p-8`, a literal from before the design pass
+    // set Shell's widths. The room renders chrome-less on purpose, so it never
+    // passed through Shell and was missed when everything else moved onto the
+    // container tokens: at 1422px the interview opened in a 588px column with
+    // 445px of blank on either side, which reads as a page that failed to load
+    // rather than as focus.
+    //
+    // `min-h-dvh` plus `flex-col` so the pre-connect block below can take
+    // `my-auto` and sit in the middle of the screen. dvh rather than vh
+    // because a phone's address bar makes vh lie.
+    <main className={`${MAIN_READING} flex min-h-dvh flex-col`}>
       <audio ref={remoteAudioRef} autoPlay playsInline />
 
       {phase === "ready" && (
-        <section>
+        // Centred: this is one short block on an otherwise empty screen, and
+        // pinned to the top it left two thirds of the viewport blank under it.
+        // Only this phase. Once the interview is live the transcript grows
+        // downward and has to start at the top.
+        <section className="my-auto">
           <h1 className={PAGE_HEADING}>Interview session</h1>
           <p className="mt-2 text-fine text-ink-faint">
             Headphones are strongly recommended: they keep the

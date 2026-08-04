@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 
-import { PAGE_HEADING, PRIMARY_BUTTON, LINK, SUBTLE } from "@/lib/ui";
+import { LINK, MAIN_READING, PAGE_HEADING, PRIMARY_BUTTON, SUBTLE } from "@/lib/ui";
 
 // S15 — the package link belongs to someone else. Rendered with a real
 // HTTP 403 by forbidden() from the /p/[token] claim page. Client component
@@ -17,7 +17,7 @@ import { PAGE_HEADING, PRIMARY_BUTTON, LINK, SUBTLE } from "@/lib/ui";
 export default function ForbiddenPackage() {
   const pathname = usePathname() ?? "/";
   return (
-    <main className="mx-auto flex w-full max-w-2xl flex-col items-center gap-4 px-6 py-24 text-center">
+    <main className={`${MAIN_READING} flex min-h-dvh flex-col items-center justify-center gap-4 text-center`}>
       <div className="text-section">
         <span>flight</span>check
       </div>

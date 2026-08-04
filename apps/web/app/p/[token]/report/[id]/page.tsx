@@ -2,7 +2,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 
 import PollRefresh from "@/components/PollRefresh";
-import { PAGE_HEADING, LINK } from "@/lib/ui";
+import { LINK, MAIN_READING, PAGE_HEADING } from "@/lib/ui";
 import { authorizeSession } from "@/lib/worker";
 
 export const dynamic = "force-dynamic";
@@ -15,7 +15,7 @@ export const dynamic = "force-dynamic";
 
 function NotFound() {
   return (
-    <main className="mx-auto flex min-h-screen max-w-2xl flex-col justify-center gap-4 px-6 py-16">
+    <main className={`${MAIN_READING} flex min-h-dvh flex-col justify-center gap-4`}>
       <h1 className={PAGE_HEADING}>Report not found</h1>
       <p className="text-ink-muted">
         This link does not match any session report. Check the URL, or{" "}
@@ -30,7 +30,7 @@ function NotFound() {
 
 function WorkerUnreachable() {
   return (
-    <main className="mx-auto flex min-h-screen max-w-2xl flex-col justify-center gap-4 px-6 py-16">
+    <main className={`${MAIN_READING} flex min-h-dvh flex-col justify-center gap-4`}>
       <PollRefresh intervalMs={5000} />
       <h1 className={PAGE_HEADING}>Can&apos;t reach the scoring service</h1>
       <p className="text-ink-muted">

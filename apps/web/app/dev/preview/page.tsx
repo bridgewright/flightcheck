@@ -15,7 +15,7 @@ import {
   verdictLine,
 } from "@/lib/home";
 import type { TimestampedObservation, TranscriptSegment } from "@/lib/types";
-import { LABEL, PAGE_HEADING, PRIMARY_BUTTON, FINE_PRINT } from "@/lib/ui";
+import { FINE_PRINT, LABEL, MAIN_READING, PAGE_HEADING, PRIMARY_BUTTON } from "@/lib/ui";
 import type { SessionSummary } from "@/lib/worker";
 import sampleJson from "@/public/sample-report.json";
 
@@ -203,7 +203,7 @@ export default function DevPreviewPage() {
   const line = verdictLine(sample.report, dimensionNames);
 
   return (
-    <main className="mx-auto flex max-w-3xl flex-col gap-10 px-6 py-10">
+    <main className={`${MAIN_READING} flex flex-col gap-10`}>
       <header>
         <h1 className={PAGE_HEADING}>Component preview</h1>
         <p className="mt-2 text-fine text-ink-muted">
