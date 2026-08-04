@@ -310,6 +310,20 @@ export function packageDisplayTitle(roleTitle: string | null): string {
   return title === "" ? "Untitled package" : title;
 }
 
+/**
+ * The employer line under a package's title (F-54), or null when there is
+ * nothing honest to print.
+ *
+ * Null and whitespace both mean "the JD never named a company", and a card
+ * must render nothing rather than an empty line or a placeholder: two
+ * packages for the same role are told apart by this line, and a blank one
+ * would say the compiler found nothing when it may simply not have run yet.
+ */
+export function packageCompanyLine(company: string | null | undefined): string | null {
+  const name = (company ?? "").trim();
+  return name === "" ? null : name;
+}
+
 /** How a pill should read, decided here; how it looks stays in the component. */
 export type PillTone = "neutral" | "wait" | "bad" | "done";
 

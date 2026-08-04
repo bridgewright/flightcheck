@@ -577,6 +577,12 @@ def build_router(deps: Deps) -> APIRouter:
                 "role_title": (
                     package.rubric.role_title if package.rubric is not None else None
                 ),
+                # F-54: the employer, straight off the rubric the compiler
+                # already produced. Null while the package is still compiling,
+                # and null afterwards when the JD never named one.
+                "company": (
+                    package.rubric.company if package.rubric is not None else None
+                ),
                 "is_trial": package.is_trial,
                 "paid_at": package.paid_at,
                 "comped_at": package.comped_at,

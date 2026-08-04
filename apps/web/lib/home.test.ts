@@ -26,7 +26,8 @@ import {
   unlockCtaLabel,
   verdictLine,
   verdictPhrase,
-  isUnlocked,} from "@/lib/home";
+  isUnlocked,
+  packageCompanyLine,} from "@/lib/home";
 import type { JourneySession } from "@/lib/home";
 import type { DimensionScore, SessionReport, Verdict } from "@/lib/types";
 
@@ -728,5 +729,24 @@ describe("a comped package is unlocked without being paid", () => {
   it("leaves an ordinary unpaid package on the trial quota", () => {
     expect(effectiveTotalSessions({ total_sessions: 6 })).toBe(1);
     expect(isUnlocked({})).toBe(false);
+  });
+});
+
+describe("the employer line on a package card", () => {
+  it("prints the company the compiler found", () => {
+    expect(packageCompanyLine("Ode with Anthropic")).toBe("Ode with Anthropic");
+  });
+
+  it("is absent rather than blank when the JD named nobody", () => {
+    // Null while the package is still compiling, and null afterwards when the
+    // JD never named a company. Both must render nothing: a blank line under
+    // the title would claim the compiler looked and found nothing.
+    expect(packageCompanyLine(null)).toBeNull();
+    expect(packageCompanyLine(undefined)).toBeNull();
+    expect(packageCompanyLine("   ")).toBeNull();
+  });
+
+  it("trims, because the value comes from a model's free text", () => {
+    expect(packageCompanyLine("  Anthropic\n")).toBe("Anthropic");
   });
 });

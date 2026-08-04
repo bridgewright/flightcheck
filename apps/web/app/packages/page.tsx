@@ -10,6 +10,7 @@ import {
   effectiveTotalSessions,
   expiryLine,
   latestVerdict,
+  packageCompanyLine,
   packageDisplayTitle,
   packagePill,
   switchHref,
@@ -98,14 +99,22 @@ function PackageCard({
 }) {
   // Effective quota (lib/home): an unpaid trial reads "of 1", never "of 6".
   const total = effectiveTotalSessions(pkg);
+  const company = packageCompanyLine(pkg.company);
   const pill = packagePill(pkg.status, pkg.sessions_used, total);
   const expiry = expiryLine(pkg, new Date());
   return (
     <li className={`${CARD} flex flex-col gap-3 p-5`}>
       <div className="flex items-start justify-between gap-3">
-        <h2 className={`${SUB_HEADING} text-balance`}>
-          {packageDisplayTitle(pkg.role_title)}
-        </h2>
+        <div className="flex flex-col gap-0.5">
+          <h2 className={`${SUB_HEADING} text-balance`}>
+            {packageDisplayTitle(pkg.role_title)}
+          </h2>
+          {/* The employer, when the JD named one. Absent rather than blank:
+              see packageCompanyLine. */}
+          {company === null ? null : (
+            <p className={`${SUBTLE} text-balance`}>{company}</p>
+          )}
+        </div>
         <span
           className={`${PILL_CLASSES[pill.tone]} shrink-0`}
         >

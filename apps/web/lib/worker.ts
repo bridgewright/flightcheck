@@ -252,6 +252,9 @@ export interface PackageSummary {
   total_sessions: number;
   sessions_used: number;
   role_title: string | null;
+  /** The employer, from the compiled rubric. Null while compiling, and null
+   * when the JD never named one (F-54). */
+  company?: string | null;
   // v0.5: exposed by the worker's summaries (Track C) so lists can render
   // trial/paid/expiry state honestly. Optional because a pre-v0.5 worker
   // omits them; treat absence like the defaults (not trial, unpaid).
