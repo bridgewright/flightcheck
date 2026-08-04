@@ -1240,6 +1240,23 @@ they were introduced for.*
   an observed sign-in** — it is not verified until a real Google sign-in on
   production lands on the existing account with its order intact, and that
   walk is part of shipping this, not a check to be done afterwards.
+- **Verified on production the same day, by signing in rather than by reading
+  settings back.** Google Cloud project `flightcheck-504509`, consent screen
+  external and published to production, OAuth client pointed at Supabase's
+  `/auth/v1/callback`, provider enabled through the Management API. The
+  sign-in was then walked end to end: `/login` offered one button, Google
+  asked only for name and email address, and the return landed on the
+  **existing** account with its package, its Aug 3 session and its paid order
+  intact. The database agrees: users 2 before and after, identities 2 to 3,
+  one `google` and one `email` identity on the same `user_id`, orders 1. The
+  linking mechanism this entry relied on is therefore observed, not assumed.
+- **Two things this bought that are worth naming.** The email provider is
+  disabled in the hosted project as well, so the removed path is closed at the
+  API and not only in the UI. And Google's consent screen names the OAuth
+  client's authorized domain, which is Supabase's: a customer reads
+  "rvkecrwdohriruuulnzm.supabase.co" at the moment they decide whether to
+  trust this product. Cosmetic, not a defect, and the only fix is a custom
+  auth domain, which needs a domain the product does not own yet.
 - **Revisit when:** a real customer without a usable Google account is turned
   away — that is the signal for a second provider, and it names which one; or
   Google's consent screen shows up as friction in real-usage numbers.
