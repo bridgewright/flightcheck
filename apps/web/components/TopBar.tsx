@@ -1,6 +1,7 @@
 import { cookies } from "next/headers";
 import Link from "next/link";
 
+import LightDismiss from "@/components/LightDismiss";
 import {
   ACTIVE_PACKAGE_COOKIE,
   NAV_TABS,
@@ -33,6 +34,12 @@ import {
 // did not simply omit them and the bar fetches its own. A worker outage
 // degrades to a bar without a switcher — the page body owns the real error
 // surface.
+//
+// Both menus disclose through LightDismiss (F-57), the one client boundary
+// here; everything that crosses it is rendered ReactNode and class strings.
+// Two menus need no coordination: opening one starts with a pointerdown
+// outside the other, which closes it before the click lands (the primitive's
+// header records the keyboard-only caveat).
 
 const SUMMARY =
   "flex cursor-pointer list-none items-center gap-1.5 [&::-webkit-details-marker]:hidden";
@@ -56,76 +63,85 @@ function PackageSwitcher({
 }) {
   const active = packages.find((pkg) => pkg.id === activeId) ?? packages[0];
   return (
-    <details className="relative order-2">
-      <summary className={`${SUMMARY} rounded-control px-2 py-1 text-fine text-ink-muted hover:bg-paper-sunk`}>
-        <span className="max-w-36 truncate sm:max-w-48">
-          {packageDisplayTitle(active.role_title)}
-        </span>
-        <Chevron />
-      </summary>
-      <div className={`${MENU_PANEL} left-0`}>
-        <ul>
-          {packages.map((pkg) => (
-            <li key={pkg.id}>
-              <Link
-                href={switchHref(pkg.id, path)}
-                aria-current={pkg.id === active.id ? "true" : undefined}
-                className={`${MENU_ROW} flex items-baseline justify-between gap-3 ${
-                  pkg.id === active.id ? "font-medium" : ""
-                }`}
-              >
-                <span className="truncate">
-                  {packageDisplayTitle(pkg.role_title)}
-                </span>
-                <span className="shrink-0 text-fine text-ink-faint tabular-nums">
-                  {pkg.sessions_used}/{pkg.total_sessions}
-                </span>
-              </Link>
-            </li>
-          ))}
-        </ul>
-        <div className={`mt-1 border-t pt-1 ${DIVIDER}`}>
-          <Link href="/packages" className={MENU_ROW}>
-            All packages
-          </Link>
-          <Link href="/new" className={MENU_ROW}>
-            New package
-          </Link>
-        </div>
+    <LightDismiss
+      className="relative order-2"
+      summaryClassName={`${SUMMARY} rounded-control px-2 py-1 text-fine text-ink-muted hover:bg-paper-sunk`}
+      panelClassName={`${MENU_PANEL} left-0`}
+      summary={
+        <>
+          <span className="max-w-36 truncate sm:max-w-48">
+            {packageDisplayTitle(active.role_title)}
+          </span>
+          <Chevron />
+        </>
+      }
+    >
+      <ul>
+        {packages.map((pkg) => (
+          <li key={pkg.id}>
+            <Link
+              href={switchHref(pkg.id, path)}
+              aria-current={pkg.id === active.id ? "true" : undefined}
+              className={`${MENU_ROW} flex items-baseline justify-between gap-3 ${
+                pkg.id === active.id ? "font-medium" : ""
+              }`}
+            >
+              <span className="truncate">
+                {packageDisplayTitle(pkg.role_title)}
+              </span>
+              <span className="shrink-0 text-fine text-ink-faint tabular-nums">
+                {pkg.sessions_used}/{pkg.total_sessions}
+              </span>
+            </Link>
+          </li>
+        ))}
+      </ul>
+      <div className={`mt-1 border-t pt-1 ${DIVIDER}`}>
+        <Link href="/packages" className={MENU_ROW}>
+          All packages
+        </Link>
+        <Link href="/new" className={MENU_ROW}>
+          New package
+        </Link>
       </div>
-    </details>
+    </LightDismiss>
   );
 }
 
 function AccountMenu({ viewer }: { viewer: Viewer }) {
   const initial = viewer.email?.trim()?.[0]?.toUpperCase() ?? "•";
   return (
-    <details className="relative order-3 ml-auto sm:order-4">
-      <summary className={SUMMARY} aria-label="Account menu">
-        <span className="flex size-7 items-center justify-center rounded-full bg-ink text-fine text-paper">
-          {initial}
-        </span>
-        <Chevron />
-      </summary>
-      <div className={`${MENU_PANEL} right-0`}>
-        <p className="truncate px-3 py-2 text-fine text-ink-faint">
-          {viewer.email ?? "Signed in"}
-        </p>
-        <Link href="/settings" className={MENU_ROW}>
-          Settings
+    <LightDismiss
+      className="relative order-3 ml-auto sm:order-4"
+      summaryClassName={SUMMARY}
+      summaryLabel="Account menu"
+      panelClassName={`${MENU_PANEL} right-0`}
+      summary={
+        <>
+          <span className="flex size-7 items-center justify-center rounded-full bg-ink text-fine text-paper">
+            {initial}
+          </span>
+          <Chevron />
+        </>
+      }
+    >
+      <p className="truncate px-3 py-2 text-fine text-ink-faint">
+        {viewer.email ?? "Signed in"}
+      </p>
+      <Link href="/settings" className={MENU_ROW}>
+        Settings
+      </Link>
+      <form action="/auth/signout" method="post">
+        <button type="submit" className={`${MENU_ROW} w-full cursor-pointer text-left`}>
+          Sign out
+        </button>
+      </form>
+      <div className={`mt-1 border-t pt-1 ${DIVIDER}`}>
+        <Link href="/pricing" className={MENU_ROW}>
+          Pricing
         </Link>
-        <form action="/auth/signout" method="post">
-          <button type="submit" className={`${MENU_ROW} w-full cursor-pointer text-left`}>
-            Sign out
-          </button>
-        </form>
-        <div className={`mt-1 border-t pt-1 ${DIVIDER}`}>
-          <Link href="/pricing" className={MENU_ROW}>
-            Pricing
-          </Link>
-        </div>
       </div>
-    </details>
+    </LightDismiss>
   );
 }
 
