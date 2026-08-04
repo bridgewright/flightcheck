@@ -778,6 +778,7 @@ def test_progress_shapes_scored_and_unscored_sessions(monkeypatch):
         "total_sessions": 6,
         "is_trial": False,
         "paid_at": None,
+        "comped_at": None,
         "expires_at": None,
         "sessions": [
             {
@@ -850,11 +851,13 @@ def test_list_user_packages_newest_first_with_usage(monkeypatch):
         {"id": newer.id, "access_token": newer.access_token, "status": "ready",
          "user_id": "user-1", "total_sessions": 4, "sessions_used": 0,
          "role_title": "Forward Deployed Product Manager",
-         "is_trial": False, "paid_at": None, "expires_at": None},
+         "is_trial": False, "paid_at": None, "comped_at": None,
+         "expires_at": None},
         {"id": older.id, "access_token": older.access_token, "status": "ready",
          "user_id": "user-1", "total_sessions": 2, "sessions_used": 1,
          "role_title": "Forward Deployed Product Manager",
-         "is_trial": False, "paid_at": None, "expires_at": None},
+         "is_trial": False, "paid_at": None, "comped_at": None,
+         "expires_at": None},
     ]}
 
 

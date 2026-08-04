@@ -26,7 +26,7 @@ import {
   unlockCtaLabel,
   verdictLine,
   verdictPhrase,
-} from "@/lib/home";
+  isUnlocked,} from "@/lib/home";
 import type { JourneySession } from "@/lib/home";
 import type { DimensionScore, SessionReport, Verdict } from "@/lib/types";
 
@@ -706,5 +706,27 @@ describe("orderStatusLabel", () => {
     expect(orderStatusLabel("refunded")).toBe("Refunded");
     expect(orderStatusLabel(null)).toBeNull();
     expect(orderStatusLabel("")).toBeNull();
+  });
+});
+
+describe("a comped package is unlocked without being paid", () => {
+  // The bug this pins survived about ten minutes: the worker opened six
+  // sessions on a comped package and the packages screen said "0 of 1",
+  // because the web mirrored paid_at alone. Caught by looking at the screen,
+  // which no test in this file could have done.
+  const comped = { total_sessions: 6, comped_at: "2026-08-04T13:22:23Z" };
+
+  it("offers its full session count", () => {
+    expect(effectiveTotalSessions(comped)).toBe(6);
+  });
+
+  it("is still not paid, because no money moved", () => {
+    expect(isUnpaid(comped)).toBe(true);
+    expect(isUnlocked(comped)).toBe(true);
+  });
+
+  it("leaves an ordinary unpaid package on the trial quota", () => {
+    expect(effectiveTotalSessions({ total_sessions: 6 })).toBe(1);
+    expect(isUnlocked({})).toBe(false);
   });
 });

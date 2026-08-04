@@ -364,6 +364,8 @@ export function exhaustedSessionsLine(totalSessions: number): string {
 export interface PaywallState {
   is_trial?: boolean;
   paid_at?: string | null;
+  /** Comped access (DECISIONS 037): unlocked without an order. */
+  comped_at?: string | null;
   expires_at?: string | null;
 }
 
@@ -377,6 +379,20 @@ export function isUnpaid(pkg: PaywallState): boolean {
 }
 
 /**
+ * Whether the package is unlocked, by either route the worker accepts.
+ *
+ * This exists because the two questions are not the same one and the screen
+ * asks both: "how many sessions does this offer" is about being unlocked,
+ * and "should the paywall copy show" is about having been paid for. A comped
+ * package (DECISIONS 037) answers yes to the first and no to the second, and
+ * the first version of this feature shipped with the web mirroring paid_at
+ * alone -- the worker opened six sessions and the screen said "0 of 1".
+ */
+export function isUnlocked(pkg: PaywallState): boolean {
+  return Boolean(pkg.paid_at) || Boolean(pkg.comped_at);
+}
+
+/**
  * How many sessions the package offers RIGHT NOW: the trial quota until the
  * package is paid, its own quota afterwards. Every rendered session count
  * goes through here — a "1 of 6" on an unpaid package would promise five
@@ -385,7 +401,7 @@ export function isUnpaid(pkg: PaywallState): boolean {
 export function effectiveTotalSessions(
   pkg: PaywallState & { total_sessions: number },
 ): number {
-  return isUnpaid(pkg) ? TRIAL_SESSIONS : pkg.total_sessions;
+  return isUnlocked(pkg) ? pkg.total_sessions : TRIAL_SESSIONS;
 }
 
 /**

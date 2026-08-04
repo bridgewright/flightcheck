@@ -136,6 +136,7 @@ export interface PackageRow {
   // expires_at = paid_at + 30 days; order_id links the provisioning order.
   is_trial?: boolean;
   paid_at?: string | null;
+  comped_at?: string | null;
   expires_at?: string | null;
   order_id?: string | null;
 }

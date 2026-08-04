@@ -257,6 +257,8 @@ export interface PackageSummary {
   // omits them; treat absence like the defaults (not trial, unpaid).
   is_trial?: boolean;
   paid_at?: string | null;
+  /** Comped access (DECISIONS 037): unlocked with no order behind it. */
+  comped_at?: string | null;
   expires_at?: string | null;
 }
 

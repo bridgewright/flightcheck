@@ -555,6 +555,7 @@ def build_router(deps: Deps) -> APIRouter:
             # copy from these -- summaries must never force a full-row GET.
             "is_trial": package.is_trial,
             "paid_at": package.paid_at,
+            "comped_at": package.comped_at,
             "expires_at": package.expires_at,
             "sessions": entries,
         }
@@ -578,6 +579,7 @@ def build_router(deps: Deps) -> APIRouter:
                 ),
                 "is_trial": package.is_trial,
                 "paid_at": package.paid_at,
+                "comped_at": package.comped_at,
                 "expires_at": package.expires_at,
             }
             for package in db.list_packages_by_user(user_id)
