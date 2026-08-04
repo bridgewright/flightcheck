@@ -112,6 +112,8 @@ def render_report(usage: UsageMetrics, *, generated_on: date,
          f"{usage.packages_sampled} packages |"),
         (f"| Paid packages in sample | {usage.paid_packages_sampled} | "
          f"of {usage.packages_sampled} |"),
+        (f"| Comped packages in sample | {usage.comped_packages_sampled} | "
+         "full access granted without payment (operator runs) |"),
         "",
         "## What these numbers do not say",
         "",

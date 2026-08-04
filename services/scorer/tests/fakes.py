@@ -365,6 +365,16 @@ class FakeDatabase:
             "updated_at": self._now().isoformat(),
         })
 
+    def set_package_comped(self, package_id: str, comped_at: str) -> None:
+        row = self.packages[package_id]
+        if row.comped_at is not None:
+            return  # first write wins (mirrors SupabaseDatabase)
+        self.packages[package_id] = row.model_copy(update={
+            "comped_at": comped_at,
+            "total_sessions": PAID_TOTAL_SESSIONS,
+            "updated_at": self._now().isoformat(),
+        })
+
     def touch_updated_at(self, kind: Literal["package", "session"],
                          id: str) -> None:
         if kind not in ("package", "session"):

@@ -1,9 +1,10 @@
 import Link from "next/link";
 
 import PollRefresh from "@/components/PollRefresh";
+import DeletePackageButton from "@/components/DeletePackageButton";
 import RetryCompileButton from "@/components/RetryCompileButton";
 import Shell from "@/components/Shell";
-import { retryCompileAction } from "@/app/packages/actions";
+import { deletePackageAction, retryCompileAction } from "@/app/packages/actions";
 import type { PillTone } from "@/lib/home";
 import {
   effectiveTotalSessions,
@@ -130,6 +131,12 @@ function PackageCard({
         {pkg.status === "failed" ? (
           <RetryCompileButton packageId={pkg.id} action={retryCompileAction} />
         ) : null}
+        <DeletePackageButton
+          packageId={pkg.id}
+          title={packageDisplayTitle(pkg.role_title)}
+          sessionsUsed={pkg.sessions_used}
+          action={deletePackageAction}
+        />
       </div>
     </li>
   );

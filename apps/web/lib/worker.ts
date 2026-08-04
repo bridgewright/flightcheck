@@ -344,6 +344,29 @@ export async function retryCompile(packageId: string): Promise<void> {
 }
 
 /**
+ * Delete one package and everything under it (F-53).
+ *
+ * The worker checks ownership itself and answers 404 for a package this user
+ * does not own, so a caller cannot use this to probe which ids exist. A 503
+ * means the recordings would not delete and NOTHING was removed, which is the
+ * one failure the caller has to relay honestly rather than retrying silently.
+ */
+export async function deletePackage(
+  packageId: string,
+  userId: string,
+): Promise<{ sessions_deleted: number; recordings_deleted: number }> {
+  const path = `/api/packages/${encodeURIComponent(packageId)}/delete`;
+  return workerJson(
+    `POST ${path}`,
+    await workerFetch(path, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ user_id: userId }),
+    }),
+  );
+}
+
+/**
  * Count one realtime-secret mint against the session's cap and return the
  * new total. Above the cap the worker replies 429, which surfaces here as a
  * WorkerError (status 429 + the worker's code) for the realtime-secret

@@ -13,7 +13,7 @@ from __future__ import annotations
 import base64
 import binascii
 import logging
-from datetime import datetime
+from datetime import UTC, datetime
 
 import httpx
 from fastapi import APIRouter, BackgroundTasks, HTTPException
@@ -21,7 +21,13 @@ from fastapi.responses import JSONResponse
 from postgrest.exceptions import APIError as PostgrestAPIError
 from pydantic import BaseModel, ConfigDict
 
+from scorer.api.comp import is_comped_account
 from scorer.api.db import OrderRow, PackageRow
+from scorer.api.deletion import (
+    RecordingsNotDeleted,
+    collect_package_deletion_plan,
+    execute_deletion,
+)
 from scorer.api.deps import Deps
 from scorer.api.jobs import compile_package_job
 from scorer.api.quota import sessions_used
@@ -52,6 +58,14 @@ class CreatePackageRequest(BaseModel):
     # account's id so new rows never go through an unclaimed phase. Optional
     # because the legacy claim-by-token flow still creates unbound packages.
     user_id: str | None = None
+
+
+class DeletePackageRequest(BaseModel):
+    """Who is asking. The web layer proves identity; this proves ownership."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    user_id: str
 
 
 class MarkPaidRequest(BaseModel):
@@ -234,6 +248,15 @@ def build_router(deps: Deps) -> APIRouter:
         # stuck-state reaper must still see a clock on the row (NULL
         # updated_at rows are invisible to it by contract).
         db.touch_updated_at("package", row.id)
+        # Comped accounts (F-53): unlock at birth, with no order and no
+        # expiry window. This is the only write that grants it, so a package
+        # created before its owner joined the allowlist stays as it was born
+        # rather than changing under them.
+        if is_comped_account(body.user_id):
+            db.set_package_comped(row.id, datetime.now(UTC).isoformat())
+            row = db.get_package(row.id)
+            logger.info("package %s comped at birth (user_id=%s)",
+                        row.id, body.user_id)
         cached = (
             db.find_ready_rubric_by_jd(jd_text, body.user_id)
             if resume_text is None and linkedin_text is None
@@ -395,6 +418,50 @@ def build_router(deps: Deps) -> APIRouter:
         )
         return {"package_id": package_id, "order_id": order.id,
                 "duplicate": False}
+
+    @router.post("/packages/{package_id}/delete")
+    def delete_package(package_id: str, body: DeletePackageRequest):
+        """Delete one package the caller owns, and everything under it.
+
+        Same machinery as account deletion, so the two can never disagree
+        about what a package contains: blobs first, rows second, and a
+        recording that will not delete aborts the run before a single row
+        goes. Orders are deliberately left alone -- a receipt outlives the
+        thing it paid for.
+        """
+        try:
+            plan = collect_package_deletion_plan(db, body.user_id, package_id)
+        except KeyError as exc:
+            raise HTTPException(status_code=404,
+                                detail="package not found") from exc
+        except PermissionError:
+            # 404, not 403: answering "forbidden" would confirm that this id
+            # exists to somebody who cannot see it.
+            raise HTTPException(status_code=404,
+                                detail="package not found") from None
+        try:
+            outcome = execute_deletion(db, deps.storage, plan)
+        except RecordingsNotDeleted:
+            logger.warning(
+                "package deletion aborted: %d recording object(s) survived",
+                len(plan.recording_paths))
+            return JSONResponse(
+                status_code=503,
+                content={
+                    "error": "we could not delete this package's recordings "
+                             "just now, so nothing was deleted. Try again in "
+                             "a few minutes.",
+                    "code": "recordings-not-deleted",
+                },
+            )
+        logger.info(
+            "package deleted: %d session(s), %d recording(s)",
+            outcome.sessions_deleted, outcome.recordings_deleted)
+        return {
+            "package_id": package_id,
+            "sessions_deleted": outcome.sessions_deleted,
+            "recordings_deleted": outcome.recordings_deleted,
+        }
 
     @router.get("/packages/by-token/{access_token}")
     def get_package_by_token(access_token: str) -> PackageRow:

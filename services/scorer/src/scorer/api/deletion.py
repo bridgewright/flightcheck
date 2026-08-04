@@ -185,6 +185,49 @@ def collect_deletion_plan(db: Database, user_id: str) -> DeletionPlan:
     )
 
 
+def collect_package_deletion_plan(db: Database, user_id: str,
+                                  package_id: str) -> DeletionPlan:
+    """One package the user owns, and everything under it.
+
+    The same walk `collect_deletion_plan` does, narrowed to one package, so
+    the two paths cannot drift about what a package contains. Two deliberate
+    differences from account deletion:
+
+    * **Orders are not touched.** An order is the record that money moved. A
+      customer removing one package must not delete a receipt they may need
+      for a refund, an expense claim, or a dispute, and the operator must not
+      lose the books because a test package was tidied away. The order row
+      keeps pointing at a package id that no longer resolves, which is what a
+      receipt for a deleted thing looks like.
+    * **A package that is not theirs raises PermissionError** rather than
+      returning an empty plan, so a caller cannot report "deleted" about
+      something it never had the right to read.
+    """
+    package = db.get_package(package_id)
+    if package.user_id is None or package.user_id != user_id:
+        raise PermissionError(package_id)
+
+    session_ids: list[str] = []
+    recording_paths: list[str] = []
+    derived_keys: list[str] = []
+    for session in db.list_sessions(package.id):
+        session_ids.append(session.id)
+        if session.audio_path:
+            recording_paths.append(session.audio_path)
+        derived_keys.append(recording_key(package.id, session.index))
+    named = set(recording_paths)
+    orphan_paths = [key for key in dict.fromkeys(derived_keys)
+                    if key not in named]
+    return DeletionPlan(
+        user_id=user_id,
+        package_ids=[package.id],
+        session_ids=session_ids,
+        order_ids=[],
+        recording_paths=recording_paths,
+        orphan_recording_paths=orphan_paths,
+    )
+
+
 def describe_plan(plan: DeletionPlan) -> str:
     """The dry-run report: every id and path the deletion would remove."""
     if plan.is_empty:

@@ -33,8 +33,17 @@ SLOT_CONSUMING_STATUSES = frozenset({"scoring", "scored", TERMINAL_STATUS})
 
 
 def effective_total_sessions(package: PackageRow) -> int:
-    """Sessions the package exposes right now: 1 until paid_at is set."""
-    return package.total_sessions if package.paid_at is not None else 1
+    """Sessions the package exposes right now: 1 until it is unlocked.
+
+    Two ways to be unlocked, and they are deliberately different columns.
+    paid_at is money. comped_at is access granted without money (migration
+    008) -- the operator's own runs, a deliberate free grant. Everything
+    downstream of this number treats them identically, because a session is a
+    session; everything that counts revenue reads paid_at and must never read
+    this function.
+    """
+    unlocked = package.paid_at is not None or package.comped_at is not None
+    return package.total_sessions if unlocked else 1
 
 
 def is_expired(package: PackageRow, now: datetime | None = None) -> bool:

@@ -1260,3 +1260,57 @@ they were introduced for.*
 - **Revisit when:** a real customer without a usable Google account is turned
   away — that is the signal for a second provider, and it names which one; or
   Google's consent screen shows up as friction in real-usage numbers.
+
+## 037 — comped access is its own column, and package deletion spares the receipt (2026-08-04)
+
+- **Decision:** two things the operator asked for, built so that neither
+  distorts what the product reports about itself.
+  - **Comped access** (`packages.comped_at`, migration 008). An account on an
+    allowlist gets packages that expose their full session count with **no
+    order behind them and no 30-day window**. `effective_total_sessions`
+    unlocks on `paid_at` **or** `comped_at`, because a session is a session;
+    nothing that counts money reads `comped_at`. The allowlist is
+    `COMP_ACCOUNT_IDS`, an environment variable holding Supabase user ids,
+    comma separated. Unset grants nothing, there is no wildcard, and an
+    anonymous package is never comped.
+  - **Package deletion.** `POST /api/packages/{id}/delete`, owner-checked,
+    running the same blobs-then-rows machinery as account deletion (025) so
+    the two can never disagree about what a package contains. **Orders are not
+    touched.**
+- **Why a column instead of writing `paid_at`:** setting `paid_at` would have
+  been one line and no migration, and it would have put revenue that never
+  happened into the orders-and-paid view of the product — including
+  `GET /api/metrics/usage`, whose output is published as the real-usage
+  evidence this repo is partly built to produce. Impression rule ⑦ says
+  self-test numbers are not real usage; the cheap version of this feature
+  would have made that rule unenforceable by making a comp indistinguishable
+  from a sale. The usage payload now carries `comped_packages_sampled` and a
+  note naming the count, so a comped package is visible as what it is.
+- **Why the receipt survives a package deletion:** an order is the record that
+  money moved, and it stays true after the thing it paid for is gone. A
+  customer may need it for a refund, a dispute, or an expense claim, and the
+  operator needs the books to survive tidying up a test package. The order row
+  is left pointing at a package id that no longer resolves, which is exactly
+  what a receipt for a deleted thing is. Account deletion still removes orders,
+  because there the customer is asking for everything about them to be gone.
+- **Rejected — comping by fabricating an order row:** it keeps one code path
+  and lies in the one table that is supposed to be the ground truth about
+  money.
+- **Rejected — an allowlist of email addresses:** this repository is public and
+  the account that needs comping belongs to a private individual. A user id is
+  already the key every other table uses and is not a contact detail.
+- **Rejected — a typed confirmation for package deletion:** account deletion
+  asks you to type your own address, which is proportionate for "delete
+  everything". Asking for it to remove one of several packages is friction
+  that teaches people to type past warnings. Two clicks, with the consequences
+  stated at the second one, in the page rather than in a browser dialog.
+- **Rejected — deleting a package that has an unused paid balance, silently:**
+  not implemented either way today, and worth naming as unfinished. Deletion
+  removes sessions and their recordings; if a paid package with sessions left
+  is deleted, that entitlement is gone with it and nothing offers a refund.
+  The operator is the only account with the button today, and comped packages
+  have no money behind them.
+- **Revisit when:** a second account needs comping and the allowlist starts
+  wanting structure (a reason, an expiry, an audit trail); or a customer
+  deletes a paid package with sessions remaining, which is the case above and
+  needs an answer before this reaches many customers.

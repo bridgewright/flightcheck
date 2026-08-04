@@ -233,6 +233,7 @@ export interface UsageMetrics {
   sessions_scored: number;
   packages_sampled: number;
   paid_packages_sampled: number;
+  comped_packages_sampled: number;
   // "N=1 account" is the single most important fact about every number this
   // product can currently produce, so nothing may render a rate without it.
   distinct_users: number;

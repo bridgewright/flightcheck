@@ -110,6 +110,11 @@ class PackageRow(BaseModel):
     expires_at: str | None = None
     order_id: str | None = None
     updated_at: str | None = None
+    # Migration 008. Comped access: the package exposes its full session count
+    # with no order behind it. Deliberately NOT paid_at, which is the money
+    # anchor -- a comp written there would become revenue in every query that
+    # counts paid packages, including the published usage metrics.
+    comped_at: str | None = None
 
 
 class SessionRow(BaseModel):
@@ -278,6 +283,14 @@ class Database(Protocol):
         package whose paid_at is already set is left untouched, so webhook
         replays can never move the expiry window. is_trial is NOT cleared —
         paid state is "paid_at is not None". Unknown ids raise KeyError."""
+        ...
+
+    def set_package_comped(self, package_id: str, comped_at: str) -> None:
+        """Grant comped access: comped_at and total_sessions =
+        PAID_TOTAL_SESSIONS, with an updated_at touch. First write wins, so a
+        second grant cannot re-stamp the date. Never touches paid_at, order_id
+        or expires_at: a comp is not a payment and gets no 30-day window.
+        Unknown ids raise KeyError."""
         ...
 
     def touch_updated_at(self, kind: Literal["package", "session"],
@@ -627,6 +640,19 @@ class SupabaseDatabase:
                 .update({"paid_at": paid_at,
                          "expires_at": expires_at_from(paid_at),
                          "order_id": order_id,
+                         "total_sessions": PAID_TOTAL_SESSIONS,
+                         "updated_at": _now_iso()})
+                .eq("id", package_id).execute().data)
+        if not data:
+            raise KeyError(package_id)
+
+    def set_package_comped(self, package_id: str, comped_at: str) -> None:
+        # First write wins, mirroring set_package_paid: a repeated grant must
+        # not re-stamp the date somebody may be reading as "since when".
+        if self.get_package(package_id).comped_at is not None:
+            return
+        data = (self._client.table("packages")
+                .update({"comped_at": comped_at,
                          "total_sessions": PAID_TOTAL_SESSIONS,
                          "updated_at": _now_iso()})
                 .eq("id", package_id).execute().data)

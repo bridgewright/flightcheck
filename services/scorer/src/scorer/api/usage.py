@@ -66,6 +66,12 @@ SELF_TEST_NOTE = (
     "not customer usage."
 )
 NO_DATA_NOTE = "No sessions have been started yet; every rate below is zero."
+COMPED_NOTE = (
+    "{comped} of the {sampled} packages in this sample are comped: full "
+    "access granted without payment, which is how the operator runs real "
+    "sessions. They are counted in the usage rates because the sessions are "
+    "real, and they are NOT counted as paid packages, because no money moved."
+)
 PROCESS_LOCAL_NOTE = (
     "p50_scoring_latency_s is measured in this worker process and resets "
     "when it restarts, so its sample is smaller than the session sample."
@@ -109,6 +115,7 @@ class UsageMetrics(BaseModel):
     sessions_scored: int
     packages_sampled: int
     paid_packages_sampled: int
+    comped_packages_sampled: int
     distinct_users: int
     package_burn_through_ratio: float      # mean used / available
     p50_candidate_response_s: float | None
@@ -218,6 +225,10 @@ def compute_usage(packages: list[PackageRow],
         package.user_id for package in packages if package.user_id is not None
     })
 
+    # Comped packages (F-53) are real sessions and fake revenue. Both facts
+    # are stated rather than either being quietly folded in.
+    comped = sum(1 for package in packages if package.comped_at is not None)
+
     notes = [NOT_INSTRUMENTED_NOTE]
     # `>=`, not `==`: a read that comes back over its bound is no more a
     # total than one that comes back exactly at it.
@@ -228,6 +239,8 @@ def compute_usage(packages: list[PackageRow],
         notes.append(NO_DATA_NOTE)
     if distinct_users <= 1:
         notes.append(SELF_TEST_NOTE)
+    if comped:
+        notes.append(COMPED_NOTE.format(comped=comped, sampled=len(packages)))
     if sampler.sample_size < len(scored):
         notes.append(PROCESS_LOCAL_NOTE)
 
@@ -244,6 +257,7 @@ def compute_usage(packages: list[PackageRow],
         packages_sampled=len(packages),
         paid_packages_sampled=sum(
             1 for package in packages if package.paid_at is not None),
+        comped_packages_sampled=comped,
         distinct_users=distinct_users,
         package_burn_through_ratio=round(burn_ratio, 4),
         p50_candidate_response_s=(
