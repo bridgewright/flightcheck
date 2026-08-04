@@ -8,12 +8,11 @@ from __future__ import annotations
 
 import pytest
 
+from fakes import FakeDatabase
 from scorer.api.comp import comped_account_ids, is_comped_account
 from scorer.api.db import PackageRow
 from scorer.api.deletion import collect_package_deletion_plan
 from scorer.api.quota import effective_total_sessions
-
-from fakes import FakeDatabase
 
 
 def _package(**overrides) -> PackageRow:
