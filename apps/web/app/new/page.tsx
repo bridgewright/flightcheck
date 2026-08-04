@@ -3,6 +3,7 @@
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 
+import LinkedInPdfHelp from "@/components/LinkedInPdfHelp";
 import type { CreatePackageBody } from "@/lib/types";
 import { ERROR_TEXT, FIELD, FINE_PRINT, MAIN_READING, PAGE_HEADING, PRIMARY_BUTTON, SECTION_HEADING } from "@/lib/ui";
 
@@ -125,14 +126,21 @@ export default function NewPackagePage() {
             Export it from LinkedIn: open your profile, then <em>More &gt; Save to PDF</em>.
             Upload that PDF here.
           </p>
-          <label className="flex flex-col gap-1 text-fine">
-            LinkedIn profile PDF
+          <div className="flex flex-col gap-1 text-fine">
+            {/* The row is the bubble's anchor below sm (full width, over the
+              field); from sm up the details element inside the helper takes
+              over and the bubble hangs off the trigger itself. */}
+            <span className="relative flex items-center gap-1.5">
+              <label htmlFor="linkedin-profile-pdf">LinkedIn profile PDF</label>
+              <LinkedInPdfHelp inputId="linkedin-profile-pdf" />
+            </span>
             <input
+              id="linkedin-profile-pdf"
               type="file"
               accept="application/pdf"
               onChange={(e) => setLinkedinFile(e.target.files?.[0] ?? null)}
             />
-          </label>
+          </div>
           <label className="flex flex-col gap-1 text-fine">
             &hellip;or paste your profile as text
             <textarea
