@@ -1,5 +1,36 @@
 # Changelog
 
+## [Unreleased]
+
+### Added
+
+- **A "?" beside the LinkedIn upload that shows where the PDF comes from.**
+  The one-line hint stays; the new trigger opens a speech-bubble walkthrough
+  in three steps — a small animated mock of your profile page clicking
+  "More", then "Save to PDF" in the menu that opens, then the file arriving
+  where the upload is. Step counter, Back and Next, replay per step; outside
+  click or Escape closes it; the form underneath never locks. The mock is
+  drawn in the product's own palette and names LinkedIn's labels as text —
+  no screenshots of another company's interface, which would sit in a public
+  repository and go stale the next time that menu moves. Reduced motion gets
+  the finished picture and the caption. DECISIONS 039.
+
+- **Every surface that names a package now says which company.** The
+  employer identity from the package card — favicon mark when the pasted JD
+  URL is the employer's own site, company name always, nothing when the JD
+  never named one — now follows the package everywhere: the top-bar switcher
+  and its rows, /home, /sessions, /progress, /rubric, /checkout. Two
+  packages for the same role stop being indistinguishable. One shared
+  component decides; no surface re-derives the rule. DECISIONS 038.
+
+### Fixed
+
+- **The top-bar menus dismiss like menus.** Clicking anywhere else closes
+  them; Escape closes and puts focus back on the trigger; opening one closes
+  the other. They were native `details` elements, which only close from
+  their own button. With JavaScript disabled they still toggle exactly as
+  before. DECISIONS 038.
+
 ## [0.8.0] — 2026-08-04
 
 ### Changed

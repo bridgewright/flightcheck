@@ -1314,3 +1314,85 @@ they were introduced for.*
   wanting structure (a reason, an expiry, an audit trail); or a customer
   deletes a paid package with sessions remaining, which is the case above and
   needs an answer before this reaches many customers.
+
+## 038 — the employer identity is one component, and the menus dismiss like menus (2026-08-05)
+
+**Context.** F-54 put the company name and favicon on the /packages card, and
+the operator's own screen immediately showed why that could not stay a
+one-screen fact: two packages for the same role read identically everywhere
+else — the top-bar switcher, /home's subtitle, /sessions, /progress, /rubric,
+/checkout. Separately, both top-bar menus were native `details` elements, so
+an open menu stayed open until its own button was clicked again, which no
+menu a customer knows does.
+
+- **Chosen — one decision module, one component, two variants.** Which
+  identity a package shows is decided in exactly one place
+  (`components/package-identity.ts`): the rubric's company name, trimmed, or
+  nothing; the favicon mark only when `companyMarkHost` accepts the customer's
+  own pasted JD URL — the same rule, the same code, as the F-54 card
+  (`lib/company-mark.ts`). Pages render `PackageIdentity` and are forbidden by a
+  wiring test from re-deriving either rule. Two variants because the seats
+  differ: a CHIP pill beside page headings, and a bare row inside menus —
+  measured against the tokens, not taste: CHIP's ground equals MENU_ROW's
+  hover ground, so a chip inside a hovered row dissolves into it.
+- **Chosen — light dismiss as a primitive over `details`, not a menu
+  library.** `LightDismiss` renders the same server-renderable
+  `details/summary` structure the bar already had and adds the missing
+  behaviour while open: outside pointerdown closes, Escape closes and returns
+  focus to the trigger. With JavaScript disabled it degrades to exactly
+  today's click-to-toggle menu — the failure mode is the status quo, which is
+  the property a login-wall product's chrome should have.
+- **Rejected — the native Popover API:** it would remove the wrapper's
+  listeners, but its no-JS state is "never opens" rather than "toggles", and
+  anchor positioning for it is not yet dependable across the browsers this
+  product supports. Revisit when baseline support makes the wrapper strictly
+  deletable.
+- **Rejected — rendering the identity ad hoc per page:** /rubric already had
+  its own hand-written company line after two days, which is how one rule
+  becomes five near-copies. That line is now the component too.
+- **Accepted, documented:** two menus opened purely by keyboard can coexist
+  until Escape or a pointer arrives (keyboard activation fires no
+  pointerdown). That matches the previous baseline, where nothing closed
+  them at all.
+- **Revisit when:** a third consumer needs the popover to carry
+  `aria-controls` through to the summary (the F-55 helper wanted it and
+  shipped without), or the Popover API's baseline reaches this product's
+  browser floor.
+
+## 039 — a walkthrough that shows another product's screen without picturing it (2026-08-05)
+
+**Context.** F-55: the LinkedIn PDF hint on /new ("open your profile, then
+More > Save to PDF") tells, and the user asked for a helper that shows — a
+speech-bubble walkthrough, step counter, an animation of what to click, in
+the manner of first-visit product tours. Three references were researched
+and are cited in the spec (`driver.js` for the footer grammar — counter
+left, Back disabled rather than hidden, Next relabels to Done so the footer
+never reflows; Shepherd.js for the beak carrying the bubble's own surface
+and focus returning to the trigger; NN/g on instructional overlays for one
+action per step and user-paced advancement).
+
+- **Chosen — an abstract mock drawn in the product's own tokens,** naming
+  LinkedIn's real labels ("More", "Save to PDF") as text, animated as a
+  one-shot per step entry with a replay control, under the F-21 budget:
+  0.3s-class segments, transform and opacity only, no loops; reduced motion
+  gets the final frame plus the caption, losing nothing.
+- **Chosen — non-modal, pull-only.** Nothing auto-opens it, no backdrop, no
+  focus trap; the form underneath stays interactive and the field stays
+  optional. Tab switches and window blur do not close it, because the reader
+  is expected to spend a minute inside LinkedIn and must find the bubble on
+  the same step when they return. Done closes and focuses the file input.
+- **Rejected — real LinkedIn screenshots:** another company's trade dress
+  committed to a public MIT repository, stale the next time LinkedIn moves a
+  menu, and a localization trap. The text hint already carries the exact
+  labels; the mock only has to carry the geometry.
+- **Rejected — screenshots hosted behind the deploy:** solves the repo
+  problem, keeps the staleness and the trade-dress question, and adds an
+  asset pipeline for a decoration.
+- **Rejected — a tour library:** driver.js and its peers assume they own the
+  page (backdrop, scroll lock, global styles) to point at elements that are
+  actually there. This walkthrough points at another product's screen; only
+  the bubble grammar transfers, and that is copyable without the dependency.
+- **Revisit when:** a second walkthrough target appears (the resume PDF field
+  is the obvious candidate), at which point the step model and stage
+  components generalize; or LinkedIn renames the menu, which the captions
+  name and the mock must follow.
