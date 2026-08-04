@@ -67,6 +67,32 @@ ticked without being satisfied.
    `corpus` bucket root. The corpus is never committed to this repo (workspace
    confidentiality rule) — only `services/scorer/corpus/README.md` and the neutral
    example doc live in git.
+5. **Google sign-in — this gates the deploy, it is not a follow-up.** Since
+   DECISIONS 036 Google is the only door: if the provider is unconfigured, the
+   sign-in button dead-ends on a provider error page and nobody, including the
+   operator, can reach a signed-in screen. Configure it **before** the web app
+   ships.
+   1. Google Cloud console > APIs & Services > OAuth consent screen: external,
+      app name `flightcheck`, support email, and the two policy links
+      (`/legal/privacy`, `/legal/terms`). Scopes stay at the defaults —
+      `email`, `profile`, `openid`. The product reads no other Google data and
+      asking for more would be a consent screen that overstates what it does.
+   2. Credentials > Create credentials > OAuth client ID > Web application.
+      Authorized redirect URI is **Supabase's** callback, not the app's:
+      `https://<project-ref>.supabase.co/auth/v1/callback`. The app's own
+      `/auth/callback` is where Supabase returns afterwards; it is not
+      registered with Google.
+   3. Supabase > Authentication > Providers > Google: enable, paste the client
+      ID and secret.
+   4. Supabase > Authentication > URL Configuration: Site URL is the
+      production origin, and Redirect URLs include `<origin>/auth/callback`
+      plus any preview origin that needs to sign in.
+   5. Verify by signing in on production, not by reading the settings page
+      back: open `/login`, continue with Google, and confirm you land on the
+      account that holds your existing packages and orders rather than a new
+      empty one. Supabase links a Google identity to an existing user only
+      when that user's email is **confirmed**, so this is the check that the
+      link actually happened.
 
 ## 2. Railway (scoring worker)
 

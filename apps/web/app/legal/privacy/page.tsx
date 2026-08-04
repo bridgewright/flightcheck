@@ -29,8 +29,8 @@ export default async function PrivacyPage() {
       <LegalPage title="Privacy Policy" updated="August 3, 2026">
         <LegalSection heading="What we collect">
           <p>
-            Your email address (it is how you sign in; we use magic links, no
-            passwords), the job description and any resume or profile text you
+            Your name and email address, read from the Google account you sign in
+            with (we never see a password), the job description and any resume or profile text you
             paste in, the audio recordings of your sessions, the transcripts
             made from them, the reports we score from both, and your order
             history. That is the whole list. We do not run advertising

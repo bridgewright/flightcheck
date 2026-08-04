@@ -8,18 +8,21 @@ import { DIVIDER, LABEL, PAGE_HEADING, PRIMARY_BUTTON, SECONDARY_BUTTON, SUB_HEA
 import { getViewer } from "@/lib/viewer";
 
 import DeleteAccountSection from "./delete-account";
-import EmailChangeSection from "./email-change";
 
 // S12. Deliberately small: account facts, the microphone check, one honest
 // paragraph about recordings, the two account actions, and sign-out. No
 // profile editing, no theme toggle — those do not exist yet, and a settings
 // page that hints at more than the product does would be lying.
 //
-// v0.6 turns both account actions into real ones: deletion runs on the
-// customer's own click (F-34) instead of an email to support, and the
-// sign-in address can be changed (F-35). Both are client components because
-// both need in-place state — a confirmation the user types, an outcome that
-// is honestly conditional — and neither is a navigation.
+// v0.6 turned deletion into a real action: it runs on the customer's own
+// click (F-34) instead of an email to support. It is a client component
+// because it needs in-place state — a confirmation the user types — and is
+// not a navigation.
+//
+// The v0.6 email-change section (F-35) came out with the email link
+// (DECISIONS 036). Under Google sign-in the address on this account is
+// Google's; a form that changed it here would leave the two disagreeing and
+// still would not change how anyone signs in.
 
 // The proxy matcher normally redirects signed-out visitors to /login before
 // this renders (pinned in tests/settings-gate.test.ts). This is the fallback
@@ -68,12 +71,10 @@ export default async function SettingsPage() {
             <span className={SUB_HEADING}>{viewer.email ?? "No email on record"}</span>
           </p>
           <p className={SUBTLE}>
-            You sign in with a magic link sent to this address. Passwordless, always.
+            You sign in with Google, so this is the address on that Google
+            account. We never see a password. To use a different address, sign
+            in with the Google account that holds it.
           </p>
-        </Section>
-
-        <Section label="Change sign-in email">
-          <EmailChangeSection accountEmail={viewer.email} />
         </Section>
 
         <Section label="Order history">

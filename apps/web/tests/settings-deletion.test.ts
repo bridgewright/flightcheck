@@ -25,7 +25,6 @@ function squish(source: string): string {
 
 const page = read("../app/settings/page.tsx");
 const deleteSection = read("../app/settings/delete-account.tsx");
-const emailSection = read("../app/settings/email-change.tsx");
 
 describe("settings screen composition", () => {
   it("has the Delete account & data section", () => {
@@ -33,8 +32,11 @@ describe("settings screen composition", () => {
     expect(page).toContain("DeleteAccountSection");
   });
 
-  it("has the email change section", () => {
-    expect(page).toContain("EmailChangeSection");
+  it("offers no way to change the sign-in address", () => {
+    // DECISIONS 036: the address belongs to the Google account now. A form
+    // here would change the row and not the credential.
+    expect(page).not.toContain("EmailChangeSection");
+    expect(page).not.toContain("Change sign-in email");
   });
 
   it("keeps the support mailto as the fallback path", () => {
@@ -85,28 +87,11 @@ describe("deletion confirmation", () => {
   });
 });
 
-describe("email change honesty", () => {
-  it("routes the outcome through the non-enumerating helper", () => {
-    expect(emailSection).toContain("emailChangeOutcome");
-    expect(emailSection).toContain("validateNewEmail");
-  });
-
-  it("never claims the address changed on submit", () => {
-    // Supabase emails a confirmation link; the old address keeps working
-    // until it is opened. A success state here would be a lie the user
-    // discovers at their next sign-in. The copy also has to survive secure
-    // email change being on, where the CURRENT address gets a link too —
-    // hence "every link we send" rather than "that link".
-    expect(emailSection).not.toMatch(/Email (changed|updated)/i);
-    expect(squish(emailSection)).toContain("every link we send has been opened");
-  });
-});
-
 describe("settings copy register", () => {
   it("carries no exclamation marks anywhere on the screen", () => {
     // A "!" following a word character is an exclamatory sentence; the
     // negations and strict comparisons TypeScript needs never look like it.
-    for (const source of [page, deleteSection, emailSection]) {
+    for (const source of [page, deleteSection]) {
       expect(source).not.toMatch(/\w!/);
     }
   });

@@ -40,7 +40,7 @@ flowchart LR
     W[Next.js server routes<br/>Vercel — holds secrets]
     K[Scoring worker — FastAPI<br/>Railway — services/scorer]
     S[(Supabase<br/>Postgres + Storage)]
-    A[Supabase Auth<br/>email magic link — cookie session]
+    A[Supabase Auth<br/>Google sign-in — cookie session]
     P[Polar<br/>merchant of record — hosted checkout]
     OAI[OpenAI Realtime<br/>gpt-realtime interviewer]
     G[Gemini 2.5 Flash<br/>research / rubric / transcribe / judge]
@@ -65,7 +65,7 @@ flowchart LR
 
 ### Quickstart — the product
 
-1. Sign in at https://flightcheck.vercel.app/login — an email link, no password.
+1. Sign in at https://flightcheck.vercel.app/login — Continue with Google, no password.
    Everything past the landing page is account-scoped: `/new` answers a
    signed-out visitor with a 307 to `/login?next=%2Fnew`. Then open
    https://flightcheck.vercel.app/new and paste a job description or its URL;

@@ -73,8 +73,8 @@ export default async function TermsPage() {
         <LegalSection heading="Your part">
           <p>
             You need a browser with a working microphone, and sessions are
-            conducted in English. Keep your sign-in link to yourself. Anyone
-            holding it can use your sessions. Use this hosted service for your
+            conducted in English. Keep your Google account secure. Anyone
+            who can sign in as you can use your sessions. Use this hosted service for your
             own interview preparation; do not probe it, scrape it, or resell
             access to it. That restriction covers the hosted service only:
             flightcheck&apos;s source code is published separately under the

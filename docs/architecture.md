@@ -8,7 +8,7 @@ flowchart LR
     W[Next.js server routes<br/>Vercel — holds secrets]
     K[Scoring worker — FastAPI<br/>Railway — services/scorer]
     S[(Supabase<br/>Postgres + Storage)]
-    A[Supabase Auth<br/>email magic link — cookie session]
+    A[Supabase Auth<br/>Google sign-in — cookie session]
     P[Polar<br/>merchant of record — hosted checkout]
     OAI[OpenAI Realtime<br/>gpt-realtime interviewer]
     G[Gemini 2.5 Flash<br/>research / rubric / transcribe / judge]
@@ -44,8 +44,8 @@ ordering on the `K → S` edge is [DECISIONS 025](../DECISIONS.md).
 ### Data flow (one package, one session)
 
 1. **Sign-in, then intake** — everything past the landing page is
-   account-scoped: Supabase Auth mails a magic link, `/auth/callback` exchanges
-   it for a cookie session, and each guarded route re-checks that session
+   account-scoped: Supabase Auth redirects to Google, `/auth/callback` exchanges
+   the returned code for a cookie session, and each guarded route re-checks that session
    server-side before it renders. The browser then POSTs JD text or URL plus
    optional resume/LinkedIn PDFs (base64) to a Next.js route, which forwards to
    the worker with the bearer token. The owner is read from the cookie session
