@@ -93,10 +93,17 @@ function PackageSwitcher({
       <ul>
         {packages.map((pkg) => (
           <li key={pkg.id}>
+            {/* Centered, not baseline-aligned: the left group is a flex
+                container, and a flex container hands its first item's
+                baseline up. With a favicon mark first that is the image's
+                bottom edge, which dropped the count 3.9px below the title on
+                exactly the rows that carry a mark (headless Chrome
+                measurement). Centering is exact for the two texts because
+                both are text-fine. */}
             <Link
               href={switchHref(pkg.id, path)}
               aria-current={pkg.id === active.id ? "true" : undefined}
-              className={`${MENU_ROW} flex items-baseline justify-between gap-3 ${
+              className={`${MENU_ROW} flex items-center justify-between gap-3 ${
                 pkg.id === active.id ? "font-medium" : ""
               }`}
             >

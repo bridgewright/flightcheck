@@ -101,4 +101,16 @@ describe("the switcher names the employer (F-56, top-bar half)", () => {
     // Hover stays the stock MENU_ROW transition.
     expect(source).toContain("${MENU_ROW} flex");
   });
+
+  it("centers the row instead of baseline-aligning it", () => {
+    // The left group is now a nested flex container, and a flex container
+    // hands its first item's baseline up to the row. With a favicon mark
+    // first, that baseline is the image's bottom edge: measured in headless
+    // Chrome, items-baseline dropped the used/total count 3.9px below the
+    // title and grew only the rows that carry a mark. items-center is exact
+    // here because the title and the count share text-fine, so mark-less
+    // rows keep their old pixels and marked rows stop zigzagging.
+    expect(source).toContain("${MENU_ROW} flex items-center justify-between");
+    expect(source).not.toContain("items-baseline");
+  });
 });
