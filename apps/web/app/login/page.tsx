@@ -1,6 +1,7 @@
 "use client";
 
 import { Suspense, useState } from "react";
+import Image from "next/image";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 
@@ -70,6 +71,21 @@ function LoginForm() {
           disabled={pending}
           onClick={() => void continueWithGoogle()}
         >
+          {/* The mark carries the recognition; the words carry the meaning.
+           *
+           * `alt=""` because it is not information: the label beside it
+           * already says Google, and a screen reader announcing "Google logo,
+           * Continue with Google" says it twice. `unoptimized` because this
+           * is a 1KB vector that the image optimizer can only make bigger and
+           * slower, and it is the first paint of the first screen. */}
+          <Image
+            src="/google-g.svg"
+            alt=""
+            width={16}
+            height={16}
+            unoptimized
+            className="shrink-0"
+          />
           Continue with Google
         </button>
         <p className={`${FINE_PRINT} mt-4`}>
