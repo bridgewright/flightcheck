@@ -187,6 +187,20 @@ Changes to targets are recorded here with date and reason — never silently.
   and no sender domain. The settings screen loses its change-sign-in-address
   form with it: the address belongs to the Google account now. DECISIONS 036.
 
+- **v0.9 (2026-08-05):** three interface corrections, each recorded here
+  before its code. The new-package screen gains a step-by-step visual
+  walkthrough beside the LinkedIn PDF upload: the export lives several
+  clicks deep in LinkedIn's own menus, and one line of fine print was the
+  only guide the screen offered. The package's company identity, the
+  favicon mark where the pasted JD URL earns one and the company name
+  beside it, appears on every surface that names a package rather than on
+  the /packages card alone, and the card's honesty rule travels with it:
+  no company in the rubric, nothing rendered, never a placeholder. And the
+  top-bar menus dismiss the way menus are expected to, on a click outside
+  and on Escape, where today they stay open until their own trigger is
+  clicked again; with JavaScript disabled they keep today's
+  click-to-toggle behaviour.
+
 > 2026-08-02: v0.4 scope added above — accounts move ahead of payments
 > because login-gated interviews protect session integrity and per-session
 > cost, and the dashboard is what makes a 6-session package usable. The
