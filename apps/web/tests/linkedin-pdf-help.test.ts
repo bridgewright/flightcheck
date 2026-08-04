@@ -101,6 +101,16 @@ describe("dismissal is light, and only light", () => {
     expect(help).toContain('querySelector("summary")');
   });
 
+  it("gives the close glyph the hit area the spec demands", () => {
+    // Spec section 3: "hit area at least 24px via padding". The root scale is
+    // clamp(14px, 87.5%, 20px), so on a default browser 1rem is 14px and
+    // size-6 lands at 21px: under the bar. size-7 is 24.5px, over it.
+    const close = help.match(/aria-label="Close"[\s\S]{0,160}?className=\{`([^`]*)`\}/);
+    expect(close, "the close button lost its class list").not.toBeNull();
+    expect(close![1]).toContain("size-7");
+    expect(close![1]).not.toContain("size-6");
+  });
+
   it("restarts at step 1 on every reopen", () => {
     expect(help).toMatch(/if \(details\.open\) setState\(\(current\) => reset\(current\)\);/);
   });
@@ -182,5 +192,32 @@ describe("no LinkedIn pixels, no image assets at all", () => {
     for (const file of FEATURE_FILES) {
       expect(read(file), `${file} carries a dash`).not.toMatch(/[–—]/);
     }
+  });
+
+  it("holds the feature files to the token vocabulary directly", () => {
+    // tests/token-vocabulary.test.ts walks components/ recursively, so these
+    // files are already inside its glob; this is the spec's item 15 pinned
+    // where a move out of that walk would still fail, comments included.
+    const palette =
+      /\b(?:text|bg|border|divide|ring|decoration|fill|stroke|outline|shadow)-(?:neutral|gray|grey|slate|zinc|stone|red|orange|amber|yellow|lime|green|emerald|teal|cyan|blue|indigo|violet|purple|fuchsia|pink|rose)-\d{2,3}\b/;
+    for (const file of FEATURE_FILES) {
+      const source = read(file);
+      expect(source, `${file} uses a raw palette colour`).not.toMatch(palette);
+      expect(source, `${file} carries a dark: variant`).not.toMatch(/\bdark:/);
+      expect(source, `${file} hard-codes a colour`).not.toMatch(/#[0-9a-fA-F]{6}\b|\brgba?\(/);
+    }
+  });
+
+  it("keeps the local PRESS mirror in step with lib/ui.ts", () => {
+    // The gesture is a private const in lib/ui.ts, mirrored here until the
+    // one line out-of-zone export lands at merge. Byte drift between the two
+    // would ship two different control feels on one screen; this rebuilds the
+    // original from its parts and demands the mirror match it exactly.
+    const ui = read("lib/ui.ts");
+    const ease = ui.match(/const EASE_UI = "([^"]+)"/)?.[1];
+    const press = ui.match(/const PRESS = `([^`]+)\$\{EASE_UI\}`/)?.[1];
+    expect(ease, "lib/ui.ts no longer declares EASE_UI as scanned").toBeDefined();
+    expect(press, "lib/ui.ts no longer declares PRESS as scanned").toBeDefined();
+    expect(help, "the PRESS mirror drifted from lib/ui.ts").toContain(`"${press}${ease}"`);
   });
 });

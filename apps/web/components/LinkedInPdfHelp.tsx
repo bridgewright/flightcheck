@@ -150,7 +150,7 @@ export default function LinkedInPdfHelp({ inputId }: { inputId: string }) {
             type="button"
             aria-label="Close"
             onClick={onClose}
-            className={`-m-1 flex size-6 shrink-0 cursor-pointer items-center justify-center text-ink-faint hover:text-ink ${PRESS}`}
+            className={`-m-1.5 flex size-7 shrink-0 cursor-pointer items-center justify-center text-ink-faint hover:text-ink ${PRESS}`}
           >
             ×
           </button>
