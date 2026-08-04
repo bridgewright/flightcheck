@@ -20,7 +20,10 @@ import { CHIP } from "@/lib/ui";
 //   contributes only the mark, the name, and truncation.
 
 const VARIANT_CLASSES = {
-  chip: `${CHIP} gap-1.5`,
+  // min-w-0 on both: a flex item's min-content floor would otherwise keep the
+  // inner truncate span from ever activating, and a long company name on a
+  // narrow screen must truncate, not overflow the line.
+  chip: `${CHIP} min-w-0 gap-1.5`,
   row: "inline-flex min-w-0 items-center gap-1.5",
 } as const;
 

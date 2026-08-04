@@ -23,7 +23,7 @@ import {
   reset,
 } from "@/components/linkedin-help/walkthrough-steps";
 import { ENTRY_SECONDS, FADE_EASE, REVEAL_ATTRIBUTE } from "@/components/motion/entry";
-import { FINE_PRINT, SECONDARY_BUTTON, SUB_HEADING } from "@/lib/ui";
+import { FINE_PRINT, PRESS, SECONDARY_BUTTON, SUB_HEADING } from "@/lib/ui";
 
 // The "?" beside the LinkedIn PDF upload on /new (F-55): a speech bubble
 // popover holding a three step walkthrough of where that PDF comes from.
@@ -40,11 +40,6 @@ import { FINE_PRINT, SECONDARY_BUTTON, SUB_HEADING } from "@/lib/ui";
 // Done is the one extra route out: it closes the bubble and moves focus to
 // the real file input, whose standard focus ring lands the pointing.
 // Reopening always restarts at step 1.
-
-/** Mirrors the private PRESS gesture in lib/ui.ts. Exporting it there is a
- * one line change outside this track's owned files; hoist at merge. */
-const PRESS =
-  "transition-[background-color,color,border-color,opacity] duration-300 ease-[cubic-bezier(0.165,0.84,0.44,1)]";
 
 /** STEP_NUMERAL's chip geometry with the field-to-ink control gesture. A
  * rounded rectangle, not a circle: only label chips are fully round. */

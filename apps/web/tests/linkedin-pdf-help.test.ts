@@ -208,16 +208,13 @@ describe("no LinkedIn pixels, no image assets at all", () => {
     }
   });
 
-  it("keeps the local PRESS mirror in step with lib/ui.ts", () => {
-    // The gesture is a private const in lib/ui.ts, mirrored here until the
-    // one line out-of-zone export lands at merge. Byte drift between the two
-    // would ship two different control feels on one screen; this rebuilds the
-    // original from its parts and demands the mirror match it exactly.
-    const ui = read("lib/ui.ts");
-    const ease = ui.match(/const EASE_UI = "([^"]+)"/)?.[1];
-    const press = ui.match(/const PRESS = `([^`]+)\$\{EASE_UI\}`/)?.[1];
-    expect(ease, "lib/ui.ts no longer declares EASE_UI as scanned").toBeDefined();
-    expect(press, "lib/ui.ts no longer declares PRESS as scanned").toBeDefined();
-    expect(help, "the PRESS mirror drifted from lib/ui.ts").toContain(`"${press}${ease}"`);
+  it("takes the PRESS gesture from lib/ui.ts instead of mirroring it", () => {
+    // The gesture shipped as a byte-identical local mirror while PRESS was
+    // private to lib/ui.ts; the export landed at merge. An import cannot
+    // drift, so the only thing left to hold is that nobody forks it again.
+    expect(help).toMatch(/import \{[^}]*\bPRESS\b[^}]*\} from "@\/lib\/ui"/);
+    expect(help, "a local PRESS declaration would fork the gesture again").not.toMatch(
+      /\bconst PRESS\b/,
+    );
   });
 });

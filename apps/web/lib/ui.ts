@@ -56,7 +56,7 @@
 // ink, and field (3.53:1) going to ink. Quiet is a step down the ink ramp, not
 // a transparency.
 const EASE_UI = "ease-[cubic-bezier(0.165,0.84,0.44,1)]";
-const PRESS = `transition-[background-color,color,border-color,opacity] duration-300 ${EASE_UI}`;
+export const PRESS = `transition-[background-color,color,border-color,opacity] duration-300 ${EASE_UI}`;
 
 // --- Actions --------------------------------------------------------------
 //
