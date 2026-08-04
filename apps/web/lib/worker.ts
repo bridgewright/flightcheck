@@ -221,6 +221,27 @@ export interface SessionSummary {
   // Older rows predate the column, so the list renders without a date rather
   // than inventing one.
   created_at?: string | null;
+  stopped_reporting?: boolean;
+}
+
+export async function heartbeatSession(sessionId: string): Promise<void> {
+  const path = `/api/sessions/${encodeURIComponent(sessionId)}/heartbeat`;
+  await workerJson(`POST ${path}`, await workerFetch(path, { method: "POST" }));
+}
+
+export async function reclaimSession(
+  sessionId: string,
+  packageId: string,
+  userId: string,
+): Promise<void> {
+  const path = `/api/sessions/${encodeURIComponent(sessionId)}/reclaim`;
+  await workerJson(
+    `POST ${path}`,
+    await workerFetch(path, {
+      method: "POST",
+      body: JSON.stringify({ package_id: packageId, user_id: userId }),
+    }),
+  );
 }
 
 export interface PackageSummary {

@@ -59,6 +59,7 @@ def test_session_row_defaults_keep_pre_migration_rows_valid():
     )
     assert row.updated_at is None
     assert row.secret_mints == 0
+    assert row.last_heartbeat_at is None
 
 
 def test_order_row_optional_fields_default_to_none():
@@ -355,6 +356,23 @@ def test_supabase_increment_secret_mints_reads_then_writes():
     stub_missing = StubSupabase([[]])
     with pytest.raises(KeyError):
         SupabaseDatabase(stub_missing).increment_secret_mints("missing")
+
+
+def test_supabase_heartbeat_does_not_touch_updated_at():
+    stub = StubSupabase([[{"id": "sess-1"}]])
+    SupabaseDatabase(stub).touch_session_heartbeat("sess-1")
+    call = stub.log[0]
+    assert set(call["update"]) == {"last_heartbeat_at"}
+    assert call["eq"] == [("id", "sess-1"), ("status", "planned")]
+
+
+def test_supabase_reclaim_is_one_conditional_update():
+    stub = StubSupabase([[{"id": "sess-1"}]])
+    assert SupabaseDatabase(stub).reclaim_session("sess-1", 60) is True
+    call = stub.log[0]
+    assert call["update"] == {"status": "abandoned"}
+    assert call["eq"] == [("id", "sess-1"), ("status", "planned")]
+    assert call["lt"][0] == "last_heartbeat_at"
 
 
 def test_supabase_increment_secret_mints_null_counts_as_zero():

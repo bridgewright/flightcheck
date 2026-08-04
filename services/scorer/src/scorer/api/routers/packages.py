@@ -26,6 +26,8 @@ from scorer.api.deps import Deps
 from scorer.api.jobs import compile_package_job
 from scorer.api.quota import sessions_used
 from scorer.api.responses import rate_limited
+from scorer.api.routers.sessions import stopped_reporting
+from scorer.config import load_product_config
 from scorer.intake.jd import JdFetchError
 from scorer.intake.profile import extract_pdf_text
 from scorer.promptsafe import (
@@ -98,6 +100,7 @@ def build_router(deps: Deps) -> APIRouter:
     storage = deps.storage
     client = deps.client
     limits = deps.limits
+    session_config = load_product_config().session
     package_create_limiter = deps.package_create_limiter
     compile_retry_attempts = deps.compile_retry_attempts
     fetch_jd = deps.fetch_jd
@@ -412,6 +415,11 @@ def build_router(deps: Deps) -> APIRouter:
                 "index": row.index,
                 "status": row.status,
                 "created_at": row.created_at,
+                "stopped_reporting": stopped_reporting(
+                    row,
+                    session_config.hard_cut_minutes,
+                    session_config.heartbeat_stale_after_s,
+                ),
                 # Verdict + stage ride the summary (WP-D) so the archive can
                 # label every row without an N+1 of full-session GETs.
                 "scoring_stage": row.scoring_stage,
@@ -420,6 +428,7 @@ def build_router(deps: Deps) -> APIRouter:
                 "verdict": row.report.verdict if row.report is not None else None,
             }
             for row in db.list_sessions(package_id)
+            if row.status != "abandoned"
         ]}
 
     @router.get("/packages/{package_id}/progress")

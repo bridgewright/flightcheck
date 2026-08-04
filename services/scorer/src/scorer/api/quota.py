@@ -22,7 +22,7 @@ from scorer.api.db import PackageRow, SessionRow
 TERMINAL_STATUS = "failed_permanent"
 
 # Rows that keep their paid slot and are handed back by create_session.
-RETRIABLE_STATUSES = frozenset({"planned", "failed", "insufficient"})
+RETRIABLE_STATUSES = frozenset({"planned", "failed", "insufficient", "abandoned"})
 
 # Resuming one of these costs an attempt (the row already burned a run);
 # resuming a "planned" row is free -- nothing was spent yet.

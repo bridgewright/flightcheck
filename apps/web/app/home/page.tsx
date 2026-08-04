@@ -4,6 +4,7 @@ import Link from "next/link";
 import JourneyStrip from "@/components/JourneyStrip";
 import PollRefresh from "@/components/PollRefresh";
 import ReadinessGauge from "@/components/ReadinessGauge";
+import ReclaimSessionButton from "@/components/ReclaimSessionButton";
 import RetryCompileButton from "@/components/RetryCompileButton";
 import SessionList from "@/components/SessionList";
 import SessionTicket from "@/components/SessionTicket";
@@ -210,6 +211,7 @@ export default async function HomePage({
   const outcome = await lastOutcome(active, sessions);
   const unpaid = isUnpaid(active);
   const expiry = expiryLine(active, new Date());
+  const dropped = sessions.find((session) => session.stopped_reporting === true);
 
   return (
     <Shell viewer={viewer} path="/home" packages={packages} activePackageId={active.id}>
@@ -251,6 +253,8 @@ export default async function HomePage({
                 See pricing
               </Link>
             )
+          ) : dropped ? (
+            <ReclaimSessionButton sessionId={dropped.id} packageId={active.id} />
           ) : (
             <StartSessionButton
               packageId={active.id}

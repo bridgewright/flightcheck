@@ -28,6 +28,8 @@ class SessionConfig(BaseModel):
 
     budget_minutes: int
     hard_cut_minutes: int
+    heartbeat_interval_s: int
+    heartbeat_stale_after_s: int
     silence_duration_ms: int
 
 

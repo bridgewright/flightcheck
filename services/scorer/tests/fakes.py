@@ -384,6 +384,23 @@ class FakeDatabase:
             update={"secret_mints": count})
         return count
 
+    def touch_session_heartbeat(self, session_id: str) -> None:
+        row = self.sessions[session_id]
+        if row.status != "planned":
+            raise KeyError(session_id)
+        self.sessions[session_id] = row.model_copy(update={
+            "last_heartbeat_at": self._now().isoformat(),
+        })
+
+    def reclaim_session(self, session_id: str, older_than_s: float) -> bool:
+        row = self.sessions[session_id]
+        cutoff = self._now() - timedelta(seconds=older_than_s)
+        if (row.status != "planned" or row.last_heartbeat_at is None
+                or datetime.fromisoformat(row.last_heartbeat_at) >= cutoff):
+            return False
+        self.sessions[session_id] = row.model_copy(update={"status": "abandoned"})
+        return True
+
     def list_stale_packages(self, status: str,
                             older_than_s: float) -> list[PackageRow]:
         cutoff = self._now() - timedelta(seconds=older_than_s)

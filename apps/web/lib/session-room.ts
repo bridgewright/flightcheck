@@ -18,6 +18,9 @@ export const SESSION_BUDGET_MINUTES = 20;
 /** [session] hard_cut_minutes. */
 export const SESSION_HARD_CUT_MINUTES = 25;
 
+/** [session] heartbeat_interval_s. */
+export const HEARTBEAT_INTERVAL_S = 15;
+
 /** Session budget shown to the candidate. */
 export const SESSION_BUDGET_S = SESSION_BUDGET_MINUTES * 60;
 

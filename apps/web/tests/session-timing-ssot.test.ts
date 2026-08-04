@@ -5,6 +5,7 @@ import { describe, expect, it } from "vitest";
 
 import {
   HARD_CUT_S,
+  HEARTBEAT_INTERVAL_S,
   SESSION_BUDGET_MINUTES,
   SESSION_BUDGET_S,
   SESSION_HARD_CUT_MINUTES,
@@ -59,6 +60,11 @@ describe("session timing single source", () => {
   it("matches the hard cut the room auto-ends on", () => {
     expect(SESSION_HARD_CUT_MINUTES).toBe(session.hard_cut_minutes);
     expect(HARD_CUT_S).toBe(session.hard_cut_minutes * 60);
+  });
+
+  it("matches the heartbeat interval the room sends", () => {
+    expect(session.heartbeat_interval_s).toBeTypeOf("number");
+    expect(HEARTBEAT_INTERVAL_S).toBe(session.heartbeat_interval_s);
   });
 
   it("keeps the hard cut above the budget, whatever the config says", () => {

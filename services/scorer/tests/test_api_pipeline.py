@@ -698,10 +698,12 @@ def test_list_package_sessions_orders_and_shapes_payload(monkeypatch):
     assert response.json() == {"sessions": [
         {"id": first.id, "index": 1, "status": "planned",
          "created_at": first.created_at, "scoring_stage": None,
-         "report_available": False, "overall": None, "verdict": None},
+         "stopped_reporting": False, "report_available": False,
+         "overall": None, "verdict": None},
         {"id": second.id, "index": 2, "status": "scored",
          "created_at": second.created_at, "scoring_stage": None,
-         "report_available": False, "overall": None, "verdict": None},
+         "stopped_reporting": False, "report_available": False,
+         "overall": None, "verdict": None},
     ]}
 
 

@@ -13,6 +13,8 @@ def test_session_limits():
     config = load_product_config()
     assert config.session.budget_minutes == 20
     assert config.session.hard_cut_minutes == 25
+    assert config.session.heartbeat_interval_s == 15
+    assert config.session.heartbeat_stale_after_s == 60
     assert config.session.silence_duration_ms == 900
 
 

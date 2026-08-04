@@ -49,8 +49,16 @@ class CompleteSessionRequest(BaseModel):
     audio_path: str
 
 
+class ReclaimSessionRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    user_id: str
+    package_id: str
+
+
 def live_session(rows: Iterable[SessionRow],
-                 hard_cut_minutes: float) -> SessionRow | None:
+                 hard_cut_minutes: float,
+                 heartbeat_stale_after_s: float | None = None) -> SessionRow | None:
     """The session somebody is in RIGHT NOW, or None (F-38).
 
     Three conditions, all derived from state that already exists:
@@ -74,9 +82,32 @@ def live_session(rows: Iterable[SessionRow],
             continue
         if row.updated_at is None:
             continue
-        if datetime.fromisoformat(row.updated_at) >= cutoff:
-            return row
+        if datetime.fromisoformat(row.updated_at) < cutoff:
+            continue
+        if row.last_heartbeat_at is not None and heartbeat_stale_after_s is not None:
+            heartbeat_cutoff = datetime.now(UTC) - timedelta(
+                seconds=heartbeat_stale_after_s
+            )
+            if datetime.fromisoformat(row.last_heartbeat_at) < heartbeat_cutoff:
+                continue
+        return row
     return None
+
+
+def stopped_reporting(row: SessionRow, hard_cut_minutes: float,
+                      heartbeat_stale_after_s: float) -> bool:
+    """Whether a heartbeat-aware live row may be reclaimed now."""
+    if (row.status != "planned" or row.secret_mints < 1
+            or row.updated_at is None or row.last_heartbeat_at is None):
+        return False
+    hard_cut = datetime.now(UTC) - timedelta(minutes=hard_cut_minutes)
+    heartbeat_cut = datetime.now(UTC) - timedelta(
+        seconds=heartbeat_stale_after_s
+    )
+    return (
+        datetime.fromisoformat(row.updated_at) >= hard_cut
+        and datetime.fromisoformat(row.last_heartbeat_at) < heartbeat_cut
+    )
 
 
 def _empty_profile() -> CandidateProfile:
@@ -123,6 +154,9 @@ def build_router(deps: Deps) -> APIRouter:
     # session's own hard cut rather than a new knob: an interview cannot
     # run longer than that, so neither can the lock.
     session_hard_cut_minutes = load_product_config().session.hard_cut_minutes
+    heartbeat_stale_after_s = (
+        load_product_config().session.heartbeat_stale_after_s
+    )
 
     @router.post("/sessions")
     def create_session(body: CreateSessionRequest):
@@ -156,7 +190,9 @@ def build_router(deps: Deps) -> APIRouter:
         # session and both record, and the recording key is derived from the
         # session index -- so one upload silently overwrites the other and
         # the report is scored against whichever audio survived.
-        in_progress = live_session(existing, session_hard_cut_minutes)
+        in_progress = live_session(
+            existing, session_hard_cut_minutes, heartbeat_stale_after_s
+        )
         if in_progress is not None:
             return JSONResponse(
                 status_code=409,
@@ -173,6 +209,9 @@ def build_router(deps: Deps) -> APIRouter:
             key=lambda row: row.index,
         )
         for row in retriable:
+            if row.status == "abandoned":
+                db.set_session_status(row.id, "planned")
+                row = db.get_session(row.id)
             if row.status not in RESUME_COUNTED_STATUSES:
                 # A planned row never ran: resuming it is free, always.
                 return _session_response(row, package)
@@ -298,6 +337,51 @@ def build_router(deps: Deps) -> APIRouter:
                 },
             )
         return {"session_id": session_id, "secret_mints": count}
+
+    @router.post("/sessions/{session_id}/heartbeat")
+    def heartbeat_session(session_id: str):
+        try:
+            row = db.get_session(session_id)
+        except KeyError as exc:
+            raise HTTPException(status_code=404, detail="session not found") from exc
+        if row.status != "planned":
+            return JSONResponse(
+                status_code=409,
+                content={"error": "session is not running", "code": "session-not-live"},
+            )
+        db.touch_session_heartbeat(session_id)
+        return {"session_id": session_id, "status": "alive"}
+
+    @router.post("/sessions/{session_id}/reclaim")
+    def reclaim_session(session_id: str, body: ReclaimSessionRequest):
+        try:
+            row = db.get_session(session_id)
+            package = db.get_package(body.package_id)
+        except KeyError as exc:
+            raise HTTPException(status_code=404, detail="session not found") from exc
+        if row.package_id != package.id or package.user_id != body.user_id:
+            raise HTTPException(status_code=404, detail="session not found")
+        if row.status == "abandoned":
+            return {"session_id": session_id, "status": "abandoned"}
+        if not stopped_reporting(
+            row, session_hard_cut_minutes, heartbeat_stale_after_s
+        ):
+            return JSONResponse(
+                status_code=409,
+                content={
+                    "error": "session is not eligible for reclaim",
+                    "code": "session-not-reclaimable",
+                },
+            )
+        if not db.reclaim_session(session_id, heartbeat_stale_after_s):
+            return JSONResponse(
+                status_code=409,
+                content={
+                    "error": "session reported alive before reclaim completed",
+                    "code": "session-not-reclaimable",
+                },
+            )
+        return {"session_id": session_id, "status": "abandoned"}
 
     @router.get("/sessions/{session_id}/transcript")
     def get_session_transcript(session_id: str) -> dict:

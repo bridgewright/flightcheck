@@ -60,6 +60,14 @@ def test_the_room_mirrors_the_configured_hard_cut(session_config, room_source):
     )
 
 
+def test_the_room_mirrors_the_configured_heartbeat_interval(
+    session_config, room_source
+):
+    assert _ts_int_const(room_source, "HEARTBEAT_INTERVAL_S") == (
+        session_config["heartbeat_interval_s"]
+    )
+
+
 def test_the_room_derives_seconds_from_minutes(room_source):
     # The seconds constants must stay derived, not re-typed: a literal
     # `export const SESSION_BUDGET_S = 1200;` would pass the two checks

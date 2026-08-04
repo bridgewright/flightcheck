@@ -49,13 +49,15 @@ ticked without being satisfied.
 2. SQL Editor: run every file in `docs/supabase/migrations/` in filename order
    — as of v0.7 that is `001_init.sql`, `002_scoring_stage.sql`,
    `003_accounts_multisession.sql`, `004_session_transcript.sql`,
-   `005_payments_trial_expiry.sql`, `006_token_hygiene.sql`: paste each file's
+   `005_payments_trial_expiry.sql`, `006_token_hygiene.sql`,
+   `007_session_heartbeat.sql`: paste each file's
    full contents, run it, confirm `Success. No rows returned`, then move to
    the next. Do not stop at the last one this list happened to name when it
    was written — run `ls docs/supabase/migrations/` and apply every file it
    returns. Later migrations assume earlier ones already ran, so the order is
    not optional. `001_init.sql` creates the `packages` and `sessions` tables;
-   `006_token_hygiene.sql` adds the two `sessions` columns the worker's hot
+   `006_token_hygiene.sql` adds two `sessions` columns and
+   `007_session_heartbeat.sql` adds the nullable room liveness clock the worker's hot
    session read selects (`SESSION_COLUMNS` in `api/db.py`), so a deployment
    that skips it fails every session read rather than degrading. When
    upgrading an existing deployment, apply any new migration files **before**

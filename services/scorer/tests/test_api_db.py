@@ -566,7 +566,7 @@ def test_session_columns_cover_every_row_field_except_transcript():
     assert set(SESSION_COLUMNS.split(",")) == {
         "id", "package_id", "index", "status", "scoring_stage",
         "session_plan", "audio_path", "report", "created_at",
-        "updated_at", "secret_mints",
+        "updated_at", "secret_mints", "last_heartbeat_at",
         "access_token_expires_at", "token_revoked_at",
     }
 

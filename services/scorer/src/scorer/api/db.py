@@ -30,7 +30,7 @@ from scorer.schemas import (
 # get_transcript is the only reader of that column, and it reads nothing else.
 SESSION_COLUMNS = (
     "id,package_id,index,status,scoring_stage,session_plan,"
-    "audio_path,report,created_at,updated_at,secret_mints,"
+    "audio_path,report,created_at,updated_at,secret_mints,last_heartbeat_at,"
     # Migration 006. The web guard (lib/session-capability.ts) fails closed on
     # anything it cannot read and treats both nulls as "not yet", so selecting
     # them changes nothing until a value exists -- but without selecting them
@@ -131,6 +131,9 @@ class SessionRow(BaseModel):
     # secret_mints counts realtime-secret mints for the per-session cap.
     updated_at: str | None = None
     secret_mints: int = 0
+    # v0.8 (migration 007): NULL means this session predates heartbeats and
+    # retains the hard-cut-only lock behavior.
+    last_heartbeat_at: str | None = None
     # v0.6 (migration 006): capability-token lifetime for the room's package
     # access_token. Both NULL by default -- a null expiry means "no expiry",
     # which is the pre-006 behaviour, and a null revocation means "never
@@ -331,6 +334,12 @@ class Database(Protocol):
         ValueError. Reports and transcripts are columns on sessions and go
         with them.
         """
+
+    def touch_session_heartbeat(self, session_id: str) -> None:
+        """Stamp only last_heartbeat_at for a planned session."""
+
+    def reclaim_session(self, session_id: str, older_than_s: float) -> bool:
+        """Atomically abandon a planned row only if its heartbeat is stale."""
     # -------------------------------------------------- v0.6 usage metrics
 
     def list_recent_packages(self, limit: int) -> list[PackageRow]:
@@ -409,6 +418,7 @@ def _to_session_row(data: dict) -> SessionRow:
         ),
         updated_at=data.get("updated_at"),
         secret_mints=data.get("secret_mints") or 0,
+        last_heartbeat_at=data.get("last_heartbeat_at"),
     )
 
 
@@ -644,6 +654,22 @@ class SupabaseDatabase:
         if not updated:
             raise KeyError(session_id)
         return count
+
+    def touch_session_heartbeat(self, session_id: str) -> None:
+        data = (self._client.table("sessions")
+                .update({"last_heartbeat_at": _now_iso()})
+                .eq("id", session_id).eq("status", "planned")
+                .execute().data)
+        if not data:
+            raise KeyError(session_id)
+
+    def reclaim_session(self, session_id: str, older_than_s: float) -> bool:
+        data = (self._client.table("sessions")
+                .update({"status": "abandoned"})
+                .eq("id", session_id).eq("status", "planned")
+                .lt("last_heartbeat_at", _stale_cutoff_iso(older_than_s))
+                .execute().data)
+        return bool(data)
 
     def list_stale_packages(self, status: str,
                             older_than_s: float) -> list[PackageRow]:

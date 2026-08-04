@@ -35,6 +35,7 @@ import {
   ECHO_OUTLIVE_MS,
   ECHO_START_WINDOW_MS,
   HARD_CUT_S,
+  HEARTBEAT_INTERVAL_S,
   INITIAL_GUARD_STATE,
   INITIAL_SILENCE_STATE,
   SESSION_BUDGET_S,
@@ -136,6 +137,16 @@ export default function SessionRoom({
   const messageArrivedRef = useRef(false);
   const responseRequestedRef = useRef(false);
   const responseDoneRef = useRef(false);
+
+  useEffect(() => {
+    if (phase !== "live") return;
+    const beat = () => {
+      void fetch(`/api/sessions/${sessionId}/heartbeat`, { method: "POST" });
+    };
+    beat();
+    const heartbeat = setInterval(beat, HEARTBEAT_INTERVAL_S * 1000);
+    return () => clearInterval(heartbeat);
+  }, [phase, sessionId]);
 
   // --- Recording teardown (awaits the final MediaRecorder chunk) --------
   const stopRecorder = useCallback(
