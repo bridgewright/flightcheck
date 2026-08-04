@@ -50,7 +50,7 @@ ticked without being satisfied.
    — as of v0.7 that is `001_init.sql`, `002_scoring_stage.sql`,
    `003_accounts_multisession.sql`, `004_session_transcript.sql`,
    `005_payments_trial_expiry.sql`, `006_token_hygiene.sql`,
-   `007_session_heartbeat.sql`: paste each file's
+   `007_session_heartbeat.sql`, `008_package_comp.sql`: paste each file's
    full contents, run it, confirm `Success. No rows returned`, then move to
    the next. Do not stop at the last one this list happened to name when it
    was written — run `ls docs/supabase/migrations/` and apply every file it
@@ -121,6 +121,12 @@ ticked without being satisfied.
      The dashboard sometimes displays a `/rest/v1` endpoint form; the SDKs
      append path prefixes themselves, so a `/rest/v1` suffix breaks every call.
    - `SUPABASE_SERVICE_ROLE_KEY`
+   - `COMP_ACCOUNT_IDS` — optional. Comma-separated Supabase **user ids**
+     whose new packages are comped: full session count, no order, no expiry
+     (DECISIONS 037). Unset grants nothing, which is the state every fresh
+     deployment starts in, and there is no wildcard. Ids rather than email
+     addresses because this repository is public and an id is not a contact
+     detail. Setting it does not change packages that already exist.
    - `WORKER_API_TOKEN` — generate once with `openssl rand -hex 32`; the same
      value goes to Vercel below
    - optional: `SSL_CERT_FILE`
