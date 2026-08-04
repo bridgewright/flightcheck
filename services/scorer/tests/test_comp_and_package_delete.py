@@ -120,3 +120,36 @@ class TestTheConverterKeepsEveryColumn:
                 f"_to_package_row drops {name}: it is in the model and in the "
                 "row dict, and the converter does not copy it"
             )
+
+
+class TestRubricReuseCannotBreakCreation:
+    """The lookup that took a package down with it.
+
+    Observed in production 2026-08-04: a JD fetched from a careers page ran
+    to tens of kilobytes, the equality filter put all of it in a URI,
+    PostgREST answered 400, and create_package raised AFTER inserting the
+    row. The customer got a package that said Compiling forever.
+
+    Reuse is an optimization. A miss costs one compile; a raise costs the
+    whole request.
+    """
+
+    def test_a_long_jd_skips_the_lookup_instead_of_risking_the_uri(self):
+        from scorer.api.db import _REUSE_LOOKUP_MAX_CHARS
+
+        # A budget for a URI, not a product rule, so it only has to be big
+        # enough for real repeat pastes and small enough for a server.
+        assert 1_000 <= _REUSE_LOOKUP_MAX_CHARS <= 12_000
+
+    def test_the_source_treats_a_failed_lookup_as_a_miss(self):
+        from pathlib import Path
+
+        import scorer.api.db as db_module
+
+        source = Path(db_module.__file__).read_text()
+        # [-1], not [1]: the name appears twice, on the Protocol stub and on
+        # the implementation, and only the second one has a body.
+        body = source.split("def find_ready_rubric_by_jd")[-1].split("\n    def ")[0]
+        assert "_REUSE_LOOKUP_MAX_CHARS" in body
+        assert "except PostgrestAPIError" in body
+        assert body.count("return None") >= 3

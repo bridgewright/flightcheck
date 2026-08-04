@@ -8,10 +8,12 @@ callers handle one exception type regardless of backend.
 """
 from __future__ import annotations
 
+import logging
 import secrets
 from datetime import UTC, datetime, timedelta
 from typing import Literal, Protocol, runtime_checkable
 
+from postgrest.exceptions import APIError as PostgrestAPIError
 from pydantic import BaseModel, ConfigDict
 from supabase import Client, create_client
 
@@ -28,6 +30,14 @@ from scorer.schemas import (
 # list_sessions). The transcript column is deliberately absent: transcripts
 # run 25-60KB per session and must never ride the dashboard/status polls.
 # get_transcript is the only reader of that column, and it reads nothing else.
+logger = logging.getLogger(__name__)
+
+# How long a job description may be and still be looked up by equality. The
+# filter travels in a URI, so this is a URI-length budget, not a product
+# rule: 8KB of JD leaves room for the rest of the query inside the 16KB most
+# servers accept. Past it the compile just runs.
+_REUSE_LOOKUP_MAX_CHARS = 8_000
+
 SESSION_COLUMNS = (
     "id,package_id,index,status,scoring_stage,session_plan,"
     "audio_path,report,created_at,updated_at,secret_mints,last_heartbeat_at,"
@@ -529,10 +539,27 @@ class SupabaseDatabase:
         # on NULL and would match every unowned row instead of matching nothing.
         if user_id is None:
             return None
-        data = (self._client.table("packages").select("*")
-                .eq("jd_text", jd_text).eq("user_id", user_id)
-                .eq("status", "ready")
-                .order("created_at", desc=True).limit(1).execute().data)
+        # PostgREST takes filters in the query string, so this equality puts
+        # the WHOLE job description in a URI. A long posting (a fetched
+        # careers page runs to tens of kilobytes) overruns what the server
+        # accepts and comes back 400 "JSON could not be generated" -- observed
+        # in production 2026-08-04, where it aborted create_package AFTER the
+        # row existed and left the package compiling forever.
+        #
+        # This lookup is an optimization: on a miss the compile simply runs.
+        # So a long JD skips it rather than risking the request, and any
+        # failure below is swallowed for the same reason.
+        if len(jd_text) > _REUSE_LOOKUP_MAX_CHARS:
+            return None
+        try:
+            data = (self._client.table("packages").select("*")
+                    .eq("jd_text", jd_text).eq("user_id", user_id)
+                    .eq("status", "ready")
+                    .order("created_at", desc=True).limit(1).execute().data)
+        except PostgrestAPIError:
+            logger.warning(
+                "rubric reuse lookup failed; compiling instead of reusing")
+            return None
         if not data:
             return None
         row = _to_package_row(data[0])
