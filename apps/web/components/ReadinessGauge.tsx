@@ -3,6 +3,7 @@ import type { Verdict } from "@/lib/types";
 import {
   CHIP,
   CHIP_READY,
+  DIVIDER,
   LABEL,
   MUTED,
   PROSE_WIDTH,
@@ -196,15 +197,25 @@ export default function ReadinessGauge({
     );
   }
 
+  // The rule under the heading is what makes this column agree with whatever
+  // stands beside it. On /home the sessions list draws its first row border at
+  // exactly `heading + gap`; without this, the gauge's own rail was the first
+  // horizontal line on this side, 22px lower and a different weight, and two
+  // columns whose only horizontal lines disagree read as a broken row rather
+  // than as a list and an instrument. Both columns now derive that y the same
+  // way (heading, one gap, one hairline), so it survives a type-scale change
+  // instead of matching by a hand-tuned margin.
   return (
     <div className="flex flex-col gap-2.5">
       <h2 className={LABEL}>Readiness</h2>
-      {tracks}
-      <span
-        className={`self-start ${verdict === "ready" ? CHIP_READY : CHIP}`}
-      >
-        {verdict === null ? "Not scored yet" : VERDICT_LABELS[verdict]}
-      </span>
+      <div className={`flex flex-col gap-2.5 border-t pt-3 ${DIVIDER}`}>
+        {tracks}
+        <span
+          className={`self-start ${verdict === "ready" ? CHIP_READY : CHIP}`}
+        >
+          {verdict === null ? "Not scored yet" : VERDICT_LABELS[verdict]}
+        </span>
+      </div>
     </div>
   );
 }

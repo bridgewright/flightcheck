@@ -1,5 +1,38 @@
 # Changelog
 
+## [Unreleased]
+
+### Changed
+
+- **Sign-in is Google, and it is the only door.** The passwordless email link
+  is gone: `signInWithOtp`, the email field, the sent state and the resend
+  cooldown that existed to survive Supabase's OTP throttle. `/login` is one
+  button. The email provider is disabled in the hosted project too, so the
+  removal holds at the API and not only in the UI.
+
+  Why: the email link made delivery of a message the entire auth surface, on a
+  sender the product does not control and whose own documentation calls it
+  rate-limited and best-effort — under a message that never said
+  "flightcheck", carried "powered by Supabase", and offered to unsubscribe the
+  reader from their own sign-in link. Google is the account these customers
+  already have, and it arrives with the address verified. The cost, stated
+  plainly: someone without a Google account cannot sign in at all.
+
+  DECISIONS 036, which supersedes the passwordless half of 022. Existing
+  accounts were not stranded — Supabase links a Google identity to a user
+  whose email is confirmed, and the sign-in was walked on production to prove
+  it landed on the account holding the existing package and order rather than
+  on a new empty one.
+
+### Removed
+
+- **The change-sign-in-email form on `/settings`** (F-35, shipped in v0.6).
+  The address belongs to the Google account now; a form here would have
+  changed our row without changing anyone's credential.
+- **`NEXT_PUBLIC_GOOGLE_AUTH_ENABLED`.** The flag existed because the provider
+  was unconfigured. It is configured, and a sign-in button behind a flag is
+  how a login screen ships with no way into it.
+
 ## [0.7.0] — 2026-08-04
 
 **The F-21 design pass**, which restyled every screen and then spent two rounds
