@@ -3,7 +3,6 @@ import type { Verdict } from "@/lib/types";
 import {
   CHIP,
   CHIP_READY,
-  EMPTY_RULE,
   LABEL,
   MUTED,
   PROSE_WIDTH,
@@ -68,9 +67,17 @@ function Track({
     <div className="flex flex-col gap-1">
       <div className="flex items-baseline justify-between gap-3">
         <span className={LABEL}>{label}</span>
-        {value === null ? (
-          <span className={EMPTY_RULE} aria-hidden="true" />
-        ) : (
+        {/* Nothing at all when there is no reading, not a placeholder rule.
+         *
+         * `EMPTY_RULE` is the right token for an empty cell in a table, where
+         * a column has to keep its shape and the reader is scanning for a
+         * value that would be there. Here it rendered as a short line floating
+         * at the top right of an otherwise empty track, with no number beside
+         * it and nothing labelling it, and it read as a drawing error rather
+         * than as an absence. The verdict chip under the same gauge already
+         * says "Not scored yet" in words, so the rule was adding suspicion
+         * rather than information. */}
+        {value === null ? null : (
           <span className={SCORE_NUMBER}>
             {value.toFixed(decimals)}
             <span className={SCORE_DENOMINATOR}> / {MAX_SCORE}</span>

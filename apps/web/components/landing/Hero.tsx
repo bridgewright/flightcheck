@@ -2,7 +2,7 @@ import MountReveal from "@/components/motion/MountReveal";
 import { DISPLAY_HEADING, HERO_BLOOM, MUTED, PROSE_WIDTH } from "@/lib/ui";
 
 import CtaRow from "./CtaRow";
-import { HERO } from "./copy";
+import { HERO, SIGNED_IN_CTA } from "./copy";
 
 // The claim, the offer, and the two ways in. Nothing else.
 //
@@ -23,7 +23,7 @@ import { HERO } from "./copy";
 //
 // Mobile needs no special case any more, because there is only one column.
 
-export default function Hero() {
+export default function Hero({ signedIn = false }: { signedIn?: boolean }) {
   return (
     <div className="pt-2 pb-4">
       {/* The pink half of the reference's pastel language: a large soft cloud
@@ -42,7 +42,8 @@ export default function Hero() {
             the eye loses the line. */}
         <p className={`${MUTED} ${PROSE_WIDTH}`}>{HERO.body}</p>
         <CtaRow
-          label={HERO.primaryCta}
+          label={signedIn ? SIGNED_IN_CTA : HERO.primaryCta}
+          href={signedIn ? "/home" : undefined}
           secondary={{ label: HERO.secondaryCta, href: "/sample-report" }}
           microcopy={false}
         />

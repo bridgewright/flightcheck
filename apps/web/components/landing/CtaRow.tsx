@@ -17,9 +17,15 @@ import { TRIAL_MICROCOPY } from "./copy";
 // three text elements rather than four. It is a prop rather than a second
 // component for the reason the file exists: forking CtaRow would let the offer
 // say one thing in the hero and another further down. The line still appears
-// under all three of the page's other CTAs, so the dossier's "every scroll
-// block re-offers one CTA with the microcopy under it" survives everywhere
-// except the first viewport. That is a real trade, recorded as one.
+// under the page's one other CTA, so the dossier's "every scroll block
+// re-offers one CTA with the microcopy under it" survives everywhere except
+// the first viewport. That is a real trade, recorded as one. It said "all
+// three" while this page had six blocks; it has four now, and only the close
+// renders this component with microcopy.
+//
+// It also comes off for a signed-in visitor, wherever it appears: "First
+// session free. No card." is an offer to someone deciding whether to open an
+// account, and it is noise to someone who already has one.
 
 export default function CtaRow({
   label,

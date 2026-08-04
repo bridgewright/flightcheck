@@ -1,14 +1,13 @@
 import type { Metadata } from "next";
-import Link from "next/link";
 
 import CtaRow from "@/components/landing/CtaRow";
 import Hero from "@/components/landing/Hero";
 import HowItWorks from "@/components/landing/HowItWorks";
 import PricingBlock from "@/components/landing/PricingBlock";
 import Section from "@/components/landing/Section";
-import { CLOSING, HERO } from "@/components/landing/copy";
+import { CLOSING, HERO, SIGNED_IN_CTA } from "@/components/landing/copy";
 import Shell from "@/components/Shell";
-import { LINK, PAGE_HEADING, SUBTLE } from "@/lib/ui";
+import { PAGE_HEADING, SUBTLE } from "@/lib/ui";
 import { getViewer } from "@/lib/viewer";
 import { publicMetadata } from "./site";
 
@@ -57,18 +56,13 @@ export default async function LandingPage() {
   const viewer = await getViewer();
   return (
     <Shell viewer={viewer} width="wide">
-      <Hero />
+      <Hero signedIn={viewer !== null} />
 
-      {viewer ? (
-        // Two sentences rather than one dash, and the link now names its own
-        // destination instead of opening with a status.
-        <p className={`${SUBTLE} pb-2`}>
-          You are signed in.{" "}
-          <Link href="/home" className={LINK}>
-            Go to your home
-          </Link>
-        </p>
-      ) : null}
+      {/* There was a "You are signed in. Go to your home" line here.
+          It is gone because the CTA above now says that itself: a signed-in
+          visitor was being offered "Sign in and start" with a note underneath
+          explaining they were already signed in, which is one screen saying
+          two things at once. The destination it pointed at is now the button. */}
 
       <Section label="How it works" heading="Paste a job. Talk. Read the verdict." revealBody={false}>
         <HowItWorks />
@@ -86,7 +80,12 @@ export default async function LandingPage() {
       <Section>
         <div className="flex flex-col items-center gap-5 text-center">
           <h2 className={PAGE_HEADING}>{CLOSING.heading}</h2>
-          <CtaRow label={CLOSING.cta} align="center" />
+          <CtaRow
+            label={viewer ? SIGNED_IN_CTA : CLOSING.cta}
+            href={viewer ? "/home" : undefined}
+            align="center"
+            microcopy={viewer === null}
+          />
         </div>
       </Section>
     </Shell>

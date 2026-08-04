@@ -11,6 +11,7 @@ import {
   HOW_IT_WORKS,
   PRICING,
   PRICING_LINES,
+  SIGNED_IN_CTA,
   SESSION_MINUTES,
   TRIAL_MICROCOPY,
 } from "@/components/landing/copy";
@@ -34,6 +35,7 @@ const PROSE: string[] = [
   HERO.primaryCta,
   HERO.secondaryCta,
   TRIAL_MICROCOPY,
+  SIGNED_IN_CTA,
   PRICING.heading,
   PRICING.priceNote,
   PRICING.trialNote,

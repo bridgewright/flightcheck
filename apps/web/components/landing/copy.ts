@@ -25,6 +25,18 @@ export const SESSION_MINUTES = Math.round(SESSION_BUDGET_S / 60);
 /** Under every primary CTA. The single most load-bearing line on the page. */
 export const TRIAL_MICROCOPY = "First session free. No card.";
 
+/**
+ * What the CTA says to someone who is already signed in.
+ *
+ * The landing is public and a signed-in visitor lands on it often, from a
+ * bookmark or the logo. It was offering them "Sign in and start" while a
+ * separate line underneath told them they were signed in already, so one
+ * screen said both things at once. The offer is not the same offer for them:
+ * there is nothing to sign up for and no first session to promise free, so the
+ * button changes and the trial microcopy comes off.
+ */
+export const SIGNED_IN_CTA = "Go to your home";
+
 export const HERO = {
   heading: "Would you pass the interview today?",
   // Twenty words, counted, because the hero is a single moment and a
