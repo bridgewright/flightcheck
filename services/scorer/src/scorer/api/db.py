@@ -96,6 +96,10 @@ class PackageRow(BaseModel):
     access_token: str
     status: str                       # "compiling" -> "ready" | "failed"
     jd_text: str
+    # The URL the customer pasted, when they pasted one rather than the text.
+    # It is the only domain this product can honestly associate with the
+    # employer (F-54), and it is null far more often than not.
+    jd_url: str | None = None
     candidate_profile: CandidateProfile | None
     rubric: Rubric | None
     user_id: str | None = None
@@ -389,6 +393,7 @@ def _to_package_row(data: dict) -> PackageRow:
         access_token=data["access_token"],
         status=data["status"],
         jd_text=data["jd_text"] or "",
+        jd_url=data.get("jd_url"),
         candidate_profile=(
             CandidateProfile.model_validate(data["candidate_profile"])
             if data.get("candidate_profile") is not None

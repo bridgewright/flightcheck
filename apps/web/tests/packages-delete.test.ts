@@ -65,3 +65,39 @@ describe("the delete action", () => {
     expect(squish(actions)).toContain("nothing was deleted");
   });
 });
+
+describe("the company mark keeps the image policy intact", () => {
+  const route = read("../app/api/company-mark/[packageId]/route.ts");
+  const mark = read("../components/CompanyMark.tsx");
+  const headers = read("../lib/security-headers.ts");
+
+  it("is served from our own origin, so img-src stays 'self'", () => {
+    // Widening img-src to https: for a 16px decoration would give every
+    // future injected <img> a way to signal out of a product that renders
+    // model output. The proxy is what buys the policy staying tight.
+    expect(mark).toContain("src={`/api/company-mark/");
+    expect(headers).toContain('["img-src", ["\'self\'", "data:", "blob:"]]');
+  });
+
+  it("never lets the caller name the host", () => {
+    // The route takes a package id, reads that package's own stored URL, and
+    // vets it with the shared rule. That is what stops a proxy from being an
+    // open fetcher.
+    expect(route).toContain("listPackagesForUser");
+    expect(route).toContain("companyMarkHost");
+    expect(route).not.toMatch(/searchParams\.get\(\s*["'](url|host|domain)["']/);
+  });
+
+  it("bounds the request and refuses a redirect", () => {
+    expect(route).toContain('redirect: "manual"');
+    expect(route).toContain("AbortSignal.timeout");
+    expect(route).toContain("MAX_BYTES");
+    expect(route).toContain('startsWith("image/")');
+  });
+
+  it("fails into an absent mark rather than a broken one", () => {
+    expect(mark).toContain("onError");
+    expect(mark).toContain("setFailed(true)");
+    expect(route).toContain("status: 404");
+  });
+});

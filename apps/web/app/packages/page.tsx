@@ -1,10 +1,12 @@
 import Link from "next/link";
 
 import PollRefresh from "@/components/PollRefresh";
+import CompanyMark from "@/components/CompanyMark";
 import DeletePackageButton from "@/components/DeletePackageButton";
 import RetryCompileButton from "@/components/RetryCompileButton";
 import Shell from "@/components/Shell";
 import { deletePackageAction, retryCompileAction } from "@/app/packages/actions";
+import { companyMarkHost } from "@/lib/company-mark";
 import type { PillTone } from "@/lib/home";
 import {
   effectiveTotalSessions,
@@ -100,6 +102,9 @@ function PackageCard({
   // Effective quota (lib/home): an unpaid trial reads "of 1", never "of 6".
   const total = effectiveTotalSessions(pkg);
   const company = packageCompanyLine(pkg.company);
+  // The mark is only rendered when a domain we would actually fetch exists,
+  // so a package with no URL (most of them) never requests an image at all.
+  const markable = company !== null && companyMarkHost(pkg.jd_url) !== null;
   const pill = packagePill(pkg.status, pkg.sessions_used, total);
   const expiry = expiryLine(pkg, new Date());
   return (
@@ -112,7 +117,10 @@ function PackageCard({
           {/* The employer, when the JD named one. Absent rather than blank:
               see packageCompanyLine. */}
           {company === null ? null : (
-            <p className={`${SUBTLE} text-balance`}>{company}</p>
+            <p className={`${SUBTLE} flex items-start gap-1.5 text-balance`}>
+              {markable ? <CompanyMark packageId={pkg.id} /> : null}
+              {company}
+            </p>
           )}
         </div>
         <span

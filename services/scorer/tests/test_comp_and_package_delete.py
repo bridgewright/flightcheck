@@ -106,7 +106,8 @@ class TestTheConverterKeepsEveryColumn:
 
         row = {
             "id": "pkg-1", "access_token": "tok", "status": "ready",
-            "jd_text": "jd", "candidate_profile": None, "rubric": None,
+            "jd_text": "jd", "jd_url": "https://example.com/jobs/1",
+            "candidate_profile": None, "rubric": None,
             "user_id": "user-1", "total_sessions": 6, "is_trial": False,
             "paid_at": "2026-08-01T00:00:00+00:00",
             "comped_at": "2026-08-04T00:00:00+00:00",

@@ -583,6 +583,9 @@ def build_router(deps: Deps) -> APIRouter:
                 "company": (
                     package.rubric.company if package.rubric is not None else None
                 ),
+                # The pasted JD URL, so the web can decide whether a company
+                # mark is even possible before it renders an image element.
+                "jd_url": package.jd_url,
                 "is_trial": package.is_trial,
                 "paid_at": package.paid_at,
                 "comped_at": package.comped_at,

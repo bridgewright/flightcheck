@@ -255,6 +255,9 @@ export interface PackageSummary {
   /** The employer, from the compiled rubric. Null while compiling, and null
    * when the JD never named one (F-54). */
   company?: string | null;
+  /** The URL the customer pasted, when they pasted one. The only domain this
+   * product can honestly tie to the employer (F-54). */
+  jd_url?: string | null;
   // v0.5: exposed by the worker's summaries (Track C) so lists can render
   // trial/paid/expiry state honestly. Optional because a pre-v0.5 worker
   // omits them; treat absence like the defaults (not trial, unpaid).
