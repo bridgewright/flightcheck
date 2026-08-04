@@ -1,12 +1,19 @@
 # PLAYBOOK — reusable patterns from building flightcheck
 
-Patterns that survived contact with real APIs, real audio, real money, and
-real eval numbers. Everything here is written from the shipped implementation
-through v0.5.0 — rubric compilation, raw-audio delivery scoring, the paid
-product, and the parallel process that builds them. File paths are real,
-numbers come from recorded runs, and anything unshipped is labeled unshipped
-rather than planned. See [RETRO.md](RETRO.md) for the failures that produced
-these patterns.
+Patterns that survived contact with real APIs, real audio, real money, real
+eval numbers, and an adversarial review of the work that produced them.
+Everything here is written from the shipped implementation through the v0.6
+batch and the F-21 design pass — rubric compilation, raw-audio delivery
+scoring, the paid product, the parallel process that builds them, and what two
+rounds of review found in that process. File paths are real, numbers come from
+recorded runs, and anything unshipped is labeled unshipped rather than
+planned. See [RETRO.md](RETRO.md) for the failures that produced these
+patterns.
+
+**Update note, 2026-08-04.** Chapter 4 is new, and the scope line above moved
+with it. That line is worth watching: it has been wrong twice now, both times
+by staying still while the work moved, which is the failure the rest of this
+note describes.
 
 **Update note, 2026-08-03.** Chapter 3 is new. Before it, no pattern had been
 added here since 2026-07-26 — a full release arc and 170+ commits, including
@@ -361,6 +368,197 @@ different beliefs about the same file. Cut the work so that cannot happen.
 The contract the tracks work under is public rather than folklore:
 [CLAUDE.md](CLAUDE.md) for how a release is built, [AGENTS.md](AGENTS.md) for
 the worktree, branch and no-push rules the delegated executor obeys.
+
+---
+
+## Chapter 4 — Making a rule stick, and reviewing the review
+
+These come from a design pass that restyled every screen, and from the two
+rounds of adversarial review that followed it. The review found more in the
+first round's fixes than the first round found in the original work, which is
+the single most useful thing in this chapter.
+
+### 4.1 A rule holds exactly as far as CI fails on it
+
+A house rule was shipped in v0.6: every screen consumes the shared token
+module rather than naming colours itself. Seven files had a scan and came out
+with zero raw colour literals. Forty-three files had no scan and accumulated
+about six hundred.
+
+That is the whole finding, and the correction is not "write the rule down more
+firmly".
+
+- **Make the gate the deliverable.** If a rule matters, the artifact you ship
+  is the check, not the paragraph. The paragraph is documentation of the
+  check.
+- **Scope the check to the whole tree on day one.** A scan that covers the
+  files you happened to be editing will be quoted later as covering the
+  product.
+- **Exemptions are a named list with a reason each, never a loosened
+  pattern.** And scope each exemption to the rule it actually argues for: one
+  file here was exempted from a colour rule for a real reason and thereby
+  dropped out of five unrelated rules, including the one covering the alt text
+  screen readers speak.
+
+### 4.2 Verify a gate by breaking it, with a spelling you did not have in mind
+
+Every check in this repo now has to fail on demand: make the defect it exists
+to catch, run the suite, watch it fail, revert. That discipline was in place
+for the design batch, and it still shipped eleven broken gates, because **the
+injection used to verify a regex is written by the person who just wrote the
+regex.** Six of them shared that cause:
+
+| The check | Passed on |
+| --- | --- |
+| "no horizontal hero" banned `flex-row` | `flex`, which is already a row |
+| "no gradients" required `-to-<side>` | `bg-radial`, `bg-conic`, `bg-[image:linear-gradient(...)]` |
+| "no black shadow" matched `rgb(0 0 0)` | `rgba(0, 0, 0, .05)` |
+| "no raw palette" required a numeric shade | `bg-white`, `text-black` |
+| "no hard-coded colour" looked inside Tailwind brackets | `style={{ color: "#8b5cf6" }}` |
+| opacity audit matched `prop-token/NN` | `border-b-ink/20`, `text-ink/[0.35]` |
+
+So: **write the injection as the adversary, not as the author.** Ask what else
+would satisfy the sentence the check is enforcing, and try that instead of the
+example you had in mind. Better, have someone else write it — every row above
+came from a reviewer whose brief was to break the check, not to confirm it.
+
+One structural rule fell out of the same review. **Do not let a check's own
+escape hatch be self-certifying.** An opacity-contrast table let each entry
+declare the bar it had to clear; every entry declared "none", so the test
+named "computes every opacity modifier" computed nothing, and a control label
+at 2.52:1 passed with a plausible note attached. Entries now declare what the
+thing *is* — text, a control boundary, a background — the bar is derived from
+that, and the declaration is checked against the utility's own prefix.
+
+### 4.3 Review the fixes, not just the work
+
+Run the review twice. The second round reads the **fixed** tree, with
+different reviewers, under one brief: *the fixes are the suspect.*
+
+The evidence for this is now two releases deep and consistent:
+
+| | Round 1 found | Round 2 found in Round 1's fixes |
+| --- | --- | --- |
+| v0.5 release audit | 8 rules failing | **10 regressions the fixes introduced** |
+| F-21 design pass | 5 dimensions of findings | **41 findings, 7 HIGH** |
+
+Why it works: a fix is written fast, by the person who was just proven wrong,
+under the impression that the problem is now understood. That is the worst
+possible state to write in and nobody notices from the inside.
+
+Practical shape:
+
+- **One reviewer per dimension, in parallel, each with a written brief naming
+  what is most likely wrong in their area.** Not a generic checklist.
+- **"A suspicion that cannot be demonstrated is not a finding."** Put that
+  sentence in the brief. It converts a list of worries into a list of
+  reproductions with commands and output attached.
+- **Ask for the negative result too** — which checks they attacked and could
+  not break. A gate that survived a real attempt is information; silence about
+  it is not.
+- **Round 2 reviewers must be different agents**, and must be told the tree
+  they are reading has already been fixed once.
+
+### 4.4 Check the built artifact, not only the source
+
+A page shipped reading `"an overall of 4.0single dimension below 3.0"`. The
+source was correct. The unit test printed the correct string. 1,740 tests
+passed. The production bundler was constant-folding a module-scope string that
+had been assembled by `+`-concatenating template literals, and folding dropped
+the literal text following the last interpolation of each part. A second
+instance corrupted a screen-reader sentence to `"4.0 out of 5with no dimension
+below 3.0"`.
+
+**No source-reading test can see this.** It was found by opening the deployed
+page and reading it.
+
+- **Assemble user-visible strings as one template literal**, never a `+` chain
+  with interpolations in it. There is no reason to prefer the chain and it is
+  a live hazard.
+- **Add one gate that greps the build output for canonical sentences.** Pick
+  fragments that start immediately after an interpolation, because that is
+  exactly the text this class of bug removes.
+- **When a gate depends on a build being present, make it say so when the
+  build is absent.** A silently-inert check is worse than no check: "copy
+  verified" gets read as "built copy verified".
+- Order the pipeline `build` then `test`, not the reverse, so the gate has
+  something to read.
+
+### 4.5 Prove the probe works before you trust a negative
+
+A reviewer reported that readers with Reduce Motion enabled were getting a
+blank page. The first check against it was `curl`ing the running server for
+the offending inline style and finding none — which looked like a refuted
+finding. The server had died minutes earlier. **Zero results from a dead
+process are indistinguishable from zero results from a clean one**, and "I
+verified it" was one sentence from being written about a real defect.
+
+- **A negative result needs a positive control.** Before believing "the string
+  is not there", confirm the probe finds a string you know *is* there.
+- The finding was real: entry motion ships its hidden state in the server
+  HTML, the reduced-motion branch rendered an element that never overrode it,
+  and React does not remove server-rendered attributes the client did not
+  re-declare. Nine blocks stayed invisible forever.
+- **Render the accessibility path in a test, or gate it in CSS where rendering
+  cannot betray you.** The test covering that branch passed throughout,
+  because it regex-matched the component's source. The fix is a CSS backstop
+  that does not depend on the client running at all.
+
+### 4.6 Two traps in scaling type and layout to the reader
+
+**A percentage that multiplies the reader's setting compounds. Floor it.**
+`html { font-size: 87.5% }` was chosen so the scale respects a reader who has
+enlarged their browser text, which is right. On a browser whose default is
+14px rather than the assumed 16px it produced an 11.48px body against a 13.1px
+target and a 784px reading column against 896px — so every screenshot the
+design was reviewed from was 12.5% smaller than the thing being designed, and
+the page kept reading as "too narrow" no matter how much the containers were
+widened. `clamp(14px, 87.5%, 20px)` keeps the multiplication and removes the
+compounding.
+
+**A screen that bypasses the layout shell will be missed by the layout pass.**
+Nine screens here render without the app chrome — the interview room, the
+loading skeletons, the error and not-found pages, the capability-link pages —
+and every one of them hand-rolled its page column. When the shell's widths
+moved, they did not. The interview room opened in a 588px column while the
+rest of the product read at 896px, and a report skeleton jumped 308px wider
+the moment content arrived. **Export the page column as a token, have the
+shell consume it too, and gate `<main>` against hand-rolled widths.** Scope
+that gate to `<main>`: a centred narrow block inside a page is ordinary
+layout, a page column is the thing there are exactly two of.
+
+### 4.7 Delete what nothing renders
+
+Four things came out of this codebase during review, on one shared reason: a
+token or component nothing renders is **a claim the design makes that no
+screen has to keep**.
+
+- Two link tokens that differed only in an underline colour neither reader
+  could see (1.23:1 and 1.61:1), one of which rested a link's whole affordance
+  on a token the stylesheet itself declares decorative and deliberately under
+  3:1. Collapsed to one.
+- An elevation token and its card, written for "the few things that genuinely
+  lift". Nothing lifted.
+- A framed-screenshot component, its gallery, and four captioned slots —
+  imported by nothing, with a placeholder promising captures "after the design
+  pass" that had already happened.
+- A client component whose own comment claimed four call sites and had zero.
+
+The tell is always the same: **a comment describing consumers that do not
+exist.** Grep for the symbol before you trust the sentence above it.
+
+### 4.8 A scan of computed styles tells you how, not what
+
+The design brief named a reference site. Scanning its computed styles for
+`radial-gradient` returned nothing, from which this project concluded the
+reference had no background field and reduced its own pastel language to a
+single nearly-invisible wash. The reference's hero carries a large soft pink
+cloud; it is drawn as an image, so a gradient scan could never see it. The
+user's report was "why did all the pastel elements disappear".
+
+**Look at the thing.** Automated inspection tells you how something is
+implemented. It does not tell you what it looks like, and for a visual brief
+that is the only question.
 
 ---
 

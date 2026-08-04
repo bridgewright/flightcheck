@@ -352,11 +352,11 @@ wrote down that it had solved the exact problem it was repeating**, and the
 sentence was persuasive enough that nobody re-read it against the code for a
 day.
 
-**Round two found twenty-six defects in round one's fixes.** This is the
-second time that has happened — v0.5's fix batch introduced ten regressions
-that only a second pass caught — so it is no longer a surprise, it is a
-property. Nine of the twenty-six were in gates written the day before, and six
-of those nine shared one cause: **a regex written against the single spelling
+**Round two returned forty-one findings against round one's fixes**, seven of
+them HIGH. This is the second time that has happened — v0.5's fix batch
+introduced ten regressions that only a second pass caught — so it is no longer
+a surprise, it is a property. Eleven were in gates written the day before, and
+six of those shared one cause: **a regex written against the single spelling
 its author had just been looking at.** The hero rule banned `flex-row` while
 `flex` on its own is already a row. The gradient rule demanded a `-to-<side>`
 suffix that Tailwind's radial and conic forms never take. The black-shadow
