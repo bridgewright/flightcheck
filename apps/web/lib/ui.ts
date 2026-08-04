@@ -31,7 +31,7 @@
 //   the account menu. A second was declared for cards that lift and no card
 //   ever lifted, so it went.
 //
-// Spec: plans/2026-08-03-f21-design-spec.md (private workspace).
+// Built from the design reference's measured computed styles (DECISIONS 035).
 
 // --- Interaction ----------------------------------------------------------
 //
@@ -217,8 +217,8 @@ export const STEP_NUMERAL =
 //
 // Deliberately NOT a traffic light. Rendering "Not yet ready" in red would
 // punish exactly the reader this product exists for, and colour-coded
-// certainty is on the competitive dossier's AVOID list because it is how
-// exam-band products manufacture confidence they have not earned. The verdict
+// certainty is ruled out here because it is how exam-band products
+// manufacture confidence they have not earned. The verdict
 // is carried by scale, position, and the threshold printed beside it. Sage
 // marks Ready because arriving is worth marking; nothing else is coloured.
 

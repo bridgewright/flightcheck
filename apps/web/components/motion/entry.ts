@@ -1,7 +1,7 @@
 // The entry-motion budget, as numbers rather than as a paragraph.
 //
 // One module so the budget can be read in one place and cannot drift between
-// leaves. Spec: plans/2026-08-03-f21-design-spec.md 6 (private workspace).
+// leaves. Motion budget and its reasoning: DECISIONS 031 and 035.
 //
 // Every value here is the spec's, not a preference:
 //

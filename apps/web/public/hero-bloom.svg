@@ -2,10 +2,10 @@
   <!--
     The hero cloud.
 
-    The reference (ode.com) opens on a large soft pink form with a long
-    tapering tail. It is drawn there as an image, which is why a scan of its
-    computed styles found no CSS gradient and an earlier pass here wrongly
-    concluded it had no background field at all.
+    The design reference opens on a large soft pink form with a long tapering
+    tail. It is drawn there as an image, which is why a scan of its computed
+    styles found no CSS gradient and an earlier pass here wrongly concluded it
+    had no background field at all.
 
     Built from radial gradients painted into rotated ellipses rather than from
     a Gaussian blur filter. A first version used feGaussianBlur and rendered

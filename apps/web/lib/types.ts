@@ -210,16 +210,43 @@ export interface TranscriptSegment {
 // answer to "how many sessions completed, how fast, how much of the package
 // got used", aggregated from existing columns.
 //
-// sample_size is not decoration. Impression rule ⑦ turns on saying plainly
-// how many real sessions a number came from, and every consumer of this
-// shape has to be able to. Rates are 0-1; a p50 is null until there is
-// anything to take a median of.
+// The provenance fields are not decoration, and they are not optional. A
+// rate published without the count behind it, or without the note saying the
+// sample is the developer rather than customers, reads as customer data when
+// it is self-test data — and this repo's honesty bar is that a metrics report
+// may never read that way. So the mirror carries the whole payload rather
+// than the five headline numbers: a screen that reaches for this shape gets
+// distinct_users, the per-rate sample sizes, and notes by default instead of
+// by whoever remembers to add them. The scorer model forbids extra keys, so
+// this list is the payload exactly.
+//
+// Rates are 0-1; a p50 is null until there is anything to take a median of.
 export interface UsageMetrics {
   sample_size: number;
   session_completion_rate: number;
   p50_first_response_s: number | null;
   p50_scoring_latency_s: number | null;
   package_burn_through: number;
+
+  sessions_started: number;
+  sessions_completed: number;
+  sessions_scored: number;
+  packages_sampled: number;
+  paid_packages_sampled: number;
+  // "N=1 account" is the single most important fact about every number this
+  // product can currently produce, so nothing may render a rate without it.
+  distinct_users: number;
+  package_burn_through_ratio: number;
+  p50_candidate_response_s: number | null;
+  // The counts each p50 was taken over. The scoring-latency sampler is
+  // process-local and resets on restart, so its sample is routinely smaller
+  // than the session sample; displaying the median without this number
+  // overstates it.
+  candidate_response_sample: number;
+  scoring_latency_sample: number;
+  // Why a metric is null, and when the sample is a self-test. Never empty in
+  // practice: the not-instrumented note is unconditional.
+  notes: string[];
 }
 
 export interface CreatePackageBody {

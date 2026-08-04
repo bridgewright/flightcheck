@@ -25,8 +25,12 @@ import sampleJson from "@/public/sample-report.json";
 // that surface, kept. Everything below is static fixture data — no fetches,
 // no account, no worker.
 
-// The report fixture is the real anonymized session behind /sample-report,
-// loaded through the same validating loader so the two pages cannot diverge.
+// The report fixture is the same one /sample-report serves, loaded through the
+// same validating loader so the two pages cannot diverge. It is what that page
+// says it is: a session run by the developer, not a customer's and not an
+// anonymized one. docs/deploy.md forbids describing it as anonymized — the
+// word asserts a completeness nothing here can guarantee, and invites the
+// reader to infer a real user whose identity was protected.
 const sample = loadSampleReport(sampleJson);
 
 const TOTAL_SESSIONS = 6;

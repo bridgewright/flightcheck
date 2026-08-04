@@ -206,8 +206,10 @@ This is the containment lever for a leaked token or a spend incident, and it
 is also the reason to rotate on a schedule. **The web and the worker share
 one token today** — there is no per-user authorization on the worker, so
 this single value is what stands between the internet and every compile and
-scoring call. Per-user worker authz is v0.7; until then, rotation is the
-mitigation and it is manual.
+scoring call. Per-user worker authorization is **not built**, and no release is
+named for it here — carrying a version number on unbuilt work is what left this
+paragraph promising "v0.7" in the release that tagged v0.7. Until it exists,
+rotation is the mitigation and it is manual.
 
 **There is a window.** The token exists in two platforms that deploy
 independently, so between the two updates one side is wrong and every worker

@@ -12,9 +12,9 @@ import { publicMetadata } from "../site";
 // The six questions people ask before paying, on their own page.
 //
 // They used to sit at the bottom of the landing. Moving them is a real trade
-// and it is recorded as one: the competitive dossier observed all three market
-// leaders answering objections on the landing itself rather than behind a
-// link, and this page is one click further away than that. What buys the trade
+// and it is recorded as one: all three of the market's largest players answer
+// objections on the landing itself rather than behind a link, and this page is
+// one click further away than that. What buys the trade
 // is that the landing now reads as four blocks instead of six, which is the
 // thing that made it feel heavy.
 //

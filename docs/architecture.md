@@ -1,10 +1,10 @@
 # Architecture
 
-## v0.5 system (shipped)
+## v0.7 system (shipped)
 
 ```mermaid
 flowchart LR
-    B[Browser<br/>landing / intake / session room / report]
+    B[Browser<br/>landing / intake / session room / report / settings]
     W[Next.js server routes<br/>Vercel — holds secrets]
     K[Scoring worker — FastAPI<br/>Railway — services/scorer]
     S[(Supabase<br/>Postgres + Storage)]
@@ -12,21 +12,34 @@ flowchart LR
     P[Polar<br/>merchant of record — hosted checkout]
     OAI[OpenAI Realtime<br/>gpt-realtime interviewer]
     G[Gemini 2.5 Flash<br/>research / rubric / transcribe / judge]
+    OP[Operator<br/>tools/usage_report.py — no UI]
 
     B -->|JSON| W
     B -->|magic-link sign-in| A
     B -->|recording via signed upload URL| S
     B <-->|WebRTC audio + oai-events data channel| OAI
     B -->|redirect to the hosted checkout page| P
+    B -->|delete my account, typed confirmation| W
     W -->|cookie session check on every guarded route| A
     W -->|Bearer WORKER_API_TOKEN| K
     W -->|mint ephemeral client secret| OAI
     W -->|mint signed upload URL| S
     W -->|create checkout session| P
+    W -->|DELETE /api/account| K
+    W -->|remove the sign-in record, only after the worker succeeds| A
     P -->|order.paid webhook, signature verified| W
     K -->|package/session state, recordings download, corpus sync| S
+    K -->|recordings deleted before any row; a refusal deletes nothing| S
     K -->|file-based generate_content| G
+    OP -->|GET /api/metrics/usage · GET /api/ops/dead-letters| K
 ```
+
+The operator is an actor with no screen: `/api/metrics/usage` and
+`/api/ops/dead-letters` are bearer-authed endpoints read from the command
+line, and `services/scorer/tools/usage_report.py` renders the first into a
+dated markdown file under `docs/metrics/`. `apps/web/lib/worker.ts` can call
+the metrics endpoint, but nothing in the web app renders it. The deletion
+ordering on the `K → S` edge is [DECISIONS 025](../DECISIONS.md).
 
 ### Data flow (one package, one session)
 
@@ -156,12 +169,13 @@ Migration 006's `access_token_expires_at` and `token_revoked_at` are honoured
 by `lib/session-capability.ts`, which fails closed on anything it cannot
 read and treats null as "no expiry" (the pre-006 behaviour).
 
-> **Reads null today, so it never refuses.** The worker's hot session read
-> (`SESSION_COLUMNS` in `api/db.py`) does not select the two columns and
-> `_to_session_row` does not map them, so every session the web sees carries
-> `null` for both — and nothing writes them at session create either. The
-> guard is enforcement without a signal until both land. Delete this note in
-> the commit that turns the columns on.
+The worker's hot session read selects both columns (`SESSION_COLUMNS` in
+`api/db.py`) and `SessionRow` maps them, so a value written to either one
+reaches the guard. **Revocation is live end to end**: set `token_revoked_at`
+and the next room entry and secret mint are refused. Expiry is the half that
+is not automatic — nothing mints an `access_token_expires_at` at session
+create, so it is null on every row until an operator writes one, and null
+means "no expiry", which is the pre-006 behaviour.
 
 It gates
 **entry** — rendering the room, minting the secret — and deliberately not
@@ -190,26 +204,22 @@ Worker log lines carry it in the format itself:
 Lines with no request in scope — startup, the reaper loop, `tools/` scripts —
 show `[req=-]` rather than a fabricated id.
 
-### What /healthz should answer
+### What /healthz answers
 
-`GET /healthz` on the worker returns `{"ok": true}` unconditionally. That is
-a liveness lie, and it is how a dead Railway build kept serving traffic
-while every new deploy failed: the platform's health check could not tell a
+`GET /healthz` used to return `{"ok": true}` unconditionally. That was a
+liveness lie, and it is how a dead Railway build kept serving traffic while
+every new deploy failed: the platform's health check could not tell a
 working process from a broken one.
 
-`scorer.observability.run_health_checks` is the replacement, and it answers
-with what it actually verified:
+It now answers with what it actually verified —
+`build_public_router` in `services/scorer/src/scorer/api/routers/ops.py`
+calls `scorer.observability.run_health_checks` and returns `200` when the
+report is ok, `503` when it is not, which gates deployment promotion without
+restarting a running container:
 
 ```json
 {"ok": true, "checks": {"database": "ok"}, "release": "<commit sha>"}
 ```
-
-> **Not yet served.** The endpoint itself lives in
-> `services/scorer/src/scorer/api/routers/ops.py` and does not call this
-> function yet, so `run_health_checks` ships tested but unused and
-> `/healthz` still answers unconditionally. Delete this note in the commit
-> that wires `build_public_router` to it — 503 when the report is not ok,
-> which gates deployment promotion without restarting a running container.
 
 - **Checks the database.** It is the only dependency the worker cannot serve
   a single request without, and a build that cannot reach it must never be
@@ -262,17 +272,33 @@ constants — model ids, session timing, eligibility floors, guard caps,
 report thresholds. The rule is that a value appears once, and anything that
 needs it in a second language mirrors it under a gate.
 
-Session timing is the one value the browser must also know: the room shows
-the budget, injects the pacing notes, and enforces the hard cut, so the
-client owns the clock. `apps/web/lib/session-room.ts` therefore mirrors
-`[session] budget_minutes` and `hard_cut_minutes` — and two tests fail if
-the mirror drifts, one in each suite, because the suites run separately:
+Two groups of numbers have to exist in the browser as well, and each one
+mirrors `product.toml` under its own gate:
 
-- `apps/web/tests/session-timing-ssot.test.ts`
-- `services/scorer/tests/test_session_timing_ssot.py`
+- **Session timing.** The room shows the budget, injects the pacing notes and
+  enforces the hard cut, so the client owns the clock.
+  `apps/web/lib/session-room.ts` mirrors `[session] budget_minutes` and
+  `hard_cut_minutes`. Two tests fail if the mirror drifts, one in each suite,
+  because the suites run separately —
+  `apps/web/tests/session-timing-ssot.test.ts` and
+  `services/scorer/tests/test_session_timing_ssot.py`.
+- **Verdict thresholds.** `/rubric` draws the Ready bar and the dimension
+  floor before any session exists, so there is nothing to fetch them from.
+  `apps/web/lib/verdict.ts` mirrors `[report] ready_overall`,
+  `ready_min_dimension` and `approaching_overall`, and
+  `apps/web/tests/verdict-single-source.test.ts` parses `product.toml` and
+  fails on drift.
 
-Change `product.toml` first; the mirror follows in the same commit. Widening
-the full `product.toml` SSOT across the rest of the web app is v0.7.
+Change `product.toml` first; the mirror follows in the same commit.
+
+The SSOT is not everywhere yet. Commercial policy is the gap:
+`apps/web/lib/pricing.ts` and `services/scorer/src/scorer/api/db.py` each
+declare the price, the session count and the expiry window as their own
+constants — the two files point at each other in comments, but no gate
+compares them and neither reads `product.toml`. Folding those into the same
+pattern is unshipped work, and it is deliberately not carrying a version
+number here: naming a release for it is what left this paragraph promising
+"v0.7" in the release that tagged v0.7.
 
 ### Deploy-time environment validation
 
@@ -293,7 +319,7 @@ only — build logs are readable by anyone with repository access.
 
 `docs/supabase/migrations/NNN_name.sql` is the ledger. There is no migration
 runner: the operator pastes each file into the Supabase SQL editor in
-filename order (`docs/deploy.md` §1.2). That makes the discipline the
+filename order (`docs/deploy.md` §1 step 2). That makes the discipline the
 mechanism, so it is written down here rather than assumed:
 
 1. **One file per change, never edited after it has been applied.** A file
@@ -335,3 +361,15 @@ following. Two claims in the data flow were false by the time the release
 audit found them: the rubric preview had moved off the token-routed package
 page onto `/rubric`, and the scoring pipeline had grown an eligibility gate and
 an `insufficient` terminal status. Corrected here rather than quietly rewritten.*
+
+*Re-headed again for v0.7 on 2026-08-04, and the same failure had recurred one
+release later: the heading still said "v0.5 system" while the tree was two
+releases past it, and the diagram was missing everything v0.6 added — the
+operator endpoints, the dead-letter read surface, and the account-deletion
+path. Nothing in it was wrong; it was incomplete, which is the harder version
+to notice. Two inline notes had also gone false in the way they each predicted:
+both said "delete this note in the commit that wires X", the wiring landed, and
+the notes stayed. `SESSION_COLUMNS` does select the token-hygiene columns and
+`/healthz` does run its probes and answer 503. The rule those two notes needed
+and did not get: a note that describes a temporary state has to be deleted by
+the change that ends it, not by the next reader who happens to check.*

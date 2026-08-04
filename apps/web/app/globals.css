@@ -11,12 +11,17 @@
 /* The design system, F-21. Every colour, type step, radius, and shadow in the
    product is declared here and nowhere else; lib/ui.ts composes them into the
    handful of class strings screens are allowed to use.
-   Spec: plans/2026-08-03-f21-design-spec.md (private workspace).
+   Built from the design reference's measured computed styles, not from a
+   description of them (DECISIONS 035).
 
-   The values are measured, not invented. The reference the brief names is
-   ode.com, and the ground, ink, label pill, control geometry, and root size
-   below were read off its computed styles rather than described from memory.
-   Where this file departs from that reading, the departure is commented.
+   The values are measured, not invented. The ground, ink, label pill, control
+   geometry, and root size below were read off the computed styles of the
+   design reference the spec names, rather than described from memory. Where
+   this file departs from that reading, the departure is commented. The
+   reference is identified in the spec and deliberately not here: naming a
+   commercial site in public source overstates the borrowing, and what matters
+   downstream is that these numbers were measured, not which page they came
+   from.
 
    Contrast is checked rather than asserted: tests/design-system.test.ts parses
    these hexes and computes the full ink-on-ground matrix. Body type runs at
@@ -26,7 +31,7 @@
 @theme {
   /* --- Grounds -------------------------------------------------------- */
 
-  /* ode.com's own page background. */
+  /* The design reference's own page background. */
   --color-paper: #fbfbf8;
   /* A step back: samples, placeholders, table heads, chrome. */
   --color-paper-sunk: #f4f3ee;
@@ -50,7 +55,7 @@
 
   /* --- Ink ------------------------------------------------------------ */
 
-  /* ode.com's body colour: a warm brown-black, not a neutral one. Every
+  /* The reference's body colour: a warm brown-black, not a neutral one. Every
      derived tone below keeps that hue so the page reads as one temperature. */
   --color-ink: #3c2e2a;
   --color-ink-muted: #6b5f59;
@@ -92,8 +97,9 @@
   /* --- Shape ----------------------------------------------------------- */
   /*
      One documented rule, and it is the reference's rather than the usual one:
-     a CONTROL IS NOT A FULL PILL. ode.com's primary button is a 7px-radius
-     rounded rectangle 27px tall; only the small label chips are fully round.
+     a CONTROL IS NOT A FULL PILL. The reference's primary button is a
+     7px-radius rounded rectangle 27px tall; only the small label chips are
+     fully round.
      An earlier pass here made every button a full pill, which is a large part
      of why the buttons read as thick.
 

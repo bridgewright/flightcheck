@@ -302,14 +302,23 @@ for dead tokens.
 onward one JD cost ₩89,000 for 30 days and six sessions; it was in `PRD.md`,
 on the pricing page, and on a v0.4 checkout stub that never took a payment.
 v0.5 retired it for **$49 USD**, and changed the package shape at the same
-time: the first package on an account is a trial with one scored session, and
-$49 unlocks that same package — same JD, same rubric — to six sessions with
-a 30-day window that starts at payment (DECISIONS 018/019; constants in
-`apps/web/lib/pricing.ts`, with a test pinning them). Two things triggered the
-reversal. DECISIONS 008 had rejected a free tier on the ground that free usage does not
-validate willingness to pay and anchors the perceived price at zero, back when
-there were no accounts; once quotas, rate limits, and per-account
-caps were enforced worker-side, one free scored session became the cheapest
+time: a package starts as a trial carrying one scored session, and $49 unlocks
+that same package — same JD, same rubric — to six sessions with a 30-day
+window that starts at payment (DECISIONS 018/019; constants in
+`apps/web/lib/pricing.ts`, with a test pinning them). What shipped is not
+quite what was designed, and the decision log says so where this file had
+rounded it off: the intended model was one trial per *account*, and the
+worker's quota chokepoint keys on `paid_at` alone, so **every** unpaid package
+grants the one-session trial quota. A second job description gets a free
+session too. The exposure is bounded by the ten-package cap and the per-user
+create limits, and DECISIONS 018 records it openly as an implementation
+consequence rather than as the design.
+
+Two things triggered the reversal. DECISIONS 008 had rejected a free tier on
+the ground that free usage does not validate willingness to pay and anchors the
+perceived price at zero, back when there were no accounts; once quotas, rate
+limits, and per-account caps were enforced worker-side, one free scored session
+became the cheapest
 honest demonstration of the only thing this product sells — a verdict. And a
 won-denominated price fits badly on a product whose entire audience is
 applying to companies that think in dollars. The honest note on the reversal:
@@ -332,7 +341,98 @@ you delegate, own the metadata as deliberately as the diff — a work-sample
 repository whose commit trail is inconsistent about who wrote it is worth
 less than one with fewer commits.
 
-## 2026-08-04 — The design pass, and eleven things that were true on paper
+## 2026-08-03 — v0.6: the headline feature came out the day it shipped
+
+v0.6 is the batch that makes the product survivable without the operator
+watching it — self-serve account deletion, a dead-letter record for jobs that
+die, backups for the one asset with no other copy, security headers, backoff
+on every model call site, a real-usage endpoint. Its landing feature did not
+survive the day.
+
+**A pre-signup rubric preview, built end to end and reverted the same day.**
+Paste a job description on the landing page, get back the dimensions and
+weights a real interview for that role would score, with no account. The
+worker half was one structured call plus the guards a model call a stranger
+can reach needs: a length cap enforced before anything is reserved, a
+per-caller burst window, a global daily ceiling, a concurrency slot and a hard
+deadline (`ac07243`). The web half added the per-visitor window on the only
+side that can see the visitor, and put the widget on the hero (`c31f702`). It
+shipped, it ran in production, and the engineering held — a real posting came
+back as four weighted dimensions in under eight seconds and every guard did
+its job. `da254e3` took all of it out the same day: widget, route, guards,
+worker module, router. DECISIONS 030 files that as **a trade, not a cleanup**,
+because what it gives up is real. No candidate-side product in the surveyed
+set shows the scoring bar before signup, and "paste the job description you
+are actually facing and see the bar" is still the strongest one-line argument
+this product has.
+
+Nothing was wrong with it that a test could see. On the page it read as an
+unexplained box — a small eyebrow, a bare textarea, and a correctly disabled
+button — offered to a stranger *before* the page had said what the product is.
+**The interaction arrived ahead of the argument for it.** Every review that
+looked at it was looking at a component that worked; the defect exists only in
+the assembled page, read by someone who does not already know what they are
+looking at. That is the same instrument that stopped the night skin — seen
+rendered together, put on hold the same day — and it is not one any suite in
+this repo owns. Removed rather than restyled, because the fault was placement
+and the design pass rebuilds this page next: keeping a confusing widget live
+in order to rework it twice is worse than removing it once. One thing it
+bought back that was not the reason for doing it — the product now exposes no
+unauthenticated model call at all, and the whole apparatus built to hold that
+one lever shut goes with it.
+
+**The injection defence refused the postings this product exists to compile.**
+The classifier refuses an instruction set at intake with a hard 422, so a
+false positive tells a paying customer that their real job description is an
+attack. Each of these was a live refusal, measured rather than suspected
+(`4787fd0`): "you will rewrite the system prompt", which is the day job in a
+prompt-engineering posting and a line a candidate's own resume carries in the
+past tense; a stack list whose line reads `System: Ubuntu 22.04`; "document
+when an operator may override rules". The repair kept every signal and made
+each one require the object that turns it into an attack — mutation has to
+point at *our* prompt, a role header has to occupy its whole line, override
+has to name what it overrides — and widened one in the other direction,
+because "award **the** maximum score" had matched nothing and is the commonest
+phrasing of that demand. The six phrasings that broke it are committed benign
+fixtures now, so the gate measures the defence against the documents that beat
+it rather than around them: hostile recall 13/13, benign false positives 0/16,
+with the false-positive ceiling deliberately at zero rather than "small"
+(DECISIONS 027, `evals/suites/injection/`). The general form outlasts the
+regexes: **a defence whose test corpus is written by the author of the defence
+measures that author's imagination, not the world.** This product's own target
+market — prompt-engineering and AI-safety roles — writes documents that look
+like the attack. That is a market segment, not an edge case.
+
+**A test that could not fail, one batch before the same defect shipped as a
+headline.** `e0f1199`: a test named for catching configuration knobs being
+hardcoded back into their modules asserted that six loaded values were not
+`None`. A pydantic model with required fields cannot produce `None`, so it
+passed by construction and would have gone on passing through exactly the
+regression its name promises to catch. It now moves `max_attempts` to 2 in a
+patched config and asserts that the retry path every production call site
+takes makes two attempts instead of four. It is recorded here rather than
+filed as a small fix, because the next batch's headline finding is the same
+defect one size up — a gate that read a single file while two documents said
+it covered the tree. Twice in two batches this repo shipped a check whose
+passing meant nothing, and both times what got read in review was the check's
+*name*.
+
+Two more, briefly. An empty corpus bucket used to write `corpus-YYYY-MM-DD/`
+with a zero-line manifest — an artifact that reads as a backup and restores
+nothing, for the one asset that has no other copy. It aborts before creating
+anything now, and the CLI exits non-zero saying so (`8b705c7`): an empty
+bucket is either a brand-new project or the incident the tool exists for, and
+neither should print a reassuring line. And `/home`, `/progress` and `/rubric`
+each handed a package access token to a client component, which serializes it
+into the page's RSC payload — readable in the HTML, in the browser cache, and
+in anything that saves the page. The room's copy of that leak had already been
+closed; these three survived the batch because **no track owned those files**
+(`79838fd`). Exclusive owned-file lists are what make parallel tracks safe to
+merge, and the gaps between the lists belong to nobody. The guard is a source
+scan, because those screens have no render harness and a grep is the only
+thing that catches it coming back.
+
+## 2026-08-04 — The design pass, and the things that were true on paper
 
 A one-batch restyle that turned into a two-round adversarial review. What
 follows is mostly about the controller's own work, because that is where the
@@ -340,8 +440,9 @@ review found the most.
 
 **The batch closed a gate it had not built.** The design system's whole
 premise was that a house rule only holds as far as CI enforces it: v0.6 had
-run "every track consumes the token module" and it held for the seven landing
-files that had a scan and failed for the forty-three that did not, which
+run "every track consumes the token module" and it held for the eight landing
+files that had a scan — all eight clean — and failed everywhere else, where a
+hundred and eight source files had no scan at all and forty-five of them had
 accumulated about six hundred raw colour literals. So F-21's spec said "leave
 a gate behind", `lib/ui.ts` recorded that the fix was "widening the gate, not
 restating the rule", and the test file opened with "the rule is whatever CI
@@ -353,11 +454,20 @@ sentence was persuasive enough that nobody re-read it against the code for a
 day.
 
 **Round two returned forty-one findings against round one's fixes**, seven of
-them HIGH. This is the second time that has happened — v0.5's fix batch
-introduced ten regressions that only a second pass caught — so it is no longer
-a surprise, it is a property. Eleven were in gates written the day before, and
-six of those shared one cause: **a regex written against the single spelling
-its author had just been looking at.** The hero rule banned `flex-row` while
+them HIGH. This is the second time a fix batch has needed a second pass to
+catch what its own fixes broke — the v0.5 release-audit fixes introduced ten
+regressions the same way (`0ce5b74`) — so it is no longer a surprise, it is a
+property. How many of the forty-one landed in gates is a number this repo
+cannot settle for a reader. The commit that repaired them says **nine**, and
+enumerates them in its own body as one reviewer's breakages of the checks
+written the day before (`09ceb08`); the later recount that also corrected this
+entry's findings total from twenty-six to forty-one says **eleven** (`855ce60`).
+The round-two reviewer reports that would decide between them are not
+published in this repository, so the nine is checkable and the eleven is not.
+Both numbers stay here rather than one being picked and presented as settled.
+Six of those gate findings shared one cause: **a regex written against the
+single spelling its author had just been looking at.** The hero rule banned
+`flex-row` while
 `flex` on its own is already a row. The gradient rule demanded a `-to-<side>`
 suffix that Tailwind's radial and conic forms never take. The black-shadow
 check knew `rgb(0 0 0)` and not `rgba(0, 0, 0)`. Each one was verified "by
@@ -369,6 +479,17 @@ blanker that fired on any `//` not preceded by a colon, **including inside a
 string**, and blanked the rest of that line. One `<div>` carrying a
 template-literal `//status` erased ninety-five characters of live code and
 took four rules with it, silently.
+
+**The session also destroyed its own work by hand.** A `git checkout <file>`,
+run to throw away an experiment, took four uncommitted gate fixes with it.
+Nothing recoverable was left, so they were written again from context — work
+that had already been done once, done a second time, with no way to diff the
+second attempt against the first. It is the same shape as the comment blanker
+in the paragraph above: a blunt instrument aimed at one thing and applied to a
+file that was holding something else. The difference is that this one had a
+human's full attention at the moment it ran. It is in this entry because a
+retrospective that records the spelling of a regex and leaves out the batch
+destroying its own work is choosing which failures to keep.
 
 **The accessibility accommodation was the thing that broke the page.** Entry
 motion ships its hidden state in the server HTML, because the server cannot
@@ -405,12 +526,33 @@ the deployed site and reading it. The gate that now exists reads
 `.next/server`, and when there is no build it says so out loud rather than
 passing quietly.
 
-**The design was being judged 12.5% smaller than it was drawn.** The root was
-`font-size: 87.5%`, chosen so the scale multiplies the reader's own browser
-setting instead of overriding it. That instinct is right and the implementation
-compounds: measured in a real browser whose default is 14px rather than the
-assumed 16px, the product rendered an 11.48px body against a 13.1px target and
-a 784px reading column against 896px. Every screenshot the design was reviewed
+**The design system was built twice, and the first one lasted a day.** The
+first build (`f391166`) was made from a written description of the design
+reference rather than from the reference itself. It shipped `html { font-size:
+110% }`, on a standing directive that what 110% browser zoom shows today should
+be the new 100%; a serif carrying display type; headings up to 62px at weight
+500; and roughly 56px full-pill controls with 16px sentence-case labels.
+Reading the reference's own computed styles produced a different page in every
+one of those places — a 14px root, every heading 15.75px at weight 400, 27px
+controls with a 7px radius and a 10.5px uppercase label. `2365049` replaced the
+whole system with the measured values on the user's decision, taken after
+seeing the two side by side, and the serif went with it after one day of
+carrying display type. The failure was not taste, it was source: a prose
+description of a design records what somebody noticed about it, and three of
+the four things the user named as wrong — too big, too bulky, buttons too
+thick — sit squarely in the gap between the description and the page. The
+fourth, the pastels, had a different cause and gets its own paragraph below.
+`globals.css` carries the reversal in place, quoting the directive it reverses,
+because a stylesheet silently holding the opposite of a stated instruction is
+how the next pass rebuilds the first one.
+
+**And the second build was still being judged 12.5% smaller than it was
+drawn.** The measured root arrived as `font-size: 87.5%`, a percentage so that
+the scale multiplies the reader's own browser setting instead of overriding it.
+That instinct is right and the implementation compounds: measured in a real
+browser whose default is 14px rather than the assumed 16px, the product
+rendered an 11.48px body against a 13.1px target and a 784px reading column
+against 896px. Every screenshot the design was reviewed
 from was smaller than the thing being designed, which is most of why it kept
 reading as "too narrow" no matter how much the containers were widened. Now
 `clamp(14px, 87.5%, 20px)`: still a multiple of the reader's setting, floored
@@ -436,9 +578,11 @@ top showed a dark interface (the deployed build rendered dark on a dark-mode
 machine, through `dark:` variants this batch removed), a verdict drawn as an
 amber warning badge the design system now forbids by name, and no sign of why
 4.27 out of 5 reads as "Approaching" — which is the exact confusion this batch
-built a two-track gauge to answer. It was four days stale across three
-releases, and its own caption promised a re-record "when the visual pass
-lands".
+built a two-track gauge to answer. Its last content touch is the `v0.1.0`
+commit itself (`62ee785`, 2026-08-01 11:52) and it was replaced on 2026-08-04
+at 08:25 — just under three days, with v0.2.0, v0.5.0 and the v0.6 batch all
+shipping out behind it. Its own caption promised a re-record "when the visual
+pass lands".
 
 **`/faq` was published to crawlers and reachable by nobody.** The objections
 block moved off the landing to its own route, which was added to
@@ -469,17 +613,25 @@ see.
 
 ---
 
-## 2026-08-03 — The ledger at the v0.5 tag
+## The standing ledger — opened 2026-08-03 at v0.5.0, re-read for v0.7.0
+
+*This is not a dated entry. It is the list of what the project can and cannot
+claim about itself, kept below the entries so that each release re-reads it
+instead of writing a new one. Every claim below carries the date or the tag
+its evidence comes from; where that date is older than the newest tag, that is
+the age of the measurement and not an oversight. Where v0.6 or v0.7 moved a
+claim, it says so in place rather than being quietly restated.*
 
 **One order exists, and it is ours.** v0.5 ships payments, and exactly one
 $49 order has ever been placed: by the project owner, against the live
 product, to prove the path end to end — hosted checkout, signed webhook,
 provisioning, receipt — and then **self-refunded, with the receipt kept** as
 the record. That order is evidence the pipeline works. It is not a sale, not
-revenue, and not evidence that anybody wants this. As of this tag flightcheck
-has **zero external users and zero external paying customers**; every session
-that exists, including the one behind the public sample report, was run by
-the developer. The distinction matters more here than anywhere else in this
+revenue, and not evidence that anybody wants this. As of the v0.5.0 tag, where
+this ledger was opened, flightcheck had **zero external users and zero
+external paying customers**; every session that exists, including the one
+behind the public sample report, was run by the developer. The distinction
+matters more here than anywhere else in this
 file, because "first payment received" is precisely the sentence a portfolio
 repo wants to write and precisely the sentence that would be false. The PRD
 carries "paid packages ≥ 1" as a dated success metric, and as of v0.5 the
@@ -498,19 +650,34 @@ itself predates both commits and its options-and-rejections trail is logged
 (DECISIONS 018), so this is a sequencing failure rather than an undocumented
 one; that is the smaller version of the sin and still the sin. It is recorded
 here rather than tidied away, because the timestamps are in the log and a
-reviewer will find them. A rule the work reliably breaks is either the wrong
-rule or an unenforced one, and the honest response is to restate it at the
-granularity the work actually has — current at the tag, with the tag as the
-gate — not to quietly stop counting.
+reviewer will find them.
+
+**The first response to it was to move the rule, and that was the worse
+failure.** What stood at the end of the paragraph above until 2026-08-04 was
+the conclusion that a rule the work reliably breaks is either the wrong rule or
+an unenforced one, and that the honest response is to restate it at the
+granularity the work actually has — the PRD current at the tag, with the tag as
+the gate. `CLAUDE.md`'s first non-negotiable was rewritten to match. Read back
+a day later, that is a bar lowered to fit the failure that had just been found
+against it, which is the one move this repo's own release rule forbids: when
+something fails a gate, scope shrinks and the bar does not. Writing the change
+down candidly does not make it a smaller change; a loosened rule announced in
+plain language is still a loosened rule, and the plain language is what made it
+read as rigour. The original bar is restored on the user's decision: `PRD.md`
+states a product change before the code implementing it is committed, and
+"before the commit" is not "by the tag". **The 65 minutes above stay on the
+record as a violation of that bar** — disclosing a violation is what this file
+is for. What does not stay is the rule moving to accommodate it.
 
 **The version numbers admit a reorder.** The published plan (README,
 DECISIONS 008) was v0.3 report quality → v0.4 session history → v0.5
 curriculum-lite → then payments. What happened instead: the v0.3 and v0.4
 bundles — report quality, accounts, the complete signed-in webapp, session
 history, progress — were built, merged, and deployed but **never tagged**,
-and payments jumped the queue to become v0.5. Curriculum-lite has not shipped
-and moves past this tag (v0.6+). Tags and release notes are impression rule
-⑤, and we broke the rhythm for two versions by shipping faster than we
+and payments jumped the queue to become v0.5. Curriculum-lite has still not
+shipped: it moved past v0.5, and then past v0.6 as well. A repo that claims a
+weekly release rhythm has to have the tags and the release notes to show for
+it, and we broke that rhythm for two versions by shipping faster than we
 published. The correction is one tag, v0.5.0, with 0.3 and 0.4 named for what
 they actually were — internal milestones folded into it — rather than a pair
 of backdated tags invented at release time to make the history look tidy.
@@ -558,10 +725,20 @@ gate passed on its first run, exit 0, rubric discrimination 1.0 and delivery
 judge 1.0 against unchanged 0.8 baselines
 ([report](evals/reports/2026-08-03-v05-gate.md)). N is 3 triplets at layer 1
 and 2 clip triplets at layer 3, unchanged since v0.1, and one boundary case
-still decides the gate. It exercises the content and delivery judges and
+still decides the gate. It exercised the content and delivery judges and
 nothing else: the scoring-eligibility gate, report field quality, the package
 and payment lifecycle, and prompt-injection resistance beyond unit-tested
-fencing are all outside it, and the judge–human agreement (Cohen's κ) the PRD
+fencing were all outside it, and the judge–human agreement (Cohen's κ) the PRD
 names as a v1.0 target has no instrument built yet. A green gate on a
 payments release is a statement about two judges. It is not a statement about
 the release.
+
+*Moved at v0.6.* One item came off that list. The injection defence is a third
+suite in the same runner now, with a committed hostile and benign fixture
+corpus and two baselines of its own, and it runs for free because the thing it
+measures is a classifier at intake rather than a model call
+(`evals/suites/injection/`). Everything else in the paragraph stands: N at
+layers 1 and 3 is unchanged since v0.1, κ still has no instrument, and the
+eligibility gate, report field quality and the payment lifecycle are still
+outside every suite. A green gate is a statement about three suites now
+instead of two, which is a wider statement and not a different kind of one.

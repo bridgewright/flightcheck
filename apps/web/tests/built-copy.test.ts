@@ -106,7 +106,7 @@ const CANONICAL = [
   "The Ready bar is 4.0 out of 5 overall, with no dimension below 3.0.",
   // components/landing/copy.ts, both merged chains
   "minutes, out loud, in English. Speech both ways, so pace and hesitation",
-  "sessions on one job description, fresh topics each time. The verdict moves",
+  "sessions on one job description, every one held to the same bar, so the scores",
   "unlock opens the rest of that same package for",
   // app/legal/policy.ts
   "and all data attached to it.",
@@ -130,26 +130,33 @@ function builtChunks(): string[] {
 describe("the built bundle says what the source says", () => {
   const chunks = builtChunks();
 
-  it("has a build to read, or says it is not reading one", () => {
-    // Not a failure: `vitest run` on a clean checkout has no .next. The point
-    // is that this prints, so "the copy check passed" is never read as "the
-    // built copy was checked" when it was not.
-    if (chunks.length === 0) {
-      console.warn(
-        "[built-copy] no .next/server found; the built-output checks below are inert. Run `next build` first for them to mean anything.",
-      );
-    }
-    expect(true).toBe(true);
+  // This used to `console.warn` and pass. It never printed: vitest does not
+  // surface console output from a passing test under this runner, so the
+  // "inert" state was indistinguishable from the "verified" state — fourteen
+  // green tests, six of which asserted nothing, on a clean checkout. A gate
+  // whose failure mode is silence is not a gate.
+  //
+  // So the absence of a build is now reported as SKIPPED rather than passed.
+  // Skips are counted separately in vitest's summary, which makes the state
+  // visible in the one place everybody already looks. It is deliberately not a
+  // hard failure: `npm test` on a fresh clone has no `.next` and should not
+  // fail for it. `npm run gates` builds first, which is why it exists.
+  const built = chunks.length > 0;
+
+  it.skipIf(!built)("has a build to read", () => {
+    expect(chunks.length).toBeGreaterThan(0);
   });
 
-  it.each(CANONICAL)("keeps %s intact through the bundler", (sentence) => {
-    if (chunks.length === 0) return;
-    const found = chunks.some((f) =>
-      readFileSync(f, "utf8").includes(sentence),
-    );
-    expect(
-      found,
-      `the built bundle does not contain this sentence. The bundler may have folded it apart, which is how "an overall of 4.0single dimension below 3.0" reached production`,
-    ).toBe(true);
-  });
+  it.skipIf(!built).each(CANONICAL)(
+    "keeps %s intact through the bundler",
+    (sentence) => {
+      const found = chunks.some((f) =>
+        readFileSync(f, "utf8").includes(sentence),
+      );
+      expect(
+        found,
+        `the built bundle does not contain this sentence. The bundler may have folded it apart, which is how "an overall of 4.0single dimension below 3.0" reached production`,
+      ).toBe(true);
+    },
+  );
 });

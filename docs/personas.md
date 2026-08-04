@@ -10,7 +10,8 @@ tech companies — not any real individual.)
 
 ## The shared situation
 
-Our customers are **good at their jobs and unproven in English interviews.**
+The people flightcheck is built for are **good at their jobs and unproven in
+English interviews.**
 They have real accomplishments in their home market and a live ambition to
 work on a global stage — and between those two facts sits a 45-minute
 English conversation that currently defeats them. Not for lack of substance:

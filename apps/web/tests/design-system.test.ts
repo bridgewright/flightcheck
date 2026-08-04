@@ -12,9 +12,9 @@ import { describe, expect, it } from "vitest";
 // components/ had none and accumulated ~600. The lesson is not "write the rule
 // down more firmly", it is "the rule is whatever CI fails on".
 //
-// The values this file checks are measured, not invented. The reference the
-// brief names is ode.com, and the ground, ink, label chip, control geometry,
-// and root size were read off its computed styles. So the claims worth pinning
+// The values this file checks are measured, not invented: the ground, ink,
+// label chip, control geometry, and root size were read off the computed
+// styles of the design reference the spec names. So the claims worth pinning
 // are:
 //
 //   1. The tokens exist, in one file, and nothing else declares a colour.
@@ -25,7 +25,7 @@ import { describe, expect, it } from "vitest";
 //      are weight 400, controls are not full pills, and the pastel lives on a
 //      chip rather than behind the type.
 //
-// spec: plans/2026-08-03-f21-design-spec.md (private workspace)
+// The values are the design reference's measured computed styles (DECISIONS 035).
 
 const webRoot = fileURLToPath(new URL("..", import.meta.url));
 const globals = readFileSync(join(webRoot, "app/globals.css"), "utf8");

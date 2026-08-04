@@ -1,9 +1,15 @@
 """The dated usage report: does it stay honest without anyone remembering to?
 
-Impression rule (7) fails a release whose metrics report reads as customer
-data when it is self-test data. A caveat somebody has to type by hand is a
-caveat that eventually is not typed, so every one of these properties is
-generated from the data and pinned here.
+A metrics report that reads as customer data when it is self-test data must
+not ship. A caveat somebody has to type by hand is a caveat that eventually
+is not typed, so every one of these properties is generated from the data
+and pinned here.
+
+Pinned by whole line and whole row, not by bare substring. A substring
+assertion holds as long as the text is somewhere on the page, so it is also
+satisfied by a footnote, or by a different row that happens to contain the
+same figure -- both of which passed here through v0.6 while the property
+they were supposed to pin had been removed.
 
 No network: fetch_usage is stubbed, and render_report is pure.
 """
@@ -19,21 +25,29 @@ from scorer.api.usage import UsageMetrics, compute_usage
 
 def _usage(**overrides) -> UsageMetrics:
     base = {
-        "sample_size": 6,
+        # Every count is DISTINCT on purpose. When four fields shared the
+        # value 5 and two shared 2, a cell could be re-pointed at a sibling
+        # field and the row rendered identically, so the whole-row assertions
+        # below pinned the text and not its provenance: six such swaps passed
+        # green. In production they are not equivalent — sessions_scored
+        # excludes `insufficient`, paid_packages_sampled undercounts whenever a
+        # package is an unpaid trial (the normal case today), and the
+        # scoring-latency sample is smaller than the session sample by design.
+        "sample_size": 9,
         "session_completion_rate": 0.8333,
         "p50_first_response_s": None,
         "p50_scoring_latency_s": 142.5,
         "package_burn_through": 4.5,
         "sessions_started": 6,
         "sessions_completed": 5,
-        "sessions_scored": 5,
+        "sessions_scored": 4,
         "packages_sampled": 2,
-        "paid_packages_sampled": 2,
+        "paid_packages_sampled": 1,
         "distinct_users": 3,
         "package_burn_through_ratio": 0.75,
         "p50_candidate_response_s": 1.8,
-        "candidate_response_sample": 5,
-        "scoring_latency_sample": 5,
+        "candidate_response_sample": 8,
+        "scoring_latency_sample": 7,
         "notes": ["a caveat that came from the payload"],
     }
     base.update(overrides)
@@ -41,19 +55,38 @@ def _usage(**overrides) -> UsageMetrics:
 
 
 class TestSampleSizeIsAlwaysStated:
-    def test_the_summary_line_carries_sessions_packages_and_accounts(self):
+    def test_the_account_count_leads_the_first_line_of_the_summary(self):
         report = render_report(_usage(), generated_on=date(2026, 8, 3),
                                source="https://worker.example")
-        assert "6 started sessions" in report
-        assert "2 packages" in report
-        assert "3 distinct account(s)" in report
+
+        summary = ("**Sample: 3 distinct account(s), 2 packages, "
+                   "6 started sessions.**")
+        assert summary in report, (
+            "the whole line is pinned, and in this order: asserting that "
+            "'3 distinct account(s)' appears somewhere stays green when the "
+            "count is moved off this line into a footnote"
+        )
+        assert report.index(summary) < report.index("## PRD success"), (
+            "the summary comes before the first table, not after it"
+        )
 
     def test_every_rate_prints_its_counts(self):
         report = render_report(_usage(), generated_on=date(2026, 8, 3),
                                source="w")
-        assert "5/6 sessions" in report
-        assert "5 runs" in report
-        assert "5 sessions" in report
+
+        # Whole rows. Every sample string below also appears in the summary
+        # line or in a neighbouring row, so a bare substring assertion is
+        # satisfied from elsewhere in the document with the cell emptied.
+        for row in (
+            "| Session completion rate | >= 85% | 83.3% | 5/6 sessions |",
+            "| Package utilization | >= 4 of 6 | 4.50 sessions | 2 packages |",
+            "| Scoring latency (p50) | 142.50s | 7 runs |",
+            "| Candidate response latency (p50) | 1.80s | 8 sessions |",
+            "| Package burn-through (ratio) | 75.0% of available sessions "
+            "| 2 packages |",
+            "| Paid packages in sample | 1 | of 2 |",
+        ):
+            assert row in report, f"rate row lost its sample cell: {row}"
 
 
 class TestTheSelfTestBanner:
@@ -85,7 +118,8 @@ class TestUninstrumentedMetrics:
     def test_the_prd_latency_row_says_not_instrumented(self):
         report = render_report(_usage(), generated_on=date(2026, 8, 3),
                                source="w")
-        assert "First-response latency (p50) | <= 800 ms | not instrumented" in report
+        assert ("| First-response latency (p50) | <= 800 ms | "
+                "not instrumented | n/a |") in report
 
     def test_an_unmeasured_scoring_latency_says_not_measured(self):
         report = render_report(_usage(p50_scoring_latency_s=None,
@@ -139,3 +173,20 @@ class TestItRendersWhatTheAggregatorProduces:
         report = render_report(usage, generated_on=date(2026, 8, 3), source="w")
         assert "0 started sessions" in report
         assert "not customer usage" in report
+
+    def test_not_instrumented_reaches_the_page_with_its_reason(self):
+        """The words and the reason, on one page, from the real payload.
+
+        The row is rendered from a literal and the reason travels in
+        `notes`, so nothing but this test holds the two together: emptying
+        NOT_INSTRUMENTED_NOTE would print "not instrumented" with no reason
+        anywhere in the document.
+        """
+        report = render_report(compute_usage([], []),
+                               generated_on=date(2026, 8, 3), source="w")
+
+        assert ("| First-response latency (p50) | <= 800 ms | "
+                "not instrumented | n/a |") in report
+        assert "user stops" in report
+        assert "not recorded anywhere yet" in report
+        assert "p50_candidate_response_s" in report

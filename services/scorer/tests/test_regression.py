@@ -1,6 +1,6 @@
 import json
 
-from scorer.evals_l3.regression import evaluate, main
+from scorer.evals_l3.regression import build_parser, evaluate, main
 
 # Mirrors evals/baselines.json. A gate that tolerated a missing key would
 # silently stop gating that suite, so regression.py reads them directly.
@@ -10,6 +10,38 @@ BASELINES = {
     "injection_hostile_recall_min": 0.9,
     "injection_benign_false_positive_max": 0.0,
 }
+
+
+def _help_words() -> str:
+    """--help with hyphens and line breaks flattened, so a match is about
+    the words and not about where argparse wrapped them."""
+    return " ".join(build_parser().format_help().replace("-", " ").split())
+
+
+def test_the_cli_help_names_every_suite_it_gates():
+    """A reviewer runs --help, not the module docstring.
+
+    Derived from the suites `evaluate` actually writes rather than a
+    hand-kept list, because the hand-kept version said "layers 1 and 3"
+    while three suites were gated.
+    """
+    doc, _ = evaluate(None, None, BASELINES)
+    help_text = _help_words()
+
+    assert doc["suites"], "the fixture must produce the gated suite list"
+    for suite in doc["suites"]:
+        assert suite.replace("_", " ") in help_text, (
+            f"{suite} is gated by this tool but is not named in its --help"
+        )
+
+
+def test_the_cli_help_says_where_it_has_to_be_run_from():
+    """`uv run scorer-evals` fails from the repo root: the console script is
+    declared in services/scorer/pyproject.toml and resolves only there."""
+    help_text = _help_words()
+
+    assert "cd services/scorer" in help_text
+    assert "uv run scorer evals" in help_text  # hyphens flattened by _help_words
 
 
 def test_exit_1_when_a_present_suite_is_below_baseline():

@@ -13,8 +13,11 @@ export const SUPPORT_EMAIL = "thk119914@gmail.com";
 // product working, not failing.
 export const REFUND_WINDOW_DAYS = 14;
 
-// Deletion v0.5 is a manual operator process (self-serve arrives in v0.6):
-// the customer emails from /settings, we purge within this many days.
+// Self-serve deletion has shipped: /settings deletes the account immediately
+// (app/api/account/delete, covered by tests/account-delete-route.test.ts), and
+// the privacy page says so. This window is the fallback path only — a customer
+// who would rather we did it, or who can no longer sign in, emails from their
+// account address and we purge within this many days.
 export const DELETION_TIMELINE_DAYS = 7;
 
 export const DELETION_SUBJECT = "Delete my flightcheck account";

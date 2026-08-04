@@ -1,4 +1,4 @@
-import { readdirSync, readFileSync } from "node:fs";
+import { readdirSync, readFileSync, statSync } from "node:fs";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -17,9 +17,9 @@ import {
 } from "@/components/landing/copy";
 import { EXPIRY_DAYS, PACKAGE_SESSIONS, PRICE_DISPLAY } from "@/lib/pricing";
 
-// The landing page is what a stranger — and a hiring reviewer — reads first,
+// The landing page is what a stranger reads first,
 // so its register is a product constraint, not a matter of taste. The
-// competitive dossier's AVOID list is binding: the market's loudest players
+// register below is binding for a reason: the market's loudest players
 // sell with celebrity personas, "100% undetectable" cheating framing, fake
 // discount timers, and streak mechanics. An honest-verdict product cannot use
 // any of that and still mean its verdicts.
@@ -28,6 +28,21 @@ import { EXPIRY_DAYS, PACKAGE_SESSIONS, PRICE_DISPLAY } from "@/lib/pricing";
 
 const webRoot = fileURLToPath(new URL("..", import.meta.url));
 const landingDir = join(webRoot, "components/landing");
+
+function walkScreens(dir: string): string[] {
+  const out: string[] = [];
+  for (const entry of readdirSync(join(webRoot, dir))) {
+    const rel = `${dir}/${entry}`;
+    if (statSync(join(webRoot, rel)).isDirectory()) {
+      out.push(...walkScreens(rel));
+      continue;
+    }
+    if (!/\.tsx?$/.test(entry)) continue;
+    if (/\.test\.tsx?$/.test(entry)) continue;
+    out.push(rel);
+  }
+  return out;
+}
 
 const PROSE: string[] = [
   HERO.heading,
@@ -73,6 +88,36 @@ const FORBIDDEN = [
   "leaderboard",
   // promises this repo has been burned by before
   "coming soon",
+  // borrowed credibility. flightcheck has no external users at all, so a
+  // sentence in this class would not be an exaggeration, it would be an
+  // invention. A product whose whole claim is that its verdicts are never
+  // softened to please anyone cannot manufacture a crowd to be pleased.
+  "trusted by",
+  "users report",
+  "testimonial",
+  // A capability the product does not have. Every session runs the same
+  // baseline plan compiled from the rubric — planner.py is pure, session_index
+  // is fixed, focus is pinned to "baseline" — so the questions do not vary.
+  // This shipped on the landing, on the paywall, and on the page shown after
+  // payment, while README.md said the opposite in the open. It comes back the
+  // day curriculum-lite does, and not before.
+  "fresh topic",
+];
+
+// The same risk class, where a plain substring would fire on innocent prose.
+// "rated " sits inside "generated", "separated" and "operated"; "join " sits
+// inside "rejoin the session". Matching those as substrings would plant a gate
+// that eventually fails for the wrong reason, and a gate that cries wolf is one
+// the next person deletes instead of fixing. So they are matched as the shape
+// of the claim: a count of other people, or a score awarded by them.
+//
+// The \b sits inside the word alternatives rather than after the whole group:
+// a trailing \b would kill the digit branch, because "join 500" has no word
+// boundary between its "5" and its "0". The control test below is what caught
+// that, which is the reason it exists.
+const FORBIDDEN_PATTERNS = [
+  /\bjoin\s+(?:\d|(?:thousands|hundreds|millions|other|our)\b)/i,
+  /\brated\s+(?:\d|(?:by|highly|best|top)\b)/i,
 ];
 
 describe("the landing copy register", () => {
@@ -88,6 +133,43 @@ describe("the landing copy register", () => {
     const all = PROSE.join(" ").toLowerCase();
     for (const word of FORBIDDEN) {
       expect(all, `forbidden framing: ${word}`).not.toContain(word);
+    }
+    for (const pattern of FORBIDDEN_PATTERNS) {
+      expect(all, `forbidden framing: ${pattern}`).not.toMatch(pattern);
+    }
+  });
+
+  it("the forbidden lists actually catch what they are aimed at", () => {
+    // A gate nobody has seen fail is a gate nobody knows the shape of. These
+    // are the sentences the additions above exist to stop, and the innocent
+    // words that must survive them.
+    const caught = [
+      "Trusted by 500 candidates.",
+      "Users report a 2x callback rate.",
+      "Read the testimonials from our members.",
+      "Join 500 candidates already practising.",
+      "Rated 4.9 out of 5.",
+    ];
+    for (const line of caught) {
+      const lower = line.toLowerCase();
+      const hit =
+        FORBIDDEN.some((word) => lower.includes(word)) ||
+        FORBIDDEN_PATTERNS.some((pattern) => pattern.test(lower));
+      expect(hit, `should be caught: ${line}`).toBe(true);
+    }
+    const allowed = [
+      "The report is generated from your own audio.",
+      "Content and delivery are scored separately.",
+      "The service is operated by one person.",
+      "Rejoin the session if your connection drops.",
+    ];
+    for (const line of allowed) {
+      const lower = line.toLowerCase();
+      const hits = [
+        ...FORBIDDEN.filter((word) => lower.includes(word)),
+        ...FORBIDDEN_PATTERNS.filter((pattern) => pattern.test(lower)),
+      ];
+      expect(hits, `false positive on: ${line}`).toEqual([]);
     }
   });
 
@@ -208,5 +290,50 @@ describe("the landing components", () => {
     if (/\b(?:rounded|shadow|ring|outline)-|\bborder\b/.test(source)) {
       expect(source).toContain("@/lib/ui");
     }
+  });
+});
+
+// The register gate above reads `copy.ts` and nothing else, which is how the
+// claim it forbids survived in two other files. The landing said "fresh topics
+// each time"; so did the paywall (`SessionTicket.tsx`) and the page shown after
+// payment (`checkout/success`). Fixing the landing and leaving those two is the
+// same defect one level down: a rule enforced where someone remembered to look.
+//
+// So this scan walks every screen file. It carries one string today rather than
+// the whole FORBIDDEN list, deliberately — "cheat" and "invisible" appear
+// legitimately in code and comments, and a gate that cries wolf is one the next
+// person deletes instead of fixing. What belongs here is a claim about what the
+// product does, which is false anywhere it appears.
+describe("capability claims the product cannot keep", () => {
+  const CLAIMS = [
+    {
+      needle: "fresh topic",
+      why:
+        "every session runs the same baseline plan compiled from the rubric " +
+        "(planner.py is pure, session_index is fixed, focus is pinned to " +
+        '"baseline"), so the questions do not vary',
+    },
+  ];
+
+  const screens = walkScreens("app").concat(walkScreens("components"));
+
+  it("has screens to check", () => {
+    // A positive control: if the walk breaks, every assertion below passes
+    // vacuously and this gate becomes decoration.
+    expect(screens.length).toBeGreaterThan(30);
+  });
+
+  it.each(CLAIMS)("no screen claims $needle", ({ needle, why }) => {
+    const hits: string[] = [];
+    for (const rel of screens) {
+      const source = readFileSync(join(webRoot, rel), "utf8");
+      // Comments are where the removal is explained, so they are stripped
+      // before matching. A claim only counts if a reader could see it.
+      const withoutComments = source
+        .replace(/\/\*[\s\S]*?\*\//g, "")
+        .replace(/^\s*\/\/.*$/gm, "");
+      if (withoutComments.toLowerCase().includes(needle)) hits.push(rel);
+    }
+    expect(hits, `${needle} — ${why}`).toEqual([]);
   });
 });

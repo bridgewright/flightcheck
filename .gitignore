@@ -4,6 +4,14 @@ __pycache__/
 *.pyc
 node_modules/
 .DS_Store
+# Next.js build output, wherever it lands. apps/web/.gitignore has `/.next/`,
+# but a leading slash anchors the pattern to that file's own directory, so a
+# build run from the repo root wrote .next/trace and .next/trace-build here and
+# nothing objected: both were committed, one of them recording a failed build
+# from a Next version this tree does not pin. Unanchored, so it holds at any
+# depth. These regenerate on every build and the class normally carries
+# absolute filesystem paths, which is the second reason they never belong here.
+.next/
 # personal voice recordings never enter the public repo (DECISIONS #005)
 evals/suites/bakeoff/clips/
 evals/suites/bakeoff/manual/*.yaml

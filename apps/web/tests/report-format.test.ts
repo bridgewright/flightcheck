@@ -18,7 +18,7 @@ describe("VERDICT_LABELS", () => {
 // The verdictClasses suite lived here and pinned "not_ready is red,
 // approaching is amber, ready is green". Both the helper and the suite are
 // gone: the verdict is no longer a traffic light. Colour-coded certainty is
-// on the competitive dossier's AVOID list, and rendering "Not yet ready" in
+// ruled out for this product, and rendering "Not yet ready" in
 // red punishes the reader this product exists for. The verdict is carried by
 // scale, position, and the threshold printed on the gauge, and sage marks
 // Ready alone. See lib/verdict.ts and tests/verdict-single-source.test.ts.

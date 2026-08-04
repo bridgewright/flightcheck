@@ -104,10 +104,28 @@ def evaluate(
     return {"suites": suites, "exit_code": exit_code}, exit_code
 
 
-def main(argv: list[str] | None = None) -> int:
+def build_parser() -> argparse.ArgumentParser:
+    """The CLI surface. Separate from main so --help is under test: the
+    description named two of the three gated suites for three releases."""
     parser = argparse.ArgumentParser(
         prog="scorer-evals",
-        description="Run eval layers 1 and 3 and gate on committed baselines.",
+        description=(
+            "Run the three gated eval suites and compare each against the\n"
+            "committed baselines in evals/baselines.json: layer 1 rubric\n"
+            "discrimination, layer 3 delivery discrimination, and the\n"
+            "injection-defence suite. A suite whose inputs are absent is\n"
+            "reported SKIPPED, never silently passed."
+        ),
+        epilog=(
+            "Run from services/scorer. `scorer-evals` is a console script\n"
+            "declared in that project's pyproject.toml, so it does not "
+            "resolve\nfrom the repo root:\n\n"
+            "    cd services/scorer\n"
+            "    uv run scorer-evals\n\n"
+            "Paths do not depend on the working directory: --evals-root\n"
+            "defaults to <repo>/evals, resolved from this file."
+        ),
+        formatter_class=argparse.RawDescriptionHelpFormatter,
     )
     parser.add_argument("--evals-root", type=Path, default=DEFAULT_EVALS_ROOT)
     parser.add_argument(
@@ -116,7 +134,11 @@ def main(argv: list[str] | None = None) -> int:
         default=None,
         help="rubric JSON for layer 1 (default: rubric.json in the layer-1 suite dir)",
     )
-    args = parser.parse_args(argv)
+    return parser
+
+
+def main(argv: list[str] | None = None) -> int:
+    args = build_parser().parse_args(argv)
 
     load_env()
     evals_root: Path = args.evals_root

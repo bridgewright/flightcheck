@@ -6,15 +6,17 @@ them from columns that already exist -- no migration, no new write path.
 
 The hard part of this feature is not the arithmetic, it is honesty. The
 repo has a standing rule that a metrics report states its sample size and
-says plainly when the sample is the operator rather than customers, and
-impression rule (7) fails a release whose numbers read like customer data
-when they are self-test data. So:
+says plainly when the sample is the operator rather than customers: a
+report whose numbers read like customer data when they are self-test data
+must not ship. So:
 
 * every rate ships next to the counts it came from;
 * `distinct_users` is reported, because "N=1 account" is the single most
   important thing about every number this product can currently produce;
 * a metric the product does not actually instrument is `None` with a note
-  saying so, never a plausible-looking substitute.
+  saying so, never a plausible-looking substitute;
+* a bounded read that came back exactly full says so, because a truncated
+  count published as a total is the same defect as an unlabelled sample.
 
 That last point costs us one of the three PRD metrics today.
 `p50_first_response_s` in the PRD is "user stops -> interviewer speaks",
@@ -70,10 +72,29 @@ PROCESS_LOCAL_NOTE = (
 )
 
 
+def truncated_scan_note(limit: int) -> str:
+    """Said when a bounded read came back full, so counts read as a floor.
+
+    The endpoint reads the newest N rows rather than the table, which is
+    correct for an operator endpoint and wrong to publish silently: at zero
+    rows the bound is invisible, and at scale it turns every count on the
+    page into a total it is not. Callers pass the bound they used; this is
+    the sentence that keeps the report honest once the product outgrows it.
+    """
+    return (
+        f"This sample is bounded: only the {limit} newest packages and the "
+        f"{limit} newest sessions were read, and at least one of those reads "
+        f"came back exactly full. Older rows exist and are not counted here, "
+        f"so every count on this page is a floor, not a total."
+    )
+
+
 class UsageMetrics(BaseModel):
-    """The usage payload. Mirrors apps/web/lib/types.ts UsageMetrics, which
-    carries the first five fields; the rest are the provenance the honesty
-    rule requires, and the web is free to ignore them."""
+    """The usage payload. Mirrors apps/web/lib/types.ts UsageMetrics field for
+    field, in this order. That mirror used to carry only the five headline
+    numbers and none of the provenance — the per-rate counts, the account total
+    and the notes — which is the shape a future screen would have reached for:
+    rates with no sample size and no self-test label, and no test objecting."""
 
     model_config = ConfigDict(extra="forbid")
 
@@ -160,12 +181,18 @@ def _candidate_latencies(sessions: list[SessionRow]) -> list[float]:
 
 
 def compute_usage(packages: list[PackageRow],
-                  sessions: list[SessionRow]) -> UsageMetrics:
+                  sessions: list[SessionRow],
+                  *, scan_limit: int | None = None) -> UsageMetrics:
     """Aggregate the usage payload from rows the caller has already read.
 
     Pure: it takes rows, not a Database, so every definition below is
     testable without a backend and the same function serves the endpoint
     and the report tool.
+
+    `scan_limit` is the bound the caller read under, when it read under
+    one. It changes no arithmetic -- it only lets the payload say that a
+    full read means the counts are a floor. Callers that read everything
+    pass nothing.
     """
     started = [row for row in sessions if _has_started(row)]
     completed = [row for row in started if row.status in _COMPLETED_STATUSES]
@@ -192,6 +219,11 @@ def compute_usage(packages: list[PackageRow],
     })
 
     notes = [NOT_INSTRUMENTED_NOTE]
+    # `>=`, not `==`: a read that comes back over its bound is no more a
+    # total than one that comes back exactly at it.
+    if scan_limit is not None and (
+            len(packages) >= scan_limit or len(sessions) >= scan_limit):
+        notes.append(truncated_scan_note(scan_limit))
     if not started:
         notes.append(NO_DATA_NOTE)
     if distinct_users <= 1:

@@ -63,7 +63,8 @@ export default async function PrivacyPage() {
             processor (as merchant of record) handles checkout so we never see
             card details, AI model providers process session audio and
             transcripts to conduct and score your sessions, and an
-            error-monitoring service receives crash reports from our servers:
+            error-monitoring service receives crash reports from our servers
+            and, when something fails in your browser, from your browser:
             record identifiers and stack traces, with its personal-data
             collection switched off, so no recording, transcript, or report
             content reaches it. Each receives only what its job requires.

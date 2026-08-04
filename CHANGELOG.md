@@ -1,18 +1,138 @@
 # Changelog
 
-## [Unreleased]
+## [0.7.0] — 2026-08-04
 
-Two batches, both deployed and neither tagged.
+**The F-21 design pass**, which restyled every screen and then spent two rounds
+of adversarial review finding out what that had broken.
+
+Tagged at the commit that was deployed on 2026-08-04, plus the fixes the
+release audit required. See DECISIONS 032 for why a tag is being cut after the
+fact at all, and what that is and is not allowed to mean.
+
+### Changed
+
+- **A landing page that says less, and then said less again.** The v0.6 rebuild
+  had given it a four-step how-it-works, itemized pricing and an on-page FAQ
+  accordion. The design pass cut it to four blocks: the framed product
+  screenshots came out because they were placeholders promising captures
+  "after the design pass" that had just happened, and the FAQ moved to `/faq`,
+  which is one click rather than a policy PDF. What is left: the hero carries
+  the claim, a line, and two buttons, and nothing beside it.
+- **One design system, and it is enforced rather than described.** Every
+  colour, type step, radius and shadow is declared once in `app/globals.css`
+  and composed in `lib/ui.ts`; a test walks `app/`, `components/` and `lib/`
+  and fails on a raw palette utility, an arbitrary colour, a pixel font size,
+  a CSS gradient, a hand-rolled page column, or a dash in a sentence a reader
+  sees. The previous version of this rule was written down, believed, and
+  scanned exactly one directory — the eight components under
+  `components/landing/`, which stayed clean while the rest of the product did
+  not.
+- **Light only.** The product had `dark:` variants throughout, so it rendered
+  as a different product depending on the reader's operating system setting.
+  It is now one product, and the variant is rebound to a class nothing sets.
+- **The report says why a verdict is what it is.** The sample report shows an
+  overall of 4.27 out of 5 next to the word "Approaching", which reads as a
+  bug until you know the rule has two clauses. It now draws both: overall
+  against the 4.0 Ready bar, and the weakest dimension against the 3.0 floor
+  every dimension has to clear, with a sentence naming the one that decided
+  it. The verdict is not a traffic light, deliberately — rendering "Not yet
+  ready" in red would punish the reader this product exists for.
+- **The judge's finding is marked in each rationale**, bold and underlined, so
+  the point of a paragraph is findable without reading all of it. It is a
+  positional rule (the first sentence) rather than a semantic one: the product
+  does not decide which of a judge's words matter. The version where the judge
+  marks its own span is registered as F-48.
+- **Type scales with the reader again.** The root is `clamp(14px, 87.5%, 20px)`
+  — a multiple of the reader's own browser text size, floored so a browser
+  that ships a smaller default cannot compound it into a page nobody designed.
+
+### Fixed
+
+- **A blank page for readers with Reduce Motion enabled.** Entry motion ships
+  its hidden state in the server HTML, and the reduced-motion branch returned
+  an element that never overrode it, so nine blocks on the landing and two on
+  `/faq` stayed at zero opacity forever. The accommodation built for that
+  reader was what blanked the page for them.
+- **Sentences with words missing.** `/rubric` read "an overall of
+  4.0single dimension below 3.0", and the readiness gauge told screen readers
+  "4.0 out of 5with no dimension below 3.0". The source was correct in both
+  cases; the production bundler was folding module-scope strings apart. Now
+  checked against the built output rather than the source.
+- **`/faq` was reachable by search engines and by no visitor.** It is in the
+  footer.
+- **Loading skeletons stood in the wrong column**, so a report jumped 308px
+  wider the moment content arrived — the reflow a skeleton exists to prevent.
+- **The interview room opened in a 588px column** while the rest of the
+  product reads at 896px, along
+  with eight other screens that render without the app chrome and had been
+  missed for the same reason.
+- **Safari lost the order of the how-it-works steps.** The numerals were
+  hidden from screen readers on the grounds that the list carried the order;
+  on WebKit a list with no marker style does not.
+- **Controls that were only visible while hovered.** The secondary button's
+  label sat at 3.73:1 and its border at 1.99:1, and that border is the only
+  thing identifying it as a control. Also the link underline, which was 1.23:1
+  and is now the token that exists for a boundary you have to see.
+- **A purchase button that promised the wrong thing.** "Unlock all 6 sessions
+  for $49" appears only after the trial session is spent, so it is five.
+- **The landing's search-result description still said "a live interviewer"**,
+  a word the hero dropped on purpose because the interviewer is an AI.
+
+### Decisions
+
+- DECISIONS 031: the two client dependencies the design pass introduced, the
+  boundary they are allowed to cross, and the condition that revisits them.
+- DECISIONS 032: a tag is retroactive only where the release boundary is —
+  written because cutting this tag and 0.6.0 after the fact contradicts, on its
+  face, a rule this repo states in four places.
+- DECISIONS 035: one design system, enforced by the test suite, and rebuilt
+  mid-batch from the reference's measured values after the first pass was built
+  from a prose description of it.
+
+### Evals
+
+Release gate: `uv run scorer-evals` from `services/scorer`, exit 0, on this
+tree. **One run covers both 0.6.0 and 0.7.0**, and it is stated here rather
+than left for two tags to imply two runs. Report:
+`evals/reports/2026-08-04-v06-v07-gate.md`.
+
+The honest part: neither batch had a gate run at the time it was deployed.
+`evals/reports/` held nothing between `2026-08-03-v05-gate.md` and this one,
+and both batches went to production in between. Nothing here can make a gate
+have run at `da254e3` after the fact, and this note exists so that the two new
+tags do not imply one did.
+
+### Not shipped, and why
+
+- **A re-recorded demo.** The design pass replaced the README's four-frame
+  GIF with two stills of the running app, because the GIF showed a dark
+  interface the product no longer has and a verdict styled as a warning badge
+  the design system now forbids. A real screen recording needs a live
+  twenty-minute session and waits for v1.0.
+- **Screenshots of the product.** The four captioned slots the landing was
+  holding were deleted rather than left promising captures "after the design
+  pass" that had already happened. They need a component as well as a file
+  when they return.
+- **Data export, the IndexedDB upload stash, and per-user worker
+  authorization** are still not built. They were carried as "v0.7" while v0.7
+  was the future; it is now this release, and it does not contain them. They
+  are not being re-pointed at another version here — a version number attached
+  to unbuilt work three releases running is a promise the log has stopped
+  keeping. `docs/architecture.md` and `docs/ops/backup-restore.md` carried the
+  same "v0.7" promise and have been corrected the same way.
+
+## [0.6.0] — 2026-08-03
 
 **The v0.6 batch — "operate at scale".** The release where the operator can be
 away for a week: users leave cleanly, links share correctly, and the pipeline
 survives its own history rather than a customer discovering it did not.
 
-**The F-21 design pass**, which restyled every screen and then spent two rounds
-of adversarial review finding out what that had broken. Its sections are at the
-end of this block, under "the design pass".
+Tagged at `da254e3`, the commit deployed on 2026-08-03. Its version manifests
+read `0.5.0`: the tag sits on the commit that was actually deployed, and that
+commit was not going to be edited to make a version string agree with a tag
+applied afterwards (DECISIONS 032).
 
-### Added — you can leave, and take your data with you
+### Added — you can leave, and take nothing with you
 
 - **Delete your account yourself, from settings.** It removes every
   recording, transcript, report, package and order, and it is immediate.
@@ -31,11 +151,9 @@ end of this block, under "the design pass".
   how-it-works, itemized pricing, and answers to the six questions people
   actually ask. What unlocks for $49 is listed **before** the button, with
   the refund line next to it.
-- Then cut down again in the design pass, which is worth stating rather than
-  quietly restating the result: the framed product screenshots and the
-  on-page FAQ accordion both came out. The screenshots were placeholders
-  promising captures "after the design pass", and the FAQ moved to `/faq`,
-  which is one click rather than a policy PDF.
+  (The FAQ accordion and the framed screenshots both came out again in 0.7.0 —
+  the accordion moved to `/faq`. Noted here because this bullet and its
+  correction now sit in different releases.)
 - The landing also briefly carried a live pre-signup rubric preview. It
   shipped, ran in production, and was removed the same day — see "Not
   shipped, and why".
@@ -114,68 +232,6 @@ end of this block, under "the design pass".
 - Google sign-in is wired behind its flag, ready for the provider
   configuration.
 
-### Changed — the design pass
-
-- **One design system, and it is enforced rather than described.** Every
-  colour, type step, radius and shadow is declared once in `app/globals.css`
-  and composed in `lib/ui.ts`; a test walks `app/`, `components/` and `lib/`
-  and fails on a raw palette utility, an arbitrary colour, a pixel font size,
-  a CSS gradient, a hand-rolled page column, or a dash in a sentence a reader
-  sees. The previous version of this rule was written down, believed, and
-  scanned exactly one file.
-- **Light only.** The product had `dark:` variants throughout, so it rendered
-  as a different product depending on the reader's operating system setting.
-  It is now one product, and the variant is rebound to a class nothing sets.
-- **The report says why a verdict is what it is.** The sample report shows an
-  overall of 4.27 out of 5 next to the word "Approaching", which reads as a
-  bug until you know the rule has two clauses. It now draws both: overall
-  against the 4.0 Ready bar, and the weakest dimension against the 3.0 floor
-  every dimension has to clear, with a sentence naming the one that decided
-  it. The verdict is not a traffic light, deliberately — rendering "Not yet
-  ready" in red would punish the reader this product exists for.
-- **The judge's finding is marked in each rationale**, bold and underlined, so
-  the point of a paragraph is findable without reading all of it. It is a
-  positional rule (the first sentence) rather than a semantic one: the product
-  does not decide which of a judge's words matter. The version where the judge
-  marks its own span is registered as F-48.
-- **A landing page that says less.** Cut to four blocks. The hero carries the
-  claim, a line, and two buttons, and nothing beside it.
-- **Type scales with the reader again.** The root is `clamp(14px, 87.5%, 20px)`
-  — a multiple of the reader's own browser text size, floored so a browser
-  that ships a smaller default cannot compound it into a page nobody designed.
-
-### Fixed — the design pass
-
-- **A blank page for readers with Reduce Motion enabled.** Entry motion ships
-  its hidden state in the server HTML, and the reduced-motion branch returned
-  an element that never overrode it, so nine blocks on the landing and two on
-  `/faq` stayed at zero opacity forever. The accommodation built for that
-  reader was what blanked the page for them.
-- **Sentences with words missing.** `/rubric` read "an overall of
-  4.0single dimension below 3.0", and the readiness gauge told screen readers
-  "4.0 out of 5with no dimension below 3.0". The source was correct in both
-  cases; the production bundler was folding module-scope strings apart. Now
-  checked against the built output rather than the source.
-- **`/faq` was reachable by search engines and by no visitor.** It is in the
-  footer.
-- **Loading skeletons stood in the wrong column**, so a report jumped 308px
-  wider the moment content arrived — the reflow a skeleton exists to prevent.
-- **The interview room opened in a 588px column** while the rest of the
-  product reads at 896px, along
-  with eight other screens that render without the app chrome and had been
-  missed for the same reason.
-- **Safari lost the order of the how-it-works steps.** The numerals were
-  hidden from screen readers on the grounds that the list carried the order;
-  on WebKit a list with no marker style does not.
-- **Controls that were only visible while hovered.** The secondary button's
-  label sat at 3.73:1 and its border at 1.99:1, and that border is the only
-  thing identifying it as a control. Also the link underline, which was 1.23:1
-  and is now the token that exists for a boundary you have to see.
-- **A purchase button that promised the wrong thing.** "Unlock all 6 sessions
-  for $49" appears only after the trial session is spent, so it is five.
-- **The landing's search-result description still said "a live interviewer"**,
-  a word the hero dropped on purpose because the interviewer is an AI.
-
 ### Decisions
 
 - DECISIONS 025: deletion removes blobs before rows, and a partial failure
@@ -189,20 +245,24 @@ end of this block, under "the design pass".
 - DECISIONS 029: the capability window — revocation now, expiry not yet.
 - DECISIONS 030: the landing rubric preview is removed the day it shipped —
   the placement was the defect, and what the removal costs is written down.
-- DECISIONS 031: the two client dependencies the design pass introduced, the
-  boundary they are allowed to cross, and the condition that revisits them.
+- DECISIONS 033: error monitoring on both runtimes, and the line drawn around
+  what a third party receives — identifiers and stack traces, never a
+  recording, a transcript or a report body. Logged a day late, by the release
+  audit, and its absence had already falsified a number in 026.
+- DECISIONS 034: the worker survives its own history — backoff on eleven model
+  call sites with the count pinned by a discovery test, a scoring concurrency
+  limit behind a production OOM, an overall job deadline, and a dead letter.
+
+### Evals
+
+No gate ran at this commit. The run of record for this tag is the one made on
+the 0.7.0 tree — `evals/reports/2026-08-04-v06-v07-gate.md` — and it is a
+single run covering both tags. This release was deployed without one, which
+`docs/deploy.md`'s pre-deploy checklist required; §5.2 of that runbook has
+been amended so a deploy and its gate cannot come apart again.
 
 ### Not shipped, and why
 
-- **A re-recorded demo.** The design pass replaced the README's four-frame
-  GIF with two stills of the running app, because the GIF showed a dark
-  interface the product no longer has and a verdict styled as a warning badge
-  the design system now forbids. A real screen recording needs a live
-  twenty-minute session and waits for v1.0.
-- **Screenshots of the product.** The four captioned slots the landing was
-  holding were deleted rather than left promising captures "after the design
-  pass" that had already happened. They need a component as well as a file
-  when they return.
 - **Judge-authored report strengths and weaknesses (F-03b) was dropped
   whole.** It needs a judge-prompt change, and validating a judge-prompt
   change needs an eval run that this batch's cost directive batches to the
@@ -220,8 +280,6 @@ end of this block, under "the design pass".
   this page next (DECISIONS 030, which also records what the removal gives
   up — it was genuine competitive white space — and what it buys back: the
   product now exposes no unauthenticated model call at all).
-- Data export, the IndexedDB upload stash, and per-user worker authorization
-  remain v0.7.
 
 ## [0.5.0] — 2026-08-03
 
@@ -238,7 +296,13 @@ was ever tagged. No `v0.3.0` or `v0.4.0` exists, and none is being created
 retroactively: a tag invented after the fact is a decoration, not a release
 rhythm. Both are folded into this section, which therefore carries three
 bundles of work, and headings below name the milestone where it helps. The tag
-line of record is v0.1.0 → v0.2.0 → v0.5.0.
+line of record **through v0.5** is v0.1.0 → v0.2.0 → v0.5.0.
+
+*(Refined 2026-08-04, when `v0.6.0` and `v0.7.0` were cut after the fact. The
+rule stands and is sharpened: a tag may be cut afterwards **at the commit that
+was actually deployed**, and may not be invented for a boundary that never
+shipped separately. 0.3 and 0.4 are the second kind and are still not tagged.
+DECISIONS 032.)*
 
 ### Added — payments: the trial-then-unlock package
 - **Read this before the rest of the section: no sale has happened.** The

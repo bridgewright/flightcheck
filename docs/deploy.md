@@ -4,12 +4,15 @@ Three deploy units: `apps/web` on Vercel, `services/scorer` on Railway, Supabase
 Postgres + Storage. This file lists **env var names only** — values live in each
 platform's secret store and are never written into the repo, logs, or docs.
 
-Sections 0–4 are the standing runbook, current as of **v0.5.0 (2026-08-03)**.
-Section 5 is the first-launch ritual, written in the tense it was run in for
-v0.1 and left that way — those steps happened. The one part of it that is not
-one-time is the anonymization checklist in §5.1.2: it re-runs whenever the
-public sample report is regenerated, and it now carries the record of the
-release where it was ticked without being satisfied.
+Sections 0–4 are the standing runbook, re-checked against the tree at
+**v0.7.0 (2026-08-04)**. Section 5 is the release ritual; its opening
+paragraph is written in the tense the first launch was run in, and that
+paragraph is the only one-time part. Everything under it re-runs: the
+anonymization checklist (**§5.1 step 2**) whenever the public sample report is
+regenerated, §5.1a whenever the README imagery is recaptured, and §5.2 at
+every tag — §5.2 is what produces the release notes and the published GitHub
+Release. §5.1 step 2 also carries the record of the release where it was
+ticked without being satisfied.
 
 ## 0. Pre-deploy checklist
 
@@ -44,14 +47,20 @@ release where it was ticked without being satisfied.
 1. Create a project at supabase.com (pick a region close to the Railway worker).
    Note the project URL and the service-role key from Project Settings > API.
 2. SQL Editor: run every file in `docs/supabase/migrations/` in filename order
-   — as of v0.5 that is `001_init.sql`, `002_scoring_stage.sql`,
+   — as of v0.7 that is `001_init.sql`, `002_scoring_stage.sql`,
    `003_accounts_multisession.sql`, `004_session_transcript.sql`,
-   `005_payments_trial_expiry.sql`: paste each file's full contents, run it,
-   confirm `Success. No rows returned`, then move to the next. Later migrations
-   assume earlier ones already ran, so the order is not optional. `001_init.sql`
-   creates the `packages` and `sessions` tables. When upgrading an existing
-   deployment, apply any new migration files **before** deploying the worker
-   build that uses them — the worker assumes its columns exist.
+   `005_payments_trial_expiry.sql`, `006_token_hygiene.sql`: paste each file's
+   full contents, run it, confirm `Success. No rows returned`, then move to
+   the next. Do not stop at the last one this list happened to name when it
+   was written — run `ls docs/supabase/migrations/` and apply every file it
+   returns. Later migrations assume earlier ones already ran, so the order is
+   not optional. `001_init.sql` creates the `packages` and `sessions` tables;
+   `006_token_hygiene.sql` adds the two `sessions` columns the worker's hot
+   session read selects (`SESSION_COLUMNS` in `api/db.py`), so a deployment
+   that skips it fails every session read rather than degrading. When
+   upgrading an existing deployment, apply any new migration files **before**
+   deploying the worker build that uses them — the worker assumes its columns
+   exist.
 3. Storage: create two buckets, `recordings` and `corpus`. Both **must be private**
    (public access off) — recordings are user audio, the corpus is confidential.
 4. Upload the private rubric corpus: every local corpus `*.md` doc into the
@@ -145,8 +154,14 @@ limits do not apply to the already-running container.
 
 ## 4. Smoke checklist (release-blocking)
 
-- [ ] `curl -s https://<railway-domain>/healthz` returns `{"ok":true}`
-      (unauthenticated).
+- [ ] `curl -s https://<railway-domain>/healthz` answers `200` with
+      `{"ok": true, "checks": {"database": "ok"}, "release": "<commit sha>"}`
+      (unauthenticated). Since v0.6 the probe is real: the endpoint runs a
+      bounded database lookup and answers `503` when it fails, so a `200`
+      here means this build reached Postgres — the unconditional `{"ok":true}`
+      that let a dead build keep serving is gone. Read `release` and confirm
+      it names the deploy you just made; it is `null` only when Railway
+      supplied neither `RAILWAY_GIT_COMMIT_SHA` nor `RAILWAY_DEPLOYMENT_ID`.
 - [ ] `curl -s -o /dev/null -w "%{http_code}\n" -X POST https://<railway-domain>/api/packages`
       returns `401` or `403` — bearer auth is enforced.
 - [ ] Full loop on a representative **public** JD (never one from the private
@@ -328,40 +343,195 @@ release.**
    git commit -m "feat(web): swap sample report for real anonymized session" -m "Co-Authored-By: Claude Fable 5 <noreply@anthropic.com>"
    ```
 
-8. Update `README.md`: replace every `PENDING-DEPLOY-URL` placeholder in the
-   "v0.1 — live" section with the Vercel production URL, link the demo GIF
-   from section 5.1a, delete the operator TODO note, verify
-   `grep -n PENDING-DEPLOY-URL README.md` prints nothing, and commit.
+8. Update `README.md`'s **Live** section: the app URL, the sample-report URL
+   and the price must be the ones just deployed, and the imagery must show
+   the screens as they now look (§5.1a). Verify nothing unresolved survived —
+   `grep -nE "PENDING-DEPLOY-URL|TODO" README.md` prints nothing — and commit.
 
-### 5.1a Record the demo GIF (README landing material)
+### 5.1a README imagery (landing material)
 
-The smoke session **is** the demo material — capture it while running
-section 4's full loop (screen-record intake → rubric preview → a session-room
-moment → the report verdict; keep it under ~30 s, no audio needed for the
-GIF). Check the same anonymization boxes as 5.1.2 for anything visible
-on-screen, commit the GIF (or a `docs/` asset + link), and reference it from
-`README.md`'s "v0.1 — live" section (step 8 above).
+`README.md` carries two stills: `docs/landing.jpg` (the signed-out landing)
+and `docs/report.jpg` (a scored report). A screen recording is deferred to
+the v1.0 demo, which needs a live 20-minute session rather than a screenshot;
+the README's caption says so, and this step and that caption must not
+disagree. Recapture whenever a release changes what either screen looks like
+— the smoke session from section 4 is the material.
+
+**This is the anonymization control for imagery, and it blocks the release.**
+An image is not greppable, so nothing else in this runbook can catch what is
+in one:
+
+- [ ] Read every word visible in each capture and run the **same boxes as
+      §5.1 step 2** — name, employer, client references including indirect
+      identifiers, target company — by eye, on the pixels. The relational
+      signal that box describes ("a possessive pointing at a client", "a
+      clause locating the speaker inside a client-serving firm") is exactly
+      the shape that survives a screenshot.
+- [ ] The banner rule from §5.1 step 5 applies to anything legible in the
+      image too: **"anonymized" and "identifying details removed" are
+      forbidden wordings**, in pixels as in source.
+- [ ] **Delete the asset the new one replaces, in the same commit.**
+      Everything under `apps/web/public/` is served at its own URL whether or
+      not a page links it, so an unreferenced leftover is still published.
+      `apps/web/public/demo.gif` is the worked example: it shipped from v0.1,
+      the README swapped it for the two stills and referenced it nowhere
+      afterwards, and it went on answering `200` at
+      `https://flightcheck.vercel.app/demo.gif` with the client-work phrasing
+      and the forbidden `(anonymized)` banner still in its pixels — text a
+      fixture fix had already removed everywhere a grep could reach. Confirm
+      both halves, from `repo/`:
+
+      ```bash
+      grep -rn '<asset-filename>' --exclude-dir=node_modules \
+        --exclude-dir=.next --exclude-dir=.venv --exclude-dir=.git .   # no output
+      curl -s -o /dev/null -w "%{http_code}\n" https://<prod-domain>/<asset>  # 404
+      ```
+
+      Removing the file from the repo is not enough on its own: the asset
+      keeps answering until the deploy that drops it reaches production, so
+      run the `curl` after that deploy, not before.
+- [ ] Update the README caption to describe what the new capture shows and
+      what it does not, and to say what it replaced and why.
 
 ### 5.2 Tag and publish
 
-1. Re-run every gate in the pre-deploy checklist (a tag never goes on a tree
-   that was not just verified), then tag from `repo/`:
+A release is five artifacts, not one: the version in the manifests, a
+`docs/releases/<v>.md` file, an annotated tag, a pushed `main`, and a
+published GitHub Release. Steps 2 and 6 exist because this section did not
+have them — it went straight from "tag" to "push", and the Releases page
+consequently sat empty behind three tags until a release audit found it.
+
+This release is the worked example. `v0.6.0` sits at `da254e3` — the commit
+that was actually deployed for that batch, so the tag names a real release
+boundary rather than one invented for the occasion — with
+`docs/releases/v0.6.md` as its notes; `v0.7.0` sits at the release commit
+with `docs/releases/v0.7.md`. The commands below are written for `v0.7.0`.
+
+0. **Bump both manifests and both lockfiles**, in one `chore:` commit before
+   anything else — a tag on a tree whose manifests name the previous version
+   is a tag that disagrees with itself. Two commands, each of which updates
+   its own lockfile:
 
    ```bash
-   git tag -a v0.1.0 -m "flightcheck v0.1.0 — full loop live: JD intake to honest session report"
-   git tag -l v0.1.0
+   cd repo/apps/web        && npm pkg set version=0.7.0 && npm install --package-lock-only
+   cd ../../services/scorer && uv version 0.7.0 --no-sync
    ```
 
-2. Run the full 12-rule impression audit against the repo as it would appear
-   publicly (landing copy, sample report, README, docs, changelog). This is a
-   **hard gate**: any failing rule blocks the release — fix, re-run the gates,
-   re-tag if commits moved (`git tag -d v0.1.0`, tag again), audit again.
-3. Only after all 12 rules pass, push:
+   Verify all four fields before committing, from `repo/`:
+
+   ```bash
+   grep -n '"version": "0.7.0"' apps/web/package.json apps/web/package-lock.json
+   grep -n '^version = "0.7.0"' services/scorer/pyproject.toml
+   grep -n -A1 '^name = "scorer"' services/scorer/uv.lock
+   ```
+
+   Nothing enforces this: there is no CI, and no test reads a manifest
+   version, so the only thing standing between the tag and a wrong version
+   string is this step. Both commands regenerate their lockfile rather than
+   leaving it, because editing only the manifest is what left `v0.5.0` tagged
+   over lockfiles naming the previous version — repaired by the very next
+   commit on `main`, which the tag does not contain.
+
+1. **Re-run every gate** in the pre-deploy checklist — a tag never goes on a
+   tree that was not just verified. Keep the `scorer-evals` output and the
+   date it ran: step 2 has to publish those numbers, and copying a previous
+   release's numbers forward under a new date is the exact dishonesty the
+   audit in step 4 fails a release for.
+
+2. **Write `docs/releases/<v>.md`** to the shape the existing files use — see
+   `docs/releases/v0.5.md`, which is the current convention:
+
+   - `# flightcheck vX.Y.0` and `Released: YYYY-MM-DD` as the first two lines;
+   - a narrative section of what shipped, in past tense;
+   - `## Measured evals (release gate: scorer-evals)` — a table of
+     suite / metric / result / baseline / **run date** from step 1's run, prose
+     about how the run actually went including any flake, and a link to the
+     `evals/reports/…` file for that run. If no gate ran, say so here and say
+     why; do not carry an older run's row forward under this heading;
+   - `## Known limits`, carrying prior releases' limits forward by link;
+   - one section per broken expectation this release creates — a version
+     skipped, a tag that does not sit where a reader would expect, a manifest
+     that disagrees with its tag. `docs/releases/v0.5.md`'s "Why the tags jump
+     from v0.2 to v0.5" is the model. A reviewer meets the anomaly either
+     from you or on their own.
+
+   Commit it. Docs are outside every gate's scope — no test in either suite
+   reads a file under `docs/` — so this commit cannot change step 1's result,
+   but it must land **before** the tag so the notes are inside the tagged
+   tree.
+
+3. **Tag**, from `repo/`. Annotated, never lightweight, and the annotation
+   restates the notes rather than quoting them — what shipped, the gate
+   result, the honest caveat, then the notes path:
+
+   ```bash
+   git tag -a v0.7.0 \
+     -m "flightcheck v0.7.0 — <one line: what a reader gets that they did not have>" \
+     -m "<what shipped>" \
+     -m "<the release gate, naming the evals report path>" \
+     -m "<what this release does not have — user counts, measured claims — stated rather than left to be assumed>" \
+     -m "Notes: docs/releases/v0.7.md"
+   git tag -l -n99 v0.7.0
+   ```
+
+   Each `-m` becomes its own paragraph, and `-n99` prints the whole
+   annotation back so you can read what a reviewer will read. A one-line
+   annotation is the v0.1/v0.2 shape and has been superseded: `v0.5.0`'s is
+   the convention.
+
+4. **Run the release audit** against the repo as a stranger would meet it —
+   landing copy, sample report, README, docs, changelog, and the deployed
+   site, not just the source. It checks that the PRD preceded the code and
+   still describes the product; that success metrics are numeric and dated;
+   that `evals/` carries rubrics, a runnable suite and reports that are real
+   run artifacts; that the live URL shows a reviewer something without a
+   signup; that every tag has release notes; that the decision log records
+   what was rejected and when to revisit, not only what was chosen; that any
+   usage number states its real sample and never reads as customer data when
+   it is self-test data; that the working contract in `CLAUDE.md` describes
+   the process actually used; that the README works as a landing page; that
+   `PLAYBOOK.md` gives patterns someone else can reuse; that the tree is
+   English-only, MIT, and free of confidential content; and that `RETRO.md`
+   is honest about what went wrong. **This is a hard gate: any failure blocks
+   the release** — fix it, re-run the gates, re-tag if commits moved
+   (`git tag -d v0.7.0`, tag again), and audit again. A finding is closed by
+   fixing it, never by softening the standard it failed.
+
+5. **Push**, only after the audit passes:
 
    ```bash
    git push origin main
-   git push origin v0.1.0
+   git push origin v0.7.0
    ```
 
    Railway and Vercel auto-redeploy from `main`. Re-run the two `curl` items
-   from the smoke checklist against production as a final sanity check.
+   from the smoke checklist against production, and confirm the newest Railway
+   deployment itself reached SUCCESS (§2 step 3) — a green `/healthz` proves an
+   image is alive, not that it is the image you just pushed.
+
+6. **Publish the GitHub Release.** The tag alone puts nothing on the Releases
+   page, which is where `README.md` sends a reviewer. The body is the notes
+   file — but its relative links resolve against `/releases/` there and 404,
+   so rewrite them to absolute blob URLs at this tag first (from `repo/`):
+
+   ```bash
+   TAG=v0.7.0
+   BASE=https://github.com/bridgewright/flightcheck/blob
+   sed -E "s#\]\(\.\./\.\./#](${BASE}/${TAG}/#g; s#\]\((v[0-9]+\.[0-9]+\.md)#](${BASE}/${TAG}/docs/releases/\1#g" \
+     "docs/releases/${TAG%.0}.md" > /tmp/${TAG}-notes.md
+   grep -n '](\.\./\|](v0\.' /tmp/${TAG}-notes.md   # must print nothing
+   gh release create "$TAG" --title "$TAG — <the notes' one-line subject>" \
+     --notes-file /tmp/${TAG}-notes.md
+   ```
+
+   Then verify, and open one rewritten link rather than trusting the rewrite:
+
+   ```bash
+   gh release list
+   gh release view "$TAG" --json isDraft,isPrerelease,url
+   ```
+
+   Note for a reader, not a thing to fix: GitHub stamps every entry with when
+   it was *published*, so releases created in one sitting all carry the same
+   timestamp regardless of when their tags were cut. The `Released:` line
+   inside each notes file is the dated record; the Releases page is not.

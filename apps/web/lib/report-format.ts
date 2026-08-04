@@ -14,9 +14,8 @@ export const VERDICT_LABELS: Record<Verdict, string> = {
 // It used to be red / amber / green, matching a coloured verdict band that no
 // longer exists. Both are gone for the same reason: a verdict is not a traffic
 // light. Rendering "Not yet ready" in red punishes exactly the reader this
-// product is for, and colour-coded certainty is on the competitive dossier's
-// AVOID list because it is how exam-band products manufacture confidence they
-// have not earned.
+// product is for, and colour-coded certainty is ruled out here because it is
+// how exam-band products manufacture confidence they have not earned.
 //
 // So sage marks Ready, because arriving is worth marking, and the other two
 // are plain. What separates them on the screen is the word.

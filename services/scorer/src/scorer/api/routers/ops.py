@@ -41,15 +41,22 @@ def build_router(deps: Deps) -> APIRouter:
 
         Every rate ships with the counts behind it and with
         `distinct_users`, because "N=1 account" is the most important fact
-        about every number this product can currently produce, and the
-        repo's honesty rule (impression rule 7) turns on saying so. The
-        `notes` list carries the caveats in prose so a report generated
-        from this payload cannot accidentally drop them.
+        about every number this product can currently produce, and a
+        payload that reads like customer data when it is the operator's own
+        self-test data must not ship. The `notes` list carries the caveats
+        in prose so a report generated from this payload cannot
+        accidentally drop them.
+
+        The reads are bounded, so the bound goes to the aggregator too: a
+        read that comes back full makes every count a floor rather than a
+        total, and the payload has to say so rather than let the report
+        present a truncated scan as everything there is.
         """
         scan_limit = load_resilience_config().metrics.usage_scan_limit
         return compute_usage(
             db.list_recent_packages(scan_limit),
             db.list_recent_sessions(scan_limit),
+            scan_limit=scan_limit,
         )
 
     @router.get("/ops/dead-letters")

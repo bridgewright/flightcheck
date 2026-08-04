@@ -30,7 +30,7 @@ import {
 // about itself: reduced motion is honoured by every leaf, and the only animated
 // properties are transform and opacity.
 //
-// spec: plans/2026-08-03-f21-design-spec.md 6 (private workspace)
+// Motion budget and its reasoning: DECISIONS 031 and 035.
 
 const webRoot = fileURLToPath(new URL("..", import.meta.url));
 const motionDir = join(webRoot, "components/motion");

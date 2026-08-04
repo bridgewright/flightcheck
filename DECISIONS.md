@@ -137,6 +137,14 @@ line no longer describes practice.*
   before payments, and payments still shipped last — but the numbered plan
   it published was wrong for two versions and is corrected here rather
   than rewritten above.
+- **The retroactive-tag rule stated here is refined, not reversed, by 032
+  (2026-08-04).** "A tag invented after the fact is a decoration" remains
+  the rule. What 032 adds is the discriminator this entry did not need and
+  a later release did: a tag may be cut after the fact **at the commit that
+  was actually deployed**, and may not be **invented for a boundary that
+  never shipped separately**. 0.3 and 0.4 are the second kind and are still
+  not tagged. Also corrected: this note says curriculum-lite "moved to
+  v0.6+". It shipped in neither v0.6 nor v0.7 and remains unbuilt.
 
 ## 009 — server_vad + create_response:false carries the silence machinery (2026-08-01)
 
@@ -413,7 +421,8 @@ line no longer describes practice.*
 - **Corrected (2026-08-03, same day):** this entry and its heading first
   read "expiry blocks **new session starts only**". That understated the
   blast radius of its own code. In the worker's `POST /sessions`
-  (`services/scorer/src/scorer/api/app.py`) the `is_expired` check runs
+  (`services/scorer/src/scorer/api/routers/sessions.py`) the `is_expired`
+  check runs
   **before** the retriable-resume branch, so after expiry a *resume* is
   refused too: a session already created and left `planned`, `failed`, or
   `insufficient` cannot be picked back up. The endpoint's own docstring
@@ -427,6 +436,16 @@ line no longer describes practice.*
   payment) does not reach day 30. A last-day failure has no in-product
   remedy — only a support mail. Accepted for v0.5 as the price of a
   bounded window; F-13 utilization data is what would reopen it.
+- **Address corrected (2026-08-04):** the paragraph above cited
+  `services/scorer/src/scorer/api/app.py`. The route left that file in the
+  v0.6 router split (`822c1c4`) and now lives in
+  `services/scorer/src/scorer/api/routers/sessions.py` — `is_expired` at
+  `:145`, the `package-expired` 410 at `:151`, and the quoted docstring at
+  `:132`. `app.py` today defines no route handlers at all, so a reader
+  following the old citation found nothing. The behaviour this entry
+  describes did not change; only its address did. Found by the v0.6/v0.7
+  release audit, which is the second time a decision in this log has aged
+  into a dead path — see 020's own correction history.
 
 ## 020 — retention and deletion v0: policy page, mailto intake, operator purge (2026-08-03)
 
@@ -446,11 +465,31 @@ line no longer describes practice.*
   untested.
 - **Rejected — self-serve deletion now:** needs auth-adjacent deletion
   endpoints and storage fan-out done carefully — scheduled as F-34
-  (v0.6).
+  (v0.6). ~~Rejected~~ — **overtaken; see the revisit note below.**
 - **Rejected — no refund window:** "never" is not an honest answer to a
   broken recording.
 - **Revisit when:** deletion requests exceed a manual cadence, or v0.6
   ships F-34 self-serve deletion.
+- **Revisit executed (v0.6, 2026-08-03) — 025 supersedes the deletion
+  half of this entry.** F-34 shipped, so the second condition fired. The
+  product no longer works the way the Decision paragraph above describes:
+  deletion is self-serve from settings
+  (`apps/web/app/settings/delete-account.tsx`, rendered at
+  `apps/web/app/settings/page.tsx:100`) and it is immediate, which is what
+  the privacy page now tells the customer. `DECISIONS 025` carries the
+  ordering guarantee that made it safe to ship — blobs before rows, and a
+  partial failure deletes nothing. **What survives from this entry:** the
+  operator purge script still exists and now runs the same code as the
+  endpoint rather than a second implementation that could drift, and the
+  mailto route remains for the one case self-serve cannot cover — a user
+  who cannot sign in. The retention and refund halves of this entry are
+  unchanged and still current.
+- **Recorded (2026-08-04):** this note was written by the v0.6/v0.7
+  release audit, the day after the condition fired — and only because an
+  auditor went looking. F-34 shipped, 025 was written, and neither
+  pointed back here. A revisit condition that fires and is never marked
+  leaves the log telling a reader the wrong product, which is the failure
+  mode this file exists to prevent.
 
 ## 021 — prompt-injection stance: fence now, detect later (F-11 split) (2026-08-03)
 
@@ -520,6 +559,36 @@ screen in the product.*
 - **Revisit when:** the Google provider is configured (v0.6) and the flag
   flips; or real-usage metrics show sign-in links failing to arrive, which
   is the specific failure mode passwordless buys.
+- **Corrected (2026-08-04, third audit to find a false claim in this
+  entry).** Two mechanisms above were described wrongly. The conclusions
+  they support are both still true, which is exactly why nobody caught
+  this by using the product.
+  - **The identity seam is `apps/web/lib/viewer.ts`, not
+    `apps/web/lib/supabase/server.ts`.** Forty files import
+    `@/lib/viewer`; none imports `getViewer` from `supabase/server`, whose
+    single caller is `viewer.ts` itself. `viewer.ts`'s own header states
+    the rule — "Screens import ONLY this module". Three routes do import
+    `createClient` from `supabase/server` directly (`app/auth/callback`,
+    `app/auth/signout`, `app/api/account/delete`), but they need a
+    Supabase client to exchange a code, end a session, or delete an
+    account — not an answer to "who is signed in". The entry named the
+    implementation and called it the seam.
+  - **The Google flag is environment-driven and was never a literal
+    here.** It is `GOOGLE_AUTH_ENABLED` in
+    `apps/web/app/login/google-auth.ts:36`, computed from
+    `NEXT_PUBLIC_GOOGLE_AUTH_ENABLED`, not `= false` in
+    `app/login/page.tsx`. `apps/web/tests/google-auth.test.ts:40` asserts
+    the source does **not** contain a hard-coded
+    `GOOGLE_AUTH_ENABLED = true|false` — the tree actively forbids the
+    thing this entry described. That test and the environment plumbing
+    shipped in `6b30c70` (v0.6); the entry was written before it and never
+    moved.
+  - **The revisit is half-fired.** v0.6 made the flag environment-driven,
+    which was the mechanical half. The provider is still not configured
+    and the flag has not flipped: the deployed `/login` contains no
+    occurrence of "google". So the entry's *conclusion* — the button is
+    off — holds in production. Turning it on is tracked as F-44 and has to
+    land before v1.0, because reviewers will sign in with it.
 
 ## 023 — Polar webhook: accept any derivation of the SAME secret (2026-08-03)
 
@@ -665,9 +734,9 @@ screen in the product.*
 ## 026 — CSP without a nonce, and what that costs (2026-08-03)
 
 - **Decision:** the Content-Security-Policy ships without a nonce.
-  `frame-ancestors 'none'`, an explicit four-origin `connect-src`
-  allowlist, `form-action` scoped to the checkout origins, and
-  `Permissions-Policy` granting the microphone on the room route only.
+  `frame-ancestors 'none'`, an explicit `connect-src` allowlist,
+  `form-action` scoped to the checkout origins, and `Permissions-Policy`
+  granting the microphone on the room route only.
 - **Why:** a nonce has to be minted per request, which forces every page
   that carries inline framework bootstrap into dynamic rendering. `/login`
   and the landing are prerendered on purpose — they are the two routes a
@@ -688,6 +757,23 @@ screen in the product.*
   under the new headers with a real signed delivery against a running
   server; the Supabase code exchange and a live WebRTC room remain for the
   production smoke, and are named as such rather than assumed.
+- **Corrected (2026-08-04):** this entry said "four-origin `connect-src`".
+  The deployed policy carries **six** tokens — `'self'`, the Supabase
+  origin, `api.openai.com`, and three Sentry ingest hosts spread in from
+  `sentryOrigins` at `apps/web/lib/security-headers.ts:95`. Read off the
+  live response header, not the source. **The count is now stated nowhere in
+  prose** and is read off `security-headers.ts` or the served header instead:
+  an origin count that lives in a sentence is one a new dependency falsifies
+  silently, which is exactly what happened here. (An earlier draft of this
+  correction claimed the code already pinned the count, citing a comment four
+  lines above the allowlist. That comment is about inline styles under
+  `style-src`, not about origins — a wrong citation inside a correction,
+  caught by the round that re-read this batch.) **How it happened is the more
+  useful half**: Sentry entered the
+  product with no decision entry at all (now 033), and an undocumented
+  dependency silently invalidated a number in an entry that *was*
+  documented. An unlogged decision does not only leave a gap where it
+  should be — it corrupts the entries around it.
 
 ## 027 — prompt injection: fence, then detect, then refuse out loud (2026-08-03)
 
@@ -805,15 +891,31 @@ screen in the product.*
   and there is a point on the page where "now see the bar for your own job
   description" is the obvious next step rather than the opening move. F-21 is
   where that either becomes true or does not.
+- **Revisit fired, not yet acted on (2026-08-04).** F-21 shipped and the
+  condition reads as substantially met. The deployed landing now opens with
+  the claim — "Would you pass the interview today?", then "Paste a job. Talk.
+  Read the verdict." — and its first how-it-works step is "Paste the job
+  description". That step is exactly the place this entry described as the
+  natural one: the page has made its argument by the time the reader reaches
+  it. **Whether to reinstate the preview is a product call that has not been
+  made**, and it is not free — bringing it back re-opens the only
+  unauthenticated model call in the product and every guard that existed to
+  hold it shut. What this note settles is only that the condition this entry
+  set has occurred, so the question is live rather than dormant. Recorded
+  because the alternative — a fired condition left silent — is how a decision
+  log stops being a decision log. Registered for revisit as F-45; this entry
+  is the public half of that.
 
 ## 031 — two client dependencies, and the boundary they are allowed to cross (2026-08-04)
 
 *F-21. The product's first runtime client dependencies.*
 
 - **Decision:** `motion` and `@phosphor-icons/react` enter the web app, under
-  two rules. Motion is confined to three leaf components under
+  two rules. Motion is confined to the client leaf components under
   `components/motion/` that take only presentational props and render their
-  children; every screen using them stays a server component. Icons are
+  children — `Reveal.tsx` and `MountReveal.tsx`, with `entry.ts` beside them
+  exporting the shared constants and no component; every screen using them
+  stays a server component. Icons are
   imported from `@phosphor-icons/react/ssr`, the tree-shaken server entry, and
   only where a glyph carries state a word would carry worse — a disclosure
   caret, an accordion's plus and minus.
@@ -845,3 +947,230 @@ screen in the product.*
 - **Revisit when:** either dependency is used by more than the surfaces listed
   here, or a client component appears that takes anything but presentational
   props. Both are conditions a reviewer can check rather than judgement calls.
+- **Count corrected (2026-08-04):** this entry said "three leaf components".
+  There are two. `RevealGroup.tsx` was the third and was deleted in `111d4d1`,
+  **fifty-two minutes after this entry was written** — and that same commit
+  edited this file without touching the number. Two places in the tree already
+  contradicted it: `apps/web/tests/landing-motion.test.ts:199` ("RevealGroup is
+  not here because it no longer exists") and `RETRO.md`'s note that it was a
+  client component whose comment claimed four call sites and had zero. The
+  glyph count in the paragraph below — three glyphs across two components — was
+  wrong in its first draft, corrected the same day, and is now right. This is
+  the second miscount in one short entry, which is the argument for the rule
+  the audit adopted: a number in prose is a claim, and a claim is checked by
+  counting, not by remembering.
+
+## 032 — a tag is retroactive only where the release boundary is (2026-08-04)
+
+*Written because cutting `v0.6.0` and `v0.7.0` today contradicts, on its face,
+a rule this repo states in four places.*
+
+- **Context:** 008 refused to tag v0.3 and v0.4 after the fact, on the
+  grounds that "a tag invented after the fact is not a release rhythm, it is
+  a decoration". `docs/releases/v0.5.md`, `CHANGELOG.md` and `README.md`
+  repeat it. Two batches have since shipped, been deployed, and gone
+  untagged: the v0.6 "operate at scale" batch, deployed 2026-08-03 at
+  `da254e3`, and the F-21 design pass, deployed 2026-08-04. A hundred
+  commits now sit past the last tag — the second-largest gap in the project's
+  history, after the 146 between v0.2.0 and v0.5.0, and a straightforward
+  failure of the weekly-tag rhythm the repo holds itself to.
+- **Options:** (a) leave both untagged and let a future v1.0 absorb a
+  hundred commits; (b) one tag covering both batches; (c) two tags, each at
+  the commit that was actually deployed.
+- **Choice:** (c). `v0.6.0` at `da254e3`; `v0.7.0` at the release commit that
+  carries this batch's audit fixes on top of the deployed design pass —
+  **deployed first, then tagged**, in that order. The rule below says a tag goes
+  on the commit that was actually deployed, so `v0.7.0` is not cut until its
+  commit is serving in production and has been read there. Tagging first and
+  deploying afterwards would make this entry's own rule false for the tag it was
+  written to justify.
+- **Why, and this is the whole of it:** 008's rule was aimed at a tag with no
+  release behind it. v0.3 and v0.4 never had a separable deployed boundary —
+  they were folded into v0.5 precisely because there was nothing distinct to
+  point a tag at. v0.6 and F-21 are the opposite case: each is a distinct
+  commit that was built, deployed, and served to the public on a distinct
+  day. The tag does not invent the boundary; the boundary already exists in
+  the deployment record and the tag names it. So the rule sharpens to: **a
+  tag may be cut after the fact at the commit that was actually deployed, and
+  may not be invented for a boundary that never shipped separately.**
+- **What this costs, stated rather than discovered later:** the tag dates are
+  later than the commits they point at, and `v0.6.0` points at a tree whose
+  version manifests read `0.5.0`, because `da254e3` is not going to be edited
+  to make a version string agree with a tag applied afterwards. Both are
+  disclosed in the release notes. The repo already has this disclosure
+  pattern: `CHANGELOG.md` records that `v0.1.0`'s heading is dated by its
+  notes while the tag object itself was created on 2026-08-01.
+- **Also disclosed, because it is the sharper problem:** neither batch has an
+  eval gate run of record. `evals/reports/` has nothing after
+  `2026-08-03-v05-gate.md`, and both batches were deployed. Non-negotiable 3
+  says the suites pass "before any tag", so the letter held — nothing was
+  tagged — but `docs/deploy.md` puts the gate in the pre-deploy checklist and
+  the deploy happened anyway. One run on the tag tree covers both tags and
+  says so in words; it cannot retroactively make a gate have run at
+  `da254e3`, and the notes do not pretend otherwise.
+- **Rejected — (a), let v1.0 absorb it:** the tag rhythm is not a bookkeeping
+  preference — a repo that claims a weekly release rhythm has to have the tags
+  and the release notes to show for it, and an eighteen-day silence between
+  v0.5.0 and v1.0 does not. It also buries two genuinely different releases
+  inside a third.
+- **Rejected — (b), one tag for both:** cheaper and defensible, but it
+  invents a boundary too — it merges two things that shipped a day apart to
+  different production builds, and the CHANGELOG had already been written
+  keeping them separate because they are separate.
+- **Rejected — moving `v0.6.0` forward to a commit whose manifests read
+  `0.6.0`:** buys a cosmetic agreement by giving up the property that makes
+  this defensible at all, which is that the tag sits on the deployed commit.
+- **Revisit when:** a batch is deployed without a tag again. The right
+  response then is not another 032 — it is to fix the release process so the
+  tag and the deploy are one step. `docs/deploy.md` §5.2 has been amended in
+  this batch to write the release notes and publish the GitHub release,
+  which is the half that was missing and the reason this entry is needed.
+
+## 033 — error monitoring: Sentry on both runtimes (2026-08-03, logged 2026-08-04)
+
+*Logged a day late, by the release audit. `@sentry/nextjs` entered the web
+app in `1659c99` with no entry at all — in the same commit range as the two
+dependencies 031 does document, and 031 exists precisely to close this gap.
+The Python side has carried `sentry-sdk` since before v0.5.0 (`5cab632`) and
+was equally undocumented.*
+
+- **Context:** failures were previously discovered by a customer saying so.
+  A product that records voice, stores transcripts, and takes payment needs
+  to know when it breaks before the customer tells it.
+- **Options:** (a) structured logs only, read by the operator on demand;
+  (b) a self-hosted error collector; (c) a third-party error-monitoring
+  service on both runtimes.
+- **Choice:** (c), Sentry, on the Next.js app and the Python worker, with
+  alert rules recorded as configuration rather than as clicks someone once
+  made in a console.
+- **Why:** the operator is one person who is asleep for eight hours of every
+  day this product is meant to be usable in. (a) requires someone to already
+  suspect a problem, which is the thing being fixed. (b) is a second service
+  to run and page for, to avoid sending stack traces to a vendor — a poor
+  trade at this size.
+- **What it costs, and the boundary drawn around it:** a third party receives
+  crash reports from a product whose subject matter is personal.
+  `send_default_pii=False` on the Python side
+  (`services/scorer/src/scorer/observability.py:96`) is the line: identifiers
+  and stack traces go, user content does not. **No recording, transcript,
+  report body or job-description text is ever sent to it.** The browser-side
+  reporter ships in the bundle but is inert unless a client DSN is set, which
+  production does not currently set. Three Sentry ingest hosts are in the
+  CSP's `connect-src` as a result — see the correction on 026, which this
+  entry's absence had quietly falsified.
+- **Rejected — (a) logs only:** the failure mode it leaves open is the one
+  that already happened.
+- **Rejected — (b) self-hosted:** infrastructure the operator would then have
+  to monitor, which is the original problem one level down.
+- **Rejected — sending PII to make debugging easier:** a transcript in an
+  error report is the customer's interview in a vendor's database. If a class
+  of bug genuinely cannot be diagnosed without content, that is a reason to
+  add a redacted, purpose-built field, not to open the default.
+- **Revisit when:** a browser DSN is configured — the privacy policy's
+  wording has to match it, and this batch already corrected that clause to be
+  true under both configurations; or the alert volume becomes noise, at which
+  point the rules are the thing to change rather than the service.
+
+## 034 — the worker survives its own history: backoff, a concurrency limit, a deadline, a dead letter (2026-08-03, logged 2026-08-04)
+
+*Also logged by the release audit. The whole "pipeline survives its own
+history" section of the v0.6 changelog shipped with no entry behind it, and
+one part of it has a production incident in its history.*
+
+- **Context:** the scoring pipeline is a chain of expensive, slow, failure-prone
+  model calls behind a worker with finite memory, and v0.6 is the release whose
+  premise is that the operator can be away for a week.
+- **Options:** (a) fail fast and surface errors to the customer; (b) a job queue
+  with multiple workers; (c) in-process resilience primitives — retry with
+  backoff, a concurrency limit, a deadline, and a dead-letter record.
+- **Decision:** (c), four parts, each with a live alternative:
+  - **Backoff on every model call site.** The audit that opened this work found
+    one of seven covered. A discovery-based test then found **eleven** call
+    sites rather than seven, and pins the count so a twelfth cannot ship
+    without failing the gate. Transcription got it first: the most expensive,
+    least replaceable step, and the one that had none.
+  - **A scoring concurrency limit plus a memory guard.** Measured peak is
+    ~1.6GB; two concurrent scorings is an out-of-memory kill **that has already
+    happened once in production.** Serialised rather than scaled, because the
+    honest constraint is one box.
+  - **An overall job deadline**, so one job cannot hold a worker thread for
+    fifty minutes by chaining per-call timeouts that are each individually
+    reasonable.
+  - **A dead-letter record for permanently failed jobs**, with an endpoint to
+    read it.
+- **Why the counts matter more than the mechanisms:** every one of these is a
+  mechanism any competent engineer would name. What the batch actually learned
+  is that the enumeration is the hard part — "we added backoff" was true and
+  covered one site in seven, and the only thing that made it true in general
+  was a test that discovers the call sites instead of listing them.
+- **Rejected — fail fast on transient model errors:** hands the customer a
+  failed interview for a 503 that would have cleared in two seconds.
+- **Rejected — a job queue with multiple workers:** the right answer at a size
+  this product does not have, and it converts a memory limit into an
+  infrastructure bill and a distributed-state problem.
+- **Rejected — unbounded retries:** an id that will never resolve becomes a
+  worker thread occupied forever. The deadline and the dead letter exist
+  precisely so a permanent failure ends as a record instead of as capacity.
+- **Rejected — discovering failures by customer complaint:** the status quo
+  this replaced.
+- **Revisit when:** the concurrency limit becomes the bottleneck under real
+  load — which needs users, so F-13's utilization data is the trigger — or a
+  twelfth model call site fails the discovery test, which is the point at
+  which someone should ask whether the pipeline has grown a shape nobody
+  designed.
+
+## 035 — one design system, enforced by the test suite, and rebuilt mid-batch from measured values (2026-08-04)
+
+*F-21. Logged by the release audit: a design system, a CI gate gone in to
+enforce it, and a wholesale rebuild of it inside one batch, none of it in this
+log. 031 recorded the two npm packages the pass introduced and not the system
+they were introduced for.*
+
+- **Context:** the product had `dark:` variants throughout, roughly six hundred
+  raw colour literals across forty-odd files, and a house style that existed as
+  prose. It rendered as a different product depending on the reader's operating
+  system setting.
+- **Options:** (a) keep the prose style guide and review by eye; (b) tokens
+  plus a written rule; (c) tokens plus scans in the test suite that fail the
+  build on a violation; and, separately, two themes or one.
+- **Decision:** (c). Every colour, type step, radius and shadow is declared once in
+  `app/globals.css`, composed in `lib/ui.ts`, and **enforced by scans in the
+  test suite** that walk `app/`, `components/` and `lib/` and fail on a raw
+  palette utility, an arbitrary colour, a pixel font size, a CSS gradient, a
+  hand-rolled page column, or a dash in a sentence a reader sees. Light only:
+  the dark variant is rebound to a class nothing sets. Contrast is computed and
+  gated rather than asserted.
+- **Why enforced rather than written down:** the previous version of this rule
+  *was* written down, was believed, and scanned exactly one directory — the
+  eight components under `components/landing/`, walked by a `readdirSync`. The
+  batch's own measurement is the argument: all eight scanned files had zero raw
+  colour literals, while the hundred and eight source files with no scan
+  included forty-five carrying about six hundred between them. A house rule
+  holds as far as CI enforces it and no further.
+- **The rebuild, which is the part worth logging.** The system was built twice.
+  The first pass was built from a prose description of the design reference and
+  shipped a 110% root, a serif display face, ~56px pill controls and 62px
+  headings. The user put the two side by side and named four faults; the second
+  pass rebuilt it from the reference's **measured computed styles**, which
+  reversed the earlier "110% is the new 100%" direction, removed the serif after
+  one day, and set controls to 7px rectangles.
+- **Rejected — keep the first system and adjust it in place:** the faults were
+  not individually tunable; the root size, the type scale and the control
+  geometry are one system, and adjusting them one at a time is how a design
+  arrives at a shape nobody chose.
+- **Rejected — describing the reference and building from the description:**
+  this is the actual lesson. A prose description of a design is a lossy encoding
+  of it, and the loss is invisible until someone sees both. Measure the artifact.
+- **Rejected — keeping both themes:** two products to design, review and screenshot,
+  for a reader who never asked for the choice.
+- **What was deleted, on a stated principle:** `CARD_RAISED`, `--shadow-raise`,
+  `ScreenFrame`, `Showcase` and `RevealGroup` came out because nothing rendered
+  them. **A token or component nothing renders is a claim the design makes that
+  no screen has to keep.** The cost is real and is being paid now: the four
+  captioned product-screenshot slots are gone, so restoring them needs a
+  component as well as image files.
+- **Revisit when:** a screen needs a second theme for a reason the product can
+  state — the interview room is the live candidate, since a voice surface may
+  want a dark ground, and that would be its own decision rather than a
+  reopening of this one; or a scan starts failing more often than it catches
+  anything, which is the signal that a rule is wrong rather than unenforced.

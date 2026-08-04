@@ -44,6 +44,22 @@ import { MAX_SCORE, readVerdict, weakestDimension } from "@/lib/verdict";
 const MAX_QUOTES = 4;
 const MAX_TIMELINE = 5;
 
+/**
+ * A count next to its noun phrase, pluralised: `4 quotes`, `1 quote`.
+ *
+ * Both disclosures below print one, and both hardcoded the trailing "s". The
+ * deployed sample report rendered "Show 1 more quotes" twice, because two
+ * dimensions carry exactly MAX_QUOTES + 1 quotes; the timeline had the same
+ * defect and read correctly only because that fixture happens not to sit at
+ * MAX_TIMELINE + 1. A report about how someone speaks cannot make a grammar
+ * error in its own chrome, so counted nouns go through here.
+ *
+ * Regular nouns only: it appends "s" and nothing else.
+ */
+function plural(count: number, noun: string): string {
+  return `${count} ${noun}${count === 1 ? "" : "s"}`;
+}
+
 // One badge for every surface that renders a judge-vs-measurement
 // disagreement (observations timeline here, transcript inline notes in
 // TranscriptView): the conflict must look identical wherever it appears.
@@ -164,7 +180,7 @@ function DimensionBody({ score }: { score: DimensionScore }) {
           {score.evidence_quotes.length > MAX_QUOTES && (
             <details>
               <summary className={`${SUBTLE} ${LINK} cursor-pointer`}>
-                Show {score.evidence_quotes.length - MAX_QUOTES} more quotes
+                Show {plural(score.evidence_quotes.length - MAX_QUOTES, "more quote")}
               </summary>
               <div className="mt-2 flex flex-col gap-2">
                 {score.evidence_quotes.slice(MAX_QUOTES).map((quote) => (
@@ -338,7 +354,7 @@ export function ReportObservations({
       {observations.length > MAX_TIMELINE && (
         <details>
           <summary className={`${SUBTLE} ${LINK} cursor-pointer`}>
-            Show the full timeline ({observations.length} observations)
+            Show the full timeline ({plural(observations.length, "observation")})
           </summary>
           <ol className="mt-3 flex flex-col gap-3">
             {observations.map((observation) => (

@@ -97,8 +97,8 @@ export default async function CheckoutSuccessPage({
         </h1>
         <p className="mt-3 text-ink-muted">
           All {PACKAGE_SESSIONS} sessions of this package are unlocked: same job
-          description, same rubric, fresh topics every session. The package stays open
-          for {EXPIRY_DAYS} days.
+          description, same rubric, one bar, so the scores are comparable and you
+          can watch them move. The package stays open for {EXPIRY_DAYS} days.
         </p>
         <div className="mt-7 flex flex-wrap items-center gap-4">
           <Link href="/home" className={PRIMARY_BUTTON}>

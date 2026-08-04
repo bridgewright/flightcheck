@@ -1,12 +1,12 @@
 # docs/metrics/
 
-**Last reviewed: 2026-08-03, at the `v0.5.0` tag.** This directory is the doc
+**Last reviewed: 2026-08-04, at the `v0.7.0` tag.** This directory is the doc
 of record for real-user numbers; if the date on that line is older than the
 newest release in `CHANGELOG.md`, treat everything below as unverified. Silent
 staleness here is a demonstrated failure mode, not a hypothetical one — see the
 note at the bottom.
 
-**v0.1 through v0.5 all ship with zero external users.** Every session that
+**v0.1 through v0.7 all ship with zero external users.** Every session that
 exists — including the one behind the public sample report — was run by the
 developer (N=1), so no usage, retention, or unit-economics numbers exist, and
 none are claimed anywhere in this repo. This file is the only thing in this
@@ -32,6 +32,8 @@ into a dated report in this directory:
 
 ```
 GET /api/metrics/usage                      # worker, bearer-authed
+
+cd services/scorer                           # the tool resolves from here
 uv run python tools/usage_report.py --worker-url https://<worker>
 ```
 
@@ -61,18 +63,18 @@ reported under its own name; the PRD's metric stays unreported until the
 session room measures it.
 
 Scoring latency is sampled in the worker process (there is no column for it,
-and v0.6 adds no migration for one), so its p50 always ships with its sample
-size and a note that it resets when the worker restarts.
+and no migration through v0.7 adds one), so its p50 always ships with its
+sample size and a note that it resets when the worker restarts.
 
 ## State of each number at this tag
 
-| Number | State at the v0.5 tag |
+| Number | State at the v0.7 tag |
 | --- | --- |
-| Sessions run · completion rate | The fields a rate needs exist — `sessions.status` (`scored` / `insufficient` / `failed`) over the sessions that opened a room (`sessions.secret_mints`) — and nothing computes it. Computed today it would be a self-test statistic |
-| First-response latency, p50 | Not instrumented at all. The only latency the product records is `avg_response_latency_s` in the delivery channel, which times the *candidate's* side of a turn and is a mean — it cannot stand in for the PRD's interviewer-side p50 target |
-| Package burn-through (of 6 sessions) | The counters exist (`packages.total_sessions`, session rows per package); the only package ever unlocked by a payment is the operator's verification one |
-| Verdict distribution | Needs sessions from more than one person before a distribution means anything |
-| Per-session unit cost | Still not metered. The v0.1 notes promised it for v0.2 and it has not landed in v0.2, v0.3, v0.4 or v0.5; F-13 does not cover it either. The PRD carries published unit economics at v1.0 |
+| Sessions run · completion rate | **Computed, and withheld for want of a sample.** `compute_usage` derives it from `sessions.status` (`scored` + `insufficient`) over the sessions that opened a room (`sessions.secret_mints`), the endpoint serves it, and the report renders it against the ≥ 85% target with its counts beside it. Nothing is missing except users: run today it is a self-test statistic |
+| First-response latency, p50 | **Not instrumented, on purpose, and published as such.** The only latency the product records is `avg_response_latency_s` in the delivery channel, which times the *candidate's* side of a turn and is a mean — so it cannot stand in for the PRD's interviewer-side p50. The endpoint returns `None` for this metric with that reason attached, and the report prints "not instrumented" rather than a dash |
+| Package burn-through (of 6 sessions) | **Computed, and withheld for the same reason.** The counters exist (`packages.total_sessions`, session rows per package) and `compute_usage` turns them into a mean and a ratio; every package that exists is the operator's, so there is nothing to average across |
+| Verdict distribution | Needs sessions from more than one person before a distribution means anything. No instrument, and none is needed until there is a second person |
+| Per-session unit cost | Still not metered. The v0.1 notes promised it for v0.2 and it has not landed in v0.2, v0.3, v0.4, v0.5, v0.6 or v0.7; F-13 did not cover it either. The PRD carries published unit economics at v1.0 |
 
 When numbers do exist they get committed here with the sample size stated
 next to every one of them, following the rule the eval reports already follow:
@@ -88,3 +90,15 @@ is true about users still read "v0.1 and v0.2 both ship with zero external
 users" and still described payments as pending. The claim it made happened to
 still be true; the file had no way to know that, which is the actual problem.
 Hence the dated review line at the top.*
+
+*Reviewed again 2026-08-04 for v0.6.0 and v0.7.0, and the review line at the
+top is the reason this happened at all rather than at the next audit. The
+failure it caught was not the one it was built for: the v0.6 work updated the
+middle of this page and left the header, the version enumeration and the state
+table stamped for v0.5, so a single page asserted both that an endpoint now
+computes the completion rate and, thirty-five lines later, that nothing
+computes it. Staleness is not the only way a doc of record goes wrong — a
+half-updated page is worse, because the fresh half makes the stale half look
+checked. Both halves now carry the same tag, and the state table says which
+numbers have an instrument and which have a sample, because those stopped
+being the same question at v0.6.*

@@ -60,7 +60,8 @@ export default function SessionTicket({
             {trial ? (
               <Rule live>
                 Your trial session is used. The rest of this package (same JD,
-                same rubric, fresh topics) unlocks with payment.
+                same rubric, same bar) unlocks with payment, so you can watch the
+                score move.
               </Rule>
             ) : (
               <Rule live={false}>
@@ -115,7 +116,7 @@ export default function SessionTicket({
             {action}
             {exhausted ? null : (
               <span className="text-fine text-ink-faint">
-                Fresh topics · English · scored from your voice
+                One bar · English · scored from your voice
               </span>
             )}
           </div>
