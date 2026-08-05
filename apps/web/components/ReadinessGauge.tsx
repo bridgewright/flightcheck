@@ -1,3 +1,4 @@
+import Sweep from "@/components/motion/Sweep";
 import { VERDICT_LABELS } from "@/lib/report-format";
 import type { Verdict } from "@/lib/types";
 import {
@@ -126,11 +127,15 @@ function Track({
       <div className="relative mt-0.5 h-3 overflow-x-clip">
         {/* The scale. Decorative: every number it carries is also printed. */}
         <span className="absolute inset-x-0 top-1/2 h-px bg-hairline" />
+        {/* The reading sweeps to its place once, on first view: the score is
+            a measurement, and the sweep is the instrument taking it (F-58).
+            Fill and marker travel as one unit inside the leaf, so they can
+            never drift apart mid-sweep. */}
         {value === null ? null : (
-          <AtOffset at={offsetPercent(value)}>
+          <Sweep percent={offsetPercent(value)}>
             <span className="absolute top-1/2 right-0 h-0.5 w-full -translate-y-1/2 bg-ink" />
             <span className="absolute inset-y-0 right-0 w-0.5 translate-x-1/2 bg-ink" />
-          </AtOffset>
+          </Sweep>
         )}
         <AtOffset at={offsetPercent(threshold)}>
           <span className="absolute inset-y-0 right-0 w-px translate-x-1/2 bg-field" />

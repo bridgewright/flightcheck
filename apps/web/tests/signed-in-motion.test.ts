@@ -52,3 +52,57 @@ describe("the gauge positions its marks with transform alone", () => {
     expect(read("components/ReadinessGauge.tsx")).toContain("overflow-x-clip");
   });
 });
+
+// --- The new leaves consume the budget, never restate it -----------------
+
+/** The leaves this feature added. landing-motion.test.ts already runs its
+ * directory-wide scans over them; these checks are the ones it does not make. */
+const NEW_LEAVES = ["components/motion/Sweep.tsx"];
+
+describe("the new leaves consume entry.ts rather than re-declaring it", () => {
+  // The budget is one module so it cannot drift between leaves. A leaf that
+  // writes `duration: 0.3` agrees with the budget today and diverges the day
+  // the budget changes.
+  it.each(NEW_LEAVES)("%s imports the shared vocabulary", (file) => {
+    expect(read(file)).toContain('from "./entry"');
+  });
+
+  it.each(NEW_LEAVES)("%s re-declares no duration, curve, or viewport", (file) => {
+    const code = withoutComments(read(file));
+    expect(code, "a literal duration restates ENTRY_SECONDS").not.toMatch(
+      /duration:\s*[\d.]/,
+    );
+    expect(code, "a literal curve restates the eases").not.toMatch(/ease:\s*\[/);
+    expect(code, "a literal viewport restates ENTRY_VIEWPORT").not.toMatch(
+      /once:\s*(true|false)/,
+    );
+  });
+});
+
+describe("the gauge's reading sweeps in through the leaf", () => {
+  it("draws the reading with Sweep, handed only its offset", () => {
+    const gauge = read("components/ReadinessGauge.tsx");
+    expect(gauge).toContain('from "@/components/motion/Sweep"');
+    expect(gauge).toContain("<Sweep percent={");
+  });
+
+  it("sweeps once per first view, and never on a poll refresh", () => {
+    // once:true via the shared constant, and no `animate=` mount trigger: a
+    // mount trigger would replay if the tree ever remounted, and the viewport
+    // trigger is what "first view" means.
+    const leaf = read("components/motion/Sweep.tsx");
+    expect(leaf).toContain("ENTRY_VIEWPORT");
+    expect(leaf).toContain("whileInView");
+  });
+
+  it("settles at transform none, which is what the CSS backstops render", () => {
+    // The mover animates x from -percent% back to 0, so the settled state is
+    // no transform at all. Both globals.css backstops write
+    // `transform: none !important` on [data-reveal]; if the settled state
+    // ever becomes a meaningful transform (a scaleX fill), a no-JS reader is
+    // shown a full bar, which is a wrong number rather than a missing nicety.
+    const leaf = withoutComments(read("components/motion/Sweep.tsx"));
+    expect(leaf).toContain('x: "0%"');
+    expect(leaf).not.toMatch(/scaleX/);
+  });
+});
