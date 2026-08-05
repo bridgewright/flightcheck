@@ -40,7 +40,7 @@ _KEY_SPAN = "The second half of the answer stays thin on specifics."
 _STRENGTHS = ["Named the outcome and the number without prompting."]
 _WEAKNESSES = ["No trade-off was weighed before the recommendation."]
 
-# Nine judge replies (2 content dims x 3 samples, plus headroom): the focused
+# Six judge replies (2 content dims x 3 samples, exactly): the focused
 # dimension calls run concurrently and pop the ordered script in no fixed
 # order, so every reply carries both dimensions' scores and is valid for
 # whichever call pops it. structured-answers carries the authored fields;
