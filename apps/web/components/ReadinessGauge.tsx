@@ -42,9 +42,40 @@ import {
 // (taste-skill 9.F): the rail is a hairline and the reading is a short rule on
 // it, not a progress bar.
 
-function offset(value: number): string {
+/** Where a value sits on the rail, as a percentage of the rail's width. */
+function offsetPercent(value: number): number {
   const clamped = Math.min(Math.max(value, 0), MAX_SCORE);
-  return `${(clamped / MAX_SCORE) * 100}%`;
+  return (clamped / MAX_SCORE) * 100;
+}
+
+/**
+ * The transform-only positioner every mark on the rail goes through.
+ *
+ * The marks used to sit at inline `width` and `left` offsets. Those are
+ * exactly the layout properties the motion budget forbids animating
+ * (DECISIONS 031/035), and the gauge is the one instrument on these screens
+ * that does animate, so its static geometry is written in the vocabulary
+ * that is allowed to move: `right-full` parks the wrapper's right edge at
+ * the rail's start, and translateX walks it to `at` percent of the rail.
+ * Children anchor to the wrapper's right edge, which is the offset itself.
+ */
+function AtOffset({
+  at,
+  className,
+  children,
+}: {
+  at: number;
+  className?: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <span
+      className={`absolute inset-y-0 right-full w-full ${className ?? ""}`}
+      style={{ transform: `translateX(${at}%)` }}
+    >
+      {children}
+    </span>
+  );
 }
 
 function Track({
@@ -88,37 +119,31 @@ function Track({
       {sub === null ? null : (
         <p className="text-fine text-ink-muted">{sub}</p>
       )}
-      <div className="relative mt-0.5 h-3">
+      {/* overflow-x-clip does two jobs: the reading's fill spans the full
+          rail width and ends at the offset, so this clip IS its left edge;
+          and a positioner mid-travel must not spill the page sideways. Clip
+          rather than hidden, so no scroll container is created. */}
+      <div className="relative mt-0.5 h-3 overflow-x-clip">
         {/* The scale. Decorative: every number it carries is also printed. */}
         <span className="absolute inset-x-0 top-1/2 h-px bg-hairline" />
         {value === null ? null : (
-          <>
-            <span
-              className="absolute top-1/2 left-0 h-0.5 -translate-y-1/2 bg-ink"
-              style={{ width: offset(value) }}
-            />
-            <span
-              className="absolute inset-y-0 w-0.5 -translate-x-1/2 bg-ink"
-              style={{ left: offset(value) }}
-            />
-          </>
+          <AtOffset at={offsetPercent(value)}>
+            <span className="absolute top-1/2 right-0 h-0.5 w-full -translate-y-1/2 bg-ink" />
+            <span className="absolute inset-y-0 right-0 w-0.5 translate-x-1/2 bg-ink" />
+          </AtOffset>
         )}
-        <span
-          className="absolute inset-y-0 w-px -translate-x-1/2 bg-field"
-          style={{ left: offset(threshold) }}
-        />
+        <AtOffset at={offsetPercent(threshold)}>
+          <span className="absolute inset-y-0 right-0 w-px translate-x-1/2 bg-field" />
+        </AtOffset>
       </div>
       {/* The bar's own label, printed under the bar and ending at it, so it
           can never run off the right edge of a narrow column. */}
       <div className="relative h-3.5">
-        <span
-          className="absolute inset-y-0 left-0 flex justify-end"
-          style={{ width: offset(threshold) }}
-        >
+        <AtOffset at={offsetPercent(threshold)} className="flex justify-end">
           <span className={`${LABEL} pr-1.5 whitespace-nowrap`}>
             {thresholdLabel}
           </span>
-        </span>
+        </AtOffset>
       </div>
     </div>
   );
