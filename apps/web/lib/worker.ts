@@ -483,6 +483,11 @@ export interface SessionProgressEntry {
   dimension_scores: ProgressDimensionScore[];
   wpm_overall: number | null;
   filler_rate_per_min: number | null;
+  // v0.10 (F-23): the report's avg_response_latency_s, surfaced per session.
+  // Optional because entries serialized by an older worker omit the key;
+  // null when no report exists or the DSP could not measure a handoff.
+  // Renderers show missing data as a dash, never a zero.
+  avg_response_latency_s?: number | null;
   silence: SilenceStats | null;
   // The report's gaps[] verbatim; [] when no report exists.
   gaps: string[];
