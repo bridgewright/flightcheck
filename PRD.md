@@ -218,6 +218,19 @@ Changes to targets are recorded here with date and reason — never silently.
   which measures how promptly the candidate answers, so the
   uninstrumented first-response target above is untouched by it.
 
+- **v0.10, judge batch (2026-08-05):** two report corrections, recorded here
+  before their code, riding the eval gate at the tag. First, the report's
+  emphasis becomes the judge's own: each dimension carries a short key span
+  the judge itself marks, verbatim from its rationale, and that span is what
+  the report sets apart — today the report emphasises each rationale's first
+  sentence by position, a rule that follows the paragraph's structure rather
+  than the judge's intent. The positional first-sentence rule remains as the
+  fallback for every report that predates the field. Second, each dimension's
+  strengths and weaknesses are authored by the judge rather than shipped as
+  empty defaults — the pass DECISIONS 016 deferred to an eval-gated release,
+  now finished. Reports stored before either change lack the new field and
+  carry empty lists, and they must parse and render exactly as they do today.
+
 > 2026-08-02: v0.4 scope added above — accounts move ahead of payments
 > because login-gated interviews protect session integrity and per-session
 > cost, and the dashboard is what makes a 6-session package usable. The
