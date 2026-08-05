@@ -339,6 +339,11 @@ line no longer describes practice.*
   measure rubric discrimination and the delivery judge, not report field
   quality. Carried to the next eval-gated release.
 
+- **Closure (2026-08-05):** the revisit condition fired. The judge-authored
+  pass shipped through the v0.10.0 eval gate: key spans and per-dimension
+  strengths/weaknesses are authored by the content judge, enforced and
+  linted at compile. DECISIONS 043.
+
 ## 017 — merchant of record: Polar, verified for a KR individual seller (2026-08-03)
 
 - **Decision:** payments run through Polar as merchant of record — hosted
@@ -1484,3 +1489,50 @@ what may be quoted.
   protect nothing that is not already protected.
 - **Revisit when:** a crawler abuses the access, real reviews exist, or an
   engine publishes an llms.txt consumption contract worth conforming to.
+
+## 043 — the judge authors its emphasis and its lists (2026-08-05)
+
+**Context.** Since the design pass, the report emphasised each dimension
+rationale's FIRST SENTENCE, by position — deliberately, because the product
+does not decide which of a judge's words matter (F-48's card). And since 016,
+each dimension's strengths and weaknesses shipped as empty fields under a
+deterministic headline. Both were waiting for the same thing: the judge
+saying it itself, validated at an eval gate.
+
+- **Chosen — the judge marks its own span.** The content judge returns, per
+  dimension, the one clause inside its own rationale that carries the
+  finding, VERBATIM. The contract is enforced in code, twice: the content
+  path resolves a whitespace-normalized match back to the exact
+  character-for-character slice, and the report compiler drops any span that
+  is not an exact substring of its rationale — for every channel, because
+  DimensionScore is shared and the delivery path neither instructs nor
+  verifies the field. A fabricated emphasis is worse than none in a product
+  whose claim is that its verdicts are arguable.
+- **Chosen — the judge authors the per-dimension lists, in the same call.**
+  No second model call (the cost directive). The authored prose takes the
+  same language lint as every free-text field the report ships.
+- **Chosen — the headline stays deterministic.** Its 120-character ceiling,
+  its lint, and its unconditional presence are compile-side guarantees; the
+  judge's voice reaches the report through the spans and the lists.
+- **Chosen — delivery-channel lists are dropped at compile, for now.** The
+  delivery judge's schema advertises the fields but its prompt never
+  instructs their register, and a volunteered inner-state item would fail
+  the lint — which means failing the scoring run of a session that cannot
+  be re-run. Uncontracted prose loses to a customer's session every time.
+  The span survives on both channels (the guard holds it to the linted
+  rationale). **Revisit: instruct the delivery judge's prompt, then delete
+  the strip.**
+- **Chosen — one emphasis rule, three renderers, and old reports outrank
+  uniformity.** Screen, PDF and markdown all consume the same function with
+  a source discriminator. In the fallback (no span), each format renders
+  exactly what it rendered before the field existed — the screen keeps its
+  first-sentence emphasis, PDF and markdown stay plain — because every
+  stored report must render byte-identically, and that constraint beats
+  making the three formats agree on a rule the judge did not write.
+- **Rejected:** a second model call; a judge-authored headline; renderer-side
+  whitespace or unicode normalization (the renderer runs raw indexOf on the
+  stored string, because the scorer stores exact slices).
+- **Revisit when:** the delivery judge gets instructed (delete the strip);
+  or a gate run shows the enlarged response schema hurting discrimination,
+  in which case the fields move to a follow-up call and the cost directive
+  gets renegotiated instead of silently broken.

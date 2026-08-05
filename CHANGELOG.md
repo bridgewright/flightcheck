@@ -2,6 +2,25 @@
 
 ## [Unreleased]
 
+### Changed
+
+- **The report's emphasis is the judge's own.** Each dimension now carries
+  the judge's marked key span — the clause inside its rationale that holds
+  the finding, verbatim, enforced in code so a span that is not an exact
+  substring of its rationale is dropped rather than displayed. Screen, PDF
+  and markdown all emphasise the same span through one shared rule. Reports
+  written before the field existed render exactly as they always have: the
+  screen keeps the first-sentence emphasis, the exports stay plain.
+  DECISIONS 043, which closes the positional rule F-48 was filed against.
+
+- **Strengths and weaknesses are the judge's words now.** The per-dimension
+  fields that shipped empty under DECISIONS 016 are authored by the content
+  judge in the same call that scores — no second model call — and take the
+  same language lint as every other sentence the report ships. The delivery
+  judge is not yet instructed for these, so anything it volunteers there is
+  dropped at compile rather than risking a failed scoring run on prose
+  nobody contracted. The deterministic headline stays deterministic.
+
 ### Added
 
 - **The signed-in product animates its own data.** The report's overall
