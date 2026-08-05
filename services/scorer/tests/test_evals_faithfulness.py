@@ -221,6 +221,22 @@ class TestTheRunner:
         assert ("values-boilerplate-fdpm: forbidden topic 'mission' matched "
                 "dimension 'mission-driven-presence' (delivery)") in result["failures"]
 
+    def test_a_forbidden_topic_hiding_in_the_name_alone_is_still_caught(self):
+        # The scan label is key plus name: a dimension whose key is scrubbed
+        # clean but whose display name says "Mission alignment" is exactly as
+        # unlicensed as one that admits it in the key. Before this test the
+        # name half of the label could be dropped without a single failure.
+        fdpm = _fdpm_rubric()
+        fdpm["dimensions"][3] = _dim(
+            "account-fit", "Mission alignment", "content", 0.15,
+            "Own the deployment metrics for your accounts: time to first automated")
+        fake = _fake_for(fdpm=fdpm)
+
+        result = run_faithfulness_suite(SUITE_DIR, fake)
+
+        assert ("values-boilerplate-fdpm: forbidden topic 'mission' matched "
+                "dimension 'account-fit' (content)") in result["failures"]
+
     def test_missing_jd_evidence_on_a_content_dimension_is_a_machinery_failure(self):
         control = _control_rubric()
         control["dimensions"][0]["jd_evidence"] = None
@@ -234,6 +250,20 @@ class TestTheRunner:
         dims = {dim["key"]: dim
                 for dim in result["fixtures"]["plain-control"]["dimensions"]}
         assert dims["growth-analytics-ownership"]["has_jd_evidence"] is False
+
+    def test_empty_string_jd_evidence_is_missing_not_a_trivial_match(self):
+        # "" is a substring of every haystack: if the presence check tested
+        # `is None` instead of falsiness, a compiler emitting an empty-string
+        # jd_evidence would sail through the substring check as a universal
+        # match. Empty must mean missing.
+        control = _control_rubric()
+        control["dimensions"][0]["jd_evidence"] = ""
+        fake = _fake_for(control=control)
+
+        result = run_faithfulness_suite(SUITE_DIR, fake)
+
+        assert ("plain-control: content dimension 'growth-analytics-ownership' "
+                "has no jd_evidence") in result["failures"]
 
     def test_a_whitespace_normalized_quote_is_not_salvaged(self):
         # Deliberately stricter than the compiler: the check is exact `in`.
@@ -452,3 +482,31 @@ class TestTheGate:
         assert written == canned
         regression = json.loads((tmp_path / "out" / "regression.json").read_text())
         assert regression["suites"]["rubric_faithfulness"]["status"] == "PASS"
+
+    def test_main_skips_a_fixtureless_suite_without_touching_the_key(
+            self, tmp_path, monkeypatch):
+        # A fixtures dir holding only a stray file is not a runnable suite:
+        # main() must report SKIPPED without asking for a GEMINI_API_KEY it
+        # will never use and without calling the runner. This is the
+        # probe-before-client order, proven hermetically: both are stubbed
+        # to explode, so the test holds even on a machine whose environment
+        # happens to carry a real key.
+        (tmp_path / "baselines.json").write_text(json.dumps(BASELINES))
+        fixtures = tmp_path / "suites" / "rubric_faithfulness" / "fixtures"
+        fixtures.mkdir(parents=True)
+        (fixtures / "README.md").write_text("not a fixture")
+
+        def explode(*args: object, **kwargs: object) -> object:
+            raise AssertionError(
+                "a fixtureless suite must not reach the key or the runner")
+
+        monkeypatch.setattr(
+            "scorer.evals_l3.regression.run_faithfulness_suite", explode)
+        monkeypatch.setattr("scorer.evals_l3.regression.require_key", explode)
+
+        exit_code = main(["--evals-root", str(tmp_path)])
+
+        assert exit_code == 0
+        written = json.loads((tmp_path / "out" / "regression.json").read_text())
+        assert written["suites"]["rubric_faithfulness"]["status"] == "SKIPPED"
+        assert not (tmp_path / "out" / "rubric_faithfulness.json").exists()
