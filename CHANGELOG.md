@@ -4,6 +4,19 @@
 
 ### Added
 
+- **The interview room keeps a readable trail.** Two defects from the first
+  real customer session could not be diagnosed because the room could not
+  say what happened: the interviewer once greeted and moved on with no
+  candidate turn, and one Start click died leaving no trace in any log. The
+  room now records a diagnostic trail — the whole start sequence (microphone
+  request, audio unlock, recorder construction, connection steps) and every
+  turn event (speech starts and stops, committed turns with the
+  echo-suppression verdict, barge-ins, interviewer audio, response triggers
+  with their reason) — into an in-memory ring buffer, surfaced behind one
+  collapsed "Diagnostics" disclosure on the room's screens. It records
+  everything and sends nothing; opening it is the only thing that costs
+  anything, and reopening refreshes it.
+
 - **A blocked microphone stops being a dead end.** The browser's permission
   dialog only exists while the permission state is "prompt"; once it is
   "denied", getUserMedia rejects instantly and no dialog will ever appear
@@ -27,6 +40,24 @@
   browser's own site-settings UI or re-shows a denied permission dialog.
 
 ### Fixed
+
+- **A session that already ended can no longer be joined.** The first real
+  customer session ended below the scoring floor, and the room then let two
+  more attempts join it: the start card still rendered, the connection
+  secret was still minted, and — because the server refuses heartbeats for
+  a session that is not running — every attempt died forty seconds in as a
+  false "Connection lost". Now every door agrees: the server refuses to
+  mint a secret for any session past "planned" (before the connection
+  counter moves), the room page reads the session's status first and
+  renders an honest screen instead of a start card — what the session ended
+  as, that an unscored ending kept the slot, and the way home — and a stale
+  tab that tries anyway lands on that same screen. Resuming an unscored
+  session re-arms it properly, so the kept slot is a promise the room
+  actually honors, and every rerun door now goes through that resume: the
+  session page's "Run this session again" performs the action instead of
+  linking straight into a room that would refuse it, and the archive row's
+  "Retry" shortcut — which never resumed anything — is gone. "Connection
+  lost" is reserved for connections that were actually lost.
 
 - **The first sign-in stops being a one-way corridor.** Signing in lands on
   the new-package screen, and the way back out of it was broken three ways:

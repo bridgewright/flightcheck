@@ -1613,3 +1613,131 @@ always the JD's own character-for-character slice, casing, curly quotes and
 all. Salvage, not fabrication. The eval suite's strict no-salvage machinery
 check is unchanged on purpose; it measures the compiler's stored output,
 which remains exact by construction.
+
+## 045 — a dead session is refused at the mint, and the page owns the truth (2026-08-05)
+
+**Context.** F-66, from the first real customer session: the session ended
+"insufficient" fourteen seconds in, the room still offered Start, the
+secret mint answered 200 on the retired row, and every heartbeat after it
+answered 409 — which the connection guard could only read as network loss.
+The customer saw "Connection lost" twice for a session the server had
+already closed. The heartbeat route had a status guard; the mint route,
+the actual door into the room, did not.
+
+- **Chosen — the same guard at every door, and one screen owning the
+  story.** The worker's mint route now refuses any session past "planned"
+  (409, `session-not-live`, the heartbeat's exact shape) before the mint
+  counter moves; the web route forwards that refusal with its code intact;
+  the room page branches on the session status BEFORE the capability gate
+  and renders an honest ended screen (what it ended as, that an
+  insufficient or failed end kept the slot, a door home); and a stale tab
+  whose mint comes back 409 simply reloads, so the server-rendered page —
+  not a second client copy of the screen — decides what the customer
+  reads. Resume was re-armed to match: handing back a retriable row now
+  flips it to "planned", because "planned" is what every room guard means
+  by "a browser may interview this", and a kept slot the room refuses to
+  open is a promise the product cannot keep.
+- **Rejected — a client-only fix** (branch on the fetched status, keep the
+  server as it was): the server hole remains for every stale tab and every
+  future surface; the exact class of bug this was.
+- **Rejected — keying the client on error text:** copy changes would
+  silently break the branch; the code is the contract.
+- **Rejected — rendering the ended screen inside SessionRoom on the 409:**
+  a second implementation of the same screen, fed by a snapshot that is
+  stale by definition at the moment it matters.
+- **Revisit when:** a second web surface starts minting secrets (the guard
+  belongs in one shared place then), or a status beyond the current
+  vocabulary needs the room to open (the fail-closed default would refuse
+  it).
+
+**Addendum, same day.** Review round 1 found the promise hollow on both
+sides: resume never actually re-armed a row to "planned" (the fix above),
+and two shipped doors — the archive row's "Retry" and the session page's
+"Run this session again" — linked straight into the room, bypassing resume
+entirely. Pre-F-66 those links "worked" by interviewing on a failed row
+without resume accounting; post-F-66 they landed on the ended screen while
+their labels promised a retry. The session page's CTA now performs the
+resume action, and the archive shortcut is removed rather than relabeled —
+the detail page it points to carries the honest door.
+
+**Second addendum, same day (round 2: the fixes were the suspect).** Round
+1's bare status flip handed the fresh attempt the dead attempt's evidence:
+`secret_mints` and `last_heartbeat_at` survived, so for up to the whole
+25-minute hard cut the re-armed row read as in-progress (a spurious
+"session already in progress" refusal) or reclaimable (home's primary
+button became "reclaim" for a room nobody was in) — and the durable mint
+counter kept charging new attempts against the old attempt's spend, which
+would have walked the incident row (3 of 5 mints burned) into a permanent
+429 two retries later: the same dead-slot class F-66 exists to kill.
+Re-arming is now `rearm_session`: status, `secret_mints = 0` and
+`last_heartbeat_at = NULL` in one write, `updated_at` untouched (the F-38
+lock opens at the next mint, not at the re-arm). The mint cap becomes a
+per-attempt bound with total spend bounded by the resume cap (5 x 4
+worst-case mints per row, versus 5) — accepted: the counter's documented
+meaning, "a browser connected to THIS attempt", is what the liveness
+guards read, and the abandoned re-arm had carried the same hazard since it
+shipped. Round 2 also proved the first addendum's one-open-row claim false
+— two open rows coexist when a row leaves "scoring" after a later one was
+started, and resume takes the LOWEST — so the rerun CTA is offered only on
+the lowest open session; a newer open session's page names the older one
+("Finish session N first") and leads to its page instead of silently
+entering its room.
+
+**Third addendum, same day (verifying the round-2 fixes found two more).**
+First: resetting the mint counter made the FREE abandoned resume an
+uncapped loop — mint to the cap, let the heartbeat go stale, reclaim,
+resume, repeat; roughly a hundred ephemeral secrets an hour on one row
+against a durable five before. An abandoned resume is now a COUNTED
+resume (quota.py): the row already ran an attempt, and the resume cap is
+what bounds every loop. Cost accepted and recorded: a genuine crash's
+reclaim burns one of the three resume attempts, where before it was free —
+revisit if real crash-loop customers ever hit the cap. Second: the
+"Finish session N first" door could hand out a link to an abandoned
+session's page, and the web had never modeled "abandoned" at all —
+deriveSessionDetailState returned undefined and the page THREW for any
+abandoned session reached by URL, a pre-existing 500 the new CTA merely
+made reachable. "abandoned" is now in the web's SessionStatus and reads as
+insufficient everywhere it is rendered (detail state, archive pill,
+trajectory column, home's resumable and attempted sets): ended before
+there was anything to score, slot kept, resumable.
+
+## 046 — the room measures before anyone tunes (2026-08-05)
+
+**Context.** F-67 (the greeting moved on with no candidate turn — a
+recurrence, on the first real session) and F-68 (a Start click that died
+before minting, no trace in any log). The turn system was not casually
+built — the reducer is the sole source of response.create and is
+adversarially tested — so a blind fix would be a guess about which of three
+different mechanisms (greeting instructions, VAD around the greeting, echo
+path) actually misfired.
+
+- **Chosen — a measure-only trail, always present, silent until opened.**
+  A ring buffer (capacity 200) in a ref records the start sequence
+  (getUserMedia begin/ok/fail with the DOMException name, resume outcome,
+  recorder construction, mint and SDP statuses, channel open, greeting
+  send) and every turn event (speech start/stop, commits with the
+  echo-suppression verdict and its milliseconds, barge-ins, interviewer
+  audio lifecycle, response triggers with their reason, guard trips, and
+  heartbeat FAILURES only — a healthy beat four times a minute would evict
+  the turn events the ring exists to keep, and the refused-heartbeat train
+  was the incident's clearest server-side signal). It
+  surfaces behind one collapsed "Diagnostics" disclosure on the live,
+  error, upload-retry and connection-lost surfaces; the trail is formatted
+  only in the toggle handler, so a customer who never opens it pays one
+  summary row. Nothing is sent anywhere: the recorder writes a ref, and
+  the six data-channel sends that existed before are still the only six.
+- **Rejected — tuning first** (greeting instructions that wait, VAD
+  thresholds for the greeting phase, echo-path suppression): three
+  plausible fixes, one recorded reproduction pending; the evidence picks
+  the fix, per the handoff's explicit measure-first order.
+- **Rejected — an operator-only switch (query parameter or role):** more
+  machinery to build and explain than a label that is honest product
+  chrome, and the trail is exactly what a customer support conversation
+  needs a customer to be able to read out.
+- **Rejected — shipping the trail with the complete payload:** a schema
+  and retention change for data whose reader is standing at the screen it
+  already renders on.
+- **Revisit when:** the open-speakers reproduction is recorded and the fix
+  is chosen (the breadcrumb set may then shrink to what proved useful), or
+  a customer-facing incident needs the trail server-side (then the
+  complete-payload option earns its schema).
