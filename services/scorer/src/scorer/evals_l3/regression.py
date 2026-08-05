@@ -1,17 +1,18 @@
 """Regression gate CLI (console script: scorer-evals).
 
 Runs evals layer 1 (rubric discrimination), layer 3 (delivery
-discrimination), and the F-11b injection-defence suite when their inputs
-exist, compares them against the committed evals/baselines.json, and writes
-evals/out/regression.json.
+discrimination), the F-11b injection-defence suite, and the F-62
+rubric-faithfulness suite when their inputs exist, compares them against
+the committed evals/baselines.json, and writes evals/out/regression.json.
 
 Absent inputs are VISIBLE: a suite with no inputs is reported as SKIPPED in
 the output (exit 0), never silently passing. A present suite below its
 baseline fails the gate (exit 1).
 
-The two judge suites cost model credit; the injection suite is
-deterministic and costs nothing, which is deliberate -- the defence it
-measures is a classifier at intake, so its gate can run on every release
+Three of the suites cost model credit -- the faithfulness suite is the
+slowest, at one live rubric compile per fixture -- while the injection
+suite is deterministic and costs nothing, which is deliberate: the defence
+it measures is a classifier at intake, so its gate can run on every release
 rather than being something the operator hesitates to spend on.
 """
 from __future__ import annotations
@@ -21,6 +22,7 @@ import json
 from pathlib import Path
 
 from scorer.env import load_env, require_key
+from scorer.evals_faithfulness import run_faithfulness_suite
 from scorer.evals_injection import run_injection_suite
 from scorer.evals_l1.golden import judge_discrimination
 from scorer.evals_l3.delivery_check import run_delivery_discrimination
@@ -34,6 +36,7 @@ DEFAULT_EVALS_ROOT = REPO_ROOT / "evals"
 def evaluate(
     l1_result: dict | None, l3_result: dict | None, baselines: dict,
     injection_result: dict | None = None,
+    faithfulness_result: dict | None = None,
 ) -> tuple[dict, int]:
     """Pure gate decision: per-suite verdicts plus the process exit code."""
     suites: dict[str, dict] = {}
@@ -100,6 +103,24 @@ def evaluate(
             "misses": injection_result["misses"],
             "false_positives": injection_result["false_positives"],
         }
+    faithfulness_baseline = baselines["rubric_faithfulness_min"]
+    if faithfulness_result is None:
+        suites["rubric_faithfulness"] = {
+            "status": "SKIPPED",
+            "reason": "no fixtures in evals/suites/rubric_faithfulness/fixtures",
+            "baseline": faithfulness_baseline,
+        }
+    else:
+        pass_rate = faithfulness_result["pass_rate"]
+        suites["rubric_faithfulness"] = {
+            "status": "PASS" if pass_rate >= faithfulness_baseline else "FAIL",
+            "pass_rate": pass_rate,
+            "fixtures_total": faithfulness_result["fixtures_total"],
+            "fixtures_passed": faithfulness_result["fixtures_passed"],
+            "baseline": faithfulness_baseline,
+            # Named so a failing gate says WHICH fixture and WHICH check moved.
+            "failures": faithfulness_result["failures"],
+        }
     exit_code = 1 if any(s["status"] == "FAIL" for s in suites.values()) else 0
     return {"suites": suites, "exit_code": exit_code}, exit_code
 
@@ -110,10 +131,12 @@ def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         prog="scorer-evals",
         description=(
-            "Run the three gated eval suites and compare each against the\n"
+            "Run the four gated eval suites and compare each against the\n"
             "committed baselines in evals/baselines.json: layer 1 rubric\n"
-            "discrimination, layer 3 delivery discrimination, and the\n"
-            "injection-defence suite. A suite whose inputs are absent is\n"
+            "discrimination, layer 3 delivery discrimination, the\n"
+            "injection-defence suite, and the rubric-faithfulness suite\n"
+            "(committed JD fixtures compiled live, output checked\n"
+            "deterministically). A suite whose inputs are absent is\n"
             "reported SKIPPED, never silently passed."
         ),
         epilog=(
@@ -149,11 +172,18 @@ def main(argv: list[str] | None = None) -> int:
     l1_suite = evals_root / "suites" / "rubric_discrimination"
     triplets_dir = l1_suite / "triplets"
     clips_dir = evals_root / "suites" / "delivery_discrimination" / "clips"
+    faithfulness_suite = evals_root / "suites" / "rubric_faithfulness"
+    faithfulness_fixtures = faithfulness_suite / "fixtures"
     has_triplets = triplets_dir.is_dir() and any(triplets_dir.glob("*.json"))
     has_clips = clips_dir.is_dir() and any(clips_dir.glob("*-fluent.wav"))
+    # Probed here, before the lazy _client(): an absent suite must never
+    # require a GEMINI_API_KEY it will never use.
+    has_faithfulness_fixtures = faithfulness_fixtures.is_dir() and any(
+        path.is_dir() for path in faithfulness_fixtures.iterdir())
 
     l1_result: dict | None = None
     l3_result: dict | None = None
+    faithfulness_result: dict | None = None
     l1_failure: dict | None = None
     client = None
 
@@ -187,6 +217,12 @@ def main(argv: list[str] | None = None) -> int:
     if has_clips:
         l3_result = run_delivery_discrimination(clips_dir, _client())
         (out_dir / "delivery_discrimination.json").write_text(json.dumps(l3_result, indent=2))
+    if has_faithfulness_fixtures:
+        # The slowest suite: one live compile per fixture (plus the
+        # compiler's internal repair retry when the model needs it).
+        faithfulness_result = run_faithfulness_suite(faithfulness_suite, _client())
+        (out_dir / "rubric_faithfulness.json").write_text(
+            json.dumps(faithfulness_result, indent=2))
     # Deterministic and free: it always runs, and never touches _client().
     injection_result = run_injection_suite(evals_root / "suites" / "injection")
     if injection_result is not None:
@@ -194,7 +230,8 @@ def main(argv: list[str] | None = None) -> int:
             json.dumps(injection_result, indent=2))
 
     doc, exit_code = evaluate(l1_result, l3_result, baselines,
-                              injection_result=injection_result)
+                              injection_result=injection_result,
+                              faithfulness_result=faithfulness_result)
     if l1_failure is not None:
         doc["suites"]["rubric_discrimination"] = l1_failure
         doc["exit_code"] = 1

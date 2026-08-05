@@ -9,6 +9,7 @@ BASELINES = {
     "delivery_judge_min": 0.8,
     "injection_hostile_recall_min": 0.9,
     "injection_benign_false_positive_max": 0.0,
+    "rubric_faithfulness_min": 1.0,
 }
 
 
@@ -79,12 +80,16 @@ def test_absent_suites_are_visible_as_skipped_not_passing():
     assert exit_code == 0
     l1 = doc["suites"]["rubric_discrimination"]
     l3 = doc["suites"]["delivery_discrimination"]
+    faithfulness = doc["suites"]["rubric_faithfulness"]
     assert l1["status"] == "SKIPPED"
     assert "triplets" in l1["reason"]
     assert l3["status"] == "SKIPPED"
     assert "clips" in l3["reason"]
+    assert faithfulness["status"] == "SKIPPED"
+    assert "rubric_faithfulness/fixtures" in faithfulness["reason"]
     assert "accuracy" not in l1
     assert "judge_accuracy" not in l3
+    assert "pass_rate" not in faithfulness
 
 
 def test_judge_below_baseline_fails_even_if_dsp_is_perfect():
@@ -106,6 +111,7 @@ def test_main_reports_skips_and_exits_zero_without_inputs(tmp_path, capsys):
     written = json.loads((tmp_path / "out" / "regression.json").read_text())
     assert written["suites"]["rubric_discrimination"]["status"] == "SKIPPED"
     assert written["suites"]["delivery_discrimination"]["status"] == "SKIPPED"
+    assert written["suites"]["rubric_faithfulness"]["status"] == "SKIPPED"
     printed = capsys.readouterr().out
     assert "SKIPPED" in printed
 
