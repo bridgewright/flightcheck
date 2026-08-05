@@ -231,6 +231,26 @@ Changes to targets are recorded here with date and reason — never silently.
   now finished. Reports stored before either change lack the new field and
   carry empty lists, and they must parse and render exactly as they do today.
 
+- **v0.11 (2026-08-05):** the rubric shows its receipts, recorded here
+  before its code. Today the compiler grounds every dimension in research
+  findings and corpus documents, and nothing requires the job description
+  itself to license a dimension — so a research sweep full of generic
+  responsible-AI writing can hand an ethics dimension a legitimate-looking
+  citation for a role whose JD never asks for it, and the session then
+  spends a guaranteed question slot on it. Three changes. Each content
+  dimension must now carry jd_evidence, a short verbatim quote from the job
+  description proving the role itself demands that dimension, enforced in
+  code as an exact substring of the JD the compiler saw; values boilerplate
+  and research-only support stop licensing dimensions (research
+  corroborates, the JD licenses), while a JD that genuinely leads with a
+  topic keeps its dimension at full weight — a licensing rule, not a topic
+  ban. A rubric-faithfulness suite joins the release gate: committed JD
+  fixtures, including one salted with values-section boilerplate, compile
+  live and are checked deterministically, so the failure that motivated
+  this change cannot return unnoticed. And /rubric shows each content
+  dimension's receipt, the JD sentence that earned it. Rubrics stored
+  before the field existed parse and render exactly as they do today.
+
 > 2026-08-02: v0.4 scope added above — accounts move ahead of payments
 > because login-gated interviews protect session integrity and per-session
 > cost, and the dashboard is what makes a 6-session package usable. The

@@ -55,7 +55,7 @@ _HTML_COMMENT_RE = re.compile(r"<!--.*?-->", re.DOTALL)
 _HTML_TAG_RE = re.compile(r"</?[a-zA-Z][^>]*>")
 
 
-def _neutralize_markers(text: str) -> str:
+def neutralize_markers(text: str) -> str:
     """Defang fence-marker characters so a payload cannot close the fence.
 
     The replacements are single-angle quotation marks (U+2039/U+203A): the
@@ -70,7 +70,7 @@ def fence(label: str, text: str) -> str:
     return (
         f"{FENCE_NOTE}\n"
         f"<<<BEGIN UNTRUSTED {label}>>>\n"
-        f"{_neutralize_markers(text)}\n"
+        f"{neutralize_markers(text)}\n"
         f"<<<END UNTRUSTED {label}>>>"
     )
 
@@ -84,7 +84,7 @@ def inline(text: str | None, max_chars: int = 200) -> str:
     """
     if not text:
         return ""
-    flat = " ".join(_neutralize_markers(text).split())
+    flat = " ".join(neutralize_markers(text).split())
     return flat[:max_chars]
 
 

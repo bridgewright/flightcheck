@@ -32,6 +32,12 @@ export interface RubricDimension {
   anchors: BarsAnchor[];
   signals: string[];
   citations: SourceCitation[];
+  // F-62: the verbatim JD quote that licenses this dimension. Contract: a
+  // character-for-character substring of the job description the compiler
+  // saw, enforced on the scorer side. Absent or null on rubrics compiled
+  // before the field existed and on delivery-channel dimensions (licensed
+  // by the product, not the JD); renderers then show no receipt.
+  jd_evidence?: string | null;
 }
 
 export type QuestionSource = "research-sweep" | "corpus" | "generated";

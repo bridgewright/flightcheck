@@ -27,7 +27,6 @@ parse retry.
 from __future__ import annotations
 
 import logging
-import re
 import time
 from concurrent.futures import ThreadPoolExecutor
 
@@ -43,6 +42,7 @@ from scorer.schemas import (
     RubricDimension,
     TranscriptSegment,
 )
+from scorer.verbatim import locate_span
 
 logger = logging.getLogger(__name__)
 
@@ -111,33 +111,6 @@ _RULES = (
 def _fmt_ts(seconds: float) -> str:
     total = int(seconds)
     return f"[{total // 60:02d}:{total % 60:02d}]"
-
-
-# Injection posture (F-11a): the key span needs no new fencing. It is
-# constrained by construction to an exact substring of the judge-authored
-# rationale -- prose the product already stores and renders -- so it can
-# carry nothing the rationale does not already carry. The rationale may echo
-# candidate speech (the rules tell the judge to tie evidence to anchors),
-# but that speech reached the judge inside the UNTRUSTED TRANSCRIPT fence
-# (_build_prompt), and the span is never fed back into any model prompt: it
-# is display data the renderer locates by indexOf.
-def _locate_span(rationale: str, span: str | None) -> str | None:
-    """The exact substring of `rationale` the claimed span points at.
-
-    An exact match wins. A whitespace-normalized match is accepted ONLY by
-    resolving it back to the exact substring as it appears in the rationale:
-    the renderer locates the span by indexOf, so the stored value must be a
-    character-for-character slice. Anything else resolves to None -- a
-    fabricated emphasis is worse than none, because the product's claim is
-    that its verdicts are honest and arguable.
-    """
-    if span is None or not span.strip():
-        return None
-    if span in rationale:
-        return span
-    pattern = r"\s+".join(re.escape(token) for token in span.split())
-    match = re.search(pattern, rationale)
-    return match.group(0) if match else None
 
 
 def _normalize_ws(text: str) -> str:
@@ -342,7 +315,11 @@ def score_content(
         # final rationale, after any quote-verification prefix -- prefixing
         # only prepends, so a genuine span survives it). A span the judge did
         # not actually write in its rationale is dropped, not repaired.
-        located = _locate_span(score.rationale, score.key_span)
+        # Injection posture (F-11a): the span needs no new fencing -- it is
+        # constrained by construction to a slice of the judge-authored
+        # rationale, is never fed back into any model prompt, and is display
+        # data the renderer locates by indexOf.
+        located = locate_span(score.rationale, score.key_span)
         if located is None and score.key_span is not None and score.key_span.strip():
             logger.debug(
                 "content judge key_span for %s is not a substring of its "

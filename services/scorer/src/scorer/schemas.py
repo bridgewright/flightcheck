@@ -62,6 +62,13 @@ class RubricDimension(BaseModel):
     anchors: list[BarsAnchor]         # exactly 3 (scores 1, 3, 5)
     signals: list[str]
     citations: list[SourceCitation]   # min length 1 -- enforced by Rubric validator
+    # F-62: the verbatim JD quote that licenses this dimension -- an exact
+    # substring of the job description the compiler saw, enforced in the
+    # compile path (never here: this model re-validates every stored rubric
+    # on read, and every rubric stored before the field existed has None).
+    # None on delivery-channel dimensions too: those are licensed by the
+    # product, not the JD.
+    jd_evidence: str | None = None
 
 
 class QuestionSpec(BaseModel):
