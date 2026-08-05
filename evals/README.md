@@ -20,6 +20,11 @@ root it does not exist.
     fixtures, all committed as plain markdown. Deterministic — it calls a
     classifier, not a model, so it needs no API key and costs nothing
     (DECISIONS #027).
+  - `rubric_faithfulness/` — F-62 licensing suite: three committed JD
+    fixtures (`jd.md`, a stubbed-research `findings.json`, and
+    `expectations.json` each), compiled live and checked deterministically —
+    every content dimension must quote the JD verbatim, and a salted
+    research finding must not become a dimension the JD never asked for.
   - `bakeoff/` — W1 S2S provider bake-off: latency, stability, and
     scoring-channel audio discrimination. Run outputs committed under
     `bakeoff/out/`. Decision probe, not release-gated (DECISIONS #002).
@@ -41,17 +46,18 @@ root it does not exist.
 
 ## What the gate covers, and what it does not
 
-The gate is three suites. Naming its edges is part of the contract: this
+The gate is four suites. Naming its edges is part of the contract: this
 repo claims that evals gate releases, so a reader should be able to see
 exactly how much that buys.
 
 **Gated today** — the whole of `uv run scorer-evals`:
 
-| Suite | What it decides | N at v0.7 | Floor |
+| Suite | What it decides | N at this tag | Floor |
 | --- | --- | --- | --- |
 | `rubric_discrimination` (layer 1) | the content judge orders strong > borderline > weak, strictly | 3 triplets | 0.8 |
 | `delivery_discrimination` (layer 3) | the delivery judge scores fluent strictly above both filler and hesitant | 2 clip triplets | 0.8 |
 | `injection_defence` (F-11b) | a job description that is really an instruction set is refused at intake, and a real posting is not | 13 hostile · 16 benign | recall ≥ 0.9 · false positives ≤ 0.0 |
+| `rubric_faithfulness` (F-62) | every content dimension of a compiled rubric is licensed by a verbatim JD quote, and salted research findings cannot smuggle in an off-JD dimension | 3 JD fixtures | 1.0 |
 
 The two judge samples are the whole samples, not a subset drawn from
 something larger: one boundary case decides either suite. Nothing there is a
@@ -79,17 +85,27 @@ is a weaker guarantee than an eval and is stated rather than implied:
   `tests/test_api_payments.py`,
   `apps/web/tests/webhooks-polar-route.test.ts`.
 
-The gated surface grew once, at v0.6, and the shape of the remaining gap is
+The gated surface has grown twice, and the shape of the remaining gap is
 worth stating plainly. From v0.1 through v0.5 it did not move at all: the
 same two judge suites, the same N, the same two floors, while the product
 added payments, an eligibility gate, injection fencing and new report
 fields. v0.6 closed one of those — `injection_defence` joined the gate with
-two floors of its own, which is why `baselines.json` carries four numbers
-rather than two. The rest of the list above is still unit-tested rather than
-evaluated, and the reason the injection suite was the one to move first is
-not that it was the most important: it is deterministic, so it costs nothing
-to run, while every additional judge suite costs model credit on every
-release. That is an honest constraint, not a principle.
+two floors of its own. The rest of the list above is still unit-tested
+rather than evaluated, and the reason the injection suite was the one to
+move first is not that it was the most important: it is deterministic, so it
+costs nothing to run, while every additional judge suite costs model credit
+on every release. That is an honest constraint, not a principle.
+
+The second growth is `rubric_faithfulness` (F-62), which is why
+`baselines.json` now carries five numbers, and it breaks the free-to-run
+pattern: it compiles its three committed JDs live, which makes it the
+slowest suite in the gate — three compiles at roughly 100–200 seconds each,
+plus the compiler's internal repair retries when the model needs them.
+Committing each fixture's `findings.json` (a stubbed research sweep) is what
+holds a fixture at 1–2 model calls — the compile and at most one repair —
+instead of the ~7 a live sweep would add. Its floor is 1.0 on purpose: with
+three fixtures there is no room for one of them to grow an unlicensed
+dimension.
 
 **No instrument yet.** Judge–human scoring agreement (Cohen's κ ≥ 0.8 by
 v1.0) is a PRD success metric with nothing that computes it. The blind-rank
@@ -117,6 +133,11 @@ suite:
   floors gate, so a future run may differ and still pass.
 - `rubric_discrimination` reproduces from a clean clone with a
   `GEMINI_API_KEY` — its three triplets and the rubric are committed.
+- `rubric_faithfulness` reproduces from a clean clone with a
+  `GEMINI_API_KEY`, like `rubric_discrimination`: all three fixtures are
+  committed and only the compiles themselves need the model. Expect it to be
+  the slow part of the run, and expect the dimension wording — though not
+  the pass verdict, if the compiler is healthy — to vary between runs.
 - `delivery_discrimination` does **not**: the clips are voice recordings and
   are gitignored by decision (DECISIONS #005), so it reports SKIPPED
   everywhere but the operator's machine.

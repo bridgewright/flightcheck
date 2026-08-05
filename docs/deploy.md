@@ -209,7 +209,14 @@ limits do not apply to the already-running container.
       report page currently renders "Report not found" — reload once the
       worker is back up (tracked for v0.2).
 - [ ] Evals gate: from `repo/services/scorer/`, `uv run scorer-evals; echo "exit=$?"`
-      prints `exit=0`.
+      prints `exit=0`. Four suites: `rubric_discrimination`,
+      `delivery_discrimination`, `injection_defence`, and
+      `rubric_faithfulness` — the last compiles three committed JD fixtures
+      live against `GEMINI_API_KEY` and is the slow part of the run (roughly
+      100–200 seconds per fixture), so a gate that used to finish in seconds
+      now takes minutes. Read the per-suite `status` in the printed JSON,
+      not the exit code alone: absent inputs report SKIPPED, and only the
+      operator's machine has the delivery clips.
 - [ ] Secrets audit: in browser devtools on the production site, search all
       network responses for the `WORKER_API_TOKEN` value — zero hits; the browser
       talks only to the Vercel origin, OpenAI's Realtime endpoints, and the
