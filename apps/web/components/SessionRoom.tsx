@@ -5,6 +5,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 
 import BrowserGate from "./BrowserGate";
 import MicCheck from "./MicCheck";
+import MicRecovery from "./MicRecovery";
 
 import {
   ALARM_NOTICE,
@@ -18,6 +19,12 @@ import {
   SUB_HEADING,
 } from "../lib/ui";
 
+import {
+  normalizeMicPermissionState,
+  queryMicPermission,
+  recoverySteps,
+  type MicPermissionStatusLike,
+} from "../lib/mic-permission";
 import { MAX_RECORDING_BYTES } from "../lib/realtime";
 import {
   AUDIO_RESUME_TIMEOUT_MS,
@@ -29,6 +36,7 @@ import {
   containerType,
   pickRecorderMimeType,
   settledWithinTimeout,
+  type MicFailureKind,
 } from "../lib/session-media";
 import {
   CONNECTION_LOST_MESSAGE,
@@ -74,6 +82,10 @@ interface RoomError {
   // "Connecting…".
   kind: "mic" | "connect" | "upload" | "recorder";
   message: string;
+  // Which mic failure this is, carried only when kind is "mic". "denied"
+  // is the one the room acts on: it renders the recovery steps and arms
+  // the F-63 permission watch below.
+  micKind?: MicFailureKind;
 }
 
 interface SessionRoomProps {
@@ -147,6 +159,34 @@ export default function SessionRoom({
     const heartbeat = setInterval(beat, HEARTBEAT_INTERVAL_S * 1000);
     return () => clearInterval(heartbeat);
   }, [phase, sessionId]);
+
+  // --- F-63: the denied-mic error stops being a dead end ------------------
+  // Once the permission is "denied", getUserMedia rejects instantly and the
+  // browser will never show its dialog again, so while that error is up the
+  // room watches the permission itself. The moment the customer flips the
+  // toggle in site settings the error clears on its own — and ONLY the
+  // error: starting an interview spends a non-repeatable session, so it
+  // stays the customer's click on Start interview or Try again. Without
+  // navigator.permissions (older Safari) the query returns no status and
+  // this effect does nothing: the recovery steps still render, only the
+  // automatic clear is lost.
+  useEffect(() => {
+    if (error?.kind !== "mic" || error.micKind !== "denied") return;
+    let cancelled = false;
+    let status: MicPermissionStatusLike | null = null;
+    void queryMicPermission(navigator.permissions).then((result) => {
+      if (cancelled || result.status === null) return;
+      status = result.status;
+      status.onchange = () => {
+        if (normalizeMicPermissionState(result.status?.state) === "denied") return;
+        setError(null);
+      };
+    });
+    return () => {
+      cancelled = true;
+      if (status !== null) status.onchange = null;
+    };
+  }, [error]);
 
   // --- Recording teardown (awaits the final MediaRecorder chunk) --------
   const stopRecorder = useCallback(
@@ -318,7 +358,7 @@ export default function SessionRoom({
         const kind = classifyMicFailure(
           err instanceof DOMException ? err.name : "",
         );
-        setError({ kind: "mic", message: MIC_FAILURE_LINES[kind] });
+        setError({ kind: "mic", micKind: kind, message: MIC_FAILURE_LINES[kind] });
         return;
       }
     }
@@ -788,6 +828,11 @@ export default function SessionRoom({
                       : "Could not start the interview"}
                 </p>
                 <p className="mt-1 text-fine">{error.message}</p>
+                {error.kind === "mic" && error.micKind === "denied" && (
+                  <div className="mt-3">
+                    <MicRecovery guide={recoverySteps(navigator.userAgent)} />
+                  </div>
+                )}
                 <button
                   type="button"
                   onClick={() => void start()}

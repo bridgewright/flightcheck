@@ -1,7 +1,15 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
+import MicRecovery from "./MicRecovery";
+
+import {
+  normalizeMicPermissionState,
+  queryMicPermission,
+  recoverySteps,
+  type MicPermissionStatusLike,
+} from "@/lib/mic-permission";
 import { classifyMicFailure } from "@/lib/session-media";
 import { PRIMARY_BUTTON } from "@/lib/ui";
 
@@ -63,7 +71,10 @@ export default function MicCheck() {
     };
   }, []);
 
-  async function start() {
+  // useCallback (unlike the plain functions around it) because the F-63
+  // permission watch below re-runs the check from an effect, and an effect
+  // dependency must hold its identity between renders.
+  const start = useCallback(async () => {
     setState({ kind: "requesting" });
     let stream: MediaStream;
     try {
@@ -110,7 +121,35 @@ export default function MicCheck() {
       kind: "live",
       deviceLabel: stream.getAudioTracks()[0]?.label || null,
     });
-  }
+  }, []);
+
+  // F-63: while the check sits in "denied", watch the permission itself.
+  // The browser's dialog exists only in the "prompt" state — once denied,
+  // getUserMedia rejects instantly and no dialog will ever appear again, so
+  // the customer's toggle in the browser's site settings IS the intent to
+  // try again: the check re-runs on its own, and the level bar appearing
+  // unasked is the product noticing. The subscription is released on
+  // unmount and the moment the state leaves "denied" (same discipline as
+  // the unmount cleanup above). Without navigator.permissions (older
+  // Safari) the query returns no status and this effect does nothing: the
+  // steps still render, only the automatic re-run is lost.
+  useEffect(() => {
+    if (state.kind !== "denied") return;
+    let cancelled = false;
+    let status: MicPermissionStatusLike | null = null;
+    void queryMicPermission(navigator.permissions).then((result) => {
+      if (cancelled || result.status === null) return;
+      status = result.status;
+      status.onchange = () => {
+        if (normalizeMicPermissionState(result.status?.state) === "denied") return;
+        void start();
+      };
+    });
+    return () => {
+      cancelled = true;
+      if (status !== null) status.onchange = null;
+    };
+  }, [state.kind, start]);
 
   function stopCheck() {
     stop();
@@ -150,6 +189,9 @@ export default function MicCheck() {
           >
             {state.kind === "error" ? state.message : STATUS_LINES[state.kind]}
           </p>
+          {state.kind === "denied" && (
+            <MicRecovery guide={recoverySteps(navigator.userAgent)} />
+          )}
           <button
             type="button"
             onClick={start}
