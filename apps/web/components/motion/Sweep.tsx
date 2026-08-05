@@ -50,11 +50,19 @@ export default function Sweep({
   const place = { transform: `translateX(${percent}%)` };
   const anchor = "absolute inset-y-0 right-full w-full";
 
-  // Not a shorter sweep: no sweep. The settled reading, already in place.
+  // Not a shorter sweep: no sweep. The settled reading, already in place, in
+  // the same three-span shape the server rendered: the server cannot know the
+  // reader's preference, so it always ships the animated branch's markup, and
+  // a reduce branch with fewer elements would be a hydration mismatch and a
+  // full client re-render for exactly the reader this branch serves. React
+  // leaves the server's data-reveal and hidden inline style on the inner span,
+  // and the reduced-motion backstop in globals.css is what settles them.
   if (reduce) {
     return (
-      <span className={anchor} style={place}>
-        {children}
+      <span className="absolute inset-0">
+        <span className={anchor} style={place}>
+          <span className="absolute inset-0">{children}</span>
+        </span>
       </span>
     );
   }

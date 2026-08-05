@@ -99,6 +99,24 @@ describe("the gauge's reading sweeps in through the leaf", () => {
     expect(leaf).toContain("whileInView");
   });
 
+  it("keeps the server's span shape when motion is refused", () => {
+    // The server cannot know the reader's preference, so it always renders
+    // the animated branch's three nested spans; a reduced-motion reader then
+    // hydrates the reduce branch. React tolerates the attribute differences
+    // between the two (that tolerance is what lets the data-reveal backstop
+    // work) but not structural ones: a reduce branch with fewer elements is
+    // a hydration mismatch and a full client re-render, delivered to exactly
+    // the reader this branch exists to serve. Both branches must render the
+    // same number of spans.
+    const leaf = withoutComments(read("components/motion/Sweep.tsx"));
+    const branch = leaf.match(/if \(reduce\) \{([\s\S]*?)\n  \}/);
+    expect(branch, "Sweep has no reduced-motion branch").not.toBeNull();
+    const reduced = branch?.[1] ?? "";
+    const animated = leaf.slice(leaf.indexOf(branch?.[0] ?? "") + (branch?.[0]?.length ?? 0));
+    const spans = (code: string) => code.match(/<(?:motion\.)?span\b/g) ?? [];
+    expect(spans(reduced)).toHaveLength(spans(animated).length);
+  });
+
   it("settles at transform none, which is what the CSS backstops render", () => {
     // The mover animates x from -percent% back to 0, so the settled state is
     // no transform at all. Both globals.css backstops write
