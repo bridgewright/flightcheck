@@ -1,5 +1,38 @@
 # Changelog
 
+## [Unreleased]
+
+### Added
+
+- **The signed-in product animates its own data.** The report's overall
+  score counts to its value once on first view; the readiness gauge sweeps
+  to its reading; progress cards, session rows and the journey strip enter
+  with the same one-shot vocabulary the landing uses; and a status that
+  flips under a poll tick fades in instead of teleporting. All of it inside
+  the existing motion budget — transform and opacity, 0.3s, one pass, the
+  settled state under reduced motion — and the gauge was refactored off
+  width/left styling to make its sweep legal at all. The press-scale the
+  design spec once granted is now formally declined instead of silently
+  absent. DECISIONS 041.
+
+- **A Feedback door in the footer.** A labeled mailto beside the support
+  address, subject prefilled, no new place customer data lives. A support
+  address is not a feedback door: people report breakage and keep opinions
+  to themselves unless the label asks. DECISIONS 040.
+
+- **The product introduces itself to machines.** `/llms.txt` states what
+  the product is, costs, and is not — every number imported from the same
+  constants the pages render. robots.txt names the AI crawlers and allows
+  them on purpose, with `/p/` capability links staying disallowed for every
+  agent. `/pricing` carries Product and Offer structured data, `/faq` a
+  FAQPage built from the same data module the visible FAQ renders, so the
+  two cannot drift. No invented ratings. DECISIONS 042.
+
+- **Average response latency joined the progress table** (F-23). The scorer
+  has computed it per session since the schema existed; the trends table now
+  shows it beside the other delivery metrics, with the report page's exact
+  label and format, and a dash where a session has no measurement.
+
 ## [0.9.0] — 2026-08-05
 
 ### Added

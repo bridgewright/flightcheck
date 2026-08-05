@@ -1396,3 +1396,91 @@ action per step and user-paced advancement).
   is the obvious candidate), at which point the step model and stage
   components generalize; or LinkedIn renames the menu, which the captions
   name and the mock must follow.
+
+## 040 — the feedback door is a labeled mailto, not a form (2026-08-05)
+
+**Context.** F-59: a Feedback entry in the footer row where the FAQ sits,
+mechanism left open by the user. The footer already carried a support
+address, but a support address is not a feedback door: customers report
+breakage to support and keep opinions to themselves unless a label asks for
+them.
+
+- **Chosen — a labeled mailto beside the support one,** subject prefilled so
+  the operator's inbox sorts it, no body template so the customer's first
+  sentence is their own. Zero new data surface: nothing new to store, rate
+  limit, or add to the deletion story, and it shipped the day it was asked
+  for.
+- **Rejected — a stored feedback form:** a table, an endpoint, an abuse
+  surface and a deletion-story entry, built before a single customer has
+  asked to leave feedback. Structure should be earned by volume.
+- **Rejected — a third-party form:** the fastest structured option, and the
+  first subprocessor on a privacy page that currently has none. Not for a
+  footer link.
+- **Revisit when:** real feedback arrives and starts wanting structure — a
+  handful of mails with categories emerging, or a message that needed a
+  reply loop the inbox could not give it.
+
+## 041 — the signed-in product moves, inside the budget it already had (2026-08-05)
+
+**Context.** The user read the product as too static. The research agreed and
+located the gap precisely: every motion consumer sat on the marketing
+surfaces while the signed-in tree had zero motion imports, and two
+animations the F-21 spec had GRANTED were never built.
+
+- **Chosen — build what was granted, then extend the vocabulary, not the
+  budget.** The report score counts to its value once (the spec's own
+  sentence: the number is the product's output and deserves one moment); the
+  readiness gauge sweeps to its reading on first view; progress cards,
+  session rows and the journey strip enter with the landing's existing
+  vocabulary; a status that flips under a poll tick fades in, keyed on the
+  status value. Everything one-shot, transform and opacity only, settled
+  state under reduced motion.
+- **Chosen — the count-up server-renders the final value.** A no-JS or
+  pre-hydration reader sees the true score; the cost is that a hard load of
+  a scored report shows the number, resets to zero at hydration, and counts
+  once. No-JS honesty beats hiding the product's output to protect a
+  flourish.
+- **Chosen — the gauge sweep translates a right-anchored unit instead of
+  scaling the fill.** An animated scaleX settles at a meaningful transform,
+  and the no-JS backstop forces `transform: none` — which would render a
+  full bar, a wrong number. The chosen shape settles at `none`, so the
+  backstop and the animation agree about what the reading is.
+- **Rejected — the press scale the F-21 spec granted** (`:active` scale
+  0.98). The measured reference animates nothing on a control except colour,
+  and the PRESS gesture was rebuilt to match it; adding the scale now would
+  reintroduce exactly what the rebuild removed. It had been silently absent
+  since then; this entry makes the absence a decision.
+- **Dropped, recorded:** the /home stage-line fade (the line renders inside
+  SessionTicket, outside the track's zone; the two-line change is written in
+  the track report if wanted later) and the evidence-linked transcript,
+  which is its own card.
+- **Revisit when:** F-50 reopens the session room's motion question, or the
+  demo video finds a surface that still reads static.
+
+## 042 — AI crawlers are allowed on purpose, and the answers file stays honest (2026-08-05)
+
+**Context.** F-60. GPTBot, ClaudeBot, PerplexityBot and their peers were
+unaddressed in robots, which is default-allow by accident. A product that
+wants to be found and quoted correctly should allow deliberately, and say
+what may be quoted.
+
+- **Chosen — named allow rules** for GPTBot, ClaudeBot, Claude-Web,
+  PerplexityBot, Google-Extended, Applebot-Extended and CCBot, each carrying
+  the identical public-route allows and the full disallow list. The names
+  add no reach over the wildcard; they make the allowing legible as a
+  decision. `/p/` stays disallowed for every agent, training crawlers
+  included: capability links are customer data, not marketing.
+- **Chosen — /llms.txt serves the product's facts,** every number an import
+  (the price from the pricing constant, the refund window from policy), every
+  claim one the live pages already make, including what the product is not:
+  it never joins, listens to, or answers a real interview.
+- **Chosen — /llms.txt stays out of the sitemap** (a convention file
+  discovered at its own path, not a page to index) **and the Product JSON-LD
+  carries no aggregateRating** (no real reviews exist; inventing them is a
+  lie and a rich-results policy violation).
+- **Rejected — blocking training crawlers:** the public pages are the
+  product's own marketing, and being quoted correctly is the goal; customer
+  surfaces are behind auth and `/p/` is disallowed, so the block would
+  protect nothing that is not already protected.
+- **Revisit when:** a crawler abuses the access, real reviews exist, or an
+  engine publishes an llms.txt consumption contract worth conforming to.
