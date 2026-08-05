@@ -1,6 +1,7 @@
 import Link from "next/link";
 
 import { ENTRY_STAGGER_SECONDS } from "@/components/motion/entry";
+import MountFade from "@/components/motion/MountFade";
 import Reveal from "@/components/motion/Reveal";
 import { formatSessionDate } from "@/lib/home";
 import { archiveStatusPill } from "@/lib/report-format";
@@ -82,11 +83,20 @@ export default function SessionList({
                     <span className="text-ink-muted">
                       {when ?? ""}
                     </span>
-                    <Outcome session={session} />
+                    {/* Keyed on the status (F-58): when scoring flips to
+                        scored under PollRefresh, the cell remounts and the
+                        new value fades in once instead of teleporting. */}
+                    <MountFade key={session.status}>
+                      <Outcome session={session} />
+                    </MountFade>
                     {session.report_available ? (
-                      <span className="text-fine underline underline-offset-4">
-                        Report
-                      </span>
+                      // Same flip, no key needed: the link only exists in the
+                      // terminal state, so its mount IS the status change.
+                      <MountFade>
+                        <span className="text-fine underline underline-offset-4">
+                          Report
+                        </span>
+                      </MountFade>
                     ) : (
                       <span />
                     )}

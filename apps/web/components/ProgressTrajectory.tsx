@@ -1,4 +1,5 @@
 import { ENTRY_STAGGER_SECONDS } from "@/components/motion/entry";
+import MountFade from "@/components/motion/MountFade";
 import Reveal from "@/components/motion/Reveal";
 import type { TrajectoryCell } from "@/components/progress-view";
 import { trajectoryCells } from "@/components/progress-view";
@@ -69,24 +70,33 @@ export default function ProgressTrajectory({
         Trajectory
       </h2>
       <ol className="flex gap-2 overflow-x-auto pb-1">
-        {cells.map((cell, i) => (
-          <li key={cell.index} className="min-w-[84px] flex-1">
-            {/* The same staggered entry as the landing's how-it-works: the
-                cards arrive in session order, and the order is the argument
-                (F-58). The Reveal carries the card frame so the card enters,
-                not just its text; h-full keeps sibling cards equal height now
-                that the frame is one level in. */}
-            <Reveal
-              className={`${CARD} h-full px-2 py-2.5 text-center`}
-              delay={i * ENTRY_STAGGER_SECONDS}
-            >
-              <div className={`${LABEL} mb-1`}>
-                S{cell.index}
-              </div>
-              <CellBody cell={cell} />
-            </Reveal>
-          </li>
-        ))}
+        {cells.map((cell, i) => {
+          // The fade is keyed on the status (F-58): a flip under PollRefresh
+          // remounts the cell body and the new value fades in once instead of
+          // teleporting. The surrounding Reveal persists across refreshes, so
+          // the card itself never re-enters.
+          const fadeKey = cell.kind === "session" ? cell.status : "empty";
+          return (
+            <li key={cell.index} className="min-w-[84px] flex-1">
+              {/* The same staggered entry as the landing's how-it-works: the
+                  cards arrive in session order, and the order is the argument
+                  (F-58). The Reveal carries the card frame so the card enters,
+                  not just its text; h-full keeps sibling cards equal height
+                  now that the frame is one level in. */}
+              <Reveal
+                className={`${CARD} h-full px-2 py-2.5 text-center`}
+                delay={i * ENTRY_STAGGER_SECONDS}
+              >
+                <div className={`${LABEL} mb-1`}>
+                  S{cell.index}
+                </div>
+                <MountFade key={fadeKey}>
+                  <CellBody cell={cell} />
+                </MountFade>
+              </Reveal>
+            </li>
+          );
+        })}
       </ol>
     </section>
   );

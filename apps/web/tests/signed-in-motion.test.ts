@@ -60,6 +60,7 @@ describe("the gauge positions its marks with transform alone", () => {
 const NEW_LEAVES = [
   "components/motion/Sweep.tsx",
   "components/motion/CountUp.tsx",
+  "components/motion/MountFade.tsx",
 ];
 
 describe("the new leaves consume entry.ts rather than re-declaring it", () => {
@@ -170,5 +171,70 @@ describe("the signed-in tree enters with the landing's vocabulary", () => {
     const source = read("components/JourneyStrip.tsx");
     expect(source).toContain('from "@/components/motion/Reveal"');
     expect(source).not.toContain("ENTRY_STAGGER_SECONDS");
+  });
+});
+
+describe("a status that flips under PollRefresh fades in instead of teleporting", () => {
+  // router.refresh() swaps server-rendered content wholesale. The honest
+  // minimal version of continuity in that model: key the fade on the status,
+  // so React remounts the changed cell and the entry plays once. An
+  // unchanged key never remounts, so an idle poll tick replays nothing.
+  it("keys the session row's outcome cell on its status", () => {
+    const source = read("components/SessionList.tsx");
+    expect(source).toContain('from "@/components/motion/MountFade"');
+    expect(source).toContain("<MountFade key={session.status}>");
+  });
+
+  it("keys the trajectory cell's body on its status", () => {
+    const source = read("components/ProgressTrajectory.tsx");
+    expect(source).toContain('from "@/components/motion/MountFade"');
+    expect(source).toContain("<MountFade key={fadeKey}>");
+  });
+
+  it("fades without travelling, on the fade curve", () => {
+    // Not an entrance in reading order: the same cell it was, with a new
+    // value. Opacity only, FADE_EASE, and an animate-on-mount trigger, since
+    // the remount is the event.
+    const leaf = withoutComments(read("components/motion/MountFade.tsx"));
+    expect(leaf).toContain("FADE_EASE");
+    expect(leaf).toContain("animate=");
+    expect(leaf).not.toMatch(/\bx\b|\by\b|whileInView/);
+  });
+});
+
+// --- The call sites hand the leaves nothing but presentation -------------
+
+describe("the signed-in call sites pass the leaves only presentational props", () => {
+  // Same scan as landing-motion.test.ts's call-site check, over the signed-in
+  // consumers, with each leaf's own allowed prop names. The leaves' prop
+  // TYPES are already gated directory-wide; this catches a consumer handing
+  // a leaf something it should not even be offered.
+  const ALLOWED: Record<string, string[]> = {
+    Reveal: ["className", "delay", "key"],
+    MountReveal: ["className", "key"],
+    MountFade: ["className", "key"],
+    CountUp: ["value", "decimals", "className", "key"],
+    Sweep: ["percent", "key"],
+  };
+
+  const CONSUMERS = [
+    "components/ReadinessGauge.tsx",
+    "components/ReportView.tsx",
+    "components/ProgressTrajectory.tsx",
+    "components/SessionList.tsx",
+    "components/JourneyStrip.tsx",
+    "app/home/page.tsx",
+    "app/progress/page.tsx",
+  ];
+
+  it.each(CONSUMERS)("%s stays within each leaf's allowed props", (file) => {
+    const source = read(file);
+    for (const [leaf, allowed] of Object.entries(ALLOWED)) {
+      for (const tag of source.matchAll(new RegExp(`<${leaf}\\b([^>]*)>`, "g"))) {
+        for (const [, prop] of tag[1].matchAll(/(\w+)=/g)) {
+          expect(allowed, `${file} passes ${prop} to ${leaf}`).toContain(prop);
+        }
+      }
+    }
   });
 });
