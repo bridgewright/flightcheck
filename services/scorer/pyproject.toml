@@ -1,6 +1,6 @@
 [project]
 name = "scorer"
-version = "0.9.0"
+version = "0.10.0"
 description = "flightcheck scoring worker + eval harnesses"
 # SPDX expression only. The LICENSE file itself lives at the repo root, above
 # this project directory, so `license-files` cannot reach it (hatchling drops
