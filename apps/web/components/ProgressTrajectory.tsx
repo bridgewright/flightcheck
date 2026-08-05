@@ -16,6 +16,9 @@ const STATUS_WORDS: Record<Exclude<SessionStatus, "scored">, string> = {
   scoring: "Scoring…",
   failed: "Scoring failed",
   insufficient: "Not scored",
+  // A dropped room the customer took back; the slot survived, so the
+  // column says what insufficient says rather than inventing a new word.
+  abandoned: "Not scored",
   failed_permanent: "Closed",
 };
 

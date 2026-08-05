@@ -12,6 +12,7 @@ import {
   dimensionMetaFromRubric,
 } from "@/components/ReportView";
 import Shell from "@/components/Shell";
+import StartSessionButton from "@/components/StartSessionButton";
 import TranscriptView from "@/components/TranscriptView";
 import { formatSessionDate, nextSessionNumber } from "@/lib/home";
 import {
@@ -381,7 +382,7 @@ export default async function SessionDetailPage({
   // the CTA degrades to home rather than guessing a number.
   const nextNumber =
     entries === null ? null : nextSessionNumber(entries, pkg.total_sessions);
-  const cta = detailCta(state, session.id, nextNumber);
+  const cta = detailCta(state, session.id, nextNumber, entries);
   const ctaHref = detailCtaHref(cta, entries ?? []);
   const previous =
     entries === null ? null : previousScoredEntry(entries, session.index);
@@ -497,7 +498,14 @@ export default async function SessionDetailPage({
           </p>
         </header>
         {showTranscript ? transcriptSection : null}
-        <CtaBlock href={ctaHref} label={cta.label} />
+        {cta.kind === "resume" ? (
+          // The rerun door is the resume ACTION, not a room link: the room
+          // refuses a session past "planned" (F-66), and POST /api/sessions
+          // is what re-arms this row before entering its room.
+          <StartSessionButton packageId={pkg.id} label={cta.label} />
+        ) : (
+          <CtaBlock href={ctaHref} label={cta.label} />
+        )}
       </div>
     </Shell>
   );

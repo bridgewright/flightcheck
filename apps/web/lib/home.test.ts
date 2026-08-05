@@ -190,6 +190,15 @@ describe("nextSessionNumber", () => {
     ).toBe(1);
   });
 
+  it("resumes an abandoned session too — the worker re-arms reclaimed rows", () => {
+    // Unmodeled until the F-66 batch: a reclaimed room leaves the row
+    // "abandoned", the worker resumes it first, and a strip that skipped
+    // it would point Start at the wrong slot.
+    expect(
+      nextSessionNumber(sessions([1, "abandoned"], [2, "scored"]), 6),
+    ).toBe(1);
+  });
+
   it("resumes the lowest resumable slot when several are open", () => {
     expect(
       nextSessionNumber(sessions([1, "scored"], [2, "failed"], [3, "planned"]), 6),

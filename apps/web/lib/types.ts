@@ -177,6 +177,12 @@ export type SessionStatus =
   | "scored"
   | "failed"
   | "insufficient"
+  // Written by the worker's heartbeat reclaim (v0.8): the room stopped
+  // reporting and the customer took the slot back. Retriable — the next
+  // resume re-arms the row — and emitted by the progress feed, so every
+  // reader of this union must handle it (it went unmodeled here until a
+  // CTA started linking to abandoned sessions' pages and the page threw).
+  | "abandoned"
   // Retired by the worker after the resume/re-score caps (v0.5 guards): the
   // attempt happened and the slot is spent, but no report will ever exist.
   | "failed_permanent";

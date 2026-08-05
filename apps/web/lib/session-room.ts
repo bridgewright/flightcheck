@@ -546,3 +546,88 @@ export function nextGuardState(
   }
   return { state: next, endReason: null };
 }
+
+// --- F-66: the room refuses a session that has already ended --------------
+//
+// The first real session ended "insufficient" 14 seconds in, and the room
+// then let two more attempts join it: mint answered 200, every heartbeat
+// answered 409, and the guard read the starved channel as network loss. The
+// customer saw "Connection lost" for a session the server had already
+// retired. The worker's mint route now refuses (409 session-not-live), and
+// this is the client half: only a "planned" session opens the start card —
+// the same predicate mint and heartbeat hold — and every other status,
+// including ones this build has never heard of, fails closed into a screen
+// that says what actually happened.
+//
+// The door out is home, and it is a real door: the worker's create_session
+// resumes a "failed"/"insufficient" row and re-arms it to "planned", so the
+// home CTA reopens THIS slot rather than bouncing off the same closed room.
+// The two sentences below that promise a kept slot depend on that, and on
+// quota.py leaving both statuses out of SLOT_CONSUMING_STATUSES.
+
+/** What the closed room offers the candidate instead of a start card. */
+export interface EndedRoomNotice {
+  headline: string;
+  detail: string;
+  /** The session page is worth a link when a report exists (scored) or is
+   * on its way (scoring); otherwise home is the only door offered. */
+  showSessionLink: boolean;
+}
+
+/**
+ * The honest notice for a room whose session cannot start, or null for a
+ * "planned" session (the only status the worker will mint a secret for).
+ * Statuses this build does not know fail closed: an unknown status is not
+ * permission to interview.
+ */
+export function endedRoomNotice(status: string): EndedRoomNotice | null {
+  switch (status) {
+    case "planned":
+      return null;
+    case "scoring":
+      return {
+        headline: "This interview is already being scored",
+        detail:
+          "Your recording is with the scorer and the report is on its way. " +
+          "This room stays closed so the attempt cannot be overwritten.",
+        showSessionLink: true,
+      };
+    case "scored":
+      return {
+        headline: "This interview is already scored",
+        detail:
+          "Your report is ready. This room stays closed so the result " +
+          "cannot change.",
+        showSessionLink: true,
+      };
+    case "insufficient":
+      return {
+        headline: "This session has already ended",
+        detail:
+          "It ended before there was enough interview to score, so it kept " +
+          "your session slot. Start it again from your home screen whenever " +
+          "you are ready.",
+        showSessionLink: false,
+      };
+    // Not folded into the default: "failed" keeps its slot exactly like
+    // "insufficient" (quota.py, SLOT_CONSUMING_STATUSES), and a customer
+    // whose one paid attempt died in scoring must be told that in the same
+    // breath as the bad news. What failed differs, so the sentence does too.
+    case "failed":
+      return {
+        headline: "This session has already ended",
+        detail:
+          "The attempt could not be scored, so it kept your session slot. " +
+          "Start it again from your home screen whenever you are ready.",
+        showSessionLink: false,
+      };
+    default:
+      return {
+        headline: "This session has already ended",
+        detail:
+          "It cannot continue in this room. Your home screen shows where " +
+          "it stands and how to continue.",
+        showSessionLink: false,
+      };
+  }
+}

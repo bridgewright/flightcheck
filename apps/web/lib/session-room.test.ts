@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import {
   HARD_CUT_S,
   INITIAL_SILENCE_STATE,
+  endedRoomNotice,
   RESPONSE_DEBOUNCE_S,
   SESSION_BUDGET_S,
   SILENCE_STAGES,
@@ -319,5 +320,63 @@ describe("echo-turn hygiene helpers", () => {
       type: "conversation.item.delete",
       item_id: "item_A",
     });
+  });
+});
+
+// F-66: the room refuses a session that has already ended. Only "planned"
+// opens the start card — the same predicate the worker's mint and heartbeat
+// guards hold — and every other status, including ones this build has never
+// heard of, fails closed into an honest ended notice.
+describe("endedRoomNotice", () => {
+  it("keeps the room open only for a planned session", () => {
+    expect(endedRoomNotice("planned")).toBeNull();
+  });
+
+  it("closes the room for every other status, known or not", () => {
+    for (const status of [
+      "scoring",
+      "scored",
+      "insufficient",
+      "failed",
+      "failed_permanent",
+      "abandoned",
+      "some-future-status",
+      "",
+    ]) {
+      expect(endedRoomNotice(status)).not.toBeNull();
+    }
+  });
+
+  it("tells both slot-preserving endings that the slot survived", () => {
+    // "failed" and "insufficient" are equally retriable and equally
+    // slot-preserving (quota.py), and the room is now the screen that says
+    // so: leaving "failed" in the default bucket told a customer whose only
+    // paid attempt died in scoring nothing about what it cost them.
+    for (const status of ["insufficient", "failed"]) {
+      const notice = endedRoomNotice(status);
+      expect(notice?.detail).toContain("kept your session slot");
+      expect(notice?.detail).toContain("home screen");
+      expect(notice?.showSessionLink).toBe(false);
+    }
+  });
+
+  it("offers the session page when a report exists or is on its way", () => {
+    expect(endedRoomNotice("scored")?.showSessionLink).toBe(true);
+    expect(endedRoomNotice("scoring")?.showSessionLink).toBe(true);
+  });
+
+  it("never borrows the connection-lost story", () => {
+    for (const status of ["scored", "scoring", "insufficient", "failed"]) {
+      const notice = endedRoomNotice(status);
+      expect(notice?.headline).not.toContain("Connection");
+      expect(notice?.detail).not.toContain("connection");
+    }
+  });
+
+  it("carries no typographic dashes in any notice", () => {
+    for (const status of ["scoring", "scored", "insufficient", "failed"]) {
+      const notice = endedRoomNotice(status);
+      expect(`${notice?.headline} ${notice?.detail}`).not.toMatch(/[–—]/);
+    }
   });
 });

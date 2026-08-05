@@ -94,6 +94,9 @@ const ARCHIVE_STATUS_PILLS: Record<
     label: "Not scored: not enough evidence",
     className: CHIP_ALARM,
   },
+  // Not an alarm: the customer reclaimed a dropped room themselves, the
+  // slot survived, and the row resumes like insufficient does.
+  abandoned: { label: "Not finished, slot preserved", className: CHIP },
   scored: null,
 };
 

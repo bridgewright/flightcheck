@@ -41,7 +41,7 @@ describe("the dead guard_ended branch is gone", () => {
   });
 
   it("still sends an unstarted slot into its own room", () => {
-    expect(detailCta("not_started", "s-1", 3)).toEqual({
+    expect(detailCta("not_started", "s-1", 3, null)).toEqual({
       kind: "room",
       sessionId: "s-1",
       label: "Start this session",

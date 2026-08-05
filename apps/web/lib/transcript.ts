@@ -107,6 +107,11 @@ export function deriveSessionDetailState(session: {
       return "failed";
     case "insufficient":
       return "insufficient";
+    // An abandoned attempt ended before there was anything to score and
+    // kept its slot — the insufficient framing exactly, and the state
+    // whose CTA offers the resume door the worker will actually honor.
+    case "abandoned":
+      return "insufficient";
     case "failed_permanent":
       return "closed";
     case "scored":
@@ -151,16 +156,38 @@ export function dimensionScoreMap(
   );
 }
 
+/** Statuses the worker's create_session will resume rather than pass over
+ * (its RETRIABLE_STATUSES): open rows, in resume-priority order by index. */
+const OPEN_STATUSES: ReadonlySet<string> = new Set([
+  "planned",
+  "failed",
+  "insufficient",
+  "abandoned",
+]);
+
 /**
  * The detail page's one primary action, derived from the session's state:
- * - room: enter THIS session's room. Precise on purpose — the generic start
- *   flow resumes the LOWEST open slot, which for "rerun session 4" could be a
- *   different session entirely.
+ * - room: enter THIS session's room. Only for a row the room will open —
+ *   which after F-66 means status "planned" (not_started) and nothing else.
+ * - resume: run the retriable row again THROUGH the resume action (POST
+ *   /api/sessions), which re-arms it to "planned" before entering its room.
+ *   A direct room link here used to "work" by accident — it interviewed on
+ *   a failed/insufficient row, bypassing resume accounting — and now lands
+ *   on the ended screen, so the link shape is a lie the moment it renders.
+ *   Offered ONLY when this session is the lowest open row: resume takes
+ *   the lowest index, and two open rows coexist whenever a row left
+ *   "scoring" after a later one was started.
+ * - detail: an older session is the one resume would actually hit; the
+ *   door names it and leads to its own page rather than silently entering
+ *   its room from here.
  * - start: begin the next session through the generic start flow.
- * - home: nothing to start from here (mid-scoring, or the package is spent).
+ * - home: nothing to start from here (mid-scoring, the package is spent,
+ *   or the progress feed is down and no resume promise would be honest).
  */
 export type DetailCta =
   | { kind: "room"; sessionId: string; label: string }
+  | { kind: "resume"; label: string }
+  | { kind: "detail"; sessionId: string; label: string }
   | { kind: "start"; nextIndex: number; label: string }
   | { kind: "home"; label: string };
 
@@ -168,13 +195,32 @@ export function detailCta(
   state: SessionDetailState,
   sessionId: string,
   nextSessionNumber: number | null,
+  entries: SessionProgressEntry[] | null,
 ): DetailCta {
   switch (state) {
     case "not_started":
       return { kind: "room", sessionId, label: "Start this session" };
     case "failed":
-    case "insufficient":
-      return { kind: "room", sessionId, label: "Run this session again" };
+    case "insufficient": {
+      if (entries === null) {
+        return { kind: "home", label: "Back to home" };
+      }
+      const open = entries
+        .filter((e) => OPEN_STATUSES.has(e.status))
+        .sort((a, b) => a.index - b.index);
+      const lowest = open[0];
+      if (lowest === undefined || lowest.session_id === sessionId) {
+        // lowest undefined only if the feed disagrees with the row we are
+        // rendering (this session IS open); resume still makes the honest
+        // fresh decision server-side, so it stays the offer.
+        return { kind: "resume", label: "Run this session again" };
+      }
+      return {
+        kind: "detail",
+        sessionId: lowest.session_id,
+        label: `Finish session ${lowest.index} first`,
+      };
+    }
     case "scored":
     case "limited":
       return nextSessionNumber === null
@@ -203,6 +249,15 @@ export function detailCtaHref(
   switch (cta.kind) {
     case "room":
       return `/sessions/${cta.sessionId}/room`;
+    // The page renders a resume CTA as the start-session ACTION, not a
+    // link; this href is the exhaustiveness fallback, and home is the only
+    // honest destination a bare link could offer.
+    case "resume":
+      return "/home";
+    // The older open session's own page, where ITS resume door lives —
+    // never its room, which would refuse or mis-enter.
+    case "detail":
+      return `/sessions/${cta.sessionId}`;
     case "home":
       return "/home";
     case "start": {

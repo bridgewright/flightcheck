@@ -193,6 +193,46 @@ describe("POST /api/realtime-secret mint counting", () => {
     expect(fetchMock).not.toHaveBeenCalled();
   });
 
+  it("answers 409 session-not-live for a session that already ended, without any OpenAI call", async () => {
+    // F-66: the worker now refuses to mint for any session past "planned".
+    // The route forwards that refusal with its code intact — the room keys
+    // its terminal screen on the code, never on error text — instead of
+    // logging it as a counter outage and minting anyway, which is exactly
+    // how the first real session got a live room on a dead session.
+    authorizeSession.mockResolvedValue({
+      ok: true,
+      value: { session: SESSION_WITH_INSTRUCTIONS },
+    });
+    incrementSecretMint.mockRejectedValue(
+      new FakeWorkerError(409, "session-not-live"),
+    );
+    const res = await POST(jsonRequest({ sessionId: "sess-1", token: "tok-1" }));
+    expect(res.status).toBe(409);
+    expect(await res.json()).toEqual({
+      error: "This session has already ended.",
+      code: "session-not-live",
+    });
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it("labels only the worker's own session-not-live code that way", async () => {
+    // The browser RELOADS on this answer. A 409 that means something else
+    // wearing this code would reload a tab whose page still renders a start
+    // card, and the customer would sit in a reload loop, so the branch reads
+    // the worker's code and any other 409 stays an outage: the mint proceeds.
+    const errorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+    authorizeSession.mockResolvedValue({
+      ok: true,
+      value: { session: SESSION_WITH_INSTRUCTIONS },
+    });
+    incrementSecretMint.mockRejectedValue(
+      new FakeWorkerError(409, "some-other-conflict"),
+    );
+    const res = await POST(jsonRequest({ sessionId: "sess-1", token: "tok-1" }));
+    expect(res.status).toBe(200);
+    errorSpy.mockRestore();
+  });
+
   it("still mints when the counter call cannot reach the worker", async () => {
     const errorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
     authorizeSession.mockResolvedValue({

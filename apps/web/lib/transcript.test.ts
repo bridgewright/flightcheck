@@ -173,6 +173,19 @@ describe("deriveSessionDetailState", () => {
       deriveSessionDetailState({ status: "planned", report: null }),
     ).toBe("not_started");
   });
+
+  it("maps an abandoned session like insufficient — slot kept, resumable", () => {
+    // The worker's reclaim writes "abandoned", and the progress feed emits
+    // such rows, but this switch never modeled them: the page derived
+    // undefined and threw on render for any abandoned session reached by
+    // URL — which the "Finish session N first" CTA now hands out. An
+    // abandoned attempt ended before there was anything to score and kept
+    // its slot, which is exactly the insufficient framing, and it makes
+    // the page offer the resume door the CTA promises.
+    expect(
+      deriveSessionDetailState({ status: "abandoned", report: null }),
+    ).toBe("insufficient");
+  });
 });
 
 const entry = (
@@ -237,33 +250,69 @@ describe("dimensionScoreMap", () => {
 
 describe("detailCta", () => {
   it("sends an unstarted slot into its own room", () => {
-    expect(detailCta("not_started", "s-1", 3)).toEqual({
+    expect(detailCta("not_started", "s1", 3, [entry(1, "planned", null)])).toEqual({
       kind: "room",
-      sessionId: "s-1",
+      sessionId: "s1",
       label: "Start this session",
     });
   });
 
-  it("offers to rerun a failed or insufficient session in its own room", () => {
-    expect(detailCta("failed", "s-2", 3)).toEqual({
-      kind: "room",
-      sessionId: "s-2",
+  it("offers to rerun a failed or insufficient session through resume", () => {
+    // Not a room link (F-66): the room refuses a session past "planned", so
+    // the rerun door must be the resume action — POST /api/sessions re-arms
+    // the row to planned and only then enters its room.
+    const entries = [entry(1, "scored", 3.2), entry(2, "failed", null)];
+    expect(detailCta("failed", "s2", 3, entries)).toEqual({
+      kind: "resume",
       label: "Run this session again",
     });
-    expect(detailCta("insufficient", "s-2", 3)).toEqual({
-      kind: "room",
-      sessionId: "s-2",
+    expect(
+      detailCta("insufficient", "s2", 3, [
+        entry(1, "scored", 3.2),
+        entry(2, "insufficient", null),
+      ]),
+    ).toEqual({
+      kind: "resume",
       label: "Run this session again",
     });
   });
 
+  it("never offers resume when an older session is also open — it lands there", () => {
+    // Round-2 finding: the worker's resume takes the LOWEST open row, and
+    // two open rows coexist whenever a row left "scoring" after a later
+    // one was started. A resume button on the newer session would silently
+    // enter the older session's room, with the older session's questions,
+    // and burn the older row's resume attempt. The honest door names the
+    // session that resume would actually hit.
+    const entries = [entry(1, "failed", null), entry(2, "insufficient", null)];
+    expect(detailCta("insufficient", "s2", 3, entries)).toEqual({
+      kind: "detail",
+      sessionId: "s1",
+      label: "Finish session 1 first",
+    });
+    // The older session itself still gets the resume door.
+    expect(detailCta("failed", "s1", 3, entries)).toEqual({
+      kind: "resume",
+      label: "Run this session again",
+    });
+  });
+
+  it("degrades to home when the progress feed is unavailable", () => {
+    // Without entries there is no honest way to know which row resume
+    // would land on; home's own CTA resolves the right action server-side.
+    expect(detailCta("failed", "s2", 3, null)).toEqual({
+      kind: "home",
+      label: "Back to home",
+    });
+  });
+
   it("points a scored session at starting the next one", () => {
-    expect(detailCta("scored", "s-3", 4)).toEqual({
+    expect(detailCta("scored", "s3", 4, [entry(3, "scored", 3.0)])).toEqual({
       kind: "start",
       nextIndex: 4,
       label: "Start session 4",
     });
-    expect(detailCta("limited", "s-3", 4)).toEqual({
+    expect(detailCta("limited", "s3", 4, [entry(3, "scored", 3.0)])).toEqual({
       kind: "start",
       nextIndex: 4,
       label: "Start session 4",
@@ -271,14 +320,14 @@ describe("detailCta", () => {
   });
 
   it("falls back to home when the package is spent", () => {
-    expect(detailCta("scored", "s-3", null)).toEqual({
+    expect(detailCta("scored", "s3", null, [entry(3, "scored", 3.0)])).toEqual({
       kind: "home",
       label: "Back to home",
     });
   });
 
   it("sends a still-scoring session home — there is nothing to start yet", () => {
-    expect(detailCta("scoring", "s-4", 5)).toEqual({
+    expect(detailCta("scoring", "s4", 5, [entry(4, "scoring", null)])).toEqual({
       kind: "home",
       label: "Back to home",
     });
@@ -299,6 +348,21 @@ describe("detailCtaHref", () => {
     expect(detailCtaHref({ kind: "home", label: "Back to home" }, [])).toBe(
       "/home",
     );
+  });
+
+  it("falls back to home for a resume CTA — the page renders the action instead", () => {
+    expect(
+      detailCtaHref({ kind: "resume", label: "Run this session again" }, []),
+    ).toBe("/home");
+  });
+
+  it("links a detail CTA to that session's detail page, not its room", () => {
+    expect(
+      detailCtaHref(
+        { kind: "detail", sessionId: "s1", label: "Finish session 1 first" },
+        [],
+      ),
+    ).toBe("/sessions/s1");
   });
 
   it("links a start CTA straight into the next slot's room when that row exists", () => {

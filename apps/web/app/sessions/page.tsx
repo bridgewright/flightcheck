@@ -117,22 +117,11 @@ function RowLinks({ session }: { session: SessionSummary }) {
       {label}
     </Link>
   );
-  if (session.status === "failed" || session.status === "insufficient") {
-    // Both statuses are retriable the same way (F-04: insufficient is terminal
-    // like failed, slot preserved): Retry enters this session's OWN room — the
-    // slot is resumed, not burned.
-    return (
-      <span className="flex gap-3">
-        {detail("View")}
-        <Link
-          href={`/sessions/${session.id}/room`}
-          className={`${LINK} text-fine`}
-        >
-          Retry
-        </Link>
-      </span>
-    );
-  }
+  // Both retriable statuses (F-04) route through the detail page, whose
+  // rerun CTA is the resume action. The direct room link this row used to
+  // carry claimed "the slot is resumed" and never resumed anything — it
+  // interviewed on the failed row, and after F-66 it lands on the ended
+  // screen, so the shortcut was a lie either way.
   return detail(session.status === "scored" ? "Report" : "View");
 }
 

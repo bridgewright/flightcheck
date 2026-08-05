@@ -105,6 +105,28 @@ export async function POST(request: Request) {
         { status: 429 },
       );
     }
+    // F-66: the worker refuses to mint for a session past "planned" — the
+    // interview already ended and no heartbeat would keep the room alive.
+    // Forwarded with the code intact (the room keys its terminal screen on
+    // it), never treated as a counter outage: minting here is how a dead
+    // session used to get a live room and a doomed 409 heartbeat train.
+    //
+    // Matched on the worker's code rather than the bare status, because the
+    // browser RELOADS on this answer: a different 409 wearing this label
+    // would reload a tab whose page still renders a start card, and the
+    // customer would sit in a loop. Any other 409 falls through to the
+    // counter-outage path below and the mint proceeds, which is the standing
+    // behaviour for a counter that cannot answer.
+    if (
+      err instanceof WorkerError &&
+      err.status === 409 &&
+      err.code === "session-not-live"
+    ) {
+      return NextResponse.json(
+        { error: "This session has already ended.", code: "session-not-live" },
+        { status: 409 },
+      );
+    }
     console.error("realtime-secret: secret-mint counter unavailable", err);
   }
   const mintRes = await fetch(OPENAI_CLIENT_SECRETS_URL, {

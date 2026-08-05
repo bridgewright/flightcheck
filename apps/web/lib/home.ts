@@ -21,25 +21,28 @@ export interface JourneySession {
 export type JourneyLeg = "done" | "next" | "todo";
 
 // A session that was started but never scored keeps its slot: the worker's
-// create_session resumes a "planned", "failed", or "insufficient" row rather
-// than burning a new one, so the strip must point at that slot instead of
-// the one after it.
+// create_session resumes a "planned", "failed", "insufficient", or
+// "abandoned" row (its RETRIABLE_STATUSES) rather than burning a new one,
+// so the strip must point at that slot instead of the one after it.
 // "failed_permanent" is deliberately absent: the worker retires a row after
 // the resume/re-score caps, and resuming it would only bounce off a 409.
 const RESUMABLE: ReadonlySet<SessionStatus> = new Set<SessionStatus>([
   "planned",
   "failed",
   "insufficient",
+  "abandoned",
 ]);
 
 // An attempt the user actually made. "failed" and "insufficient" belong here
 // too — the session happened; only the scoring (or the evidence for it)
-// did not.
+// did not. "abandoned" likewise: a room only becomes reclaimable after it
+// went live and stopped reporting.
 const ATTEMPTED: ReadonlySet<SessionStatus> = new Set<SessionStatus>([
   "scoring",
   "scored",
   "failed",
   "insufficient",
+  "abandoned",
   "failed_permanent",
 ]);
 
