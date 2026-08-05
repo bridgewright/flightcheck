@@ -7,9 +7,18 @@ import { describe, expect, it } from "vitest";
 import { GET as getLlmsTxt, dynamic as llmsCaching } from "@/app/llms.txt/route";
 import robots, { AI_CRAWLERS } from "@/app/robots";
 import sitemap from "@/app/sitemap";
-import { DISALLOWED_PREFIXES, LLMS_TXT_PATH, PUBLIC_ROUTES, SITE_NAME, SITE_URL } from "@/app/site";
-import { HERO } from "@/components/landing/copy";
-import { EXPIRY_DAYS, PACKAGE_SESSIONS, PRICE_DISPLAY } from "@/lib/pricing";
+import {
+  DISALLOWED_PREFIXES,
+  LLMS_TXT_PATH,
+  PUBLIC_ROUTES,
+  SITE_NAME,
+  SITE_URL,
+  faqPageJsonLd,
+  jsonLdScript,
+  productJsonLd,
+} from "@/app/site";
+import { FAQ, HERO } from "@/components/landing/copy";
+import { EXPIRY_DAYS, PACKAGE_SESSIONS, PRICE_DISPLAY, PRICE_USD } from "@/lib/pricing";
 
 // F-60. The layer above F-40's cards and sitemap: what an ANSWER engine reads.
 // A search result quotes a title; an answer engine quotes claims, and a wrong
@@ -151,5 +160,90 @@ describe("the AI-crawler policy in robots.txt", () => {
       }
       expect(allow).toContain(LLMS_TXT_PATH);
     }
+  });
+});
+
+describe("the FAQPage JSON-LD", () => {
+  const parsed = JSON.parse(jsonLdScript(faqPageJsonLd())) as {
+    "@context": string;
+    "@type": string;
+    mainEntity: { "@type": string; name: string; acceptedAnswer: { "@type": string; text: string } }[];
+  };
+
+  it("serializes to valid JSON with the schema.org types", () => {
+    expect(parsed["@context"]).toBe("https://schema.org");
+    expect(parsed["@type"]).toBe("FAQPage");
+    for (const entry of parsed.mainEntity) {
+      expect(entry["@type"]).toBe("Question");
+      expect(entry.acceptedAnswer["@type"]).toBe("Answer");
+    }
+  });
+
+  it("is the visible FAQ, verbatim, from the same data module", () => {
+    // Built FROM components/landing/copy.ts rather than alongside it, so the
+    // structured answers cannot drift from the rendered ones. Equality here is
+    // the whole point: an engine that quotes the JSON-LD quotes the page.
+    expect(parsed.mainEntity.map((entry) => entry.name)).toEqual(FAQ.map((entry) => entry.question));
+    expect(parsed.mainEntity.map((entry) => entry.acceptedAnswer.text)).toEqual(
+      FAQ.map((entry) => entry.answer),
+    );
+  });
+
+  it("is rendered by the /faq page as a server-side script", () => {
+    // The web suite has no DOM harness on purpose, so the render contract is
+    // pinned the way tests/landing-motion.test.ts pins its subjects: by
+    // reading the page source. Server-rendered means no client directive.
+    const source = read("app/faq/page.tsx");
+    expect(source).toContain('type="application/ld+json"');
+    expect(source).toContain("faqPageJsonLd");
+    expect(source).toContain("jsonLdScript");
+    expect(source).not.toContain('"use client"');
+  });
+});
+
+describe("the Product JSON-LD", () => {
+  const parsed = JSON.parse(jsonLdScript(productJsonLd())) as {
+    "@type": string;
+    description: string;
+    offers: { "@type": string; price: number; priceCurrency: string };
+  };
+
+  it("offers the price the pricing module holds, in USD", () => {
+    expect(parsed["@type"]).toBe("Product");
+    expect(parsed.offers["@type"]).toBe("Offer");
+    expect(parsed.offers.price).toBe(PRICE_USD);
+    expect(parsed.offers.priceCurrency).toBe("USD");
+  });
+
+  it("describes the product in its own landing words", () => {
+    expect(parsed.description).toBe(HERO.body);
+  });
+
+  it("invents no ratings and no reviews", () => {
+    // aggregateRating with no real reviews would be a lie, and also a
+    // rich-results policy violation. The product has no external reviews, so
+    // the structured data carries none; this pins the omission as a decision.
+    const flat = JSON.stringify(parsed).toLowerCase();
+    expect(flat).not.toContain("aggregaterating");
+    expect(flat).not.toContain("ratingvalue");
+    expect(flat).not.toContain("review");
+  });
+
+  it("is rendered by the /pricing page as a server-side script", () => {
+    const source = read("app/pricing/page.tsx");
+    expect(source).toContain('type="application/ld+json"');
+    expect(source).toContain("productJsonLd");
+    expect(source).toContain("jsonLdScript");
+    expect(source).not.toContain('"use client"');
+  });
+});
+
+describe("jsonLdScript", () => {
+  it("escapes < so a payload cannot close the script tag it rides in", () => {
+    // The XSS route the Next JSON-LD guide warns about: a "</script>" inside
+    // any serialized string would end the tag and start parsing markup.
+    const script = jsonLdScript({ name: "</script><script>alert(1)</script>" });
+    expect(script).not.toContain("<");
+    expect(JSON.parse(script).name).toBe("</script><script>alert(1)</script>");
   });
 });

@@ -1,5 +1,8 @@
 import type { Metadata } from "next";
 
+import { FAQ, HERO } from "@/components/landing/copy";
+import { PRICE_USD } from "@/lib/pricing";
+
 // The site's identity, in one place, for every surface that has to name it:
 // per-page metadata, the OG card, robots.txt, and the sitemap.
 //
@@ -126,6 +129,72 @@ export function privateMetadata(title: string): Metadata {
     robots: { index: false, follow: false },
     openGraph: { type: "website", siteName: SITE_NAME, title, images: [OG_IMAGE] },
     twitter: { card: "summary_large_image", title, images: [OG_IMAGE.url] },
+  };
+}
+
+// --- Structured data (F-60) ----------------------------------------------
+//
+// Two schema.org nodes, built from the same modules the visible pages render
+// from, so an engine that quotes the structured data quotes the page. They
+// live here rather than inline in the pages because a JSON-LD object a test
+// can import is a JSON-LD object a test can hold equal to the visible copy;
+// inline in JSX it would be reachable only by rendering, and this suite has
+// no DOM harness on purpose.
+//
+// Deliberately absent: aggregateRating and review. The product has no
+// external reviews, so structured data claiming any would be an invention,
+// and an invented rating is also a rich-results policy violation. The
+// omission is pinned by tests/discoverability.test.ts.
+
+/**
+ * Serialize a JSON-LD node for a <script type="application/ld+json"> tag.
+ *
+ * JSON.stringify does not escape "<", so a "</script>" inside any string
+ * would close the tag and start parsing markup: the XSS route the Next
+ * JSON-LD guide warns about. Escaping every "<" to its unicode form is
+ * invisible to JSON.parse and fatal to that route.
+ */
+export function jsonLdScript(node: Record<string, unknown>): string {
+  return JSON.stringify(node).replace(/</g, "\\u003c");
+}
+
+/**
+ * The offer on /pricing as schema.org Product+Offer: what is sold, described
+ * in the landing page's own sentence, at the price lib/pricing.ts holds.
+ */
+export function productJsonLd(): Record<string, unknown> {
+  const pricingUrl = new URL("/pricing", SITE_URL).toString();
+  return {
+    "@context": "https://schema.org",
+    "@type": "Product",
+    name: SITE_NAME,
+    description: HERO.body,
+    image: OG_IMAGE.url,
+    url: pricingUrl,
+    brand: { "@type": "Brand", name: SITE_NAME },
+    offers: {
+      "@type": "Offer",
+      price: PRICE_USD,
+      priceCurrency: "USD",
+      url: pricingUrl,
+    },
+  };
+}
+
+/**
+ * The /faq page as schema.org FAQPage, mapped one-to-one from the FAQ data
+ * module the visible accordion renders. Same source, so no drift is possible:
+ * a reworded answer changes both surfaces in the same commit.
+ */
+export function faqPageJsonLd(): Record<string, unknown> {
+  return {
+    "@context": "https://schema.org",
+    "@type": "FAQPage",
+    mainEntity: FAQ.map((entry) => ({
+      "@type": "Question",
+      name: entry.question,
+      acceptedAnswer: { "@type": "Answer", text: entry.answer },
+    })),
   };
 }
 

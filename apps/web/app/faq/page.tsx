@@ -7,7 +7,7 @@ import Shell from "@/components/Shell";
 import { CLOSING, FAQ } from "@/components/landing/copy";
 import { MUTED, PAGE_HEADING, PROSE_WIDTH } from "@/lib/ui";
 import { getViewer } from "@/lib/viewer";
-import { publicMetadata } from "../site";
+import { faqPageJsonLd, jsonLdScript, publicMetadata } from "../site";
 
 // The six questions people ask before paying, on their own page.
 //
@@ -35,6 +35,14 @@ export default async function FaqPage() {
   const viewer = await getViewer();
   return (
     <Shell viewer={viewer} width="wide">
+      {/* Structured data (F-60): the visible FAQ as a schema.org FAQPage,
+          mapped from the same FAQ export in components/landing/copy.ts the
+          accordion below renders, so the two cannot drift. A native
+          server-rendered script tag, per the Next JSON-LD guide. */}
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: jsonLdScript(faqPageJsonLd()) }}
+      />
       <div className="flex flex-col gap-3 pt-2 pb-4">
         <h1 className={PAGE_HEADING}>Questions people ask before paying</h1>
         <p className={`${MUTED} ${PROSE_WIDTH}`}>
