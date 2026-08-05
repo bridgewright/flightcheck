@@ -1,7 +1,13 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useCallback, useEffect, useRef, useState } from "react";
+import {
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+  type RefObject,
+} from "react";
 
 import BrowserGate from "./BrowserGate";
 import MicCheck from "./MicCheck";
@@ -11,6 +17,7 @@ import {
   ALARM_NOTICE,
   CARD,
   DANGER_BUTTON,
+  FINE_PRINT,
   MAIN_READING,
   PAGE_HEADING,
   PRIMARY_BUTTON,
@@ -30,6 +37,12 @@ import {
   type MicPermissionStatusLike,
 } from "../lib/mic-permission";
 import { MAX_RECORDING_BYTES } from "../lib/realtime";
+import {
+  DIAG_DISCLOSURE_LABEL,
+  formatDiagTrail,
+  recordDiag,
+  type DiagEntry,
+} from "../lib/room-diagnostics";
 import {
   AUDIO_RESUME_TIMEOUT_MS,
   AUDIO_START_FAILURE_MESSAGE,
@@ -100,6 +113,40 @@ interface SessionRoomProps {
   reportHref: string;
 }
 
+// F-67/F-68 instrumentation: the trail the next fix will be chosen from.
+// A ring buffer of turn events and start-sequence breadcrumbs, in a ref so
+// recording never re-renders, surfaced behind a collapsed Diagnostics
+// disclosure. Presentational only — measurement never sends anything. The
+// trail is SNAPSHOTTED in the toggle handler, never read during render:
+// refs are off-limits to render, and a snapshot is what the operator wants
+// anyway — reopen to refresh. Collapsed, the element costs one summary row.
+function DiagTrail({ entriesRef }: { entriesRef: RefObject<DiagEntry[]> }) {
+  const [trail, setTrail] = useState<string | null>(null);
+  return (
+    <details
+      className="mt-6"
+      onToggle={(event) =>
+        setTrail(
+          event.currentTarget.open
+            ? formatDiagTrail(entriesRef.current)
+            : null,
+        )
+      }
+    >
+      <summary className={`${FINE_PRINT} cursor-pointer`}>
+        {DIAG_DISCLOSURE_LABEL}
+      </summary>
+      {trail !== null && (
+        <pre
+          className={`${FINE_PRINT} mt-2 max-h-48 overflow-y-auto whitespace-pre-wrap`}
+        >
+          {trail}
+        </pre>
+      )}
+    </details>
+  );
+}
+
 // F-12: this component holds NO credential, and no longer needs to know
 // which package or slot it belongs to. All three privileged calls it makes
 // -- secret mint, upload-URL mint, session complete -- send only the session
@@ -156,16 +203,31 @@ export default function SessionRoom({
   const messageArrivedRef = useRef(false);
   const responseRequestedRef = useRef(false);
   const responseDoneRef = useRef(false);
+  const diagRef = useRef<DiagEntry[]>([]);
+
+  // One recorder for the whole trail: monotonic clock, ring semantics in
+  // the pure module, zero renders. Every breadcrumb below is a cheap push.
+  const diag = useCallback((tag: string, note = "") => {
+    recordDiag(diagRef.current, performance.now(), tag, note);
+  }, []);
 
   useEffect(() => {
     if (phase !== "live") return;
+    // Failures land in the diagnostic trail; a healthy beat stays silent
+    // (four beats a minute would evict the turn events the ring exists to
+    // keep). The 409 train was the F-66 incident's clearest signal, and
+    // this used to be fire-and-forget.
     const beat = () => {
-      void fetch(`/api/sessions/${sessionId}/heartbeat`, { method: "POST" });
+      void fetch(`/api/sessions/${sessionId}/heartbeat`, { method: "POST" })
+        .then((res) => {
+          if (!res.ok) diag("heartbeat-refused", String(res.status));
+        })
+        .catch(() => diag("heartbeat-unreachable"));
     };
     beat();
     const heartbeat = setInterval(beat, HEARTBEAT_INTERVAL_S * 1000);
     return () => clearInterval(heartbeat);
-  }, [phase, sessionId]);
+  }, [phase, diag, sessionId]);
 
   // --- F-63: the denied-mic error stops being a dead end ------------------
   // Once the permission is "denied", getUserMedia rejects instantly and the
@@ -311,6 +373,7 @@ export default function SessionRoom({
     async (reason: GuardEndReason) => {
       if (endingRef.current) return;
       endingRef.current = true;
+      diag("guard-trip", reason);
       console.debug("[guard] trip", reason);
       if (tickerRef.current) clearInterval(tickerRef.current);
       // Stop the recorder and DISCARD the blob: audio that will never be
@@ -321,11 +384,15 @@ export default function SessionRoom({
       micStreamRef.current?.getTracks().forEach((t) => t.stop());
       setPhase("connection-lost");
     },
-    [stopRecorder],
+    [diag, stopRecorder],
   );
 
   // --- Start: mint secret, connect WebRTC, wire the recording mix -------
   const start = useCallback(async () => {
+    // Recorded BEFORE the re-entry guard: the F-68 evidence is a Start
+    // click that left no trace anywhere, and a guard stuck holding
+    // connectingRef would produce exactly that silence.
+    diag("start-clicked", connectingRef.current ? "reentry-blocked" : "");
     // Re-entry guard (mirrors endingRef): a concurrent second start() would
     // double-mint the secret and corrupt chunksRef mid-recording.
     if (connectingRef.current) return;
@@ -347,9 +414,11 @@ export default function SessionRoom({
         // AudioContexts — recreating one per retry would strand the old
         // contexts until construction starts failing.
         if (!micStream) {
+          diag("gum-begin");
           micStream = await navigator.mediaDevices.getUserMedia({
             audio: { echoCancellation: true, noiseSuppression: true },
           });
+          diag("gum-ok");
           micStreamRef.current = micStream;
         }
         if (!audioCtx) {
@@ -357,6 +426,7 @@ export default function SessionRoom({
           audioCtxRef.current = audioCtx;
         }
       } catch (err) {
+        diag("gum-fail", err instanceof DOMException ? err.name : "unknown");
         connectingRef.current = false;
         setPhase("ready");
         // Same discrimination as MicCheck: blocked permission, missing
@@ -392,10 +462,12 @@ export default function SessionRoom({
     // context), which a bare await would turn into a permanent
     // "Connecting…". Timing out lands in the honest retryable state; the
     // retry click is a fresh gesture, which resumes the same context.
+    diag("resume-begin");
     const resumed = await settledWithinTimeout(
       audioCtx.resume(),
       AUDIO_RESUME_TIMEOUT_MS,
     );
+    diag(resumed ? "resume-ok" : "resume-timeout");
     if (!resumed) {
       connectingRef.current = false;
       setPhase("ready");
@@ -431,7 +503,9 @@ export default function SessionRoom({
       }
       recorder = new MediaRecorder(dest.stream, { mimeType });
       recorderContainerRef.current = containerType(mimeType);
+      diag("recorder-ok", mimeType);
     } catch (err) {
+      diag("recorder-fail", err instanceof Error ? err.name : "unknown");
       console.error("session room: recorder unavailable", err);
       connectingRef.current = false;
       setPhase("ready");
@@ -445,10 +519,26 @@ export default function SessionRoom({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ sessionId }),
       });
+      diag("mint", String(secretRes.status));
       if (!secretRes.ok) {
         const secretBody = (await secretRes.json().catch(() => ({}))) as {
           error?: string;
+          code?: string;
         };
+        // F-66: the server refuses to mint for a session that already
+        // ended. This tab is stale — reload, and the server-rendered page
+        // keys on the fresh status and lands on the honest ended screen.
+        // Keyed on the code, never on error text, and never the
+        // connection-lost story: nothing was lost, the session was simply
+        // over before Start was clicked. connectingRef stays held so a
+        // second click cannot race the reload.
+        if (
+          secretRes.status === 409 &&
+          secretBody.code === "session-not-live"
+        ) {
+          window.location.reload();
+          return;
+        }
         throw new Error(
           secretBody.error ?? `secret mint failed (${secretRes.status})`,
         );
@@ -492,6 +582,7 @@ export default function SessionRoom({
       const dc = pc.createDataChannel("oai-events");
       dcRef.current = dc;
       dc.addEventListener("open", () => {
+        diag("dc-open");
         // The whole handler is guarded: a throw in a data-channel event
         // handler surfaces nowhere — this exact spot used to swallow
         // Safari's MediaRecorder NotSupportedError and leave the room on
@@ -524,7 +615,9 @@ export default function SessionRoom({
           // rolling, so the greeting lands in the recording).
           responseRequestedRef.current = true;
           dc.send(greetingTriggerEvent());
+          diag("greeting-sent");
         } catch (err) {
+          diag("recorder-fail", "start");
           console.error("session room: recorder start failed", err);
           // If the recorder DID start before a later statement threw, stop
           // it — nothing may keep recording after the room tears down.
@@ -546,6 +639,9 @@ export default function SessionRoom({
         const speech = speechStateForEvent(String(ev.data));
         if (speech !== null) console.debug("[silence] cand-ev", speech);
         if (speech === "started") {
+          diag(
+            morganEventAudibleRef.current ? "barge-in" : "cand-start",
+          );
           candidateAudibleRef.current = true;
           // Echo physics (2026-08-01, speakers-first requirement): leaked
           // interviewer audio can only START while Morgan is (nearly)
@@ -553,15 +649,20 @@ export default function SessionRoom({
           echoSuspectRef.current =
             Date.now() - lastMorganAudibleAtRef.current < ECHO_START_WINDOW_MS;
         }
-        if (speech === "stopped") candidateAudibleRef.current = false;
+        if (speech === "stopped") {
+          diag("cand-stop");
+          candidateAudibleRef.current = false;
+        }
         if (speech === "committed") {
           // A suspect episode is real speech only if it OUTLIVED Morgan's
           // audio — an echo dies with its source, a barge-in keeps going.
           // Measured at commit time, which absorbs the 900 ms VAD tail.
           const sinceMorganMs = Date.now() - lastMorganAudibleAtRef.current;
           if (!echoSuspectRef.current || sinceMorganMs >= ECHO_OUTLIVE_MS) {
+            diag("commit");
             commitArrivedRef.current = true;
           } else {
+            diag("commit-echo-suppressed", `${sinceMorganMs}ms`);
             console.debug("[silence] echo-suppressed", sinceMorganMs);
             const itemId = committedItemId(String(ev.data));
             if (itemId && dcRef.current?.readyState === "open") {
@@ -572,6 +673,7 @@ export default function SessionRoom({
           }
         }
         if (String(ev.data).includes('"type":"error"')) {
+          diag("server-error");
           console.debug("[silence] server-error", String(ev.data).slice(0, 300));
         }
         // Truncation visibility: if these ever reappear, Morgan's audio is
@@ -588,11 +690,16 @@ export default function SessionRoom({
         const morgan = interviewerStateForEvent(String(ev.data));
         if (morgan !== null) console.debug("[silence] morgan-ev", morgan);
         if (morgan === "speaking") {
+          diag("morgan-speaking");
           morganEventAudibleRef.current = true;
           heardMorganRef.current = true;
         }
-        if (morgan === "quiet") morganEventAudibleRef.current = false;
+        if (morgan === "quiet") {
+          diag("morgan-quiet");
+          morganEventAudibleRef.current = false;
+        }
         if (morgan === "response_done") {
+          diag("response-done");
           responseDoneRef.current = true;
           heardMorganRef.current = true;
         }
@@ -620,6 +727,7 @@ export default function SessionRoom({
         },
         body: offer.sdp,
       });
+      diag("sdp", String(sdpRes.status));
       if (!sdpRes.ok) {
         throw new Error(
           `SDP exchange failed (${sdpRes.status}): ${await sdpRes.text()}`,
@@ -639,7 +747,7 @@ export default function SessionRoom({
         message: err instanceof Error ? err.message : String(err),
       });
     }
-  }, [sessionId]);
+  }, [diag, sessionId]);
 
   // --- Timer + 25:00 hard cut -------------------------------------------
   useEffect(() => {
@@ -715,11 +823,13 @@ export default function SessionRoom({
         silenceStateRef.current = state;
         if (!due) {
           if (effects.stage) {
+            diag("response-trigger", "stage");
             console.debug("[silence] stage fired", effects.stage.at);
             dcRef.current.send(silenceStatusEvent(effects.stage.text));
             responseRequestedRef.current = true;
             dcRef.current.send(responseTriggerEvent());
           } else if (effects.triggerResponse) {
+            diag("response-trigger", "debounce");
             console.debug("[silence] response trigger");
             responseRequestedRef.current = true;
             dcRef.current.send(responseTriggerEvent());
@@ -754,7 +864,7 @@ export default function SessionRoom({
     return () => {
       if (tickerRef.current) clearInterval(tickerRef.current);
     };
-  }, [phase, endSession, endForConnectionLoss]);
+  }, [phase, diag, endSession, endForConnectionLoss]);
 
   // --- F-38: don't let a tab close throw away an interview ---------------
   // The recording lives only in this tab until the upload lands, and the
@@ -866,6 +976,7 @@ export default function SessionRoom({
                 >
                   Try again
                 </button>
+                <DiagTrail entriesRef={diagRef} />
               </div>
             )}
           </BrowserGate>
@@ -933,6 +1044,7 @@ export default function SessionRoom({
               </div>
             </div>
           )}
+          <DiagTrail entriesRef={diagRef} />
         </section>
       )}
 
@@ -959,6 +1071,7 @@ export default function SessionRoom({
           >
             Retry upload
           </button>
+          <DiagTrail entriesRef={diagRef} />
         </div>
       )}
 
@@ -981,6 +1094,7 @@ export default function SessionRoom({
           >
             Try again
           </button>
+          <DiagTrail entriesRef={diagRef} />
         </section>
       )}
     </main>
