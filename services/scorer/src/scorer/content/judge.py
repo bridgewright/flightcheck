@@ -9,7 +9,11 @@ evidence-poor ones — strong and borderline answers became indistinguishable;
 the same judge with a single-dimension prompt separated them. Returned
 evidence quotes are verified in code against the actual candidate speech —
 fabricated quotes are dropped, a score left with no verifiable quote is
-flagged in its rationale (score kept), off-dimension keys are dropped. A
+flagged in its rationale (score kept), off-dimension keys are dropped. The
+same single call also authors, per dimension, the key span (F-48: the one
+clause of the rationale that carries the finding, enforced in code to be an
+exact substring of the stored rationale, else None) and the
+strengths/weaknesses lists (F-03b) — never a second model call. A
 sample whose reply fails to parse or omits its dimension is retried once per
 dimension — the interview it scores is a non-repeatable 20 minutes, so one
 malformed reply must not fail the whole run; a second failure for the same
@@ -23,6 +27,7 @@ parse retry.
 from __future__ import annotations
 
 import logging
+import re
 import time
 from concurrent.futures import ThreadPoolExecutor
 
@@ -82,13 +87,50 @@ _RULES = (
     "- Score with one-decimal precision (for example 4.3, 4.7). A 5.0 means\n"
     "  nothing at all could be improved; if you can name any concrete way the\n"
     "  answer falls short of the score-5 anchor at its best, score 4.9 or lower\n"
-    "  and name that shortfall in the rationale."
+    "  and name that shortfall in the rationale.\n"
+    "- strengths: 1-3 short items, each naming one concrete thing this answer\n"
+    "  did well on this dimension, tied to the candidate's actual words.\n"
+    "- weaknesses: 1-3 short items, each naming a concrete behavior the anchors\n"
+    "  reward that this answer did not show. Name what was missing from the\n"
+    "  answer; describe the answer, never the person, and never assert an\n"
+    "  inner state.\n"
+    "- key_span: after writing the rationale, copy the ONE clause or sentence\n"
+    "  of that rationale that carries the finding. It must be VERBATIM from\n"
+    "  the rationale you just wrote, character for character; never\n"
+    "  paraphrase, shorten, or reword it."
 )
 
 
 def _fmt_ts(seconds: float) -> str:
     total = int(seconds)
     return f"[{total // 60:02d}:{total % 60:02d}]"
+
+
+# Injection posture (F-11a): the key span needs no new fencing. It is
+# constrained by construction to an exact substring of the judge-authored
+# rationale -- prose the product already stores and renders -- so it can
+# carry nothing the rationale does not already carry. The rationale may echo
+# candidate speech (the rules tell the judge to tie evidence to anchors),
+# but that speech reached the judge inside the UNTRUSTED TRANSCRIPT fence
+# (_build_prompt), and the span is never fed back into any model prompt: it
+# is display data the renderer locates by indexOf.
+def _locate_span(rationale: str, span: str | None) -> str | None:
+    """The exact substring of `rationale` the claimed span points at.
+
+    An exact match wins. A whitespace-normalized match is accepted ONLY by
+    resolving it back to the exact substring as it appears in the rationale:
+    the renderer locates the span by indexOf, so the stored value must be a
+    character-for-character slice. Anything else resolves to None -- a
+    fabricated emphasis is worse than none, because the product's claim is
+    that its verdicts are honest and arguable.
+    """
+    if span is None or not span.strip():
+        return None
+    if span in rationale:
+        return span
+    pattern = r"\s+".join(re.escape(token) for token in span.split())
+    match = re.search(pattern, rationale)
+    return match.group(0) if match else None
 
 
 def _normalize_ws(text: str) -> str:
@@ -280,14 +322,27 @@ def score_content(
             if _normalize_ws(quote) and _normalize_ws(quote) in candidate_text
         ]
         if verified:
-            kept.append(score.model_copy(update={"evidence_quotes": verified}))
+            score = score.model_copy(update={"evidence_quotes": verified})
         else:
-            kept.append(
-                score.model_copy(
-                    update={
-                        "evidence_quotes": [],
-                        "rationale": "[no verifiable quote] " + score.rationale,
-                    }
-                )
+            score = score.model_copy(
+                update={
+                    "evidence_quotes": [],
+                    "rationale": "[no verifiable quote] " + score.rationale,
+                }
             )
+        # F-48 contract, enforced in code rather than in hope: the key span
+        # must be an exact substring of the rationale it is stored with (the
+        # final rationale, after any quote-verification prefix -- prefixing
+        # only prepends, so a genuine span survives it). A span the judge did
+        # not actually write in its rationale is dropped, not repaired.
+        located = _locate_span(score.rationale, score.key_span)
+        if located is None and score.key_span is not None and score.key_span.strip():
+            logger.debug(
+                "content judge key_span for %s is not a substring of its "
+                "rationale; dropping the span",
+                score.dimension_key,
+            )
+        if located != score.key_span:
+            score = score.model_copy(update={"key_span": located})
+        kept.append(score)
     return kept
