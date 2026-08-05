@@ -1536,3 +1536,66 @@ saying it itself, validated at an eval gate.
   or a gate run shows the enlarged response schema hurting discrimination,
   in which case the fields move to a follow-up call and the cost directive
   gets renegotiated instead of silently broken.
+
+## 044 — the rubric shows its receipts instead of growing an edit button (2026-08-05)
+
+**Context.** A production package compiled from a 108-character scrape-failed
+JD ("Forward Deployed Product Manager … You need to enable JavaScript to run
+this app.") came out as a seven-dimension rubric whose top-weighted content
+dimension, at 0.20, was mission-and-ethics alignment — licensed entirely by
+research citations, because the compiler's rules required citations from the
+research findings or the corpus and never from the JD itself. The session
+planner then guarantees every dimension at least one question, so a dimension
+the JD never asked for bought a fixed share of a paying customer's twenty
+minutes. No eval measured any of this: the discrimination suites test scoring,
+not whether the bar mirrors the JD.
+
+**Options considered.**
+1. **Let the customer edit the compiled rubric** (the original F-61): rejected
+   by the user on product grounds — the compiled bar IS the product, and
+   outsourcing its correction to the customer weakens the claim while leaving
+   the compiler broken.
+2. **Ban the topic**: a lexicon that strips ethics-style dimensions at
+   compile. Rejected — an AI-safety JD legitimately earns an ethics dimension
+   at full weight, and a topic false-positive hard-fails a paying customer's
+   compile.
+3. **A JD-evidence contract, enforced in code, shown to the reader** — chosen.
+   Every content dimension must carry `jd_evidence`, a verbatim quote (at most
+   300 characters) from the job description proving the role itself demands
+   the dimension; values boilerplate and research-only support cannot create a
+   dimension (research corroborates, the JD licenses); delivery dimensions are
+   licensed by the product and exempt, and capped at three so the channel
+   label cannot become the dodge. /rubric renders each receipt under its
+   dimension, and a new `rubric_faithfulness` suite joins the release gate.
+
+**Enforcement home.** The verbatim check lives in the compile path, NOT in the
+schema validator: `api/db.py` re-validates every stored rubric on every
+package read, and every rubric stored before the field existed has no
+evidence, so a validator rule would 500 the whole product's history. The field
+is optional-with-default; compile is where the requirement bites, sharing the
+compiler's single repair retry (total model attempts stay at two) so a
+faithfulness failure gets the same one chance to self-correct as a schema
+failure. The comparison string is the JD exactly as the model saw it —
+truncated to the compile limit, then marker-neutralized — via the same public
+helper the eval suite uses, so the two can never drift. The 300-character cap
+is a code constant, not product.toml: it is calibrated against the eval, and
+config invites turning a contract into a knob.
+
+**Sharp edge accepted.** A delivery dimension that genuinely quotes the JD
+keeps its quote (the compiler resolves-or-nulls it silently; the web renders
+evidence when present, the product-licensed line otherwise). Coherent on both
+sides: a JD that says "excellent verbal communication" earning a delivery
+receipt is honesty, not leakage.
+
+**Rejected at the edge.** Weight-proportional question allocation in the
+planner: once unlicensed dimensions cannot exist, existence-buys-airtime
+stops being the bug it was. Runtime topic lexicons anywhere in the path, per
+option 2.
+
+**Revisit when:** a licensed-but-marginal dimension still eats a
+disproportionate share of session time (then weight-proportional allocation
+becomes a card); the delivery-dimension cap of three proves wrong for a real
+rubric; single-quote evidence proves too thin for dimensions that earn their
+license across several JD lines; or the private few-shot rubrics are
+refreshed with evidence-bearing examples and the disclaimer rule in the
+prompt can be retired.

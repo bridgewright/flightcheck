@@ -43,6 +43,7 @@ const COPY_MODULES = [
   "lib/report-format.ts",
   "lib/home.ts",
   "lib/start-session.ts",
+  "lib/rubric-format.ts",
   "components/ReadinessGauge.tsx",
   "components/landing/copy.ts",
   "app/legal/policy.ts",
@@ -110,6 +111,8 @@ const CANONICAL = [
   "unlock opens the rest of that same package for",
   // app/legal/policy.ts
   "and all data attached to it.",
+  // lib/rubric-format.ts, the delivery receipt line on /rubric
+  "how you sound is part of every interview.",
 ];
 
 function builtChunks(): string[] {

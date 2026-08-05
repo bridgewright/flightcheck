@@ -1,5 +1,38 @@
 # Changelog
 
+## [Unreleased]
+
+### Changed
+
+- **Every content dimension now proves itself against the JD.** The rubric
+  compiler requires `jd_evidence` on each content dimension — a verbatim
+  quote from the job description, at most 300 characters, showing the role
+  itself demands that dimension — enforced in code as an exact substring of
+  the JD the compiler saw (truncated and marker-neutralized, the same
+  processed string on both sides). Values boilerplate and research articles
+  can corroborate a dimension but can no longer create one; a genuine
+  AI-safety JD still earns its ethics dimension at full weight. Faithfulness
+  failures share the compiler's single repair retry, and delivery-channel
+  dimensions are capped at three so the channel label cannot dodge the
+  contract. Motivated by a production compile that turned a 108-character
+  scrape-failed JD into a rubric led by a mission-alignment dimension no JD
+  ever asked for. DECISIONS 044.
+
+- **The bar shows its receipts on /rubric.** Under each content dimension,
+  the JD sentence that earned it, quoted back in the reader's own posting's
+  words; delivery dimensions carry the product's line instead. Rubrics
+  compiled before the field existed render exactly as they always have.
+
+### Added
+
+- **A rubric-faithfulness suite in the release gate.** Three committed JD
+  fixtures — one salted with values-section boilerplate reproducing the
+  production failure, one genuine AI-safety role where an ethics dimension
+  is REQUIRED to appear, one plain control — compile live at every gate and
+  are checked deterministically: every piece of evidence verbatim in the
+  processed JD, zero forbidden-topic dimensions in either channel, required
+  topics present, delivery count in band. Floor: every fixture passes.
+
 ## [0.10.0] — 2026-08-05
 
 ### Changed
