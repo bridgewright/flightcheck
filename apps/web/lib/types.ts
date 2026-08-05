@@ -90,6 +90,12 @@ export interface DimensionScore {
   // serializes defaults ([]) for reports stored before the fields existed.
   strengths: string[];
   weaknesses: string[];
+  // F-48: the short span the judge itself marked as the finding. Contract:
+  // a verbatim substring of `rationale`, copied character for character,
+  // never a paraphrase. Absent or null on reports stored before the field
+  // existed; renderers then fall back to the positional first-sentence rule
+  // (lib/rationale.ts).
+  key_span?: string | null;
 }
 
 export type Verdict = "not_ready" | "approaching" | "ready";
