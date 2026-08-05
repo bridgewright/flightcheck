@@ -41,6 +41,16 @@ export const PUBLIC_ROUTES: PublicRoute[] = [
 ];
 
 /**
+ * The llms.txt document (F-60), served by app/llms.txt/route.ts. Not a
+ * PublicRoute: PUBLIC_ROUTES is the sitemap, and the sitemap's entries carry
+ * page semantics (changeFrequency, priority) that a text file for agents does
+ * not have. Agents find it by convention at the site root, the way crawlers
+ * find robots.txt; robots.ts allows it explicitly for the same reason it
+ * allows the public pages explicitly.
+ */
+export const LLMS_TXT_PATH = "/llms.txt";
+
+/**
  * Paths no crawler should follow.
  *
  * Three kinds, and the reasons differ. Auth-gated app routes hold one
