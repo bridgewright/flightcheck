@@ -1,5 +1,6 @@
+import { emphasiseRationale } from "@/lib/rationale";
 import { formatTimestamp, VERDICT_LABELS } from "@/lib/report-format";
-import type { SessionReport } from "@/lib/types";
+import type { DimensionScore, SessionReport } from "@/lib/types";
 import { MAX_SCORE, READY_OVERALL } from "@/lib/verdict";
 
 export interface ReportDimensionMeta {
@@ -18,16 +19,35 @@ export interface ReportExportMeta {
 const dimensionName = (key: string, dimensions: ReportDimensionMeta[]): string =>
   dimensions.find((dimension) => dimension.key === key)?.name ?? key;
 
+const dashList = (items: string[]): string => items.map((item) => `- ${item}`).join("\n");
+
 const bullets = (items: string[]): string =>
-  items.length === 0 ? "None recorded." : items.map((item) => `- ${item}`).join("\n");
+  items.length === 0 ? "None recorded." : dashList(items);
+
+// The judge's own span (F-48) is emphasised in place; the fallback adds no
+// markers, because every report stored before the field existed must export
+// byte-identical markdown (pinned in report-markdown-key-span.test.ts).
+const rationaleBlock = (score: DimensionScore): string => {
+  const parts = emphasiseRationale(score.rationale, score.key_span);
+  return parts.source === "key_span"
+    ? `${parts.before}**${parts.span}**${parts.after}`
+    : score.rationale;
+};
 
 export function reportMarkdown(report: SessionReport, meta: ReportExportMeta): string {
   const metrics = report.delivery_metrics;
   const dimensions = report.dimension_scores.map((score) => {
     const quotes = score.evidence_quotes.map((quote) => `> ${quote}`).join("\n\n");
+    // Declared required, but reports stored before F-03 omit the keys at
+    // runtime: read defensively, render the sections only when they say
+    // something, exactly as the screen does.
+    const strengths = score.strengths ?? [];
+    const weaknesses = score.weaknesses ?? [];
     return [
       `## ${dimensionName(score.dimension_key, meta.dimensions)}: ${score.score.toFixed(1)} / ${MAX_SCORE.toFixed(1)}`,
-      score.rationale,
+      rationaleBlock(score),
+      strengths.length > 0 ? `### What worked\n\n${dashList(strengths)}` : "",
+      weaknesses.length > 0 ? `### What held the score down\n\n${dashList(weaknesses)}` : "",
       quotes ? `### Evidence quotes\n\n${quotes}` : "",
     ].filter(Boolean).join("\n\n");
   }).join("\n\n");
