@@ -1600,12 +1600,16 @@ license across several JD lines; or the private few-shot rubrics are
 refreshed with evidence-bearing examples and the disclaimer rule in the
 prompt can be retired.
 
-**Addendum, same day.** The first real JD through the contract failed its
-recompile on one character: the model quoted a mid-sentence clause as its
-evidence and capitalized the first word, as quoting convention teaches, and
-exact-substring correctly refused it twice. The resolver now accepts a
-case-insensitive match LAST (after exact, then whitespace-normalized), still
-resolving to the haystack's character-for-character slice — salvage, not
-fabrication: what is stored and rendered is the JD's own casing. The eval
-suite's strict no-salvage machinery check is unchanged on purpose; it
-measures the compiler's stored output, which remains exact by construction.
+**Addendum, same day.** The first two real JDs through the contract each
+failed their recompile on model re-typing habits, not on unfaithfulness: the
+first capitalized the first word of a mid-sentence clause it quoted, the
+second flattened a curly quote to ASCII. Both are systematic quoting
+conventions, so the resolver gained two last-resort salvages after exact and
+whitespace-normalized matching: case-insensitive, then a typographic fold
+(curly quotes, en/em dashes, no-break spaces read as their ASCII forms).
+Every fold mapping is one character to one character, so a match found in
+folded space maps back to the same indices — what is stored and rendered is
+always the JD's own character-for-character slice, casing, curly quotes and
+all. Salvage, not fabrication. The eval suite's strict no-salvage machinery
+check is unchanged on purpose; it measures the compiler's stored output,
+which remains exact by construction.

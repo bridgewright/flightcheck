@@ -53,3 +53,35 @@ def test_exact_case_match_wins_over_a_case_variant_elsewhere():
     # the same words appears earlier in the haystack.
     haystack = "we ship weekly. Elsewhere: We ship weekly."
     assert locate_span(haystack, "We ship weekly.") == "We ship weekly."
+
+
+def test_ascii_normalized_punctuation_resolves_to_the_typographic_slice():
+    # The second real JD failure: the model quoted a clause whose curly
+    # quotes and em dash it flattened to ASCII, as models do. The fold is
+    # strictly one character to one character, so a match found in folded
+    # space maps back to the haystack's exact typographic slice.
+    haystack = (
+        "Part \u201cdo whatever it takes\u201d operator \u2014 you jump "
+        "into the gaps."
+    )
+    located = locate_span(
+        haystack, 'Part "do whatever it takes" operator - you jump into the gaps.'
+    )
+    assert located == haystack
+    curly_owner = "Anthropic\u2019s services venture"
+    assert locate_span(curly_owner, "Anthropic's services") == (
+        "Anthropic\u2019s services"
+    )
+
+
+def test_fold_composes_with_case_and_whitespace_salvage():
+    haystack = (
+        "Own the roadmap \u2013 and\n  defend it \u201chonestly\u201d."
+    )
+    located = locate_span(haystack, 'own the roadmap - and defend it "honestly".')
+    assert located == haystack
+
+
+def test_a_genuinely_absent_quote_still_resolves_to_none():
+    haystack = "Part \u201cdo whatever it takes\u201d operator."
+    assert locate_span(haystack, '"do whatever it costs" operator') is None
