@@ -2,6 +2,21 @@
 
 ## [Unreleased]
 
+### Added
+
+- **A blocked microphone stops being a dead end.** The browser's permission
+  dialog only exists while the permission state is "prompt"; once it is
+  "denied", getUserMedia rejects instantly and no dialog will ever appear
+  again, and the product used to answer that with one sentence pointing at
+  "your browser settings". Now the denied state shows numbered recovery
+  steps for the reader's own browser (Chrome, Edge, Safari, Firefox, with a
+  macOS note where the operating system itself can be the blocker), and the
+  product watches the permission: the moment access is allowed in settings,
+  the microphone check re-runs by itself, and in the interview room the
+  error clears by itself — starting the interview stays the reader's click,
+  always. Browsers without the permissions API keep today's behavior plus
+  the steps.
+
 ### Fixed
 
 - **Model quoting habits no longer fail a compile.** The first two real
