@@ -47,11 +47,13 @@ describe("the receipt renders through the tokens that exist for it", () => {
   });
 
   it("labels the quote as the reader's own job description", () => {
-    expect(view).toContain("From your job description");
+    // On the comment-blanked source: the label has to be emitted markup, not
+    // a sentence in a comment surviving a gutted receipt block.
+    expect(code).toContain("From your job description");
   });
 
   it("quotes the JD back in curly typographic quotes, like ReportView", () => {
-    expect(view).toMatch(/&ldquo;\{evidence\}&rdquo;/);
+    expect(code).toMatch(/&ldquo;\{evidence\}&rdquo;/);
   });
 });
 
