@@ -160,6 +160,11 @@ class DimensionScore(BaseModel):
     # keep every report stored before the fields existed validating.
     strengths: list[str] = []
     weaknesses: list[str] = []
+    # F-48: the short span the judge itself marked as the finding -- a
+    # verbatim substring of `rationale`, copied character for character, not
+    # a paraphrase. None on every report stored before the field existed;
+    # renderers then fall back to the positional first-sentence rule.
+    key_span: str | None = None
 
 
 class SessionReport(BaseModel):
