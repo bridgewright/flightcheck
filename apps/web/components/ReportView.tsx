@@ -1,3 +1,4 @@
+import CountUp from "@/components/motion/CountUp";
 import ReadinessGauge from "@/components/ReadinessGauge";
 import {
   formatDelta,
@@ -442,7 +443,11 @@ export function ReportVerdict({
           {VERDICT_LABELS[report.verdict]}
         </h2>
         <p className={`${SCORE_NUMBER} text-page`}>
-          {report.overall_score.toFixed(2)}
+          {/* State transition: the number is the product's output and it
+              deserves one moment (F-21 spec, section 6; built by F-58). Once
+              per mount; SCORE_NUMBER's tabular-nums holds the width steady
+              while it runs. */}
+          <CountUp value={report.overall_score} decimals={2} />
           <span className={SCORE_DENOMINATOR}> / {MAX_SCORE}</span>
         </p>
       </div>

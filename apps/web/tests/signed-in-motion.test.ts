@@ -57,7 +57,10 @@ describe("the gauge positions its marks with transform alone", () => {
 
 /** The leaves this feature added. landing-motion.test.ts already runs its
  * directory-wide scans over them; these checks are the ones it does not make. */
-const NEW_LEAVES = ["components/motion/Sweep.tsx"];
+const NEW_LEAVES = [
+  "components/motion/Sweep.tsx",
+  "components/motion/CountUp.tsx",
+];
 
 describe("the new leaves consume entry.ts rather than re-declaring it", () => {
   // The budget is one module so it cannot drift between leaves. A leaf that
@@ -104,5 +107,43 @@ describe("the gauge's reading sweeps in through the leaf", () => {
     const leaf = withoutComments(read("components/motion/Sweep.tsx"));
     expect(leaf).toContain('x: "0%"');
     expect(leaf).not.toMatch(/scaleX/);
+  });
+});
+
+describe("the report's overall score counts up once", () => {
+  // F-21 spec section 6 granted exactly this moment: state transition, the
+  // number is the product's output. Nobody built it then; F-58 does.
+  it("is the verdict number that counts, at two decimals", () => {
+    const view = read("components/ReportView.tsx");
+    expect(view).toContain('from "@/components/motion/CountUp"');
+    expect(view).toContain("<CountUp value={report.overall_score} decimals={2} />");
+  });
+
+  it("counts once per mount and only snaps thereafter", () => {
+    // A poll refresh preserves the client instance, so the played guard is
+    // what "once" means; a later value change updates the number without a
+    // second performance.
+    const leaf = withoutComments(read("components/motion/CountUp.tsx"));
+    expect(leaf).toContain("useRef");
+    expect(leaf).toContain("played");
+  });
+
+  it("cannot change width while it runs", () => {
+    // The server renders the final value and every animation frame renders
+    // toFixed(decimals), so the digit count is constant; the call site above
+    // sits inside SCORE_NUMBER, whose tabular-nums makes equal digit counts
+    // equal widths.
+    const leaf = withoutComments(read("components/motion/CountUp.tsx"));
+    expect(leaf).toContain(".toFixed(decimals)");
+    expect(read("lib/ui.ts")).toMatch(/SCORE_NUMBER = "[^"]*tabular-nums/);
+  });
+
+  it("renders the final number for readers without the animation", () => {
+    // The reduced-motion branch and the server render both state the score
+    // outright; the count is only for the reader who is there when the
+    // number arrives.
+    const leaf = withoutComments(read("components/motion/CountUp.tsx"));
+    expect(leaf).toContain("useState(value)");
+    expect(leaf).toContain("value.toFixed(decimals)");
   });
 });
