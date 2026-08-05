@@ -201,6 +201,23 @@ Changes to targets are recorded here with date and reason — never silently.
   clicked again; with JavaScript disabled they keep today's
   click-to-toggle behaviour.
 
+- **v0.10 (2026-08-05):** four changes, each recorded here before its
+  code. The signed-in product starts moving the way the landing already
+  does: a report's score counts up to its value once, the readiness gauge
+  sweeps to its position, the progress and session lists enter with the
+  landing's one-shot vocabulary, and a status change fades instead of
+  teleporting, all inside the motion budget the landing shipped under
+  (DECISIONS 031 and 035): transform and opacity only, one pass, settled
+  outright under reduced motion. The footer row gains a labeled Feedback
+  door beside FAQ, a mailto link to the support address, so no new place
+  holds customer data. The product becomes legible to machines as well as
+  to people: an llms.txt at the site root, an explicit AI-crawler policy
+  in robots.txt, and structured data on /pricing and /faq. And the
+  progress screen shows average response latency alongside the other
+  delivery trends; it is the number every session report already carries,
+  which measures how promptly the candidate answers, so the
+  uninstrumented first-response target above is untouched by it.
+
 > 2026-08-02: v0.4 scope added above — accounts move ahead of payments
 > because login-gated interviews protect session integrity and per-session
 > cost, and the dashboard is what makes a 6-session package usable. The
