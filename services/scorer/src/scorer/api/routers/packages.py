@@ -545,6 +545,14 @@ def build_router(deps: Deps) -> APIRouter:
                     report.delivery_metrics.filler_rate_per_min
                     if report is not None else None
                 ),
+                # F-23: the one delivery number the reports always measured
+                # but the trend feed never carried. Null when no report
+                # exists or the DSP could not measure a handoff -- never
+                # coerced to 0.0, which would read as an instant answer.
+                "avg_response_latency_s": (
+                    report.delivery_metrics.avg_response_latency_s
+                    if report is not None else None
+                ),
                 "silence": silence,
                 "gaps": list(report.gaps) if report is not None else [],
             })
