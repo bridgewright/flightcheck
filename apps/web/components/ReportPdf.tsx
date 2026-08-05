@@ -1,8 +1,9 @@
 import { Document, Page, StyleSheet, Text, View } from "@react-pdf/renderer";
 
+import { emphasiseRationale } from "@/lib/rationale";
 import { formatTimestamp, VERDICT_LABELS } from "@/lib/report-format";
 import type { ReportExportMeta } from "@/lib/report-markdown";
-import type { SessionReport } from "@/lib/types";
+import type { DimensionScore, SessionReport } from "@/lib/types";
 import { MAX_SCORE, READY_OVERALL } from "@/lib/verdict";
 
 // The export's own palette, and the one file allowed to hold literal colour
@@ -26,6 +27,7 @@ const styles = StyleSheet.create({
   heading: { fontFamily: "Helvetica-Bold", fontSize: 12, marginBottom: 5 },
   subheading: { fontFamily: "Helvetica-Bold", marginTop: 7, marginBottom: 3 },
   item: { marginBottom: 3 },
+  keySpan: { fontFamily: "Helvetica-Bold" },
   quote: { borderLeftColor: RULE, borderLeftWidth: 1, color: QUOTE_INK, marginTop: 4, paddingLeft: 8 },
   footer: { borderTopColor: RULE, borderTopWidth: 1, color: MUTED_INK, marginTop: 20, paddingTop: 8 },
   // Fixed, so it repeats. A report is printed and handed over, and loose
@@ -36,6 +38,19 @@ const styles = StyleSheet.create({
 const list = (items: string[]) => items.length === 0
   ? <Text>None recorded.</Text>
   : items.map((item) => <Text key={item} style={styles.item}>• {item}</Text>);
+
+// The judge's own span (F-48) is emphasised in place; the fallback stays the
+// plain block it was before the field existed, so every stored report prints
+// exactly as it always did.
+function Rationale({ score }: { score: DimensionScore }) {
+  const parts = emphasiseRationale(score.rationale, score.key_span);
+  if (parts.source === "key_span") {
+    return (
+      <Text>{parts.before}<Text style={styles.keySpan}>{parts.span}</Text>{parts.after}</Text>
+    );
+  }
+  return <Text>{score.rationale}</Text>;
+}
 
 export default function ReportPdf({ report, meta }: { report: SessionReport; meta: ReportExportMeta }) {
   const metrics = report.delivery_metrics;
@@ -49,13 +64,22 @@ export default function ReportPdf({ report, meta }: { report: SessionReport; met
         {report.headline ? <Text style={styles.headline}>{report.headline}</Text> : null}
         <Text style={styles.score}>Overall score: {report.overall_score.toFixed(1)} / {MAX_SCORE.toFixed(1)} | Ready bar: {READY_OVERALL.toFixed(1)}</Text>
 
-        {report.dimension_scores.map((score) => (
-          <View key={score.dimension_key} style={styles.section}>
-            <Text style={styles.heading}>{nameFor(score.dimension_key)}: {score.score.toFixed(1)} / {MAX_SCORE.toFixed(1)}</Text>
-            <Text>{score.rationale}</Text>
-            {score.evidence_quotes.map((quote) => <Text key={quote} style={styles.quote}>{quote}</Text>)}
-          </View>
-        ))}
+        {report.dimension_scores.map((score) => {
+          // Declared required, but reports stored before F-03 omit the keys
+          // at runtime: read defensively, print the subheadings only when
+          // they say something, exactly as the screen does.
+          const strengths = score.strengths ?? [];
+          const weaknesses = score.weaknesses ?? [];
+          return (
+            <View key={score.dimension_key} style={styles.section}>
+              <Text style={styles.heading}>{nameFor(score.dimension_key)}: {score.score.toFixed(1)} / {MAX_SCORE.toFixed(1)}</Text>
+              <Rationale score={score} />
+              {strengths.length > 0 && <><Text style={styles.subheading}>What worked</Text>{list(strengths)}</>}
+              {weaknesses.length > 0 && <><Text style={styles.subheading}>What held the score down</Text>{list(weaknesses)}</>}
+              {score.evidence_quotes.map((quote) => <Text key={quote} style={styles.quote}>{quote}</Text>)}
+            </View>
+          );
+        })}
 
         <View style={styles.section}>
           <Text style={styles.heading}>Delivery metrics</Text>

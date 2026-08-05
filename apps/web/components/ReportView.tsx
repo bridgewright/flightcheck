@@ -36,7 +36,7 @@ import {
   VERDICT_HEADING,
   VERDICT_READY,
 } from "@/lib/ui";
-import { splitRationale } from "@/lib/rationale";
+import { emphasiseRationale } from "@/lib/rationale";
 import { MAX_SCORE, readVerdict, weakestDimension } from "@/lib/verdict";
 
 // Trimmed-by-default display (user feedback, 2026-08-01): lead with the few
@@ -119,20 +119,39 @@ export function dimensionMetaFromRubric(rubric: Rubric): DimensionMeta[] {
 /**
  * The judge's finding, then the reasoning behind it.
  *
- * The lead sentence is emphasised because it is the finding; the split is
- * positional and lib/rationale.ts explains why it is not semantic. The
- * underline is deliberately quiet: an underline normally means a link, and a
- * heavy rule under 200 characters of prose would both misread as clickable and
- * emphasise so much that nothing stands out.
+ * When the judge marked its own span (F-48 key_span), the emphasis is that
+ * span, in place: the paragraph reads on as the judge wrote it, with the
+ * finding marked inside it. On every report without a span, the lead sentence
+ * is emphasised because it is the finding; that split is positional and
+ * lib/rationale.ts explains why it is not semantic, and it renders exactly as
+ * it did before the field existed. The underline is deliberately quiet: an
+ * underline normally means a link, and a heavy rule under 200 characters of
+ * prose would both misread as clickable and emphasise so much that nothing
+ * stands out.
  */
-function RationaleText({ rationale }: { rationale: string }) {
-  const { lead, rest } = splitRationale(rationale);
+function RationaleText({
+  rationale,
+  keySpan,
+}: {
+  rationale: string;
+  keySpan?: string | null;
+}) {
+  const parts = emphasiseRationale(rationale, keySpan);
+  if (parts.source === "key_span") {
+    return (
+      <p className={`${PROSE_WIDTH} ${MUTED} mt-3`}>
+        {parts.before}
+        <span className={KEY_FINDING}>{parts.span}</span>
+        {parts.after}
+      </p>
+    );
+  }
   return (
     <div className={`${PROSE_WIDTH} mt-3 flex flex-col gap-2`}>
       <p className={KEY_FINDING}>
-        {lead}
+        {parts.span}
       </p>
-      {rest ? <p className={MUTED}>{rest}</p> : null}
+      {parts.after ? <p className={MUTED}>{parts.after}</p> : null}
     </div>
   );
 }
@@ -145,7 +164,7 @@ function DimensionBody({ score }: { score: DimensionScore }) {
   const weaknesses = score.weaknesses ?? [];
   return (
     <>
-      <RationaleText rationale={score.rationale} />
+      <RationaleText rationale={score.rationale} keySpan={score.key_span} />
       {(strengths.length > 0 || weaknesses.length > 0) && (
         <div className="mt-4 grid gap-4 sm:grid-cols-2">
           {strengths.length > 0 && (
