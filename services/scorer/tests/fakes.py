@@ -411,6 +411,16 @@ class FakeDatabase:
         self.sessions[session_id] = row.model_copy(update={"status": "abandoned"})
         return True
 
+    def rearm_session(self, session_id: str) -> None:
+        # Mirrors SupabaseDatabase: attempt-scoped clocks reset in the same
+        # write, updated_at deliberately untouched.
+        row = self.sessions[session_id]
+        self.sessions[session_id] = row.model_copy(update={
+            "status": "planned",
+            "secret_mints": 0,
+            "last_heartbeat_at": None,
+        })
+
     def list_stale_packages(self, status: str,
                             older_than_s: float) -> list[PackageRow]:
         cutoff = self._now() - timedelta(seconds=older_than_s)

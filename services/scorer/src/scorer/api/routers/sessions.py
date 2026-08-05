@@ -209,14 +209,29 @@ def build_router(deps: Deps) -> APIRouter:
             key=lambda row: row.index,
         )
         for row in retriable:
-            if row.status == "abandoned":
-                db.set_session_status(row.id, "planned")
-                row = db.get_session(row.id)
+            # No abandoned special case: an abandoned row rides the counted
+            # branch below like failed/insufficient (quota.py explains why a
+            # free abandoned resume would uncap the mint bound), and
+            # rearm_session there is what flips it back to "planned".
             if row.status not in RESUME_COUNTED_STATUSES:
                 # A planned row never ran: resuming it is free, always.
                 return _session_response(row, package)
             if resume_attempts.bump(row.id) <= limits.resume_attempt_cap:
-                return _session_response(row, package)
+                # Re-arm the row before handing it back. "planned" is what
+                # every room guard means by "a browser may interview this":
+                # the mint (F-66), the heartbeat, and the F-38 live lock all
+                # read exactly that status. A resume that left the row
+                # "failed"/"insufficient" returned a session id whose room
+                # then refused to open, so the slot F-04 preserves could
+                # never be spent -- the customer's only door led back to the
+                # screen it came from. rearm_session (not a bare status
+                # flip) also resets the attempt-scoped clocks: the dead
+                # attempt's secret_mints and heartbeat otherwise make the
+                # fresh row read as in-progress or reclaimable for up to
+                # the whole hard cut, and keep charging new attempts
+                # against the old attempt's mint spend.
+                db.rearm_session(row.id)
+                return _session_response(db.get_session(row.id), package)
             # Past the cap: retire the row and spend its slot, so the answer
             # below is honestly "next session" or "exhausted" — never an
             # endless retry loop on a session that keeps dying (F-30).
@@ -318,9 +333,19 @@ def build_router(deps: Deps) -> APIRouter:
         on 429.
         """
         try:
-            db.get_session(session_id)
+            row = db.get_session(session_id)
         except KeyError as exc:
             raise HTTPException(status_code=404, detail="session not found") from exc
+        # Same guard as heartbeat: mint is the door into the live room, and a
+        # session past "planned" can only produce heartbeats the server will
+        # 409 anyway (F-66). Refused before the counter moves, so a doomed
+        # session burns no mint-cap headroom and leaves the F-38 lock window
+        # untouched.
+        if row.status != "planned":
+            return JSONResponse(
+                status_code=409,
+                content={"error": "session is not running", "code": "session-not-live"},
+            )
         count = db.increment_secret_mints(session_id)
         # The mint is the moment the browser joins the room, so it is what
         # the F-38 lock window should be measured from -- not the moment the

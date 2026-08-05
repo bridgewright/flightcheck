@@ -24,7 +24,9 @@ def test_status_sets_partition_the_session_vocabulary():
     # may be both, and the terminal status must consume (that is the point).
     assert not (SLOT_CONSUMING_STATUSES & RETRIABLE_STATUSES)
     assert TERMINAL_STATUS in SLOT_CONSUMING_STATUSES
-    assert RESUME_COUNTED_STATUSES == {"failed", "insufficient"}
+    # "abandoned" counts since F-66 round-2: re-arming resets the mint
+    # counter, so only planned resumes stay free.
+    assert RESUME_COUNTED_STATUSES == {"failed", "insufficient", "abandoned"}
     assert "planned" in RETRIABLE_STATUSES
 
 

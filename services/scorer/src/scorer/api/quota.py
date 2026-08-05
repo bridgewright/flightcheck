@@ -25,8 +25,13 @@ TERMINAL_STATUS = "failed_permanent"
 RETRIABLE_STATUSES = frozenset({"planned", "failed", "insufficient", "abandoned"})
 
 # Resuming one of these costs an attempt (the row already burned a run);
-# resuming a "planned" row is free -- nothing was spent yet.
-RESUME_COUNTED_STATUSES = frozenset({"failed", "insufficient"})
+# resuming a "planned" row is free -- nothing was spent yet. "abandoned"
+# counts too (F-66 round-2): re-arming resets the per-attempt mint counter,
+# so a free abandoned resume would let reclaim + resume in a loop re-grant
+# the mint cap forever -- the durable OpenAI-spend bound migration 005
+# exists to hold. A genuine crash's reclaim therefore burns one of the
+# resume attempts; the cap, not goodwill, is what bounds every loop.
+RESUME_COUNTED_STATUSES = frozenset({"failed", "insufficient", "abandoned"})
 
 # Rows that consume a session slot.
 SLOT_CONSUMING_STATUSES = frozenset({"scoring", "scored", TERMINAL_STATUS})

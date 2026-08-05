@@ -216,6 +216,121 @@ def test_secret_mint_unknown_session_is_404_and_requires_auth():
     assert client.post("/api/sessions/missing/secret-mint").status_code == 401
 
 
+@pytest.mark.parametrize("status", ["insufficient", "scored", "failed"])
+def test_secret_mint_refuses_a_session_that_is_not_planned(status):
+    # F-66: the first real session ended "insufficient", yet two later mints
+    # answered 200 and the room connected to a session no heartbeat would
+    # ever keep alive — the customer read the 409 train as network loss.
+    # Mint is the door into the room, so it holds the same status guard the
+    # heartbeat route already had.
+    db = FakeDatabase()
+    package = ready_package(db)
+    row = db.create_session(package.id, 1, None)
+    db.set_session_status(row.id, status)
+    client, _ = _client(db=db)
+
+    response = client.post(f"/api/sessions/{row.id}/secret-mint",
+                           headers=AUTH)
+
+    assert response.status_code == 409
+    assert response.json()["code"] == "session-not-live"
+    # The refusal happens BEFORE the counter moves: a doomed session must
+    # not burn mint-cap headroom or touch the F-38 lock window.
+    assert db.get_session(row.id).secret_mints == 0
+
+
+@pytest.mark.parametrize("status", ["insufficient", "failed"])
+def test_resume_re_arms_the_row_so_its_room_opens_again(status):
+    # The other half of the F-66 guard, and the one that decides whether a
+    # paying customer can ever use the slot again. "insufficient" and
+    # "failed" keep their slot (F-04), and every door the product offers --
+    # the home CTA, the archive retry link, the session-detail CTA -- comes
+    # back to this row. If the resume hands it back still terminal, the mint
+    # above refuses it and the customer bounces between the ended screen and
+    # home forever with a slot they paid for and cannot spend.
+    db = FakeDatabase()
+    package = ready_package(db)
+    client, _ = _client(db=db)
+    session_id = client.post(
+        "/api/sessions", json={"package_id": package.id}, headers=AUTH
+    ).json()["session_id"]
+    db.set_session_status(session_id, status)
+
+    again = client.post("/api/sessions", json={"package_id": package.id},
+                        headers=AUTH)
+
+    assert again.status_code == 200
+    assert again.json()["session_id"] == session_id   # same slot, not a new one
+    assert db.get_session(session_id).status == "planned"
+    assert client.post(f"/api/sessions/{session_id}/secret-mint",
+                       headers=AUTH).status_code == 200
+
+
+@pytest.mark.parametrize("status", ["insufficient", "failed", "abandoned"])
+def test_rearm_resets_the_dead_attempts_clocks(status):
+    # Round-2 finding: a re-arm that flips only the status hands the new
+    # attempt the dead one's evidence. secret_mints >= 1 plus a heartbeat
+    # from the old attempt makes live_session/stopped_reporting read the
+    # fresh row as in-progress or reclaimable for up to the whole hard cut,
+    # and the durable mint counter kept charging new attempts against the
+    # old attempt's spend (the incident row had burned 3 of 5). Re-arming
+    # must reset the attempt-scoped clocks in the same write; the resume
+    # cap, not the mint cap, is what bounds total spend per row.
+    db = FakeDatabase()
+    package = ready_package(db)
+    client, _ = _client(db=db)
+    session_id = client.post(
+        "/api/sessions", json={"package_id": package.id}, headers=AUTH
+    ).json()["session_id"]
+    for _ in range(3):
+        client.post(f"/api/sessions/{session_id}/secret-mint", headers=AUTH)
+    db.touch_session_heartbeat(session_id)      # the dead attempt reported in
+    db.set_session_status(session_id, status)
+
+    again = client.post("/api/sessions", json={"package_id": package.id},
+                        headers=AUTH)
+
+    assert again.status_code == 200
+    assert again.json()["session_id"] == session_id
+    row = db.get_session(session_id)
+    assert row.status == "planned"
+    assert row.secret_mints == 0                # mint cap is per attempt now
+    assert row.last_heartbeat_at is None        # no ghost of the dead attempt
+
+
+def test_abandoned_resumes_are_counted_not_free(monkeypatch):
+    # Round-2 verification: rearm_session resets the mint counter, and an
+    # abandoned resume used to be free -- so mint to the cap, go stale,
+    # reclaim, resume, repeat re-granted the full mint cap forever,
+    # uncapping the durable per-session bound on OpenAI Realtime spend
+    # (migration 005's stated purpose). An abandoned row already ran an
+    # attempt; resuming it counts like failed and insufficient, and past
+    # the cap the row retires (F-30). Cost accepted: a genuine crash's
+    # reclaim now burns one of the three resume attempts.
+    _tight_limits(monkeypatch, resume_attempt_cap=1)
+    db = FakeDatabase()
+    package = ready_package(db, paid_at="2026-08-03T00:00:00+00:00")
+    client, _ = _client(db=db)
+    session_id = client.post(
+        "/api/sessions", json={"package_id": package.id}, headers=AUTH
+    ).json()["session_id"]
+    db.set_session_status(session_id, "abandoned")
+
+    first = client.post("/api/sessions", json={"package_id": package.id},
+                        headers=AUTH)
+    assert first.status_code == 200             # attempt 1: allowed, re-armed
+    assert first.json()["session_id"] == session_id
+    db.set_session_status(session_id, "abandoned")
+
+    second = client.post("/api/sessions", json={"package_id": package.id},
+                         headers=AUTH)
+    # Past the cap: the row is retired and the paid package moves on to a
+    # fresh slot instead of feeding the loop.
+    assert second.status_code == 200
+    assert second.json()["session_id"] != session_id
+    assert db.get_session(session_id).status == TERMINAL_STATUS
+
+
 # --- resume cap: terminal state, slot spent -------------------------------
 
 

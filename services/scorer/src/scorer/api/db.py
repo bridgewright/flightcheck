@@ -367,6 +367,18 @@ class Database(Protocol):
 
     def reclaim_session(self, session_id: str, older_than_s: float) -> bool:
         """Atomically abandon a planned row only if its heartbeat is stale."""
+
+    def rearm_session(self, session_id: str) -> None:
+        """Return a retriable row to "planned" for a fresh attempt: status,
+        secret_mints = 0 and last_heartbeat_at = NULL in ONE write, so the
+        new attempt inherits none of the dead attempt's evidence.
+        secret_mints > 0 must keep meaning "a browser connected to THIS
+        attempt" (live_session and stopped_reporting read it that way), and
+        the mint cap bounds one attempt's connections while the resume cap
+        bounds attempts. updated_at is deliberately NOT touched: the F-38
+        lock window opens at the next mint, not at the re-arm. Unknown ids
+        raise KeyError."""
+        ...
     # -------------------------------------------------- v0.6 usage metrics
 
     def list_recent_packages(self, limit: int) -> list[PackageRow]:
@@ -735,6 +747,14 @@ class SupabaseDatabase:
                 .lt("last_heartbeat_at", _stale_cutoff_iso(older_than_s))
                 .execute().data)
         return bool(data)
+
+    def rearm_session(self, session_id: str) -> None:
+        data = (self._client.table("sessions")
+                .update({"status": "planned", "secret_mints": 0,
+                         "last_heartbeat_at": None})
+                .eq("id", session_id).execute().data)
+        if not data:
+            raise KeyError(session_id)
 
     def list_stale_packages(self, status: str,
                             older_than_s: float) -> list[PackageRow]:
