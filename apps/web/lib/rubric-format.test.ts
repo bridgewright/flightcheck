@@ -2,7 +2,13 @@ import { describe, expect, it } from "vitest";
 
 import type { BarsAnchor } from "@/lib/types";
 
-import { channelLabel, formatWeight, sortedAnchors } from "./rubric-format";
+import {
+  channelLabel,
+  DELIVERY_RECEIPT,
+  formatWeight,
+  hasReceipts,
+  sortedAnchors,
+} from "./rubric-format";
 
 describe("formatWeight", () => {
   it("renders a fraction as a whole percentage", () => {
@@ -42,5 +48,47 @@ describe("sortedAnchors", () => {
     const copy = [...anchors];
     sortedAnchors(anchors);
     expect(anchors).toEqual(copy);
+  });
+});
+
+describe("hasReceipts", () => {
+  // F-62. The decision "is this rubric post-F-62 at all" lives here, not in
+  // the component: a pre-F-62 rubric must render byte-identical to today, so
+  // the delivery line may never key on channel alone.
+  const dim = (jd_evidence?: string | null) => ({ jd_evidence });
+
+  it("is false for a rubric stored before the field existed", () => {
+    // Old-shape dimensions carry no jd_evidence key at all.
+    expect(hasReceipts([{}, {}])).toBe(false);
+  });
+
+  it("is false when every value is null or blank", () => {
+    expect(hasReceipts([dim(null), dim(""), dim("   ")])).toBe(false);
+  });
+
+  it("is true when any one dimension carries a non-blank quote", () => {
+    expect(
+      hasReceipts([dim(null), dim("4+ years shipping ML products")]),
+    ).toBe(true);
+  });
+
+  it("is false for no dimensions at all", () => {
+    expect(hasReceipts([])).toBe(false);
+  });
+});
+
+describe("DELIVERY_RECEIPT", () => {
+  it("owns the bar instead of attributing it to the JD", () => {
+    // Delivery is licensed by the product, not quoted from the JD, and the
+    // line has to say so in as many words.
+    expect(DELIVERY_RECEIPT).toContain("product");
+    expect(DELIVERY_RECEIPT).toContain("JD");
+    expect(DELIVERY_RECEIPT).toContain("every interview");
+  });
+
+  it("keeps the calm register: one sentence, no dashes, no exclamation", () => {
+    expect(DELIVERY_RECEIPT).not.toMatch(/[–—]/);
+    expect(DELIVERY_RECEIPT).not.toContain("!");
+    expect(DELIVERY_RECEIPT.trim().endsWith(".")).toBe(true);
   });
 });
