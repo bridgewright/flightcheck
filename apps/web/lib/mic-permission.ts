@@ -74,6 +74,86 @@ export async function queryMicPermission(
   }
 }
 
+// --- Where the block lives ------------------------------------------------
+
+export type DeniedScope = "site" | "system" | "ask-again" | "unknown";
+
+/**
+ * Where a permission-denied failure actually lives, read from the evidence
+ * at failure time: getUserMedia refused while the SITE permission reports
+ * "denied" means the browser is blocking this site (the steps are the way
+ * out); "granted" means the browser would allow it and capture still
+ * refused, so the operating system is blocking the browser itself (the OS
+ * settings door is the way out); "prompt" means the dialog was dismissed
+ * and the very next attempt will re-ask on its own. "unknown" keeps the
+ * generic guidance.
+ */
+export function classifyDeniedScope(state: MicPermissionState): DeniedScope {
+  if (state === "denied") return "site";
+  if (state === "granted") return "system";
+  if (state === "prompt") return "ask-again";
+  return "unknown";
+}
+
+/** The denied status line, per scope. Verb-neutral on purpose: the button
+ * under it says "Check again" in the mic check and "Try again" in the
+ * room, and the line must not argue with either. */
+export const DENIED_STATUS_LINES: Record<DeniedScope, string> = {
+  site: "Microphone access is blocked for this site in your browser.",
+  system:
+    "Microphone access is blocked by your operating system, not by this site.",
+  "ask-again": "The permission request was closed before an answer.",
+  unknown:
+    "Microphone access is blocked. Allow it for this site in your browser settings.",
+};
+
+// --- The doors a page can actually open -----------------------------------
+// A web page cannot open the browser's own site-settings UI and cannot
+// re-show a denied permission dialog; no such API exists, by design. What
+// it CAN do: deep-link the operating system's microphone pane through an
+// OS URL scheme (the browser shows its open-an-app confirmation first),
+// which is exactly the door the "system" scope needs.
+
+export const MACOS_MIC_SETTINGS_URL =
+  "x-apple.systempreferences:com.apple.preference.security?Privacy_Microphone";
+
+export const WINDOWS_MIC_SETTINGS_URL = "ms-settings:privacy-microphone";
+
+export interface SystemSettingsLink {
+  href: string;
+  label: string;
+}
+
+/** The OS microphone pane for this user agent, when one can be opened.
+ * "Macintosh" excludes iOS (every iOS UA says "like Mac OS X"). */
+export function systemSettingsLink(
+  userAgent: string,
+): SystemSettingsLink | null {
+  if (userAgent.includes("Macintosh")) {
+    return {
+      href: MACOS_MIC_SETTINGS_URL,
+      label: "Open macOS microphone settings",
+    };
+  }
+  if (userAgent.includes("Windows")) {
+    return {
+      href: WINDOWS_MIC_SETTINGS_URL,
+      label: "Open Windows microphone settings",
+    };
+  }
+  return null;
+}
+
+export const ASK_AGAIN_LINE =
+  "Your browser will ask for the microphone again on the next attempt. Choose Allow when it does.";
+
+export const SYSTEM_SETTINGS_RETURN_LINE =
+  "Allow your browser there, then come back and try the microphone again.";
+
+/** The system-scope fallback for an OS without a deep link. */
+export const SYSTEM_SETTINGS_FALLBACK_LINE =
+  "Open your system settings, find Privacy, then Microphone, and allow your browser.";
+
 // --- Recovery steps -------------------------------------------------------
 
 export type RecoveryBrowser =
@@ -95,18 +175,20 @@ export interface MicRecoveryGuide {
 // enough to follow with the settings panel already open. Single literals —
 // the built-copy gate's lesson is that joined copy can be folded apart by
 // the production bundler.
+// Chromium shows a microphone icon with a red mark at the RIGHT end of the
+// address bar right after it blocks a request, and clicking it is the
+// shortest path out; the tune icon on the left is the fallback when that
+// badge has already gone.
 const CHROME_STEPS: readonly string[] = [
-  "Click the icon to the left of the address bar.",
-  "Open Site settings.",
-  "Set Microphone to Allow.",
-  "Reload this page.",
+  "Click the microphone icon with the red mark at the right end of the address bar.",
+  "Choose to always allow this site to use your microphone.",
+  "If no such icon is there, click the tune icon at the left end of the address bar and set Microphone to Allow.",
 ];
 
 const EDGE_STEPS: readonly string[] = [
-  "Click the lock icon to the left of the address bar.",
-  "Open Permissions for this site.",
-  "Set Microphone to Allow.",
-  "Reload this page.",
+  "Click the microphone icon with the red mark at the right end of the address bar.",
+  "Choose to always allow this site to use your microphone.",
+  "If no such icon is there, click the lock icon at the left end of the address bar and set Microphone to Allow.",
 ];
 
 const SAFARI_STEPS: readonly string[] = [
@@ -116,9 +198,8 @@ const SAFARI_STEPS: readonly string[] = [
 ];
 
 const FIREFOX_STEPS: readonly string[] = [
-  "Click the permissions icon in the address bar.",
-  "Clear the blocked microphone setting.",
-  "Reload this page.",
+  "Click the crossed microphone icon in the address bar.",
+  "Clear the blocked microphone setting, then allow when asked again.",
 ];
 
 // Today's prose ("allow it for this site in your browser settings") split

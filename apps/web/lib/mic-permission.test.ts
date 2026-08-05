@@ -1,10 +1,15 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  DENIED_STATUS_LINES,
   MACOS_MICROPHONE_NOTE,
+  MACOS_MIC_SETTINGS_URL,
+  WINDOWS_MIC_SETTINGS_URL,
+  classifyDeniedScope,
   normalizeMicPermissionState,
   queryMicPermission,
   recoverySteps,
+  systemSettingsLink,
   type MicPermissionStatusLike,
   type RecoveryBrowser,
 } from "@/lib/mic-permission";
@@ -83,7 +88,7 @@ describe("recoverySteps: the steps themselves", () => {
 
   it.each(browsers)("%s gets short one-action steps", (browser) => {
     const { steps } = guides[browser];
-    expect(steps.length).toBeGreaterThanOrEqual(3);
+    expect(steps.length).toBeGreaterThanOrEqual(2);
     for (const step of steps) {
       expect(step.trim().length).toBeGreaterThan(0);
       expect(step).not.toContain("\n");
@@ -98,19 +103,21 @@ describe("recoverySteps: the steps themselves", () => {
     }
   });
 
-  it("sends Chrome through the icon left of the address bar to Site settings", () => {
+  it("sends Chrome to the blocked-mic badge first, with the tune icon as fallback", () => {
+    // Right after a denial, Chromium shows a microphone icon with a red
+    // mark at the RIGHT end of the address bar; clicking it is the
+    // shortest path out. The left-end tune icon is the fallback.
     const joined = guides.chrome.steps.join(" ");
-    expect(joined).toContain("address bar");
-    expect(joined).toContain("Site settings");
+    expect(joined).toContain("right end of the address bar");
+    expect(joined).toContain("red mark");
+    expect(joined).toContain("tune icon");
     expect(joined).toContain("Allow");
-    expect(joined).toContain("Reload");
   });
 
   it("gives Edge the same shape in its own wording", () => {
     const joined = guides.edge.steps.join(" ");
-    expect(joined).toContain("address bar");
+    expect(joined).toContain("right end of the address bar");
     expect(joined).toContain("Allow");
-    expect(joined).toContain("Reload");
     expect(guides.edge.steps).not.toEqual(guides.chrome.steps);
   });
 
@@ -121,11 +128,10 @@ describe("recoverySteps: the steps themselves", () => {
     expect(joined).toContain("Allow");
   });
 
-  it("has Firefox clear the blocked setting from the permissions icon", () => {
+  it("has Firefox clear the blocked setting from the crossed icon", () => {
     const joined = guides.firefox.steps.join(" ");
-    expect(joined).toContain("permissions icon");
+    expect(joined).toContain("crossed microphone icon");
     expect(joined).toContain("blocked");
-    expect(joined).toContain("Reload");
   });
 
   it("gives an unrecognized browser the generic version of today's prose, split into steps", () => {
@@ -214,5 +220,46 @@ describe("normalizeMicPermissionState", () => {
     expect(normalizeMicPermissionState(undefined)).toBe("unknown");
     expect(normalizeMicPermissionState(null)).toBe("unknown");
     expect(normalizeMicPermissionState(42)).toBe("unknown");
+  });
+});
+
+describe("classifyDeniedScope: where the block lives, from the evidence", () => {
+  it("maps the site permission state at failure time to the acting scope", () => {
+    // getUserMedia refused while the SITE permission says...
+    expect(classifyDeniedScope("denied")).toBe("site");
+    expect(classifyDeniedScope("granted")).toBe("system");
+    expect(classifyDeniedScope("prompt")).toBe("ask-again");
+    expect(classifyDeniedScope("unknown")).toBe("unknown");
+  });
+
+  it("carries a status line for every scope, in the calm register", () => {
+    for (const scope of ["site", "system", "ask-again", "unknown"] as const) {
+      const line = DENIED_STATUS_LINES[scope];
+      expect(line.trim().length).toBeGreaterThan(0);
+      expect(line).not.toContain("!");
+      expect(line).not.toMatch(/[–—]/);
+    }
+  });
+});
+
+describe("systemSettingsLink: the one door a page can actually open", () => {
+  it("deep-links the macOS microphone pane on a Mac", () => {
+    const link = systemSettingsLink(UA.chromeMac);
+    expect(link?.href).toBe(MACOS_MIC_SETTINGS_URL);
+    expect(link?.href).toContain("x-apple.systempreferences:");
+    expect(link?.label).toContain("macOS");
+  });
+
+  it("deep-links the Windows microphone pane on Windows", () => {
+    const link = systemSettingsLink(UA.edgeWindows);
+    expect(link?.href).toBe(WINDOWS_MIC_SETTINGS_URL);
+    expect(link?.href).toBe("ms-settings:privacy-microphone");
+  });
+
+  it("offers no door on iOS or an unrecognized platform", () => {
+    // iOS says "like Mac OS X", never "Macintosh": System Settings advice
+    // on an iPhone would be wrong, so no link is the honest answer.
+    expect(systemSettingsLink(UA.iosSafari)).toBeNull();
+    expect(systemSettingsLink("")).toBeNull();
   });
 });

@@ -5,9 +5,13 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import MicRecovery from "./MicRecovery";
 
 import {
+  DENIED_STATUS_LINES,
+  classifyDeniedScope,
   normalizeMicPermissionState,
   queryMicPermission,
   recoverySteps,
+  systemSettingsLink,
+  type DeniedScope,
   type MicPermissionStatusLike,
 } from "@/lib/mic-permission";
 import { classifyMicFailure } from "@/lib/session-media";
@@ -22,15 +26,16 @@ type MicState =
   | { kind: "idle" }
   | { kind: "requesting" }
   | { kind: "live"; deviceLabel: string | null }
-  | { kind: "denied" }
+  | { kind: "denied"; scope: DeniedScope }
   | { kind: "no-device" }
   | { kind: "error"; message: string };
 
-const STATUS_LINES: Record<Exclude<MicState["kind"], "live" | "error">, string> = {
+const STATUS_LINES: Record<
+  Exclude<MicState["kind"], "live" | "error" | "denied">,
+  string
+> = {
   idle: "Not checked yet.",
   requesting: "Waiting for your browser's permission prompt…",
-  denied:
-    "Microphone access is blocked. Allow it for this site in your browser settings, then check again.",
   "no-device":
     "No microphone was found. Connect one, or pick a different input device in your system settings, then check again.",
 };
@@ -89,6 +94,14 @@ export default function MicCheck() {
           kind: "error",
           message: "The microphone could not be started. Reload the page and try again.",
         });
+      } else if (kind === "denied") {
+        // Where the block lives decides what renders: the browser's own
+        // site toggle, the operating system, or nothing at all because a
+        // dismissed dialog re-asks on the next check.
+        const { state: permissionState } = await queryMicPermission(
+          navigator.permissions,
+        );
+        setState({ kind: "denied", scope: classifyDeniedScope(permissionState) });
       } else {
         setState({ kind });
       }
@@ -187,10 +200,18 @@ export default function MicCheck() {
             className="text-fine text-ink-muted"
             role={state.kind === "denied" || state.kind === "no-device" || state.kind === "error" ? "alert" : undefined}
           >
-            {state.kind === "error" ? state.message : STATUS_LINES[state.kind]}
+            {state.kind === "error"
+              ? state.message
+              : state.kind === "denied"
+                ? DENIED_STATUS_LINES[state.scope]
+                : STATUS_LINES[state.kind]}
           </p>
           {state.kind === "denied" && (
-            <MicRecovery guide={recoverySteps(navigator.userAgent)} />
+            <MicRecovery
+              guide={recoverySteps(navigator.userAgent)}
+              scope={state.scope}
+              settings={systemSettingsLink(navigator.userAgent)}
+            />
           )}
           <button
             type="button"

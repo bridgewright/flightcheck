@@ -15,7 +15,16 @@
   the microphone check re-runs by itself, and in the interview room the
   error clears by itself — starting the interview stays the reader's click,
   always. Browsers without the permissions API keep today's behavior plus
-  the steps.
+  the steps. Same day, on the user's report from the live screen, the
+  recovery learned WHERE the block lives and stopped pretending prose is a
+  door: when the operating system is blocking the whole browser, the panel
+  now opens the OS microphone settings itself (a real button, through the
+  macOS and Windows URL schemes); when the dialog was merely dismissed, one
+  line says the next attempt will re-ask; and the browser steps point at
+  the blocked-microphone badge Chromium actually shows, at the right end of
+  the address bar, instead of a left-hand icon that reads as riddle. What a
+  page cannot do is stated plainly in the module: no web API opens the
+  browser's own site-settings UI or re-shows a denied permission dialog.
 
 ### Fixed
 

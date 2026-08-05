@@ -20,9 +20,13 @@ import {
 } from "../lib/ui";
 
 import {
+  DENIED_STATUS_LINES,
+  classifyDeniedScope,
   normalizeMicPermissionState,
   queryMicPermission,
   recoverySteps,
+  systemSettingsLink,
+  type DeniedScope,
   type MicPermissionStatusLike,
 } from "../lib/mic-permission";
 import { MAX_RECORDING_BYTES } from "../lib/realtime";
@@ -86,6 +90,9 @@ interface RoomError {
   // is the one the room acts on: it renders the recovery steps and arms
   // the F-63 permission watch below.
   micKind?: MicFailureKind;
+  // Where a denied failure lives (browser site toggle, operating system,
+  // or a dismissed dialog), captured at failure time alongside micKind.
+  micScope?: DeniedScope;
 }
 
 interface SessionRoomProps {
@@ -354,11 +361,26 @@ export default function SessionRoom({
         setPhase("ready");
         // Same discrimination as MicCheck: blocked permission, missing
         // hardware, and everything else are different problems with
-        // different fixes — one generic line helped nobody.
+        // different fixes — one generic line helped nobody. For denied,
+        // the permission state at failure time says WHERE the block lives,
+        // and the message and recovery UI follow it.
         const kind = classifyMicFailure(
           err instanceof DOMException ? err.name : "",
         );
-        setError({ kind: "mic", micKind: kind, message: MIC_FAILURE_LINES[kind] });
+        if (kind === "denied") {
+          const { state: permissionState } = await queryMicPermission(
+            navigator.permissions,
+          );
+          const scope = classifyDeniedScope(permissionState);
+          setError({
+            kind: "mic",
+            micKind: kind,
+            micScope: scope,
+            message: DENIED_STATUS_LINES[scope],
+          });
+        } else {
+          setError({ kind: "mic", micKind: kind, message: MIC_FAILURE_LINES[kind] });
+        }
         return;
       }
     }
@@ -830,7 +852,11 @@ export default function SessionRoom({
                 <p className="mt-1 text-fine">{error.message}</p>
                 {error.kind === "mic" && error.micKind === "denied" && (
                   <div className="mt-3">
-                    <MicRecovery guide={recoverySteps(navigator.userAgent)} />
+                    <MicRecovery
+                      guide={recoverySteps(navigator.userAgent)}
+                      scope={error.micScope ?? "unknown"}
+                      settings={systemSettingsLink(navigator.userAgent)}
+                    />
                   </div>
                 )}
                 <button

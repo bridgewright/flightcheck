@@ -65,9 +65,9 @@ function onchangeHandlers(source: string): string[] {
 }
 
 describe("MicCheck: the denied state renders the way out and watches for it", () => {
-  it("renders MicRecovery in the denied branch, under the status line", () => {
+  it("renders MicRecovery in the denied branch with the scope and the settings door", () => {
     expect(micCheck).toMatch(
-      /\{state\.kind === "denied" && \(\s*<MicRecovery guide=\{recoverySteps\(navigator\.userAgent\)\} \/>\s*\)\}/,
+      /\{state\.kind === "denied" && \(\s*<MicRecovery\s+guide=\{recoverySteps\(navigator\.userAgent\)\}\s+scope=\{state\.scope\}\s+settings=\{systemSettingsLink\(navigator\.userAgent\)\}\s*\/>/,
     );
   });
 
@@ -85,24 +85,30 @@ describe("MicCheck: the denied state renders the way out and watches for it", ()
     expect(handlers[0]).toContain('"denied"');
   });
 
-  it("keeps the pre-F-63 denied line byte-identical", () => {
-    expect(micCheckSource).toContain(
-      '"Microphone access is blocked. Allow it for this site in your browser settings, then check again."',
+  it("draws the denied status line from the scope, not from a fixed sentence", () => {
+    expect(micCheck).toContain("DENIED_STATUS_LINES[state.scope]");
+  });
+
+  it("captures the scope at failure time, from the permission state", () => {
+    expect(micCheck).toContain(
+      'setState({ kind: "denied", scope: classifyDeniedScope(permissionState) });',
     );
   });
 });
 
 describe("SessionRoom: the mic-error branch learns which failure it holds", () => {
-  it("carries the MicFailureKind alongside the message", () => {
+  it("carries the MicFailureKind alongside the message, and the scope for denied", () => {
     expect(sessionRoom).toContain(
-      'setError({ kind: "mic", micKind: kind, message: MIC_FAILURE_LINES[kind] })',
+      'setError({ kind: "mic", micKind: kind, message: MIC_FAILURE_LINES[kind] });',
     );
+    expect(sessionRoom).toContain("micScope: scope,");
+    expect(sessionRoom).toContain("message: DENIED_STATUS_LINES[scope],");
   });
 
   it("renders MicRecovery once, and only for the denied kind", () => {
     expect(sessionRoom.match(/<MicRecovery/g)).toHaveLength(1);
     expect(sessionRoom).toMatch(
-      /error\.kind === "mic" && error\.micKind === "denied" && \(\s*<div className="mt-3">\s*<MicRecovery guide=\{recoverySteps\(navigator\.userAgent\)\} \/>/,
+      /error\.kind === "mic" && error\.micKind === "denied" && \(\s*<div className="mt-3">\s*<MicRecovery\s+guide=\{recoverySteps\(navigator\.userAgent\)\}\s+scope=\{error\.micScope \?\? "unknown"\}\s+settings=\{systemSettingsLink\(navigator\.userAgent\)\}/,
     );
   });
 
@@ -171,9 +177,23 @@ describe("MicRecovery stays presentational and inside the vocabulary", () => {
     expect(micRecovery).toContain("guide.steps.map");
   });
 
-  it("renders the macOS fine print only when the guide carries it", () => {
+  it("renders the macOS fine print only when the scope is unknown", () => {
+    // When the browser told us the block is site-level, OS advice is noise;
+    // the note survives only where the permissions API left us guessing.
     expect(micRecovery).toMatch(
-      /\{guide\.macosNote !== null && \(?\s*<p className=\{FINE_PRINT\}>\{guide\.macosNote\}<\/p>\s*\)?\}/,
+      /\{scope === "unknown" && guide\.macosNote !== null && \(?\s*<p className=\{FINE_PRINT\}>\{guide\.macosNote\}<\/p>\s*\)?\}/,
+    );
+  });
+
+  it("opens the OS microphone pane as a real door in the system scope", () => {
+    expect(micRecovery).toMatch(/<a href=\{settings\.href\}/);
+    expect(micRecovery).toContain("SYSTEM_SETTINGS_RETURN_LINE");
+    expect(micRecovery).toContain("SYSTEM_SETTINGS_FALLBACK_LINE");
+  });
+
+  it("needs no recovery UI at all for a dismissed dialog", () => {
+    expect(micRecovery).toMatch(
+      /if \(scope === "ask-again"\) \{\s*return <p className=\{FINE_PRINT\}>\{ASK_AGAIN_LINE\}<\/p>;/,
     );
   });
 
