@@ -147,3 +147,28 @@ describe("the report's overall score counts up once", () => {
     expect(leaf).toContain("value.toFixed(decimals)");
   });
 });
+
+describe("the signed-in tree enters with the landing's vocabulary", () => {
+  // The same Reveal, the same stagger arithmetic as the landing's
+  // how-it-works: one entry vocabulary for the whole product, not a second
+  // dialect behind the login.
+  it("staggers the trajectory cards like the landing's steps", () => {
+    const source = read("components/ProgressTrajectory.tsx");
+    expect(source).toContain('from "@/components/motion/Reveal"');
+    expect(source).toContain("* ENTRY_STAGGER_SECONDS");
+  });
+
+  it("staggers the session rows the same way", () => {
+    const source = read("components/SessionList.tsx");
+    expect(source).toContain('from "@/components/motion/Reveal"');
+    expect(source).toContain("* ENTRY_STAGGER_SECONDS");
+  });
+
+  it("raises the journey strip as one object, not dot by dot", () => {
+    // The strip is one accessible picture (role img); sequencing its dots
+    // would argue with the thing the strip is.
+    const source = read("components/JourneyStrip.tsx");
+    expect(source).toContain('from "@/components/motion/Reveal"');
+    expect(source).not.toContain("ENTRY_STAGGER_SECONDS");
+  });
+});

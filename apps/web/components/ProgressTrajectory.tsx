@@ -1,3 +1,5 @@
+import { ENTRY_STAGGER_SECONDS } from "@/components/motion/entry";
+import Reveal from "@/components/motion/Reveal";
 import type { TrajectoryCell } from "@/components/progress-view";
 import { trajectoryCells } from "@/components/progress-view";
 import { VERDICT_LABELS } from "@/lib/report-format";
@@ -67,15 +69,22 @@ export default function ProgressTrajectory({
         Trajectory
       </h2>
       <ol className="flex gap-2 overflow-x-auto pb-1">
-        {cells.map((cell) => (
-          <li
-            key={cell.index}
-            className={`${CARD} min-w-[84px] flex-1 px-2 py-2.5 text-center`}
-          >
-            <div className={`${LABEL} mb-1`}>
-              S{cell.index}
-            </div>
-            <CellBody cell={cell} />
+        {cells.map((cell, i) => (
+          <li key={cell.index} className="min-w-[84px] flex-1">
+            {/* The same staggered entry as the landing's how-it-works: the
+                cards arrive in session order, and the order is the argument
+                (F-58). The Reveal carries the card frame so the card enters,
+                not just its text; h-full keeps sibling cards equal height now
+                that the frame is one level in. */}
+            <Reveal
+              className={`${CARD} h-full px-2 py-2.5 text-center`}
+              delay={i * ENTRY_STAGGER_SECONDS}
+            >
+              <div className={`${LABEL} mb-1`}>
+                S{cell.index}
+              </div>
+              <CellBody cell={cell} />
+            </Reveal>
           </li>
         ))}
       </ol>

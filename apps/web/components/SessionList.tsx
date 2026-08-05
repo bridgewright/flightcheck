@@ -1,5 +1,7 @@
 import Link from "next/link";
 
+import { ENTRY_STAGGER_SECONDS } from "@/components/motion/entry";
+import Reveal from "@/components/motion/Reveal";
 import { formatSessionDate } from "@/lib/home";
 import { archiveStatusPill } from "@/lib/report-format";
 import type { SessionSummary } from "@/lib/worker";
@@ -60,31 +62,36 @@ export default function SessionList({
         </p>
       ) : (
         <ul>
-          {newestFirst.map((session) => {
+          {newestFirst.map((session, i) => {
             const when = formatSessionDate(session.created_at);
             return (
               // The whole row is the link: the detail page has an honest
               // state for every status, not only scored ones.
               <li key={session.id} className={TABLE_ROW}>
-                <Link
-                  href={`/sessions/${session.id}`}
-                  className="grid grid-cols-[36px_1fr_auto_auto] items-center gap-3.5 py-3 text-fine hover:bg-paper-sunk"
-                >
-                  <span className="text-fine text-ink-faint tabular-nums">
-                    {String(session.index).padStart(2, "0")}
-                  </span>
-                  <span className="text-ink-muted">
-                    {when ?? ""}
-                  </span>
-                  <Outcome session={session} />
-                  {session.report_available ? (
-                    <span className="text-fine underline underline-offset-4">
-                      Report
+                {/* Rows rise in list order, the same staggered entry as the
+                    landing's steps (F-58). The row border stays on the li:
+                    the chrome holds still while the record arrives. */}
+                <Reveal delay={i * ENTRY_STAGGER_SECONDS}>
+                  <Link
+                    href={`/sessions/${session.id}`}
+                    className="grid grid-cols-[36px_1fr_auto_auto] items-center gap-3.5 py-3 text-fine hover:bg-paper-sunk"
+                  >
+                    <span className="text-fine text-ink-faint tabular-nums">
+                      {String(session.index).padStart(2, "0")}
                     </span>
-                  ) : (
-                    <span />
-                  )}
-                </Link>
+                    <span className="text-ink-muted">
+                      {when ?? ""}
+                    </span>
+                    <Outcome session={session} />
+                    {session.report_available ? (
+                      <span className="text-fine underline underline-offset-4">
+                        Report
+                      </span>
+                    ) : (
+                      <span />
+                    )}
+                  </Link>
+                </Reveal>
               </li>
             );
           })}
