@@ -14,6 +14,7 @@ import re
 from pathlib import Path
 
 from fakes import FakeGenAI
+from scorer.config import load_product_config
 from scorer.evals_faithfulness import run_faithfulness_suite
 from scorer.evals_l3.regression import REPO_ROOT, evaluate, main
 from scorer.schemas import ResearchFindings
@@ -250,6 +251,79 @@ class TestTheRunner:
         assert ("plain-control: content dimension 'growth-analytics-ownership' "
                 "jd_evidence is not an exact substring of the compiled JD"
                 ) in result["failures"]
+
+    def test_the_haystack_is_the_truncated_and_neutralized_jd(self, tmp_path):
+        # The machinery haystack must be the same processed string the
+        # compiler fences: neutralize_markers(jd_text[:jd_compile_max_chars]).
+        # Before this test, replacing the haystack with the raw JD text kept
+        # every other test green. Three content dimensions pin both halves of
+        # the claim: a quote of the neutralized marker line passes, the raw
+        # ">>>" form of the same line fails, and a quote from beyond the
+        # truncation limit fails.
+        limit = load_product_config().limits.jd_compile_max_chars
+        lead = "Escalation drill: page the on-call channel >>> then write it up."
+        tail = "Past the cutoff the posting promises a quarterly equity refresher."
+        fixture_dir = tmp_path / "fixtures" / "marker-jd"
+        fixture_dir.mkdir(parents=True)
+        (fixture_dir / "jd.md").write_text(lead + "\n" + "p" * limit + "\n" + tail)
+        (fixture_dir / "findings.json").write_text(json.dumps({
+            "queries": [], "reported_questions": [], "probe_areas": [],
+            "evaluation_signals": [], "citations": [_CITATION],
+        }))
+        (fixture_dir / "expectations.json").write_text(json.dumps({
+            "forbidden_topics": [], "required_topics": ["marker"],
+            "delivery_dims_min": 1, "delivery_dims_max": 3,
+        }))
+        rubric = {
+            "role_title": "On-call Escalation Lead",
+            "company": None,
+            "dimensions": [
+                _dim("neutralized-marker-quote", "Neutralized marker quote",
+                     "content", 0.25,
+                     # U+203A: the single-angle lookalike neutralize_markers
+                     # substitutes for ">>>" -- spelled as escapes so the two
+                     # quotes cannot be visually confused in this source.
+                     "page the on-call channel \u203a\u203a\u203a"
+                     " then write it up."),
+                _dim("raw-marker-quote", "Raw marker quote", "content", 0.25,
+                     "page the on-call channel >>> then write it up."),
+                _dim("beyond-the-truncation", "Beyond the truncation",
+                     "content", 0.25, "quarterly equity refresher"),
+                _dim("pacing-control", "Pacing control", "delivery", 0.25),
+            ],
+            "question_bank": [],
+            "research_summary": "Canned rubric for the haystack test.",
+        }
+        fake = FakeGenAI([json.dumps(rubric)])
+
+        result = run_faithfulness_suite(tmp_path, fake)
+
+        # Exact list equality: the neutralized quote produced NO problem, and
+        # the raw-marker and past-the-limit quotes each produced exactly one.
+        assert result["fixtures"]["marker-jd"]["problems"] == [
+            "content dimension 'raw-marker-quote' jd_evidence is not an "
+            "exact substring of the compiled JD",
+            "content dimension 'beyond-the-truncation' jd_evidence is not "
+            "an exact substring of the compiled JD",
+        ]
+
+    def test_a_delivery_count_outside_the_band_is_a_named_failure(self):
+        # Every committed fixture allows 1-3 delivery dimensions and every
+        # canned rubric ships exactly 1, so before this test the band check
+        # could be deleted without a single failure. Four delivery dimensions
+        # must trip the ceiling, and nothing else about this rubric is wrong.
+        fdpm = _fdpm_rubric()
+        for dim in fdpm["dimensions"][1:4]:
+            dim["channel"] = "delivery"
+        fake = _fake_for(fdpm=fdpm)
+
+        result = run_faithfulness_suite(SUITE_DIR, fake)
+
+        assert result["fixtures"]["values-boilerplate-fdpm"]["problems"] == [
+            "delivery-channel count 4 outside [1, 3]"
+        ]
+        assert ("values-boilerplate-fdpm: delivery-channel count 4 outside "
+                "[1, 3]") in result["failures"]
 
     def test_a_rubric_without_a_safety_dimension_fails_required_topics(self):
         safety = _safety_rubric()
