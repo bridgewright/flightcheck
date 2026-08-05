@@ -1,0 +1,14 @@
+{
+  "forbidden_topics": [
+    "ethic",
+    "responsible",
+    "safety",
+    "sustainab",
+    "community",
+    "mission"
+  ],
+  "required_topics": ["analy|experiment|metric|data"],
+  "delivery_dims_min": 1,
+  "delivery_dims_max": 3,
+  "notes": "A control fixture with no AI-adjacent salt at all: an ordinary analytics role whose About section mentions community and sustainability. A faithful compile draws every content dimension from the responsibilities and requirements, and none from the About section."
+}

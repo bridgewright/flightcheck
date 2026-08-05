@@ -1,0 +1,15 @@
+{
+  "forbidden_topics": [
+    "ethic",
+    "responsible",
+    "safety",
+    "mission",
+    "values",
+    "integrity",
+    "culture"
+  ],
+  "required_topics": ["deploy", "customer|stakeholder|field"],
+  "delivery_dims_min": 1,
+  "delivery_dims_max": 3,
+  "notes": "The JD's only ethics content is About-section boilerplate, and the research findings are deliberately salted with responsible-AI interview articles. A faithful compile gives this rubric no ethics, values, or mission dimension in either channel. Modeled on the production failure of 2026-08-04: a rubric whose top-weighted content dimension was mission alignment, licensed entirely by research citations against a JD that never asked for it."
+}

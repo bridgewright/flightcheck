@@ -1,0 +1,29 @@
+{
+  "queries": [
+    "Harbor Lane Logistics product analyst interview",
+    "senior product analyst interview questions",
+    "experiment design analytics interview"
+  ],
+  "reported_questions": [
+    "Walk me through an analysis that changed a product decision.",
+    "How do you explain a negative experiment result to a stakeholder who wanted it to work?",
+    "When is an A/B test the wrong tool?"
+  ],
+  "probe_areas": [
+    "Experiment design fundamentals",
+    "Communicating analysis to non-technical operators",
+    "SQL and metric definitions under scrutiny"
+  ],
+  "evaluation_signals": [
+    "Analyses tied to shipped product decisions",
+    "Statistical judgment stated in plain language",
+    "Comfort defending a method under challenge"
+  ],
+  "citations": [
+    {
+      "url": "https://interview-notes.example/product-analyst",
+      "title": "Product analyst interviews in logistics tech",
+      "snippet": "Interviewers probe experiment design depth and whether analyses actually changed product decisions."
+    }
+  ]
+}

@@ -1,0 +1,43 @@
+{
+  "queries": [
+    "Meridian Flow forward deployed product manager interview",
+    "forward deployed product manager interview questions",
+    "AI product manager responsible AI interview questions",
+    "enterprise AI deployment PM interview what to expect"
+  ],
+  "reported_questions": [
+    "Walk me through a deployment where the customer's process did not match your product.",
+    "Tell me about a product you shipped where ethical or responsible AI considerations significantly shaped your decisions.",
+    "How do you decide what feedback from the field becomes roadmap?",
+    "Describe a time you had to win over a skeptical operations team."
+  ],
+  "probe_areas": [
+    "Field discovery and translating it into product direction",
+    "Responsible AI practices and ethical product judgment",
+    "Stakeholder management under deployment pressure",
+    "Metrics ownership for enterprise rollouts"
+  ],
+  "evaluation_signals": [
+    "Concrete deployment stories with measurable outcomes",
+    "Genuine commitment to responsible AI and ethical technology",
+    "Mission and values alignment with the company",
+    "Comfort with ambiguity demonstrated through shipped work"
+  ],
+  "citations": [
+    {
+      "url": "https://interview-notes.example/fdpm-field-guide",
+      "title": "What forward deployed PM interviews actually probe",
+      "snippet": "Deployment PMs are scored on field discovery, stakeholder pressure, and whether their stories carry numbers."
+    },
+    {
+      "url": "https://interview-notes.example/responsible-ai-pm",
+      "title": "Responsible AI questions are everywhere in AI PM interviews",
+      "snippet": "Expect at least one question on ethics: 'Tell me about a product where responsible AI considerations shaped your decisions.'"
+    },
+    {
+      "url": "https://interview-notes.example/values-alignment",
+      "title": "Values alignment in AI company interviews",
+      "snippet": "Interviewers increasingly look for genuine motivation and independent beliefs aligned with the company's mission."
+    }
+  ]
+}

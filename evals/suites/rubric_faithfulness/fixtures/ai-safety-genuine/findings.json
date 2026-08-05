@@ -1,0 +1,34 @@
+{
+  "queries": [
+    "Windrose Research product manager interview",
+    "AI safety evaluations product manager interview questions",
+    "red teaming program design interview"
+  ],
+  "reported_questions": [
+    "How would you design a red-teaming program for a model you cannot inspect?",
+    "Walk me through prioritizing an eval backlog against a customer's release deadline.",
+    "How do you turn a policy requirement into something an engineer can build?"
+  ],
+  "probe_areas": [
+    "Safety evaluation methodology and red-teaming design",
+    "Prioritization under release pressure",
+    "Translating policy into product requirements"
+  ],
+  "evaluation_signals": [
+    "Fluency with safety evaluation concepts, not just enthusiasm",
+    "Concrete prioritization stories with a defended no",
+    "Writing and communication clarity"
+  ],
+  "citations": [
+    {
+      "url": "https://interview-notes.example/safety-evals-pm",
+      "title": "Interviewing for safety evaluation product roles",
+      "snippet": "Candidates are probed on red-teaming design and on translating policy frameworks into evaluation criteria."
+    },
+    {
+      "url": "https://interview-notes.example/ml-infra-pm",
+      "title": "ML infrastructure PM interviews",
+      "snippet": "Expect deep dives on prioritization under customer release pressure."
+    }
+  ]
+}
