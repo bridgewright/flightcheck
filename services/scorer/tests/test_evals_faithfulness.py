@@ -3,9 +3,11 @@
 Unlike the injection suite, the thing under test here costs a live compile
 in production -- so these tests are hermetic on purpose: FakeGenAI serves
 canned rubric JSON whose jd_evidence values are quoted verbatim from the
-committed jd.md fixtures. compile_rubric on this branch does not yet
-enforce faithfulness, so every check the suite makes is exercised by
-authoring the canned rubric that violates it, never by a model call.
+committed jd.md fixtures. Faithful canned rubrics flow through the real
+compile_rubric; unfaithful ones cannot (the compiler now blocks those
+shapes upstream, which is the feature working), so the tests that need one
+simulate a regressed compiler via _regressed_compiler instead -- the exact
+failure the runner's checks exist to catch.
 """
 from __future__ import annotations
 
@@ -13,11 +15,12 @@ import json
 import re
 from pathlib import Path
 
+import scorer.evals_faithfulness as evals_faithfulness
 from fakes import FakeGenAI
 from scorer.config import load_product_config
 from scorer.evals_faithfulness import run_faithfulness_suite
 from scorer.evals_l3.regression import REPO_ROOT, evaluate, main
-from scorer.schemas import ResearchFindings
+from scorer.schemas import ResearchFindings, Rubric
 
 SUITE_DIR = REPO_ROOT / "evals" / "suites" / "rubric_faithfulness"
 BASELINES = json.loads((REPO_ROOT / "evals" / "baselines.json").read_text())
@@ -139,6 +142,38 @@ def _fake_for(safety: dict | None = None, control: dict | None = None,
     })
 
 
+def _regressed_compiler(monkeypatch, safety: dict | None = None,
+                        control: dict | None = None,
+                        fdpm: dict | None = None,
+                        single: dict | None = None) -> None:
+    """Simulate a REGRESSED compiler that emits the crafted rubric verbatim.
+
+    The runner's checks exist to catch exactly this: a compiler whose own
+    enforcement broke. On the merged tree the real compile_rubric blocks
+    these shapes upstream (missing or non-slice evidence and an oversized
+    delivery band burn its repair retry, then raise RubricCompileError; a
+    whitespace variant is salvaged to the exact slice), so the unfaithful
+    output these tests need can no longer be produced through the real
+    compiler -- which is the feature working. Bypassing it is not a
+    convenience: it is the regression, simulated precisely.
+    """
+    rubrics = {
+        "Windrose Research": safety or _safety_rubric(),
+        "Harbor Lane": control or _control_rubric(),
+        "Meridian Flow": fdpm or _fdpm_rubric(),
+    }
+
+    def fake_compile(jd_text, profile, findings, corpus, fewshots, client):
+        if single is not None:
+            return Rubric.model_validate(single)
+        for key, doc in rubrics.items():
+            if key in jd_text:
+                return Rubric.model_validate(doc)
+        raise AssertionError("no canned rubric matches this JD")
+
+    monkeypatch.setattr(evals_faithfulness, "compile_rubric", fake_compile)
+
+
 class TestTheCommittedCorpus:
     def test_the_three_fixture_dirs_are_complete_and_parse(self):
         fixtures = sorted(p for p in (SUITE_DIR / "fixtures").iterdir() if p.is_dir())
@@ -237,12 +272,13 @@ class TestTheRunner:
         assert ("values-boilerplate-fdpm: forbidden topic 'mission' matched "
                 "dimension 'account-fit' (content)") in result["failures"]
 
-    def test_missing_jd_evidence_on_a_content_dimension_is_a_machinery_failure(self):
+    def test_missing_jd_evidence_on_a_content_dimension_is_a_machinery_failure(
+            self, monkeypatch):
         control = _control_rubric()
         control["dimensions"][0]["jd_evidence"] = None
-        fake = _fake_for(control=control)
+        _regressed_compiler(monkeypatch, control=control)
 
-        result = run_faithfulness_suite(SUITE_DIR, fake)
+        result = run_faithfulness_suite(SUITE_DIR, FakeGenAI([]))
 
         assert result["fixtures_passed"] == 2
         assert ("plain-control: content dimension 'growth-analytics-ownership' "
@@ -251,21 +287,22 @@ class TestTheRunner:
                 for dim in result["fixtures"]["plain-control"]["dimensions"]}
         assert dims["growth-analytics-ownership"]["has_jd_evidence"] is False
 
-    def test_empty_string_jd_evidence_is_missing_not_a_trivial_match(self):
+    def test_empty_string_jd_evidence_is_missing_not_a_trivial_match(
+            self, monkeypatch):
         # "" is a substring of every haystack: if the presence check tested
         # `is None` instead of falsiness, a compiler emitting an empty-string
         # jd_evidence would sail through the substring check as a universal
         # match. Empty must mean missing.
         control = _control_rubric()
         control["dimensions"][0]["jd_evidence"] = ""
-        fake = _fake_for(control=control)
+        _regressed_compiler(monkeypatch, control=control)
 
-        result = run_faithfulness_suite(SUITE_DIR, fake)
+        result = run_faithfulness_suite(SUITE_DIR, FakeGenAI([]))
 
         assert ("plain-control: content dimension 'growth-analytics-ownership' "
                 "has no jd_evidence") in result["failures"]
 
-    def test_a_whitespace_normalized_quote_is_not_salvaged(self):
+    def test_a_whitespace_normalized_quote_is_not_salvaged(self, monkeypatch):
         # Deliberately stricter than the compiler: the check is exact `in`.
         # This quote is real JD text, but the jd.md wraps it across a line
         # break, so the space-joined form is a paraphrase, not a slice -- the
@@ -274,15 +311,16 @@ class TestTheRunner:
         control = _control_rubric()
         control["dimensions"][0]["jd_evidence"] = (
             "funnels, cohorts, and the weekly numbers review")
-        fake = _fake_for(control=control)
+        _regressed_compiler(monkeypatch, control=control)
 
-        result = run_faithfulness_suite(SUITE_DIR, fake)
+        result = run_faithfulness_suite(SUITE_DIR, FakeGenAI([]))
 
         assert ("plain-control: content dimension 'growth-analytics-ownership' "
                 "jd_evidence is not an exact substring of the compiled JD"
                 ) in result["failures"]
 
-    def test_the_haystack_is_the_truncated_and_neutralized_jd(self, tmp_path):
+    def test_the_haystack_is_the_truncated_and_neutralized_jd(
+            self, tmp_path, monkeypatch):
         # The machinery haystack must be the same processed string the
         # compiler fences: neutralize_markers(jd_text[:jd_compile_max_chars]).
         # Before this test, replacing the haystack with the raw JD text kept
@@ -324,9 +362,9 @@ class TestTheRunner:
             "question_bank": [],
             "research_summary": "Canned rubric for the haystack test.",
         }
-        fake = FakeGenAI([json.dumps(rubric)])
+        _regressed_compiler(monkeypatch, single=rubric)
 
-        result = run_faithfulness_suite(tmp_path, fake)
+        result = run_faithfulness_suite(tmp_path, FakeGenAI([]))
 
         # Exact list equality: the neutralized quote produced NO problem, and
         # the raw-marker and past-the-limit quotes each produced exactly one.
@@ -337,7 +375,8 @@ class TestTheRunner:
             "an exact substring of the compiled JD",
         ]
 
-    def test_a_delivery_count_outside_the_band_is_a_named_failure(self):
+    def test_a_delivery_count_outside_the_band_is_a_named_failure(
+            self, monkeypatch):
         # Every committed fixture allows 1-3 delivery dimensions and every
         # canned rubric ships exactly 1, so before this test the band check
         # could be deleted without a single failure. Four delivery dimensions
@@ -345,9 +384,9 @@ class TestTheRunner:
         fdpm = _fdpm_rubric()
         for dim in fdpm["dimensions"][1:4]:
             dim["channel"] = "delivery"
-        fake = _fake_for(fdpm=fdpm)
+        _regressed_compiler(monkeypatch, fdpm=fdpm)
 
-        result = run_faithfulness_suite(SUITE_DIR, fake)
+        result = run_faithfulness_suite(SUITE_DIR, FakeGenAI([]))
 
         assert result["fixtures"]["values-boilerplate-fdpm"]["problems"] == [
             "delivery-channel count 4 outside [1, 3]"
