@@ -171,6 +171,26 @@ def _guard_key_span(score: DimensionScore) -> DimensionScore:
     return score.model_copy(update={"key_span": None})
 
 
+# The delivery judge shares DimensionScore, so its response schema advertises
+# the authored lists, but its prompt does not (yet) instruct their register.
+# Anything it volunteers there is uncontracted prose: the lint below would
+# rightly refuse an inner-state item, and refusing here means failing the
+# scoring run of a session that cannot be re-run. Until that judge is
+# instructed, delivery-channel lists are dropped at this choke point. The
+# key span survives on both channels because _guard_key_span already holds
+# it to the rationale, which is linted prose. DECISIONS 043 records the
+# trade and the revisit condition.
+def _guard_authored(score: DimensionScore, channel: str) -> DimensionScore:
+    score = _guard_key_span(score)
+    if channel == "delivery" and (score.strengths or score.weaknesses):
+        logger.debug(
+            "dropping uninstructed delivery-authored lists for %s",
+            score.dimension_key,
+        )
+        return score.model_copy(update={"strengths": [], "weaknesses": []})
+    return score
+
+
 def _verdict(overall: float, scores: list[DimensionScore], cfg) -> str:
     ready = overall >= cfg.ready_overall and all(
         s.score >= cfg.ready_min_dimension for s in scores
@@ -203,7 +223,7 @@ def compile_report(
         raise ReportCompileError(f"no score for rubric dimensions: {missing}")
 
     dims_by_key = {d.key: d for d in rubric.dimensions}
-    ordered = [_guard_key_span(by_key[d.key]) for d in rubric.dimensions]
+    ordered = [_guard_authored(by_key[d.key], d.channel) for d in rubric.dimensions]
     # Round to 2 decimals so threshold comparisons never hinge on binary
     # float dust (0.2 * 4.5 is not exactly 0.9 in floating point).
     overall = round(sum(by_key[d.key].score * d.weight for d in rubric.dimensions), 2)
