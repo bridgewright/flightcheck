@@ -265,7 +265,10 @@ def _rubric_payload() -> dict:
         "dimensions": [
             {"key": "structured-answers", "name": "Structured answers",
              "weight": 0.5, "channel": "content", "anchors": anchors,
-             "signals": ["names the decision"], "citations": [citation]},
+             "signals": ["names the decision"], "citations": [citation],
+             # F-62 faithfulness: an exact quote of the literal "jd" these
+             # tests compile against.
+             "jd_evidence": "jd"},
             {"key": "pacing-control", "name": "Pacing control",
              "weight": 0.5, "channel": "delivery", "anchors": anchors,
              "signals": ["steady rate"], "citations": [citation]},

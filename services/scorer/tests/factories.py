@@ -22,6 +22,10 @@ def make_rubric() -> Rubric:
     def dim(key: str, name: str, channel: str) -> RubricDimension:
         return RubricDimension(
             key=key, name=name, weight=0.5, channel=channel,
+            # F-62 faithfulness: a verbatim quote of the JD the compile-retry
+            # tests route this rubric through; None on delivery.
+            jd_evidence=("Senior Product Analyst" if channel == "content"
+                         else None),
             anchors=[
                 BarsAnchor(score=1, behavior=f"No sign of {name.lower()}."),
                 BarsAnchor(score=3, behavior=f"Some {name.lower()}, thin detail."),

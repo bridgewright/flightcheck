@@ -51,6 +51,9 @@ def _dim_dict(key: str, name: str, channel: str, weight: float) -> dict:
         "name": name,
         "weight": weight,
         "channel": channel,
+        # F-62 faithfulness: content dimensions quote JD_TEXT verbatim;
+        # delivery dimensions carry null.
+        "jd_evidence": "own growth analytics" if channel == "content" else None,
         "anchors": [
             {"score": 1, "behavior": f"Fails to show {lowered}: vague claims, no example."},
             {"score": 3, "behavior": f"Shows some {lowered}: one example, thin detail."},

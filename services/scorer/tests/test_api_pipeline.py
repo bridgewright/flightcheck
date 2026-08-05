@@ -60,6 +60,9 @@ def _dim(key: str, name: str, channel: str, weight: float) -> RubricDimension:
         name=name,
         weight=weight,
         channel=channel,
+        # F-62 faithfulness: content dimensions quote JD_TEXT verbatim;
+        # delivery dimensions carry None.
+        jd_evidence="own growth analytics" if channel == "content" else None,
         anchors=[
             BarsAnchor(score=1, behavior=f"Fails to show {lowered}: vague claims, no example."),
             BarsAnchor(score=3, behavior=f"Shows some {lowered}: one example, thin detail."),
