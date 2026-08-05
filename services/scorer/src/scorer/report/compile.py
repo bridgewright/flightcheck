@@ -11,6 +11,7 @@ free-text field the report ships.
 """
 from __future__ import annotations
 
+import logging
 from typing import Literal
 
 from scorer.config import load_product_config
@@ -22,6 +23,8 @@ from scorer.schemas import (
     SessionReport,
     TimestampedObservation,
 )
+
+logger = logging.getLogger(__name__)
 
 
 class ReportCompileError(Exception):
@@ -141,6 +144,33 @@ def _lint_field(field: str, text: str, patterns: list[str], exempt_quotes: list[
             )
 
 
+# F-48 at the choke point every stored report passes through: the stored
+# contract is that key_span is an exact substring of its own rationale (the
+# renderer locates it by indexOf) or None. The content judge enforces this
+# for its own spans upstream, but DimensionScore is shared -- the delivery
+# judge's structured-output schema (DeliveryJudgeDoc) advertises the field
+# too, and that path neither instructs nor verifies it -- so compile, not
+# the judges, is where the invariant is guaranteed. No normalization
+# salvage here: the content path already resolved whitespace matches to
+# exact slices, so any non-substring span that reaches compile is a
+# fabricated emphasis, dropped rather than repaired. A blank span is
+# dropped too ("" is a substring of everything; indexOf would emphasize
+# position 0).
+def _guard_key_span(score: DimensionScore) -> DimensionScore:
+    span = score.key_span
+    if span is None:
+        return score
+    if span.strip() and span in score.rationale:
+        return score
+    if span.strip():
+        logger.debug(
+            "report compile key_span for %s is not a substring of its "
+            "rationale; dropping the span",
+            score.dimension_key,
+        )
+    return score.model_copy(update={"key_span": None})
+
+
 def _verdict(overall: float, scores: list[DimensionScore], cfg) -> str:
     ready = overall >= cfg.ready_overall and all(
         s.score >= cfg.ready_min_dimension for s in scores
@@ -173,7 +203,7 @@ def compile_report(
         raise ReportCompileError(f"no score for rubric dimensions: {missing}")
 
     dims_by_key = {d.key: d for d in rubric.dimensions}
-    ordered = [by_key[d.key] for d in rubric.dimensions]
+    ordered = [_guard_key_span(by_key[d.key]) for d in rubric.dimensions]
     # Round to 2 decimals so threshold comparisons never hinge on binary
     # float dust (0.2 * 4.5 is not exactly 0.9 in floating point).
     overall = round(sum(by_key[d.key].score * d.weight for d in rubric.dimensions), 2)
@@ -215,8 +245,8 @@ def compile_report(
         # report ships, so they take the same lint as the rationale, with
         # the same per-dimension quote exemption (an authored item may embed
         # the candidate's own verbatim words). key_span needs no lint of its
-        # own: it is enforced upstream to be a substring of the rationale
-        # linted above.
+        # own: _guard_key_span above guarantees it is a substring of the
+        # rationale linted here.
         for field_name, items in (
             ("strengths", score.strengths),
             ("weaknesses", score.weaknesses),
