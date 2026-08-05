@@ -19,6 +19,16 @@
 
 ### Fixed
 
+- **The first sign-in stops being a one-way corridor.** Signing in lands on
+  the new-package screen, and the way back out of it was broken three ways:
+  the browser's back button dead-ended on a sign-in button for someone
+  already signed in, the screen itself offered no path except pasting a JD,
+  and the wordmark led to /home rather than out. Now the login page steps
+  aside for a signed-in visitor (a courtesy redirect; the proxy still owns
+  the guard), the new-package screen carries a quiet "look around your home
+  first" line, and the flightcheck wordmark always leads to the landing
+  page, signed in or not — the HOME tab beside it is the way back in.
+
 - **Model quoting habits no longer fail a compile.** The first two real
   JDs through the jd_evidence contract were refused over re-typing
   conventions, not unfaithfulness: a capitalized first word on a

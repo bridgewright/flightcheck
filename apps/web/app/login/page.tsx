@@ -1,9 +1,9 @@
 "use client";
 
-import { Suspense, useState } from "react";
+import { Suspense, useEffect, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
-import { useSearchParams } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 
 import { safeNextPath } from "../../lib/auth-redirect";
 import { createClient } from "../../lib/supabase/client";
@@ -25,9 +25,28 @@ import {
 
 function LoginForm() {
   const searchParams = useSearchParams();
+  const router = useRouter();
   const nextPath = safeNextPath(searchParams.get("next"));
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  // A signed-in visitor has no business on the login screen, and the back
+  // button brings one here constantly: sign in, land on the first screen,
+  // press back, and without this the trail dead-ends at a sign-in button
+  // for someone already signed in (user report 2026-08-05). A courtesy
+  // redirect, not a guard — proxy.ts owns the guard — so the cheap local
+  // session read is enough; replace() keeps the history walkable.
+  useEffect(() => {
+    let cancelled = false;
+    void createClient()
+      .auth.getSession()
+      .then(({ data }) => {
+        if (!cancelled && data.session) router.replace(nextPath);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [router, nextPath]);
 
   async function continueWithGoogle() {
     setError(null);

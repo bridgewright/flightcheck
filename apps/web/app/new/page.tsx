@@ -1,11 +1,12 @@
 "use client";
 
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 
 import LinkedInPdfHelp from "@/components/LinkedInPdfHelp";
 import type { CreatePackageBody } from "@/lib/types";
-import { ERROR_TEXT, FIELD, FINE_PRINT, MAIN_READING, PAGE_HEADING, PRIMARY_BUTTON, SECTION_HEADING } from "@/lib/ui";
+import { ERROR_TEXT, FIELD, FINE_PRINT, LINK, MAIN_READING, PAGE_HEADING, PRIMARY_BUTTON, SECTION_HEADING } from "@/lib/ui";
 
 function fileToBase64(file: File): Promise<string> {
   return new Promise((resolve, reject) => {
@@ -76,6 +77,15 @@ export default function NewPackagePage() {
   return (
     <main className={`${MAIN_READING} flex min-h-dvh flex-col gap-8`}>
       <h1 className={PAGE_HEADING}>Set up your interview package</h1>
+      {/* A first sign-in lands here with a JD in hand or not at all; the
+          product must never read as "paste a JD or leave" (user direction
+          2026-08-05). */}
+      <p className={FINE_PRINT}>
+        No JD in hand yet?{" "}
+        <Link href="/home" className={LINK}>
+          Look around your home first.
+        </Link>
+      </p>
       <form onSubmit={onSubmit} className="flex flex-col gap-8">
         <fieldset className="flex flex-col gap-3">
           <legend className={`${SECTION_HEADING} mb-2`}>Job description (required)</legend>

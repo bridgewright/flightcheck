@@ -239,7 +239,10 @@ export default async function TopBar({
   return (
     <header className={`border-b ${DIVIDER}`}>
       <div className="mx-auto flex w-full max-w-shell flex-wrap items-center gap-x-4 px-6 sm:px-10 lg:px-16 xl:px-24">
-        <Link href={viewer ? "/home" : "/"} className={`order-1 py-4 ${SECTION_HEADING}`}>
+        {/* The wordmark is the way back OUT of the product, signed in or
+            not (user direction 2026-08-05); the HOME tab beside it is the
+            way back in. */}
+        <Link href="/" className={`order-1 py-4 ${SECTION_HEADING}`}>
           flightcheck
         </Link>
         {viewer ? (
