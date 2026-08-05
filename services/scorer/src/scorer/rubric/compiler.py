@@ -4,11 +4,15 @@ The prompt assembles the JD text, a candidate profile summary, the research
 sweep findings (its citation list is the only web-source pool the model may
 cite), private corpus excerpts (citable as corpus://<doc_id>), and up to two
 few-shot example rubrics. One generate_content call structures the response
-as a Rubric; pydantic validation on the Rubric model is the gate of record
-(citation-less dimensions, bad weights, and broken anchor triples are all
-rejected there). On a ValidationError the compiler retries exactly once,
-appending the validation error text so the model can repair its output; a
-second failure raises RubricCompileError.
+as a Rubric. Two gates run on every response: pydantic validation on the
+Rubric model (citation-less dimensions, bad weights, and broken anchor
+triples are all rejected there), then the F-62 faithfulness check -- every
+content dimension must carry jd_evidence resolving to an exact slice of the
+JD as the model saw it, so research findings and corpus documents can
+corroborate a dimension but never create one. Both kinds of failure share a
+single repair retry: the failure text is appended so the model can repair
+its output, and a second failure of either kind raises RubricCompileError.
+Never more than two generate_content calls per compile.
 """
 from __future__ import annotations
 
@@ -16,13 +20,23 @@ from google.genai import types
 from pydantic import ValidationError
 
 from scorer.config import load_product_config
-from scorer.promptsafe import fence
+from scorer.promptsafe import fence, inline, neutralize_markers
 from scorer.resilience import call_with_retry
 from scorer.rubric.corpus import CorpusDoc
 from scorer.schemas import CandidateProfile, GenAIClientLike, ResearchFindings, Rubric
+from scorer.verbatim import locate_span
 
 _CORPUS_EXCERPT_CHARS = 2000
 _MAX_FEWSHOTS = 2
+# Mirrors SourceCitation.snippet's cap. Deliberately NOT product.toml: this
+# bound is calibrated against evals/suites/rubric_faithfulness, and moving
+# it without re-running that suite would change the product's faithfulness
+# claim with no evidence behind it.
+_JD_EVIDENCE_MAX_CHARS = 300
+# The channel-mislabeling backstop: relabeling content dimensions as
+# "delivery" must not become an escape hatch from the evidence rule, so the
+# cap the prompt states (one to three) is enforced here too.
+_MAX_DELIVERY_DIMS = 3
 
 
 class RubricCompileError(Exception):
@@ -32,8 +46,25 @@ class RubricCompileError(Exception):
 _RULES = (
     "## STRICT RULES\n"
     "- Produce 5 to 8 dimensions, each with a unique kebab-case key.\n"
-    '- At least one dimension must have channel "delivery" (how the candidate sounds:\n'
+    '- One to three dimensions must have channel "delivery" (how the candidate sounds:\n'
     '  pacing, composure, spoken clarity). The rest are channel "content".\n'
+    '- Every channel "content" dimension must carry jd_evidence: a short quote copied\n'
+    "  character for character from the JOB DESCRIPTION block above, at most 300\n"
+    "  characters, proving the ROLE itself demands that dimension -- its\n"
+    "  responsibilities, requirements, or day-to-day language. If no such line\n"
+    "  exists, the dimension does not belong in this rubric.\n"
+    '- A company-values or mission statement never licenses a dimension. "We value\n'
+    '  integrity" is decoration; "own incident response for enterprise customers" is\n'
+    "  a requirement. Quote requirements, not values.\n"
+    "- Research findings and corpus documents corroborate dimensions; they cannot\n"
+    "  create one. A topic that appears only in the research, however often, gets no\n"
+    "  dimension unless the job description itself calls for it.\n"
+    "- Delivery dimensions need no jd_evidence -- set it to null there.\n"
+    "- Weights follow the job description's own emphasis: what it leads with and\n"
+    "  repeats carries the most weight, what it mentions in passing the least.\n"
+    "- The example rubrics below may predate jd_evidence and show null on content\n"
+    "  dimensions. That is their age, not a license -- your content dimensions must\n"
+    "  carry it.\n"
     "- Every dimension must cite at least one source. Use either a research citation url\n"
     "  from the findings above, copied verbatim, or a corpus document cited with url\n"
     '  "corpus://<doc_id>" and the document title.\n'
@@ -53,7 +84,7 @@ _RULES = (
 
 _RETRY_HEADER = (
     "## PREVIOUS ATTEMPT FAILED VALIDATION\n"
-    "Your previous rubric was rejected by schema validation with the errors below.\n"
+    "Your previous rubric was rejected by validation with the problems below.\n"
     "Fix every error and return the full corrected rubric JSON.\n"
 )
 
@@ -128,10 +159,70 @@ def _build_prompt(jd_text: str, profile: CandidateProfile, findings: ResearchFin
     )
 
 
+def _check_faithfulness(rubric: Rubric, jd_as_shown: str) -> tuple[Rubric, list[str]]:
+    """Enforce the jd_evidence contract against the JD as the model saw it.
+
+    Content dimensions: jd_evidence must resolve (scorer.verbatim.locate_span)
+    to an exact slice of `jd_as_shown` no longer than _JD_EVIDENCE_MAX_CHARS.
+    A whitespace-variant claim is rewritten onto the dimension as the exact
+    character-for-character slice; a missing, fabricated, or overlong claim
+    is a problem for the shared repair retry. Delivery dimensions never need
+    evidence, so a value there is resolved-or-nulled silently -- harmless
+    output must not burn the retry. More than _MAX_DELIVERY_DIMS delivery
+    dimensions is a problem (the channel-mislabeling backstop).
+
+    Problem lines land in an instruction position of the retry prompt, and a
+    claimed quote can echo JD text and marker characters, so claims are
+    embedded via promptsafe.inline (F-11a hygiene).
+    """
+    problems: list[str] = []
+    dimensions = []
+    changed = False
+    for dim in rubric.dimensions:
+        located = locate_span(jd_as_shown, dim.jd_evidence)
+        if dim.channel == "content":
+            if located is None:
+                problems.append(
+                    f'dimension "{dim.key}": jd_evidence '
+                    f'"{inline(dim.jd_evidence, 320)}" is not an exact quote '
+                    "from the JOB DESCRIPTION block; copy a short span "
+                    "character for character, or drop the dimension"
+                )
+            elif len(located) > _JD_EVIDENCE_MAX_CHARS:
+                problems.append(
+                    f'dimension "{dim.key}": jd_evidence '
+                    f'"{inline(dim.jd_evidence, 320)}" resolves to '
+                    f"{len(located)} characters of the job description; "
+                    f"quote at most {_JD_EVIDENCE_MAX_CHARS}"
+                )
+            elif located != dim.jd_evidence:
+                dim = dim.model_copy(update={"jd_evidence": located})
+                changed = True
+        elif dim.jd_evidence is not None and located != dim.jd_evidence:
+            dim = dim.model_copy(update={"jd_evidence": located})
+            changed = True
+        dimensions.append(dim)
+    delivery_count = sum(
+        1 for dim in rubric.dimensions if dim.channel == "delivery")
+    if delivery_count > _MAX_DELIVERY_DIMS:
+        problems.append(
+            f'rubric has {delivery_count} channel "delivery" dimensions; at '
+            f"most {_MAX_DELIVERY_DIMS} are allowed, and every other "
+            "dimension is content and needs jd_evidence"
+        )
+    if changed:
+        rubric = rubric.model_copy(update={"dimensions": dimensions})
+    return rubric, problems
+
+
 def compile_rubric(jd_text: str, profile: CandidateProfile, findings: ResearchFindings,
                    corpus: list[CorpusDoc], fewshots: list[Rubric],
                    client: GenAIClientLike) -> Rubric:
-    """One structured call -> validated Rubric; one repair retry on ValidationError."""
+    """One structured call -> validated, JD-faithful Rubric.
+
+    Pydantic and faithfulness failures share one repair retry: at most two
+    generate_content calls, then RubricCompileError.
+    """
     product = load_product_config()
     config = types.GenerateContentConfig(
         response_mime_type="application/json",
@@ -140,25 +231,34 @@ def compile_rubric(jd_text: str, profile: CandidateProfile, findings: ResearchFi
     # F-11a: the JD is truncated to a config length before it ever reaches
     # the prompt — an unbounded JD is both spend and injection surface.
     jd_text = jd_text[:product.limits.jd_compile_max_chars]
+    # Exactly the string fence() puts between the markers: jd_evidence is
+    # checked against the JD as the model saw it, never the raw input.
+    jd_as_shown = neutralize_markers(jd_text)
     prompt = _build_prompt(jd_text, profile, findings, corpus, fewshots)
-    response = call_with_retry(
-        lambda: client.models.generate_content(
-            model=product.models.scorer, contents=prompt, config=config),
-        what="rubric compile",
-    )
-    try:
-        return Rubric.model_validate_json(response.text or "")
-    except ValidationError as first_error:
-        retry_prompt = f"{prompt}\n\n{_RETRY_HEADER}{first_error}"
-        retry_response = call_with_retry(
+
+    def _attempt(contents: str, what: str) -> tuple[Rubric | None, str]:
+        response = call_with_retry(
             lambda: client.models.generate_content(
-                model=product.models.scorer, contents=retry_prompt,
-                config=config),
-            what="rubric compile repair",
+                model=product.models.scorer, contents=contents, config=config),
+            what=what,
         )
         try:
-            return Rubric.model_validate_json(retry_response.text or "")
-        except ValidationError as second_error:
-            raise RubricCompileError(
-                f"rubric failed validation after one retry: {second_error}"
-            ) from second_error
+            rubric = Rubric.model_validate_json(response.text or "")
+        except ValidationError as error:
+            return None, str(error)
+        rubric, problems = _check_faithfulness(rubric, jd_as_shown)
+        if problems:
+            return None, "\n".join(f"- {problem}" for problem in problems)
+        return rubric, ""
+
+    rubric, error_text = _attempt(prompt, "rubric compile")
+    if rubric is not None:
+        return rubric
+    # The repair prompt appends the problems, never the failed response
+    # (pinned by test_invalid_first_response_retries_once_with_error_text).
+    rubric, error_text = _attempt(
+        f"{prompt}\n\n{_RETRY_HEADER}{error_text}", "rubric compile repair")
+    if rubric is not None:
+        return rubric
+    raise RubricCompileError(
+        f"rubric failed validation after one retry: {error_text}")

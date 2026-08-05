@@ -160,10 +160,19 @@ def test_prompt_states_the_strict_rules():
     _compile(fake)
     prompt = fake.calls[0]["contents"]
     assert "5 to 8 dimensions" in prompt
-    assert 'channel "delivery"' in prompt
+    assert 'One to three dimensions must have channel "delivery"' in prompt
     assert '"corpus://<doc_id>"' in prompt
     assert "question-independent" in prompt
     assert "research-sweep" in prompt
+    # F-62: one assertion per faithfulness rule line.
+    assert 'Every channel "content" dimension must carry jd_evidence' in prompt
+    assert "at most 300" in prompt
+    assert "A company-values or mission statement never licenses a dimension" in prompt
+    assert "Quote requirements, not values." in prompt
+    assert "corroborate dimensions; they cannot" in prompt
+    assert "Delivery dimensions need no jd_evidence -- set it to null there." in prompt
+    assert "Weights follow the job description's own emphasis" in prompt
+    assert "That is their age, not a license" in prompt
 
 
 def _citationless_rubric_dict() -> dict:
@@ -226,7 +235,11 @@ def test_jd_is_truncated_to_the_config_length_before_the_prompt(monkeypatch):
     })
     monkeypatch.setattr("scorer.rubric.compiler.load_product_config",
                         lambda: tiny)
-    fake = FakeGenAI([json.dumps(_rubric_dict())])
+    doc = _rubric_dict()
+    for dim in doc["dimensions"]:
+        if dim["channel"] == "content":
+            dim["jd_evidence"] = "J" * 10   # quotes THIS test's JD verbatim
+    fake = FakeGenAI([json.dumps(doc)])
     compile_rubric("J" * 100, PROFILE, FINDINGS, CORPUS, [], fake)
     prompt = fake.calls[0]["contents"]
     assert "J" * 40 in prompt

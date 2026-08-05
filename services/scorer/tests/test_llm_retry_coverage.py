@@ -134,9 +134,11 @@ def test_the_known_call_sites_are_all_still_present():
         len(_model_calls(ast.parse((SRC / relative).read_text())))
         for relative in PRODUCTION_LLM_MODULES
     )
-    assert total == 11, (
-        "production model call sites changed -- 9 generate_content plus 2 "
-        "file uploads as of v0.6; confirm the new one backs off"
+    assert total == 10, (
+        "production model call sites changed -- 8 generate_content plus 2 "
+        "file uploads as of v0.11: F-62 merged the rubric compiler's first "
+        "and repair calls into one shared attempt helper. Confirm any new "
+        "call site backs off"
     )
 
 
