@@ -4,7 +4,10 @@ Pure assembly -- no LLM calls. The verdict comes from product-config
 thresholds applied to the weighted overall score and the per-dimension
 floor. Report copy (strengths, gaps, drills) is built from rubric anchor
 language so every line traces back to a BARS behavior, not to free-form
-judge prose.
+judge prose. The per-dimension key_span and strengths/weaknesses (F-48,
+F-03b) are judge-authored upstream and pass through inside
+dimension_scores; the authored prose is linted here like every other
+free-text field the report ships.
 """
 from __future__ import annotations
 
@@ -47,9 +50,13 @@ LIMITED_EVIDENCE_NOTE = (
 _GAP_THRESHOLD = 3.5
 
 # F-03 headline: one deterministic sentence synthesized from the verdict and
-# the weakest dimension -- always populated, never judge-authored (a judge
-# prompt change carries calibration risk that evals only surface at the
-# release gate). Third person about the performance, never about the person.
+# the weakest dimension -- always populated, never judge-authored. Kept
+# deliberately independent of the judge-authored fields F-03b/F-48 added
+# (key spans, per-dimension strengths/weaknesses): the judge's voice reaches
+# the report through dimension_scores, while the headline is the report's
+# first line, whose length ceiling and register are guaranteed here rather
+# than requested from a model. Third person about the performance, never
+# about the person.
 _HEADLINE_MAX_CHARS = 120
 
 _HEADLINE_TEMPLATES = {
@@ -204,6 +211,23 @@ def compile_report(
             cfg.forbidden_patterns,
             score.evidence_quotes,
         )
+        # F-03b: the judge-authored per-dimension lists are free-text the
+        # report ships, so they take the same lint as the rationale, with
+        # the same per-dimension quote exemption (an authored item may embed
+        # the candidate's own verbatim words). key_span needs no lint of its
+        # own: it is enforced upstream to be a substring of the rationale
+        # linted above.
+        for field_name, items in (
+            ("strengths", score.strengths),
+            ("weaknesses", score.weaknesses),
+        ):
+            for i, item in enumerate(items):
+                _lint_field(
+                    f"dimension_scores[{score.dimension_key}].{field_name}[{i}]",
+                    item,
+                    cfg.forbidden_patterns,
+                    score.evidence_quotes,
+                )
     for i, obs in enumerate(observations):
         _lint_field(f"delivery_observations[{i}].note", obs.note, cfg.forbidden_patterns, [])
     for i, score in enumerate(ranked[:2]):
