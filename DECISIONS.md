@@ -1599,3 +1599,13 @@ rubric; single-quote evidence proves too thin for dimensions that earn their
 license across several JD lines; or the private few-shot rubrics are
 refreshed with evidence-bearing examples and the disclaimer rule in the
 prompt can be retired.
+
+**Addendum, same day.** The first real JD through the contract failed its
+recompile on one character: the model quoted a mid-sentence clause as its
+evidence and capitalized the first word, as quoting convention teaches, and
+exact-substring correctly refused it twice. The resolver now accepts a
+case-insensitive match LAST (after exact, then whitespace-normalized), still
+resolving to the haystack's character-for-character slice — salvage, not
+fabrication: what is stored and rendered is the JD's own casing. The eval
+suite's strict no-salvage machinery check is unchanged on purpose; it
+measures the compiler's stored output, which remains exact by construction.

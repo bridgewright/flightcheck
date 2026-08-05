@@ -33,3 +33,23 @@ def test_none_and_blank_resolve_to_none():
 def test_regex_metacharacters_in_the_claim_stay_literal():
     haystack = "Cut cost by 30% (per quarter) via caching."
     assert locate_span(haystack, "30% (per quarter)") == "30% (per quarter)"
+
+
+def test_a_capitalized_quote_start_resolves_to_the_exact_slice():
+    # The first real JD through the F-62 contract failed on one character:
+    # the model quoted a mid-sentence clause and capitalized its first word,
+    # as quoting convention teaches. A case-insensitive match is salvage,
+    # not fabrication, because what gets stored is still the haystack's own
+    # character-for-character slice.
+    haystack = "As the services venture, we tackle the hardest problems."
+    located = locate_span(haystack, "We tackle the hardest problems.")
+    assert located == "we tackle the hardest problems."
+    assert located in haystack
+
+
+def test_exact_case_match_wins_over_a_case_variant_elsewhere():
+    # Priority is exact, then whitespace, then case: when the claimed casing
+    # exists verbatim, it is returned untouched even if another casing of
+    # the same words appears earlier in the haystack.
+    haystack = "we ship weekly. Elsewhere: We ship weekly."
+    assert locate_span(haystack, "We ship weekly.") == "We ship weekly."

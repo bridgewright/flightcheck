@@ -15,11 +15,15 @@ import re
 def locate_span(haystack: str, span: str | None) -> str | None:
     """The exact substring of `haystack` the claimed span points at.
 
-    An exact match wins. A whitespace-normalized match is accepted ONLY by
-    resolving it back to the exact substring as it appears in the haystack:
-    the stored value must be a character-for-character slice. Anything else
-    resolves to None -- a fabricated quote is worse than none, because the
-    product's claim is that its verdicts are honest and arguable.
+    An exact match wins. A whitespace-normalized match, then a
+    case-insensitive one, is accepted ONLY by resolving it back to the exact
+    substring as it appears in the haystack: the stored value must be a
+    character-for-character slice. The case fallback exists because quoting
+    convention teaches a model to capitalize a quote that starts
+    mid-sentence, and the first real JD through the F-62 contract failed on
+    exactly that one character. Anything else resolves to None -- a
+    fabricated quote is worse than none, because the product's claim is
+    that its verdicts are honest and arguable.
     """
     if span is None or not span.strip():
         return None
@@ -27,4 +31,7 @@ def locate_span(haystack: str, span: str | None) -> str | None:
         return span
     pattern = r"\s+".join(re.escape(token) for token in span.split())
     match = re.search(pattern, haystack)
+    if match is not None:
+        return match.group(0)
+    match = re.search(pattern, haystack, re.IGNORECASE)
     return match.group(0) if match else None

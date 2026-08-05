@@ -1,5 +1,17 @@
 # Changelog
 
+## [Unreleased]
+
+### Fixed
+
+- **A capitalized quote start no longer fails a compile.** The first real
+  JD through the jd_evidence contract was refused twice over one
+  character: the model capitalized the first word of a mid-sentence
+  clause, as quoting convention teaches. The span resolver now accepts a
+  case-insensitive match last, after exact and whitespace-normalized, and
+  still stores only the JD's own character-for-character slice.
+  DECISIONS 044 addendum.
+
 ## [0.11.0] — 2026-08-05
 
 ### Changed
