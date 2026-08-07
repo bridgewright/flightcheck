@@ -1,0 +1,47 @@
+{
+  "version": 0,
+  "note": "Placeholder bands until the AVM reference measurements land (worklog Round 1). Scorers surface status=placeholder in their metadata; a placeholder band scores like any other but reads as provisional in every report.",
+  "axes": {
+    "response_latency_p90_s": {
+      "metric": "response_latency_s.p90",
+      "band": [0.5, 2.5],
+      "status": "placeholder",
+      "measurement_only": true
+    },
+    "talk_time_ratio": {
+      "metric": "talk_time_ratio",
+      "band": [0.2, 0.45],
+      "status": "placeholder"
+    },
+    "turn_length_p50_s": {
+      "metric": "turn_length_p50_s",
+      "band": [4, 18],
+      "status": "placeholder"
+    },
+    "questions_per_turn_mean": {
+      "metric": "questions_per_turn_mean",
+      "band": [0.5, 1.2],
+      "status": "placeholder"
+    },
+    "multi_question_turn_count": {
+      "metric": "multi_question_turn_count",
+      "band": [0, 1],
+      "status": "placeholder"
+    },
+    "morgan_filler_rate_per_min": {
+      "metric": "morgan_filler_rate_per_min",
+      "band": [0.5, 4.0],
+      "status": "placeholder"
+    },
+    "morgan_f0_variance": {
+      "metric": "morgan_f0_variance",
+      "band": [400, 2000],
+      "status": "placeholder"
+    },
+    "morgan_interruption_count": {
+      "metric": "morgan_interruption_count",
+      "band": [0, 1],
+      "status": "placeholder"
+    }
+  }
+}

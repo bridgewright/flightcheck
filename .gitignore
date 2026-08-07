@@ -19,6 +19,12 @@ evals/suites/bakeoff/manual/*.yaml
 .superpowers/
 # controlled delivery-eval clips are voice recordings (DECISIONS #005)
 evals/suites/delivery_discrimination/clips/*.wav
+# Morgan naturalness recordings are voice recordings (DECISIONS #005) —
+# session copies and AVM references both; only the READMEs are committed
+evals/suites/morgan_naturalness/clips/*
+!evals/suites/morgan_naturalness/clips/README.md
+evals/suites/morgan_naturalness/reference/*
+!evals/suites/morgan_naturalness/reference/README.md
 # generated eval outputs (the numbers of record are committed verbatim as an
 # evals/reports/ snapshot per release, cited by docs/releases + CHANGELOG)
 evals/out/
