@@ -30,6 +30,7 @@ dependencies = [
 
 [project.scripts]
 scorer-evals = "scorer.evals_l3.regression:main"
+scorer-morgan-metrics = "scorer.delivery.morgan_cli:main"
 
 [dependency-groups]
 dev = [
