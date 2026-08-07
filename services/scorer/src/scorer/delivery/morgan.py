@@ -135,19 +135,33 @@ def turn_stats(segments: list[TranscriptSegment]) -> TurnStats:
 def morgan_interruptions(
     segments: list[TranscriptSegment], min_overlap_s: float = 0.3
 ) -> tuple[int, float]:
-    """Count Morgan starts inside candidate speech and qualifying overlap."""
+    """Count Morgan starts inside candidate speech, and total double-talk.
+
+    The two numbers answer different questions and deliberately do not
+    filter each other. The COUNT is Morgan's fault: an interviewer segment
+    beginning strictly inside a candidate span, over a floor that discards
+    transcript timestamp jitter. The TOTAL is every overlapping
+    interviewer x candidate second whoever started it -- with
+    `interrupt_response: false` a candidate talking over Morgan is the
+    common shape, and it is the acoustic-echo diagnostic the bar wants
+    (bar.md, "keeps out of the candidate's way"), so scoping the total to
+    interruptions would report 0.0 for exactly the sessions worth reading.
+    """
     interviewers = [segment for segment in segments if segment.speaker == "interviewer"]
     candidates = [segment for segment in segments if segment.speaker == "candidate"]
     interrupted: set[int] = set()
     total_overlap_s = 0.0
     for index, interviewer in enumerate(interviewers):
         for candidate in candidates:
-            if not candidate.start_s < interviewer.start_s < candidate.end_s:
+            overlap_s = min(interviewer.end_s, candidate.end_s) - max(
+                interviewer.start_s, candidate.start_s
+            )
+            if overlap_s <= 0:
                 continue
-            overlap_s = min(interviewer.end_s, candidate.end_s) - interviewer.start_s
-            if overlap_s + 1e-9 >= min_overlap_s:
+            total_overlap_s += overlap_s
+            started_inside = candidate.start_s < interviewer.start_s < candidate.end_s
+            if started_inside and overlap_s + 1e-9 >= min_overlap_s:
                 interrupted.add(index)
-                total_overlap_s += overlap_s
     return len(interrupted), total_overlap_s
 
 

@@ -94,7 +94,7 @@ def test_turn_stats_count_questions_and_durations():
     }
 
 
-def test_interruptions_apply_floor_and_sum_qualifying_pair_overlaps():
+def test_interruptions_apply_floor_and_sum_every_overlapping_pair():
     segments = [
         _seg(0, 4, "candidate"),
         _seg(2, 3, "interviewer"),  # 1.0 s: counts
@@ -106,7 +106,17 @@ def test_interruptions_apply_floor_and_sum_qualifying_pair_overlaps():
     count, overlap = morgan_interruptions(segments)
 
     assert count == 2
-    assert overlap == pytest.approx(1.3)
+    assert overlap == pytest.approx(1.5)  # the jitter pair still overlapped
+
+
+def test_overlap_total_counts_candidate_barge_in_that_is_not_an_interruption():
+    """Double-talk the candidate started is echo evidence, not Morgan's fault."""
+    segments = [_seg(0, 4, "interviewer"), _seg(2, 6, "candidate")]
+
+    count, overlap = morgan_interruptions(segments)
+
+    assert count == 0
+    assert overlap == pytest.approx(2.0)
 
 
 def test_response_latencies_use_direct_transitions_and_exclude_negatives():
@@ -151,6 +161,25 @@ def test_compute_morgan_metrics_on_synthetic_wav(tmp_path):
     assert "text" not in doc.model_dump_json()
 
 
+def test_latency_percentiles_interpolate_over_small_samples(tmp_path):
+    wav = tmp_path / "sample.wav"
+    _wav(wav, 8.0)
+    segments = [
+        _seg(0, 1, "candidate", "one"),
+        _seg(1.5, 2, "interviewer", "Next?"),  # 0.5
+        _seg(2.5, 3, "candidate", "two"),
+        _seg(4, 4.5, "interviewer", "And?"),  # 1.0
+        _seg(5, 5.5, "candidate", "three"),
+        _seg(7.5, 8, "interviewer", "Last?"),  # 2.0
+    ]
+
+    latency = compute_morgan_metrics(wav, segments).metrics.response_latency_s
+
+    # Linear interpolation between the two highest of three samples.
+    assert latency.mean == pytest.approx(3.5 / 3)
+    assert latency.p90 == pytest.approx(1.8)
+
+
 def test_cli_reuses_transcript_cache_without_constructing_client(tmp_path, monkeypatch, capsys):
     suite = tmp_path / "suite"
     out = tmp_path / "out"
@@ -183,6 +212,43 @@ def test_cli_reuses_transcript_cache_without_constructing_client(tmp_path, monke
     assert written["segments_path"].startswith("transcripts/s014.")
     assert "text" not in json.dumps(written)
     assert "s014" in capsys.readouterr().out
+
+
+def test_cli_carries_each_case_source_into_its_metrics_document(tmp_path, monkeypatch):
+    suite = tmp_path / "suite"
+    out = tmp_path / "out"
+    suite.mkdir()
+    _wav(suite / "clip.wav")
+    (suite / "cases.json").write_text(
+        json.dumps(
+            {
+                "cases": [
+                    {"id": "ref01", "audio": "clip.wav", "source": "reference_avm"},
+                    {"id": "s014", "audio": "clip.wav"},
+                ]
+            }
+        ),
+        encoding="utf-8",
+    )
+    monkeypatch.setattr(morgan_cli, "_make_client", lambda: object())
+    monkeypatch.setattr(
+        morgan_cli,
+        "transcribe_verbatim",
+        lambda _audio, _client: [
+            _seg(0, 0.5, "interviewer", "Hello?"),
+            _seg(1, 2, "candidate", "Hi"),
+        ],
+    )
+
+    assert morgan_cli.main(["--suite", str(suite), "--out", str(out)]) == 0
+
+    def _source(case_id: str) -> str:
+        return json.loads((out / f"{case_id}.metrics.json").read_text(encoding="utf-8"))[
+            "source"
+        ]
+
+    assert _source("ref01") == "reference_avm"
+    assert _source("s014") == "morgan"
 
 
 def test_cli_skips_absent_audio(tmp_path, capsys):

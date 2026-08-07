@@ -67,8 +67,16 @@ def main(argv: list[str] | None = None) -> int:
                 json.dumps([segment.model_dump() for segment in segments], indent=2) + "\n",
                 encoding="utf-8",
             )
+        # The manifest owns `source`: the report splits reference_avm clips
+        # into their own table, so a hardcoded "morgan" would leave that
+        # section permanently empty.
+        source = case.get("source")
         doc = compute_morgan_metrics(wav, segments).model_copy(
-            update={"case_id": case_id, "segments_path": relative_segments.as_posix()}
+            update={
+                "case_id": case_id,
+                "source": source if isinstance(source, str) else "morgan",
+                "segments_path": relative_segments.as_posix(),
+            }
         )
         out.mkdir(parents=True, exist_ok=True)
         metrics_file = out / f"{case_id}.metrics.json"
