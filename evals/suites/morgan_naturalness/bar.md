@@ -106,6 +106,11 @@ jitter), why this target, status, open questions.
 - How measured: DSP pyin over Morgan-side spans.
 - Target: PLACEHOLDER band from AVM measurement.
 - Status: proposed.
+- Open questions: unvoiced or too-short audio yields no f0 number at all;
+  the metrics JSON carries an honest null and the report says
+  "unmeasured", but in v0 an unmeasured axis still scores 0 like an
+  out-of-band value. Round 1 decides whether unmeasured should instead be
+  excluded from the case's score.
 
 ### Axis: keeps out of the candidate's way
 - Definition: Morgan does not start talking while the candidate still is.

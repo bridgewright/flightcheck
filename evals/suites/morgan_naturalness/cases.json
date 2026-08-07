@@ -1,4 +1,4 @@
 {
-  "note": "Case manifest for the Morgan naturalness suite. Audio lives in clips/ and reference/ (gitignored, voice data); this manifest carries no audio and no transcript text. lever_state names the prompt/config state a Morgan recording was made under; held_out marks the AVM recording excluded from tuning discussions.",
+  "note": "Case manifest for the Morgan naturalness suite. Audio lives in clips/ and reference/ (gitignored, voice data); this manifest carries no audio and no transcript text. source is 'morgan' for session recordings and 'reference_avm' for AVM references (the metrics CLI stamps it into each case's JSON and the report splits its tables on it); lever_state names the prompt/config state a Morgan recording was made under; held_out marks the AVM recording excluded from tuning discussions.",
   "cases": []
 }

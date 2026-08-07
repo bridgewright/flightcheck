@@ -7,7 +7,9 @@ export interface MorganMetricsCase {
   audio_sha256: string;
   duration_s: number;
   segments_path: string;
-  metrics: Record<string, number | Record<string, number>>;
+  // A null metric value is honest "could not measure" (e.g. f0 variance on
+  // unvoiced audio) — distinct from an ABSENT field, which is schema drift.
+  metrics: Record<string, number | null | Record<string, number | null>>;
 }
 
 const outputDirectory = path.resolve(

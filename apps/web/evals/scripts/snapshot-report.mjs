@@ -60,7 +60,14 @@ function renderTable(group) {
     `| ${header.map(() => "---").join(" | ")} |`,
   ];
   for (const row of group) {
-    const values = axisNames.map((axis) => row.scores[axis]?.actual ?? "missing");
+    // Three renderings on purpose: a number is a measurement, "unmeasured"
+    // is an honest null from the DSP (e.g. f0 on unvoiced audio), and
+    // "MISSING" is schema drift between writer and reader — the loud one.
+    const values = axisNames.map((axis) => {
+      const cell = row.scores[axis];
+      if (cell?.unmeasured) return "unmeasured";
+      return cell?.actual ?? "MISSING";
+    });
     lines.push(
       `| ${[row.caseId, row.source, ...values].map(escapeCell).join(" | ")} |`,
     );
