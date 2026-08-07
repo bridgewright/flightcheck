@@ -1,0 +1,24 @@
+{
+  "case_id": "synthetic",
+  "source": "synthetic",
+  "audio_sha256": "0000000000000000",
+  "duration_s": 300.0,
+  "segments_path": "transcripts/none.segments.json",
+  "metrics": {
+    "talk_time_ratio": 0.38,
+    "morgan_speaking_s": 114.0,
+    "candidate_speaking_s": 186.0,
+    "turn_count": 8,
+    "turn_length_mean_s": 12.1,
+    "turn_length_p50_s": 9.8,
+    "turn_length_max_s": 41.0,
+    "questions_per_turn_mean": 1.1,
+    "multi_question_turn_count": 1,
+    "morgan_interruption_count": 0,
+    "overlap_total_s": 0.0,
+    "response_latency_s": { "mean": 1.9, "p90": 3.2 },
+    "morgan_wpm_overall": 168.2,
+    "morgan_filler_rate_per_min": 1.4,
+    "morgan_f0_variance": 812.5
+  }
+}
