@@ -28,6 +28,15 @@ root it does not exist.
   - `bakeoff/` — W1 S2S provider bake-off: latency, stability, and
     scoring-channel audio discrimination. Run outputs committed under
     `bakeoff/out/`. Decision probe, not release-gated (DECISIONS #002).
+  - `morgan_naturalness/` — the interviewer's conversational-surface loop
+    (F-69): `bar.md` is the operational bar, `worklog.md` records the
+    discussions that produced it, and the recordings it measures (session
+    copies and ChatGPT-AVM references) stay local under `clips/` and
+    `reference/` (DECISIONS #005). Metrics are precomputed by
+    `scorer-morgan-metrics`; the runner is Evalite in `apps/web`
+    (`npm run eval:morgan`). **Report-only: this suite is NOT part of the
+    release gate** and joins it only when the bar has survived several
+    cycles unchanged (DECISIONS #047).
   - `vad_bakeoff/` — F-06 turn-detection probe (`probe.py`): `semantic_vad`
     against `server_vad` + `create_response: false` over three scripted
     tapes, with eight full server-event logs committed under

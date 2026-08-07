@@ -1741,3 +1741,49 @@ path) actually misfired.
   is chosen (the breadcrumb set may then shrink to what proved useful), or
   a customer-facing incident needs the trail server-side (then the
   complete-payload option earns its schema).
+
+## 047 — Morgan improves by loop, and the loop's bar is a public artifact (2026-08-07)
+
+**Context.** F-69. The operator compared Morgan with ChatGPT Advanced
+Voice Mode on the same underlying realtime model family and found AVM
+markedly more natural — fillers, pacing, the feel of turn-taking. The gap
+lives in levers outside the model (the instructions' speech-style
+contract, turn policy, voice and output settings, audio chain). The
+operator's directive: close it with an eval-driven loop, not one-off
+prompt fiddling, and make defining the bar itself a recorded, public part
+of the work.
+
+- **Chosen — a measured loop with a hybrid runner, report-only until the
+  bar earns trust.** An operational bar (`evals/suites/morgan_naturalness/
+  bar.md`, every axis carrying definition, exact metric, band and status)
+  plus a worklog of the discussions that produced it; a fixed case set of
+  5 to 10 recordings (frozen Morgan baselines as the trend line, one or
+  two fresh short sessions per lever change, operator-recorded AVM
+  references with one held out); Python precomputes every number that
+  requires listening (`scorer-morgan-metrics`, reusing the delivery DSP
+  with inverted speaker labels plus native turn metrics), and Evalite —
+  the vitest-based TypeScript eval runner — is the loop cockpit in
+  apps/web, reading precomputed JSON and comparing against
+  `bar.thresholds.json`. One lever, one run, one worklog entry, one
+  committed report per cycle. The suite gates nothing until the bar has
+  survived several cycles unchanged.
+- **Rejected — tuning by ear:** the exact practice the loop replaces; a
+  second person cannot verify an ear.
+- **Rejected — one eval stack (extend scorer-evals only):** fewer moving
+  parts, but the loop cockpit belongs where the iteration happens and
+  where watch-mode ergonomics exist; the seam is honest — anything that
+  must LISTEN stays in Python, the TS side reads numbers.
+- **Rejected — automated prompt optimization first (DSPy and kin):** an
+  optimizer pointed at an unvalidated bar optimizes the wrong thing
+  faster; revisit after at least two manual cycles.
+- **Rejected — gating releases on the new suite now:** R1 cuts scope, not
+  quality, and a placeholder band as a release gate is fake quality.
+  Promote to the gate only when the bar stops moving.
+- **Boundary decided with it:** turn-system levers (VAD parameters,
+  client response policy) stay behind F-67's measure-first process
+  (DECISIONS 046). The loop may produce evidence that implicates them —
+  filed to F-67 through the worklog — and never tunes around them.
+- **Revisit when:** the bar survives three consecutive cycles unchanged
+  (promote to release gate); recordings become the iteration bottleneck
+  (build the headless scripted-session harness on realtime_probe); or two
+  manual cycles complete (consider optimizer-assisted lever search).
