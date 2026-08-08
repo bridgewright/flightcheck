@@ -169,6 +169,9 @@ describe("TrendLine", () => {
     expect(labelLefts).toHaveLength(6);
     expect(labelLefts[0]).toBe(dotLefts[0]);
     expect(labelLefts[5]).toBe(dotLefts[1]);
+    expect(
+      markup.match(/data-slot-label[^>]*-translate-x-1\/2/g),
+    ).toHaveLength(6);
   });
 
   it("keeps the printed score inside the wrapper at the top of the scale", () => {
