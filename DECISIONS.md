@@ -2068,6 +2068,18 @@ accents beyond the ivory/brown core.
   enforceable by the existing scans.
 - **Revisit when:** packages exceed ~8 sessions or a multi-package
   comparison view appears — then a library earns its keep.
+- **Amended same day, from adversarial review:** measured contrast
+  killed the pastel STROKE — sky on paper is 1.26:1, below the
+  hairline grid's own 1.23:1 "decorative only" rating, so a sky line
+  was indistinguishable from the rules behind it. The line is drawn in
+  ink-muted (5.95:1) and the pastel moved to an area wash under it,
+  which is the role a pastel can actually carry. Second review-driven
+  change: all chart text and dots render as HTML positioned over a
+  graphics-only stretched SVG, because viewBox-scaled SVG text hit
+  ~6 px on phones. Accepted knowingly: the sky area occludes grid
+  lines inside the fill (ordinary area-chart behavior), and chart
+  slopes vary with viewport aspect (inherent to responsive stretch;
+  strokes stay uniform via non-scaling-stroke).
 
 ## 055 — The answer-end gap loses 0.6 seconds, at the debounce, not the VAD (2026-08-08)
 

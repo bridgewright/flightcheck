@@ -16,28 +16,39 @@
   are the raw material for judging the coaching itself later. Coaching
   is generated right after scoring, never delays or fails a report,
   and is not produced for sessions the eligibility gate refused to
-  score. The session page grew sub-tabs to hold it: Report, Transcript,
-  and Study — the last collecting this session's saved suggestions and
-  its review (what went well, what did not, the expressions worth
-  keeping, and the questions from this session worth having an answer
-  to, each with a model answer built from the candidate's own strongest
-  material and labelled as generated). Requires migration 010.
+  score. The session page grew sub-tabs to hold it, and a session now
+  opens on the conversation itself: Transcript is the first tab, the
+  verdict and report keep their own tab, and the transcript reads as
+  chat bubbles with each answer's check sitting under it — opening a
+  check is a card that leads with the better answer, then the why,
+  then what was actually said. Very short answers are left alone.
+  Requires migration 010.
 
-- **A Study tab that aggregates the package.** Every bookmarked
-  suggestion, organized by session and linking back to it, plus a
-  package-level summary built on demand: the recurring problems across
-  sessions, an improvement strategy, the priority expressions, and the
-  job's core questions with model answers to memorize. The summary
-  knows exactly which sessions it was built from and says so when new
-  ones have scored since; rebuilding is a button, never a silent side
-  effect. Exportable as Markdown and PDF through the same two-format
-  door the report already has. Requires migration 011.
+- **Study notes live inside each session.** Bookmarking a suggestion
+  builds the session's study notes: every saved item becomes an
+  interviewer-question and answer set — the question, the better
+  answer, what you said, and why — joined by the session's core
+  questions with model answers, the expressions worth keeping, and the
+  session review. Exportable per session as Markdown or PDF in plain
+  question-and-answer form: a wrong-answer notebook to memorize from.
+  Nothing is built on demand and nothing goes stale — it all derives
+  from artifacts the scoring pass already made plus the reader's own
+  bookmarks. (An earlier in-development shape — a package-level Study
+  tab with a generated guide behind a button — was superseded by this
+  before any release carried it; DECISIONS 053. Its `study_materials`
+  table ships dormant. Requires migration 011.)
 
 - **The home tab answers "am I getting better".** The signed-in home
   composes the progress screen's instruments into a glance dashboard —
   overall score trend, per-dimension trajectories, and the recurring
   gaps when there are any — above the session list it already had.
-  The full progress screen stays for the detail.
+  The full progress screen stays for the detail. Every rubric trend
+  draws as a line chart: a tall overall line with all six package
+  sessions on the axis (scored ones plotted, future ones visibly
+  waiting) and per-dimension sparklines, the data line in ink over a
+  pastel wash, because the first shape — fixed-width bars — collapsed
+  into an unreadable smear the moment the column narrowed
+  (DECISIONS 054).
 
 - **Feedback becomes a form that remembers.** The footer's Feedback
   door stops being a mailto: a five-star rating in half-star steps
