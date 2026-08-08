@@ -1,0 +1,4 @@
+# make_golden.sh regenerates golden.wav locally; audio is never committed
+# (DECISIONS #005). The repo-root rules anchor on this suite's clips/ and
+# reference/ directories, so this directory carries its own.
+*.wav
