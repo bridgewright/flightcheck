@@ -1,3 +1,7 @@
+"""Phase 0 gave these eight routes 501 stub bodies; every one is now
+implemented (F-71 feedback, F-73 coaching, F-74 study) and behaviour-
+tested in its own suite. What survives batch-wide is the auth floor:
+none of them answers without the worker bearer."""
 import pytest
 from fastapi.testclient import TestClient
 
@@ -5,7 +9,6 @@ from fakes import FakeDatabase, FakeGenAI, FakeStorage
 from scorer.api.app import create_app
 
 TOKEN = "phase0-token"
-AUTH = {"Authorization": f"Bearer {TOKEN}"}
 
 
 @pytest.fixture
@@ -24,8 +27,5 @@ def client(monkeypatch):
     ("get", "/api/packages/package-1/study"),
     ("get", "/api/packages/package-1/bookmarks"),
 ])
-def test_phase0_routes_require_auth_and_return_501(client, method, path):
+def test_batch2_routes_require_auth(client, method, path):
     assert getattr(client, method)(path).status_code == 401
-    response = getattr(client, method)(path, headers=AUTH)
-    assert response.status_code == 501
-    assert response.json()["code"] == "not-implemented"

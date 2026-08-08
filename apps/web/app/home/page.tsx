@@ -326,11 +326,19 @@ export default async function HomePage({
             trends={dimensionTrends(progress.sessions)}
             meta={dimensionMeta(outcome.rubric)}
           />
-          <ProgressFocus
-            entries={progress.sessions}
-            issues={recurringIssues(progress.sessions)}
-            meta={dimensionMeta(outcome.rubric)}
-          />
+          {(() => {
+            // On the glance dashboard the recurring-focus block earns its
+            // place only when something recurs; its explain-the-threshold
+            // empty state belongs to /progress, not here.
+            const issues = recurringIssues(progress.sessions);
+            return issues.gaps.length > 0 || issues.weakDimensions.length > 0 ? (
+              <ProgressFocus
+                entries={progress.sessions}
+                issues={issues}
+                meta={dimensionMeta(outcome.rubric)}
+              />
+            ) : null;
+          })()}
           <p className="text-fine">
             <Link href="/progress" className={LINK}>
               Full progress
