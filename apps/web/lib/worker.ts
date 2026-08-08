@@ -14,11 +14,17 @@ import {
 } from "@/lib/request-id";
 import type {
   CreatePackageBody,
+  FeedbackRow,
+  FeedbackStatus,
   CreateSessionResponse,
   OrderRow,
   PackageRow,
+  PackageBookmarks,
+  PackageStudy,
+  ParaphraseMarks,
   PackageStatus,
   SessionRow,
+  SessionCoaching,
   SessionStatus,
   TranscriptSegment,
   UsageMetrics,
@@ -614,4 +620,46 @@ export async function authorizeViewerSession(
     return { ok: false, status: 403 };
   }
   return { ok: true, value: { session, pkg } };
+}
+
+export async function submitFeedback(body: { user_id: string; rating_half_stars: number; body: string; package_id?: string }): Promise<{ feedback_id: string }> {
+  return workerJson("POST /api/feedback", await workerFetch("/api/feedback", { method: "POST", body: JSON.stringify(body) }));
+}
+
+export async function listFeedback(status?: FeedbackStatus, limit?: number): Promise<FeedbackRow[]> {
+  const query = new URLSearchParams();
+  if (status !== undefined) query.set("status", status);
+  if (limit !== undefined) query.set("limit", String(limit));
+  const path = `/api/feedback${query.size ? `?${query}` : ""}`;
+  return workerJson(`GET ${path}`, await workerFetch(path));
+}
+
+export async function setFeedbackStatus(feedbackId: string, status: FeedbackStatus): Promise<void> {
+  const path = `/api/feedback/${encodeURIComponent(feedbackId)}`;
+  await workerJson(`PATCH ${path}`, await workerFetch(path, { method: "PATCH", body: JSON.stringify({ status }) }));
+}
+
+export async function getSessionCoaching(sessionId: string): Promise<SessionCoaching> {
+  const path = `/api/sessions/${encodeURIComponent(sessionId)}/coaching`;
+  return workerJson(`GET ${path}`, await workerFetch(path));
+}
+
+export async function setParaphraseMark(sessionId: string, turnIndex: number, mark: { reaction: "up" | "down" | null; bookmarked: boolean }): Promise<ParaphraseMarks> {
+  const path = `/api/sessions/${encodeURIComponent(sessionId)}/coaching/marks`;
+  return workerJson(`PATCH ${path}`, await workerFetch(path, { method: "PATCH", body: JSON.stringify({ turn_index: turnIndex, mark }) }));
+}
+
+export async function getPackageStudy(packageId: string): Promise<PackageStudy> {
+  const path = `/api/packages/${encodeURIComponent(packageId)}/study`;
+  return workerJson(`GET ${path}`, await workerFetch(path));
+}
+
+export async function generatePackageStudy(packageId: string): Promise<void> {
+  const path = `/api/packages/${encodeURIComponent(packageId)}/study`;
+  await workerJson(`POST ${path}`, await workerFetch(path, { method: "POST" }));
+}
+
+export async function getPackageBookmarks(packageId: string): Promise<PackageBookmarks> {
+  const path = `/api/packages/${encodeURIComponent(packageId)}/bookmarks`;
+  return workerJson(`GET ${path}`, await workerFetch(path));
 }

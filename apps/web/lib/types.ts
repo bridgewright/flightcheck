@@ -222,6 +222,25 @@ export interface TranscriptSegment {
   text: string;
 }
 
+export type FeedbackStatus = "new" | "seen" | "archived";
+export interface FeedbackRow { id: string; user_id: string; package_id: string | null; rating_half_stars: number; body: string; status: FeedbackStatus; created_at: string | null; updated_at: string | null; }
+export interface ParaphraseItem { turn_index: number; verdict: "good" | "improve"; source_quote: string; suggestion: string; why: string; }
+export interface SessionParaphrases { schema_version: number; generated_at: string; turn_count: number; items: ParaphraseItem[]; }
+export interface InsightExpression { turn_index: number; said_verbatim: string; better: string; why: string; }
+export interface InsightAnswer { question: string; model_answer: string; based_on_quotes: string[]; }
+export interface SessionInsights { schema_version: number; generated_at: string; did_well: string[]; did_poorly: string[]; must_keep: InsightExpression[]; must_answer: InsightAnswer[]; }
+export interface ParaphraseMark { reaction: "up" | "down" | null; bookmarked: boolean; }
+export interface ParaphraseMarks { schema_version: number; marks: Record<string, ParaphraseMark>; }
+export interface SessionCoaching { session_id: string; paraphrases: SessionParaphrases | null; insights: SessionInsights | null; marks: ParaphraseMarks; }
+export interface StudyProblem { title: string; description: string; dimension_keys: string[]; }
+export interface StudySummary { core_problems: StudyProblem[]; improvement_strategy: string[]; priority_expressions: string[]; }
+export interface StudyAnswer { question: string; dimension_key: string; model_answer: string; based_on_quotes: string[]; }
+export interface StudyMaterials { schema_version: number; source_session_ids: string[]; summary: StudySummary; jd_core_answers: StudyAnswer[]; }
+export type StudyDocStatus = "none" | "generating" | "ready" | "failed";
+export interface PackageStudy { package_id: string; status: StudyDocStatus; stale: boolean; generated_at: string | null; doc: StudyMaterials | null; }
+export interface BookmarkedExpression { session_id: string; session_index: number; turn_index: number; item: ParaphraseItem; }
+export interface PackageBookmarks { package_id: string; sessions: { session_id: string; session_index: number; items: ParaphraseItem[] }[]; }
+
 // --- v0.6 ---------------------------------------------------------------
 
 

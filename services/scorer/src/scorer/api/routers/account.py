@@ -39,6 +39,7 @@ class DeletionCounts(BaseModel):
     sessions: int
     orders: int
     recordings: int
+    feedback: int
 
 
 class AccountDeletionResponse(BaseModel):
@@ -98,6 +99,7 @@ def build_router(deps: Deps) -> APIRouter:
             sessions=outcome.sessions_deleted,
             orders=outcome.orders_deleted,
             recordings=outcome.recordings_deleted,
+            feedback=outcome.feedback_deleted,
         ))
 
     return router

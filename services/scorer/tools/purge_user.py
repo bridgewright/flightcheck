@@ -120,6 +120,7 @@ def main() -> None:
         raise SystemExit(1) from err
     print(f"Purged user {user_id}: {outcome.orders_deleted} order(s), "
           f"{outcome.sessions_deleted} session(s), "
+          f"{outcome.feedback_deleted} feedback row(s), "
           f"{outcome.packages_deleted} package(s), "
           f"{outcome.recordings_deleted} recording(s). "
           "Delete the auth.users row in the Supabase dashboard to finish.")

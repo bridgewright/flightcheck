@@ -28,10 +28,13 @@ beforeEach(() => {
 describe("proxy matcher", () => {
   it("pins the exact matcher array, including /api/:path*", () => {
     expect(proxyConfig.matcher).toEqual([
+      "/feedback",
       "/home/:path*",
       "/p/:path*",
       "/sessions/:path*",
       "/progress/:path*",
+      "/study",
+      "/ops/:path*",
       "/rubric/:path*",
       "/packages/:path*",
       "/settings/:path*",

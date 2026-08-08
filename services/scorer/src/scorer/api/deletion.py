@@ -93,6 +93,8 @@ class DeletionPlan:
     package_ids: list[str] = field(default_factory=list)
     session_ids: list[str] = field(default_factory=list)
     order_ids: list[str] = field(default_factory=list)
+    feedback_ids: list[str] = field(default_factory=list)
+    study_ids: list[str] = field(default_factory=list)
     recording_paths: list[str] = field(default_factory=list)
     orphan_recording_paths: list[str] = field(default_factory=list)
 
@@ -104,6 +106,7 @@ class DeletionPlan:
     @property
     def is_empty(self) -> bool:
         return not (self.package_ids or self.session_ids or self.order_ids
+                    or self.feedback_ids or self.study_ids
                     or self.recording_paths or self.orphan_recording_paths)
 
 
@@ -126,12 +129,14 @@ class DeletionOutcome:
     packages_deleted: int = 0
     sessions_deleted: int = 0
     orders_deleted: int = 0
+    feedback_deleted: int = 0
     recordings_deleted: int = 0
 
     @property
     def total(self) -> int:
         return (self.packages_deleted + self.sessions_deleted
-                + self.orders_deleted + self.recordings_deleted)
+                + self.orders_deleted + self.feedback_deleted
+                + self.recordings_deleted)
 
 
 class RecordingsNotDeleted(Exception):
@@ -175,11 +180,15 @@ def collect_deletion_plan(db: Database, user_id: str) -> DeletionPlan:
     orphan_paths = [key for key in dict.fromkeys(derived_keys)
                     if key not in named]
     orders = db.list_orders_for_user(user_id)
+    feedback = db.list_feedback_for_user(user_id)
     return DeletionPlan(
         user_id=user_id,
         package_ids=[package.id for package in packages],
         session_ids=session_ids,
         order_ids=[order.id for order in orders if order.id is not None],
+        feedback_ids=[row.id for row in feedback if row.id is not None],
+        # Idempotent sweep: absent rows are already the desired end state.
+        study_ids=[package.id for package in packages],
         recording_paths=recording_paths,
         orphan_recording_paths=orphan_paths,
     )
@@ -223,6 +232,7 @@ def collect_package_deletion_plan(db: Database, user_id: str,
         package_ids=[package.id],
         session_ids=session_ids,
         order_ids=[],
+        study_ids=[package.id],
         recording_paths=recording_paths,
         orphan_recording_paths=orphan_paths,
     )
@@ -237,6 +247,7 @@ def describe_plan(plan: DeletionPlan) -> str:
         ("package", plan.package_ids),
         ("session", plan.session_ids),
         ("order", plan.order_ids),
+        ("feedback", plan.feedback_ids),
         ("recording", plan.recording_paths),
     ):
         lines.append(f"  {len(items)} {label}(s)")
@@ -276,11 +287,14 @@ def execute_deletion(db: Database, storage: Storage,
     # leave with them.
     orders_deleted = db.delete_rows("order", plan.order_ids)
     sessions_deleted = db.delete_rows("session", plan.session_ids)
+    feedback_deleted = db.delete_rows("feedback", plan.feedback_ids)
+    db.delete_rows("study", plan.study_ids)
     packages_deleted = db.delete_rows("package", plan.package_ids)
 
     return DeletionOutcome(
         packages_deleted=packages_deleted,
         sessions_deleted=sessions_deleted,
         orders_deleted=orders_deleted,
+        feedback_deleted=feedback_deleted,
         recordings_deleted=recordings_deleted,
     )

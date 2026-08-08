@@ -26,7 +26,7 @@ from scorer.api.quota import (
     is_expired,
     sessions_used,
 )
-from scorer.api.responses import rate_limited
+from scorer.api.responses import NotImplementedBody, rate_limited
 from scorer.config import load_product_config
 from scorer.schemas import CandidateProfile
 from scorer.sessionplan.planner import (
@@ -140,6 +140,18 @@ def _session_response(row: SessionRow, package: PackageRow) -> dict:
 
 def build_router(deps: Deps) -> APIRouter:
     router = APIRouter()
+
+    @router.get("/sessions/{session_id}/coaching", status_code=501,
+                response_model=NotImplementedBody)
+    def get_coaching(session_id: str):
+        del session_id
+        return NotImplementedBody(error="session coaching is not implemented yet")
+
+    @router.patch("/sessions/{session_id}/coaching/marks", status_code=501,
+                  response_model=NotImplementedBody)
+    def set_coaching_marks(session_id: str):
+        del session_id
+        return NotImplementedBody(error="session coaching is not implemented yet")
     # Unpacked once so the route bodies below stay exactly what they were
     # inside the create_app closure -- this split must not change behaviour.
     db = deps.db

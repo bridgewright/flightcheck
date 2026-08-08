@@ -16,16 +16,23 @@ from google.genai import types
 
 from scorer.api.db import (
     PAID_TOTAL_SESSIONS,
+    FeedbackRow,
     OrderRow,
     PackageRow,
     SessionRow,
+    StudyRow,
     expires_at_from,
 )
 from scorer.schemas import (
     CandidateProfile,
+    ParaphraseMark,
+    ParaphraseMarks,
     Rubric,
+    SessionInsights,
+    SessionParaphrases,
     SessionPlan,
     SessionReport,
+    StudyMaterials,
     TranscriptSegment,
 )
 
@@ -182,6 +189,11 @@ class FakeDatabase:
         # Transcript lives OFF the session row (mirrors the real adapter's
         # explicit column lists): session_id -> stored segments.
         self.transcripts: dict[str, list[TranscriptSegment]] = {}
+        self.feedback: list[FeedbackRow] = []
+        self.paraphrases: dict[str, SessionParaphrases] = {}
+        self.insights: dict[str, SessionInsights] = {}
+        self.marks: dict[str, ParaphraseMarks] = {}
+        self.study: dict[str, StudyRow] = {}
         # Every successful set_scoring_stage call, in order, as
         # (session_id, stage) -- progression assertions read this.
         self.stage_writes: list[tuple[str, str]] = []
@@ -196,6 +208,7 @@ class FakeDatabase:
         self._package_seq = 0
         self._session_seq = 0
         self._order_seq = 0
+        self._feedback_seq = 0
 
     def _now(self) -> datetime:
         if self.now_iso is not None:
@@ -322,6 +335,81 @@ class FakeDatabase:
         if session_id not in self.sessions:
             raise KeyError(session_id)   # unknown session, not "no transcript"
         return self.transcripts.get(session_id)
+
+    def insert_feedback(self, row: FeedbackRow) -> FeedbackRow:
+        self._feedback_seq += 1
+        stored = row.model_copy(update={"id": f"feedback-{self._feedback_seq}",
+                                        "created_at": self._now().isoformat()})
+        self.feedback.append(stored)
+        return stored
+
+    def list_feedback(self, status: str | None, limit: int) -> list[FeedbackRow]:
+        rows = reversed(self.feedback)
+        return [row for row in rows if status is None or row.status == status][:limit]
+
+    def list_feedback_for_user(self, user_id: str) -> list[FeedbackRow]:
+        return [row for row in reversed(self.feedback) if row.user_id == user_id]
+
+    def set_feedback_status(self, feedback_id: str, status: str) -> None:
+        for index, row in enumerate(self.feedback):
+            if row.id == feedback_id:
+                self.feedback[index] = row.model_copy(update={
+                    "status": status, "updated_at": self._now().isoformat()})
+                return
+        raise KeyError(feedback_id)
+
+    def _require_session(self, session_id: str) -> None:
+        if session_id not in self.sessions:
+            raise KeyError(session_id)
+
+    def save_session_paraphrases(self, session_id: str, doc: SessionParaphrases) -> None:
+        self._require_session(session_id)
+        self.paraphrases[session_id] = doc
+
+    def get_session_paraphrases(self, session_id: str) -> SessionParaphrases | None:
+        self._require_session(session_id)
+        return self.paraphrases.get(session_id)
+
+    def save_session_insights(self, session_id: str, doc: SessionInsights) -> None:
+        self._require_session(session_id)
+        self.insights[session_id] = doc
+
+    def get_session_insights(self, session_id: str) -> SessionInsights | None:
+        self._require_session(session_id)
+        return self.insights.get(session_id)
+
+    def get_paraphrase_marks(self, session_id: str) -> ParaphraseMarks:
+        self._require_session(session_id)
+        return self.marks.get(session_id, ParaphraseMarks())
+
+    def set_paraphrase_mark(self, session_id: str, turn_index: int,
+                            mark: ParaphraseMark) -> ParaphraseMarks:
+        doc = self.get_paraphrase_marks(session_id)
+        updated = doc.model_copy(update={"marks": {**doc.marks, str(turn_index): mark}})
+        self.marks[session_id] = updated
+        return updated
+
+    def get_study(self, package_id: str) -> StudyRow | None:
+        return self.study.get(package_id)
+
+    def begin_study_generation(self, package_id: str) -> None:
+        old = self.study.get(package_id)
+        update = {"id": package_id, "status": "generating",
+                  "updated_at": self._now().isoformat()}
+        self.study[package_id] = (
+            StudyRow(**update) if old is None else old.model_copy(update=update)
+        )
+
+    def save_study_materials(self, package_id: str, doc: StudyMaterials,
+                             generated_at: str) -> None:
+        old = self.study.get(package_id, StudyRow(id=package_id, status="ready"))
+        self.study[package_id] = old.model_copy(update={"status": "ready", "doc": doc,
+            "generated_at": generated_at, "updated_at": self._now().isoformat()})
+
+    def fail_study_generation(self, package_id: str) -> None:
+        old = self.study.get(package_id, StudyRow(id=package_id, status="failed"))
+        self.study[package_id] = old.model_copy(update={"status": "failed",
+                                                        "updated_at": self._now().isoformat()})
 
     # ------------------------------------------------ v0.5 payments surface
 
@@ -453,7 +541,14 @@ class FakeDatabase:
         # touched, an empty list is a no-op that is not even recorded, and
         # ids that are already gone count as 0 rather than KeyError.
         stores = {"package": self.packages, "session": self.sessions,
-                  "order": self.orders}
+                  "order": self.orders, "study": self.study}
+        if kind == "feedback":
+            if not ids:
+                return 0
+            self.deletes.append((kind, list(ids)))
+            known = {row.id for row in self.feedback}
+            self.feedback = [row for row in self.feedback if row.id not in ids]
+            return len(known.intersection(ids))
         if kind not in stores:
             raise ValueError(f"unknown delete kind: {kind!r}")
         if not ids:
@@ -468,6 +563,9 @@ class FakeDatabase:
                     # Transcripts live on the session row in Postgres, so
                     # they cannot outlive it here either.
                     self.transcripts.pop(row_id, None)
+                    self.paraphrases.pop(row_id, None)
+                    self.insights.pop(row_id, None)
+                    self.marks.pop(row_id, None)
         return deleted
     # -------------------------------------------------- v0.6 usage metrics
 

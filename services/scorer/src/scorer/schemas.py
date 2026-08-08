@@ -128,6 +128,90 @@ class TranscriptSegment(BaseModel):
     text: str                         # verbatim, fillers preserved ("uh", "um", repeats)
 
 
+class ParaphraseItem(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    turn_index: int
+    verdict: Literal["good", "improve"]
+    source_quote: str
+    suggestion: str
+    why: str
+
+
+class SessionParaphrases(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    schema_version: int = 1
+    generated_at: str
+    turn_count: int
+    items: list[ParaphraseItem]
+
+
+class InsightExpression(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    turn_index: int
+    said_verbatim: str
+    better: str
+    why: str
+
+
+class InsightAnswer(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    question: str
+    model_answer: str
+    based_on_quotes: list[str]
+
+
+class SessionInsights(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    schema_version: int = 1
+    generated_at: str
+    did_well: list[str]
+    did_poorly: list[str]
+    must_keep: list[InsightExpression]
+    must_answer: list[InsightAnswer]
+
+
+class ParaphraseMark(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    reaction: Literal["up", "down"] | None = None
+    bookmarked: bool = False
+
+
+class ParaphraseMarks(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    schema_version: int = 1
+    marks: dict[str, ParaphraseMark] = {}
+
+
+class StudyProblem(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    title: str
+    description: str
+    dimension_keys: list[str]
+
+
+class StudySummary(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    core_problems: list[StudyProblem]
+    improvement_strategy: list[str]
+    priority_expressions: list[str]
+
+
+class StudyAnswer(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    question: str
+    dimension_key: str
+    model_answer: str
+    based_on_quotes: list[str]
+
+
+class StudyMaterials(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    schema_version: int = 1
+    source_session_ids: list[str]
+    summary: StudySummary
+    jd_core_answers: list[StudyAnswer]
+
+
 class SilenceEvent(BaseModel):
     model_config = ConfigDict(extra="forbid")
 

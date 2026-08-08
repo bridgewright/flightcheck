@@ -1,6 +1,6 @@
 import Link from "next/link";
 
-import { FOOTER_LINKS, SUPPORT_EMAIL, feedbackMailto, supportMailto } from "@/app/legal/policy";
+import { FOOTER_LINKS, SUPPORT_EMAIL, supportMailto } from "@/app/legal/policy";
 import TopBar from "@/components/TopBar";
 import { DIVIDER, LINK, MAIN_READING, MAIN_WIDE } from "@/lib/ui";
 import type { Viewer } from "@/lib/viewer";
@@ -63,12 +63,6 @@ export default function Shell({
               {link.label}
             </Link>
           ))}
-          <a
-            href={feedbackMailto()}
-            className={LINK}
-          >
-            Feedback
-          </a>
           <a
             href={supportMailto()}
             className={LINK}

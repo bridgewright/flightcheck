@@ -67,15 +67,18 @@ export const DISALLOWED_PREFIXES = [
   "/auth/",
   "/checkout",
   "/dev/",
+  "/feedback",
   "/home",
   "/login",
   "/new",
+  "/ops/",
   "/p/",
   "/packages",
   "/progress",
   "/rubric",
   "/sessions",
   "/settings",
+  "/study",
   "/switch",
 ];
 

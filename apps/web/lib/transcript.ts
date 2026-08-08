@@ -39,6 +39,10 @@ export function groupTurns(segments: TranscriptSegment[]): TranscriptTurn[] {
   return turns;
 }
 
+export function candidateTurns(segments: TranscriptSegment[]): TranscriptTurn[] {
+  return groupTurns(segments).filter((turn) => turn.speaker === "candidate");
+}
+
 /** The transcript with delivery observations inlined at their timestamps. */
 export type TimelineEntry =
   | { kind: "turn"; turn: TranscriptTurn }

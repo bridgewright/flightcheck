@@ -45,6 +45,8 @@ class Deps:
     package_create_limiter: FixedWindowLimiter
     session_create_limiter: FixedWindowLimiter
     complete_limiter: FixedWindowLimiter
+    feedback_limiter: FixedWindowLimiter
+    study_limiter: FixedWindowLimiter
 
     # Per-row attempt counters behind the F-30 terminal-state transitions.
     resume_attempts: AttemptCounter

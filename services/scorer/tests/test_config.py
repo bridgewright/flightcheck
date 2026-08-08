@@ -50,6 +50,14 @@ def test_limits_guard_caps_and_windows():
     assert limits.resume_attempt_cap == 3
     assert limits.score_attempt_cap == 3
     assert limits.compile_retry_cap == 3
+    assert limits.feedback_window_s == 3600
+    assert limits.feedback_per_window == 5
+    assert limits.feedback_text_max_chars == 5000
+    assert limits.max_feedback_per_user == 100
+    assert limits.study_window_s == 3600
+    assert limits.study_per_window == 6
+    assert limits.study_generating_stale_after_s == 600
+    assert limits.paraphrase_max_items == 40
 
 
 def test_limits_input_and_lifecycle_bounds():

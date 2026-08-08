@@ -20,15 +20,21 @@ from supabase import Client, create_client
 from scorer.env import load_env, require_key
 from scorer.schemas import (
     CandidateProfile,
+    ParaphraseMark,
+    ParaphraseMarks,
     Rubric,
+    SessionInsights,
+    SessionParaphrases,
     SessionPlan,
     SessionReport,
+    StudyMaterials,
     TranscriptSegment,
 )
 
 # Explicit column list for every hot session read (get_session,
 # list_sessions). The transcript column is deliberately absent: transcripts
 # run 25-60KB per session and must never ride the dashboard/status polls.
+# Paraphrases, insights, and paraphrase_marks are deliberately absent too.
 # get_transcript is the only reader of that column, and it reads nothing else.
 logger = logging.getLogger(__name__)
 
@@ -87,9 +93,10 @@ def _table_for(kind: Literal["package", "session"]) -> str:
 # delete_rows' kind -> table name. Deliberately a SECOND map rather than a
 # widening of _table_for: touch_updated_at writes an updated_at column that
 # orders does not have, so the two vocabularies are not interchangeable.
-DeletableKind = Literal["package", "session", "order"]
+DeletableKind = Literal["package", "session", "order", "feedback", "study"]
 _DELETE_TABLES: dict[str, str] = {
     "package": "packages", "session": "sessions", "order": "orders",
+    "feedback": "feedback", "study": "study_materials",
 }
 
 
@@ -182,6 +189,30 @@ class OrderRow(BaseModel):
     created_at: str | None = None
 
 
+FEEDBACK_STATUSES = ("new", "seen", "archived")
+
+
+class FeedbackRow(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    id: str | None = None
+    user_id: str
+    package_id: str | None = None
+    rating_half_stars: int
+    body: str
+    status: str = "new"
+    created_at: str | None = None
+    updated_at: str | None = None
+
+
+class StudyRow(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    id: str
+    status: str
+    doc: StudyMaterials | None = None
+    generated_at: str | None = None
+    updated_at: str | None = None
+
+
 @runtime_checkable
 class Database(Protocol):
     """Persistence seam the pipeline consumes (Task 12); SupabaseDatabase
@@ -269,6 +300,23 @@ class Database(Protocol):
         transcript (sessions scored before transcripts were persisted).
         Unknown session ids raise KeyError like every other lookup."""
         ...
+
+    def insert_feedback(self, row: FeedbackRow) -> FeedbackRow: ...
+    def list_feedback(self, status: str | None, limit: int) -> list[FeedbackRow]: ...
+    def list_feedback_for_user(self, user_id: str) -> list[FeedbackRow]: ...
+    def set_feedback_status(self, feedback_id: str, status: str) -> None: ...
+    def save_session_paraphrases(self, session_id: str, doc: SessionParaphrases) -> None: ...
+    def get_session_paraphrases(self, session_id: str) -> SessionParaphrases | None: ...
+    def save_session_insights(self, session_id: str, doc: SessionInsights) -> None: ...
+    def get_session_insights(self, session_id: str) -> SessionInsights | None: ...
+    def get_paraphrase_marks(self, session_id: str) -> ParaphraseMarks: ...
+    def set_paraphrase_mark(self, session_id: str, turn_index: int,
+                            mark: ParaphraseMark) -> ParaphraseMarks: ...
+    def get_study(self, package_id: str) -> StudyRow | None: ...
+    def begin_study_generation(self, package_id: str) -> None: ...
+    def save_study_materials(self, package_id: str, doc: StudyMaterials,
+                             generated_at: str) -> None: ...
+    def fail_study_generation(self, package_id: str) -> None: ...
 
     # ------------------------------------------------ v0.5 payments surface
 
@@ -656,6 +704,94 @@ class SupabaseDatabase:
         if raw is None:
             return None
         return [TranscriptSegment.model_validate(item) for item in raw]
+
+    def insert_feedback(self, row: FeedbackRow) -> FeedbackRow:
+        payload = row.model_dump(mode="json")
+        for column in ("id", "created_at", "updated_at"):
+            if payload[column] is None:
+                payload.pop(column)
+        data = self._client.table("feedback").insert(payload).execute().data
+        return FeedbackRow.model_validate(data[0])
+
+    def list_feedback(self, status: str | None, limit: int) -> list[FeedbackRow]:
+        query = self._client.table("feedback").select("*")
+        if status is not None:
+            query = query.eq("status", status)
+        data = query.order("created_at", desc=True).limit(limit).execute().data
+        return [FeedbackRow.model_validate(row) for row in data]
+
+    def list_feedback_for_user(self, user_id: str) -> list[FeedbackRow]:
+        data = (self._client.table("feedback").select("*").eq("user_id", user_id)
+                .order("created_at", desc=True).execute().data)
+        return [FeedbackRow.model_validate(row) for row in data]
+
+    def set_feedback_status(self, feedback_id: str, status: str) -> None:
+        data = (self._client.table("feedback")
+                .update({"status": status, "updated_at": _now_iso()})
+                .eq("id", feedback_id).execute().data)
+        if not data:
+            raise KeyError(feedback_id)
+
+    def _save_session_doc(self, session_id: str, column: str, doc: BaseModel) -> None:
+        data = (self._client.table("sessions")
+                .update({column: doc.model_dump(mode="json")})
+                .eq("id", session_id).execute().data)
+        if not data:
+            raise KeyError(session_id)
+
+    def _get_session_doc(self, session_id: str, column: str,
+                         model: type[BaseModel]) -> BaseModel | None:
+        data = (self._client.table("sessions").select(column)
+                .eq("id", session_id).execute().data)
+        if not data:
+            raise KeyError(session_id)
+        raw = data[0].get(column)
+        return None if raw is None else model.model_validate(raw)
+
+    def save_session_paraphrases(self, session_id: str, doc: SessionParaphrases) -> None:
+        self._save_session_doc(session_id, "paraphrases", doc)
+
+    def get_session_paraphrases(self, session_id: str) -> SessionParaphrases | None:
+        return self._get_session_doc(session_id, "paraphrases", SessionParaphrases)  # type: ignore[return-value]
+
+    def save_session_insights(self, session_id: str, doc: SessionInsights) -> None:
+        self._save_session_doc(session_id, "insights", doc)
+
+    def get_session_insights(self, session_id: str) -> SessionInsights | None:
+        return self._get_session_doc(session_id, "insights", SessionInsights)  # type: ignore[return-value]
+
+    def get_paraphrase_marks(self, session_id: str) -> ParaphraseMarks:
+        result = self._get_session_doc(session_id, "paraphrase_marks", ParaphraseMarks)
+        return ParaphraseMarks() if result is None else result  # type: ignore[return-value]
+
+    def set_paraphrase_mark(self, session_id: str, turn_index: int,
+                            mark: ParaphraseMark) -> ParaphraseMarks:
+        doc = self.get_paraphrase_marks(session_id)
+        updated = doc.model_copy(update={"marks": {**doc.marks, str(turn_index): mark}})
+        self._save_session_doc(session_id, "paraphrase_marks", updated)
+        return updated
+
+    def get_study(self, package_id: str) -> StudyRow | None:
+        data = (self._client.table("study_materials").select("*")
+                .eq("id", package_id).execute().data)
+        return None if not data else StudyRow.model_validate(data[0])
+
+    def begin_study_generation(self, package_id: str) -> None:
+        self._client.table("study_materials").upsert({
+            "id": package_id, "status": "generating", "updated_at": _now_iso(),
+        }).execute()
+
+    def save_study_materials(self, package_id: str, doc: StudyMaterials,
+                             generated_at: str) -> None:
+        self._client.table("study_materials").upsert({
+            "id": package_id, "status": "ready", "doc": doc.model_dump(mode="json"),
+            "generated_at": generated_at, "updated_at": _now_iso(),
+        }).execute()
+
+    def fail_study_generation(self, package_id: str) -> None:
+        self._client.table("study_materials").upsert({
+            "id": package_id, "status": "failed", "updated_at": _now_iso(),
+        }).execute()
 
     # ------------------------------------------------ v0.5 payments surface
 

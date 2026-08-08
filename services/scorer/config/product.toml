@@ -54,6 +54,14 @@ recording_max_minutes = 35.0
 jd_compile_max_chars = 20000
 reaper_stale_after_s = 1800.0
 reaper_interval_s = 300.0
+feedback_window_s = 3600.0
+feedback_per_window = 5
+feedback_text_max_chars = 5000
+max_feedback_per_user = 100
+study_window_s = 3600.0
+study_per_window = 6
+study_generating_stale_after_s = 600.0
+paraphrase_max_items = 40
 
 [report]
 ready_overall = 4.0

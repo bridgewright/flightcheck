@@ -85,6 +85,14 @@ class LimitsConfig(BaseModel):
     jd_compile_max_chars: int         # JD truncation before the rubric compiler
     reaper_stale_after_s: float       # stuck compiling/scoring older than this
     reaper_interval_s: float          # periodic reaper cadence
+    feedback_window_s: float
+    feedback_per_window: int
+    feedback_text_max_chars: int
+    max_feedback_per_user: int
+    study_window_s: float
+    study_per_window: int
+    study_generating_stale_after_s: float
+    paraphrase_max_items: int
 
 
 class ReportConfig(BaseModel):

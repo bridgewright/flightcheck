@@ -18,7 +18,7 @@ second copy", it says so instead of implying one.
 
 | Asset | Where it lives | Second copy | Rebuildable? |
 | --- | --- | --- | --- |
-| Postgres (packages, sessions, reports, transcripts, orders) | Supabase Postgres | Supabase automated daily backups (plan-dependent, see §2) | No |
+| Postgres (packages, sessions, reports, transcripts, orders, feedback, study_materials) | Supabase Postgres | Supabase automated daily backups (plan-dependent, see §2) | No |
 | Session recordings | Supabase Storage, `recordings` bucket (private) | **None** | Yes — a customer can run the session again |
 | Rubric corpus + few-shots | Supabase Storage, `corpus` bucket (private) | **Only what you take with `tools/backup_corpus.py`** | **No** |
 | Application code | GitHub | Every clone | n/a |
@@ -110,7 +110,9 @@ Two things stall people here, both at 2am:
    ```bash
    psql "$SUPABASE_DB_URL" -c "select count(*) from packages;" \
                            -c "select count(*) from sessions;" \
-                           -c "select count(*) from orders;"
+                           -c "select count(*) from orders;" \
+                           -c "select count(*) from feedback;" \
+                           -c "select count(*) from study_materials;"
    ```
 5. Redeploy the Railway service and confirm `/healthz`:
    ```bash

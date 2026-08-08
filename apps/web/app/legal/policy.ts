@@ -43,28 +43,11 @@ export const LEGAL_LINKS = [
 export const FOOTER_LINKS = [
   { href: "/faq", label: "FAQ" },
   ...LEGAL_LINKS,
+  { href: "/feedback", label: "Feedback" },
 ] as const;
 
 export function supportMailto(): string {
   return `mailto:${SUPPORT_EMAIL}`;
-}
-
-export const FEEDBACK_SUBJECT = "Feedback on flightcheck";
-
-/**
- * The feedback door (F-59): a labelled mailto to the existing support
- * address, no new data surface. The subject is prefilled so replies sort;
- * the body deliberately is not -- the first words belong to the customer,
- * and a template would put ours in their mouth.
- *
- * Not in FOOTER_LINKS because those render as next/link routes; the footer
- * renders this one as a plain <a> beside them, the way it already renders
- * the support address.
- */
-export function feedbackMailto(): string {
-  // encodeURIComponent, not URLSearchParams: the latter encodes spaces as
-  // "+", which mail clients render literally in mailto subjects.
-  return `mailto:${SUPPORT_EMAIL}?subject=${encodeURIComponent(FEEDBACK_SUBJECT)}`;
 }
 
 // The deletion intake link on /settings. Naming the account address in the

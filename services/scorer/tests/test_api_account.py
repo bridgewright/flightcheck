@@ -94,7 +94,7 @@ def test_the_response_reports_what_was_deleted(world):
                                   headers=AUTH).json()
 
     assert body == {"deleted": {"packages": 1, "sessions": 2, "orders": 1,
-                                "recordings": 2}}
+                                "recordings": 2, "feedback": 0}}
 
 
 def test_deleting_an_account_that_owns_nothing_succeeds(world):
@@ -104,7 +104,7 @@ def test_deleting_an_account_that_owns_nothing_succeeds(world):
                                   headers=AUTH).json()
 
     assert body == {"deleted": {"packages": 0, "sessions": 0, "orders": 0,
-                                "recordings": 0}}
+                                "recordings": 0, "feedback": 0}}
     assert world["db"].packages != {}   # the real account is untouched
 
 

@@ -223,7 +223,9 @@ def test_execute_removes_recordings_first_then_rows_child_first():
 
     assert storage.removed == plan.recording_paths
     # Child-first: orders and sessions before the packages they hang off.
-    assert [kind for kind, _ in db.deletes] == ["order", "session", "package"]
+    assert [kind for kind, _ in db.deletes] == [
+        "order", "session", "study", "package",
+    ]
 
 
 def test_execute_removes_every_artifact_of_the_user():
