@@ -122,6 +122,14 @@ interface SessionRoomProps {
 // anyway — reopen to refresh. Collapsed, the element costs one summary row.
 function DiagTrail({ entriesRef }: { entriesRef: RefObject<DiagEntry[]> }) {
   const [trail, setTrail] = useState<string | null>(null);
+  const preRef = useRef<HTMLPreElement>(null);
+  // Open at the END of the trail: the newest entries are where a failure
+  // names itself, and the scroll box quietly hiding them cost a debugging
+  // round on 2026-08-08 — two screenshots both "ended" at the fold.
+  useEffect(() => {
+    const pre = preRef.current;
+    if (trail !== null && pre !== null) pre.scrollTop = pre.scrollHeight;
+  }, [trail]);
   return (
     <details
       className="mt-6"
@@ -138,6 +146,7 @@ function DiagTrail({ entriesRef }: { entriesRef: RefObject<DiagEntry[]> }) {
       </summary>
       {trail !== null && (
         <pre
+          ref={preRef}
           className={`${FINE_PRINT} mt-2 max-h-48 overflow-y-auto whitespace-pre-wrap`}
         >
           {trail}
