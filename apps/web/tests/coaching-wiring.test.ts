@@ -5,6 +5,7 @@ import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
 
 import TranscriptView from "@/components/TranscriptView";
+import CoachingDialog from "@/components/CoachingDialog";
 import type { SessionCoaching, TranscriptSegment } from "@/lib/types";
 
 const read = (path: string) => readFileSync(resolve(process.cwd(), path), "utf8");
@@ -64,6 +65,17 @@ function render(coaching?: SessionCoaching | null): string {
   }));
 }
 
+function renderDialog(coaching = coachingDoc(1)): string {
+  return renderToStaticMarkup(createElement(CoachingDialog, {
+    open: true,
+    onClose: () => {},
+    item: coaching.paraphrases!.items[0],
+    turn: { speaker: "candidate", start_s: 2, end_s: 6, text: TURN_TEXT },
+    ordinal: 0,
+    initialMark: { reaction: null, bookmarked: false },
+  }));
+}
+
 describe("TranscriptView stays additive", () => {
   const withoutCoaching = render();
 
@@ -92,22 +104,20 @@ describe("TranscriptView stays additive", () => {
     expect(withCoaching.split(TURN_TEXT)).toHaveLength(2);
   });
 
-  it("shows the suggestion, its anchor and its disclaimer only once attached", () => {
+  it("renders the coaching chip as a button below the candidate bubble", () => {
     const withCoaching = render(coachingDoc(1));
     expect(withoutCoaching).not.toContain("Suggested phrasings appear under your answers");
-    expect(withoutCoaching).not.toContain("grew revenue 12 percent");
     expect(withCoaching).toContain("Suggested phrasings appear under your answers");
-    expect(withCoaching).toContain("grew revenue 12 percent in two quarters");
-    expect(withCoaching).toContain("A suggested rewrite");
+    expect(withCoaching).toMatch(/<\/div><button type="button"[^>]*>! Needs work<\/button>/);
   });
 
-  it("hides the anchor rather than printing a quote the turn never contained", () => {
+  it("hides the anchor rather than printing a quote the turn never contained in the dialog", () => {
     const fabricated = coachingDoc(1);
     fabricated.paraphrases!.items[0].source_quote = "a phrase nobody said";
-    const withCoaching = render(fabricated);
+    const dialog = renderDialog(fabricated);
 
-    expect(withCoaching).toContain("grew revenue 12 percent in two quarters"); // suggestion still shown
-    expect(withCoaching).not.toContain("a phrase nobody said");                // the misquote is not
+    expect(dialog).toContain("grew revenue 12 percent in two quarters");
+    expect(dialog).not.toContain("a phrase nobody said");
   });
 
   it("marks the improve verdict and the good verdict differently", () => {
@@ -116,6 +126,22 @@ describe("TranscriptView stays additive", () => {
     good.paraphrases!.items[0].verdict = "good";
 
     expect(improve).toContain("Needs work");
-    expect(render(good)).toContain("Strong");
+    expect(improve).not.toContain("✓ Needs work");
+    expect(render(good)).toContain("✓ Well said");
+  });
+
+  it("does not render a chip for a short answer", () => {
+    const short = [{ ...SEGMENTS[0] }, { ...SEGMENTS[1], text: "Too short" }];
+    const markup = renderToStaticMarkup(createElement(TranscriptView, {
+      segments: short, observations: [], audioUrl: null, audioCaption: "Recording", coaching: coachingDoc(1),
+    }));
+    expect(markup).not.toContain("Needs work");
+    expect(markup).not.toContain("Well said");
+  });
+
+  it("orders dialog content as suggestion, why, then verbatim quote", () => {
+    const dialog = renderDialog();
+    expect(dialog.indexOf("grew revenue 12 percent in two quarters")).toBeLessThan(dialog.indexOf("Puts the number"));
+    expect(dialog.indexOf("Puts the number")).toBeLessThan(dialog.indexOf("grew revenue</blockquote>"));
   });
 });

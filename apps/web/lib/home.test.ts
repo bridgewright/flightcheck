@@ -314,7 +314,7 @@ describe("activeNavTab", () => {
     expect(activeNavTab("/home")).toBe("/home");
     expect(activeNavTab("/sessions")).toBe("/sessions");
     expect(activeNavTab("/progress")).toBe("/progress");
-    expect(activeNavTab("/study")).toBe("/study");
+    expect(activeNavTab("/study")).toBeNull();
     expect(activeNavTab("/rubric")).toBe("/rubric");
   });
 
@@ -336,12 +336,11 @@ describe("activeNavTab", () => {
     expect(activeNavTab("/sessionsabc")).toBeNull();
   });
 
-  it("covers exactly the five sections, Home first", () => {
+  it("covers exactly the four sections, Home first", () => {
     expect(NAV_TABS.map((tab) => tab.label)).toEqual([
       "Home",
       "Sessions",
       "Progress",
-      "Study",
       "Role & Rubric",
     ]);
   });

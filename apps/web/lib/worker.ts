@@ -19,8 +19,6 @@ import type {
   CreateSessionResponse,
   OrderRow,
   PackageRow,
-  PackageBookmarks,
-  PackageStudy,
   ParaphraseMarks,
   PackageStatus,
   SessionRow,
@@ -653,19 +651,4 @@ export async function getSessionCoaching(sessionId: string): Promise<SessionCoac
 export async function setParaphraseMark(sessionId: string, turnIndex: number, mark: { reaction: "up" | "down" | null; bookmarked: boolean }): Promise<ParaphraseMarks> {
   const path = `/api/sessions/${encodeURIComponent(sessionId)}/coaching/marks`;
   return workerJson(`PATCH ${path}`, await workerFetch(path, { method: "PATCH", body: JSON.stringify({ turn_index: turnIndex, mark }) }));
-}
-
-export async function getPackageStudy(packageId: string): Promise<PackageStudy> {
-  const path = `/api/packages/${encodeURIComponent(packageId)}/study`;
-  return workerJson(`GET ${path}`, await workerFetch(path));
-}
-
-export async function generatePackageStudy(packageId: string): Promise<void> {
-  const path = `/api/packages/${encodeURIComponent(packageId)}/study`;
-  await workerJson(`POST ${path}`, await workerFetch(path, { method: "POST" }));
-}
-
-export async function getPackageBookmarks(packageId: string): Promise<PackageBookmarks> {
-  const path = `/api/packages/${encodeURIComponent(packageId)}/bookmarks`;
-  return workerJson(`GET ${path}`, await workerFetch(path));
 }

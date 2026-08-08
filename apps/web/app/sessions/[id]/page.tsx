@@ -422,18 +422,23 @@ export default async function SessionDetailPage({
     const report = session.report;
     const dimensions = rubric ? dimensionMetaFromRubric(rubric) : [];
     const requestedTab = (await searchParams).tab;
-    const tab = requestedTab === "transcript" || requestedTab === "study" ? requestedTab : "report";
-    const tabs = ["report", "transcript", "study"] as const;
+    const tab = requestedTab === "study" || requestedTab === "report" ? requestedTab : "transcript";
+    const tabs = ["transcript", "study", "report"] as const;
     return (
       <Shell viewer={viewer}>
         <div className="flex flex-col gap-10">
-          <header className="flex flex-col gap-4">
+          <header>
             <ContextLine
               roleTitle={pkg.role_title}
               index={session.index}
               total={pkg.total_sessions}
               date={date}
             />
+          </header>
+          <nav aria-label="Session detail" className="flex border-b border-hairline">
+            {tabs.map((name) => <Link key={name} href={`/sessions/${session.id}?tab=${name}`} className={tab === name ? TAB_ACTIVE : TAB}>{name[0].toUpperCase() + name.slice(1)}</Link>)}
+          </nav>
+          {tab === "report" ? <>
             {state === "limited" ? (
               <div className="rounded-surface border border-hairline bg-blush p-3 text-fine text-ink">
                 <p className={SUB_HEADING}>Scored on limited evidence</p>
@@ -448,18 +453,13 @@ export default async function SessionDetailPage({
               progressLoaded={entries !== null}
             />
             <DownloadControls sessionId={session.id} />
-          </header>
-          <nav aria-label="Session detail" className="flex border-b border-hairline">
-            {tabs.map((name) => <Link key={name} href={`/sessions/${session.id}?tab=${name}`} className={tab === name ? TAB_ACTIVE : TAB}>{name[0].toUpperCase() + name.slice(1)}</Link>)}
-          </nav>
-          {tab === "report" ? <>
             <ReportDimensionCards report={report} dimensions={dimensions} previous={previous === null ? undefined : dimensionScoreMap(previous)} />
             <ReportDeliveryMetrics metrics={report.delivery_metrics} />
             <ReportObservations observations={report.delivery_observations} />
             <ReportOutcomes report={report} />
             <CtaBlock href={ctaHref} label={cta.label} />
           </> : tab === "transcript" ? transcriptSection
-            : <SessionStudyTab sessionId={session.id} coaching={coaching} />}
+            : <SessionStudyTab sessionId={session.id} coaching={coaching} segments={segments ?? []} />}
         </div>
       </Shell>
     );

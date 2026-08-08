@@ -1,13 +1,13 @@
 import { describe, expect, it } from "vitest";
 
-import { attachCoaching, bookmarkedItems, markFor, sourceQuoteIfVerbatim } from "@/lib/paraphrase";
+import { COACHING_MIN_WORDS, attachCoaching, bookmarkedItems, coachingEligible, markFor, sourceQuoteIfVerbatim } from "@/lib/paraphrase";
 import type { TimelineEntry, TranscriptTurn } from "@/lib/transcript";
 
 const timeline: TimelineEntry[] = [
-  { kind: "turn", turn: { speaker: "candidate", start_s: 0, end_s: 2, text: "One merged answer" } },
+  { kind: "turn", turn: { speaker: "candidate", start_s: 0, end_s: 2, text: "One merged answer with enough words for useful coaching" } },
   { kind: "observation", observation: { at_s: 1, kind: "pace", note: "Fast", conflicts_with_dsp: false } },
   { kind: "turn", turn: { speaker: "interviewer", start_s: 2, end_s: 3, text: "Next" } },
-  { kind: "turn", turn: { speaker: "candidate", start_s: 3, end_s: 4, text: "Second answer" } },
+  { kind: "turn", turn: { speaker: "candidate", start_s: 3, end_s: 4, text: "Second answer with enough words for useful coaching here" } },
 ];
 
 const paraphrases = { schema_version: 1, generated_at: "now", turn_count: 2, items: [
@@ -26,6 +26,24 @@ describe("attachCoaching", () => {
 
   it("attaches nothing when grouping counts drift", () => {
     expect(attachCoaching(timeline, paraphrases, 3).filter((entry) => entry.kind === "turn").every((entry) => entry.item === null)).toBe(true);
+  });
+
+  it("does not attach coaching to answers below the word floor", () => {
+    const shortTimeline: TimelineEntry[] = [{
+      kind: "turn",
+      turn: { speaker: "candidate", start_s: 0, end_s: 1, text: "Too short to coach" },
+    }];
+    const shortDoc = { ...paraphrases, turn_count: 1, items: [{ ...paraphrases.items[0], turn_index: 0 }] };
+
+    expect(attachCoaching(shortTimeline, shortDoc, 1)[0]).toMatchObject({ item: null });
+  });
+});
+
+describe("coachingEligible", () => {
+  it("uses a whitespace-split minimum of eight words", () => {
+    expect(COACHING_MIN_WORDS).toBe(8);
+    expect(coachingEligible({ speaker: "candidate", start_s: 0, end_s: 1, text: "one two three four five six seven" })).toBe(false);
+    expect(coachingEligible({ speaker: "candidate", start_s: 0, end_s: 1, text: "one  two\nthree four five six seven eight" })).toBe(true);
   });
 });
 
@@ -89,6 +107,11 @@ describe("bookmarkedItems", () => {
       "1": { reaction: "up" as const, bookmarked: false },
     } };
     expect(bookmarkedItems(paraphrases, reactedOnly)).toEqual([]);
+  });
+
+  it("keeps an already-bookmarked short answer", () => {
+    const short = { ...paraphrases, items: [{ ...paraphrases.items[0], suggestion: "Short saved answer" }] };
+    expect(bookmarkedItems(short, marks)).toEqual([{ ordinal: 1, item: short.items[0] }]);
   });
 });
 

@@ -1,12 +1,11 @@
 "use client";
 
 import { useRef, useState } from "react";
-import { BookmarkSimpleIcon, ThumbsDownIcon, ThumbsUpIcon } from "@phosphor-icons/react";
-
+import CoachingDialog from "@/components/CoachingDialog";
 import { DspConflictBadge } from "@/components/ReportView";
 import { formatTimestamp } from "@/lib/report-format";
 import { candidateTurns, transcriptTimeline } from "@/lib/transcript";
-import { attachCoaching, markFor, sourceQuoteIfVerbatim } from "@/lib/paraphrase";
+import { attachCoaching, markFor } from "@/lib/paraphrase";
 import type { ParaphraseMark, ParaphraseMarks, SessionCoaching, TimestampedObservation, TranscriptSegment } from "@/lib/types";
 import {
   FINE_PRINT,
@@ -15,31 +14,8 @@ import {
   PROSE_WIDTH,
   LINK,
   SECTION_HEADING,
-  CHIP_ALARM, CHIP_READY, EVIDENCE_QUOTE, LABEL, SUBTLE,
+  CHIP_ALARM, CHIP_READY, SUBTLE,
 } from "@/lib/ui";
-
-function MarkActions({ ordinal, initial, action }: { ordinal: number; initial: ParaphraseMark; action?: (ordinal: number, mark: ParaphraseMark) => Promise<ParaphraseMarks> }) {
-  const [mark, setMark] = useState(initial);
-  // Optimistic, then reconciled with what the server actually stored. A
-  // refused or failed save rolls back: a row that claims it saved when it
-  // did not is worse than one that visibly did nothing.
-  async function update(next: ParaphraseMark) {
-    const previous = mark;
-    setMark(next);
-    if (!action) return;
-    try {
-      setMark(markFor(await action(ordinal, next), ordinal));
-    } catch {
-      setMark(previous);
-    }
-  }
-  const button = (pressed: boolean) => `p-1 ${pressed ? "text-ink" : "text-ink-faint"}`;
-  return <div className="flex gap-2">
-    <button type="button" aria-label="Helpful" aria-pressed={mark.reaction === "up"} className={button(mark.reaction === "up")} onClick={() => void update({ ...mark, reaction: mark.reaction === "up" ? null : "up" })}><ThumbsUpIcon className="size-5" /></button>
-    <button type="button" aria-label="Not helpful" aria-pressed={mark.reaction === "down"} className={button(mark.reaction === "down")} onClick={() => void update({ ...mark, reaction: mark.reaction === "down" ? null : "down" })}><ThumbsDownIcon className="size-5" /></button>
-    <button type="button" aria-label="Bookmark" aria-pressed={mark.bookmarked} className={button(mark.bookmarked)} onClick={() => void update({ ...mark, bookmarked: !mark.bookmarked })}><BookmarkSimpleIcon className="size-5" /></button>
-  </div>;
-}
 
 // The session transcript with the judge's delivery observations inlined at
 // their timestamps, plus the recording itself in a sticky native <audio>
@@ -101,6 +77,7 @@ export default function TranscriptView({
   marksAction?: (ordinal: number, mark: ParaphraseMark) => Promise<ParaphraseMarks>;
 }) {
   const audioRef = useRef<HTMLAudioElement>(null);
+  const [openOrdinal, setOpenOrdinal] = useState<number | null>(null);
 
   const seek =
     audioUrl === null
@@ -132,8 +109,9 @@ export default function TranscriptView({
         <ol className="flex flex-col gap-4">
           {timeline.map((entry, i) =>
             entry.kind === "turn" ? (
-              <li key={i} className="flex flex-col gap-1">
-                <div className="flex items-baseline gap-2.5">
+              <li key={i} className={`flex flex-col gap-1 ${entry.turn.speaker === "candidate" ? "items-end" : "items-start"}`}>
+                <div className={`${entry.turn.speaker === "candidate" ? "ml-auto bg-paper-sunk" : "border border-hairline bg-surface"} ${PROSE_WIDTH} rounded-surface p-4`}>
+                  <div className="flex items-baseline gap-2.5">
                   <Timestamp atS={entry.turn.start_s} onSeek={seek} />
                   <span
                     className={`${SPEAKER} ${
@@ -144,19 +122,15 @@ export default function TranscriptView({
                   >
                     {SPEAKER_LABELS[entry.turn.speaker]}
                   </span>
-                </div>
-                <p className={`${MUTED} ${PROSE_WIDTH}`}>{entry.turn.text}</p>
-                {entry.item !== null && entry.candidateOrdinal !== null ? <details className="mt-1">
-                  <summary className={`${entry.item.verdict === "good" ? CHIP_READY : CHIP_ALARM} cursor-pointer w-fit`}>✓ {entry.item.verdict === "good" ? "Strong" : "Needs work"}</summary>
-                  <div className={`${PANEL} mt-2 flex flex-col gap-2 p-4`}>
-                    <p className={LABEL}>{entry.item.verdict === "good" ? "Even stronger" : "Stronger phrasing"}</p>
-                    {sourceQuoteIfVerbatim(entry.turn, entry.item.source_quote) ? <blockquote className={EVIDENCE_QUOTE}>{entry.item.source_quote}</blockquote> : null}
-                    <p className={`text-ink ${PROSE_WIDTH}`}>{entry.item.suggestion}</p>
-                    <p className={SUBTLE}>{entry.item.why}</p>
-                    <p className={FINE_PRINT}>A suggested rewrite &mdash; your transcript is unchanged.</p>
-                    <MarkActions ordinal={entry.candidateOrdinal} initial={markFor(coaching?.marks, entry.candidateOrdinal)} action={marksAction} />
                   </div>
-                </details> : null}
+                  <p className={MUTED}>{entry.turn.text}</p>
+                </div>
+                {entry.item !== null && entry.candidateOrdinal !== null ? <>
+                  <button type="button" onClick={() => setOpenOrdinal(entry.candidateOrdinal)} className={`${entry.item.verdict === "good" ? CHIP_READY : CHIP_ALARM} w-fit`}>
+                    {entry.item.verdict === "good" ? "✓ Well said" : "! Needs work"}
+                  </button>
+                  <CoachingDialog open={openOrdinal === entry.candidateOrdinal} onClose={() => setOpenOrdinal(null)} item={entry.item} turn={entry.turn} ordinal={entry.candidateOrdinal} initialMark={markFor(coaching?.marks, entry.candidateOrdinal)} marksAction={marksAction} />
+                </> : null}
               </li>
             ) : (
               // A delivery observation, annotating the turn it sits beside.

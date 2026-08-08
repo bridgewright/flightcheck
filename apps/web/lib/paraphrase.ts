@@ -5,6 +5,12 @@ export type TimelineEntryWithCoaching =
   | { kind: "turn"; turn: TranscriptTurn; candidateOrdinal: number | null; item: ParaphraseItem | null }
   | { kind: "observation"; observation: TimestampedObservation };
 
+export const COACHING_MIN_WORDS = 8;
+
+export function coachingEligible(turn: TranscriptTurn): boolean {
+  return turn.text.trim().split(/\s+/).filter(Boolean).length >= COACHING_MIN_WORDS;
+}
+
 export function attachCoaching(timeline: TimelineEntry[], paraphrases: SessionParaphrases | null | undefined, derivedCandidateTurnCount: number): TimelineEntryWithCoaching[] {
   const usable = paraphrases !== null && paraphrases !== undefined && paraphrases.turn_count === derivedCandidateTurnCount;
   const byOrdinal = new Map<number, ParaphraseItem>();
@@ -17,7 +23,13 @@ export function attachCoaching(timeline: TimelineEntry[], paraphrases: SessionPa
   return timeline.map((entry) => {
     if (entry.kind === "observation") return entry;
     const candidateOrdinal = entry.turn.speaker === "candidate" ? ordinal++ : null;
-    return { ...entry, candidateOrdinal, item: candidateOrdinal === null ? null : (byOrdinal.get(candidateOrdinal) ?? null) };
+    return {
+      ...entry,
+      candidateOrdinal,
+      item: candidateOrdinal === null || !coachingEligible(entry.turn)
+        ? null
+        : (byOrdinal.get(candidateOrdinal) ?? null),
+    };
   });
 }
 

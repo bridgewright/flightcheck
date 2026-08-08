@@ -78,7 +78,6 @@ export const DISALLOWED_PREFIXES = [
   "/rubric",
   "/sessions",
   "/settings",
-  "/study",
   "/switch",
 ];
 

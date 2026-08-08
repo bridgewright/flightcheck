@@ -44,8 +44,8 @@ const EXEMPT: Record<string, string> = {
     "assembled its hexes from a `#` constant, which passed this scan while " +
     "declaring nothing: an exemption argued here is the only allowed route.",
   "components/StudyPdf.tsx":
-    "a PDF has no stylesheet or custom properties, so this printable study " +
-    "export must carry the same five test-pinned colours as ReportPdf.",
+    "a session study PDF has no stylesheet or custom properties, so its " +
+    "printable Q&A export carries ReportPdf's five test-pinned colours.",
 };
 
 function walk(dir: string): string[] {

@@ -209,7 +209,7 @@ export function formatSessionDate(iso: string | null | undefined): string | null
 export const ACTIVE_PACKAGE_COOKIE = "fc_pkg";
 
 export interface NavTab {
-  href: "/home" | "/sessions" | "/progress" | "/study" | "/rubric";
+  href: "/home" | "/sessions" | "/progress" | "/rubric";
   label: string;
 }
 
@@ -218,7 +218,6 @@ export const NAV_TABS: readonly NavTab[] = [
   { href: "/home", label: "Home" },
   { href: "/sessions", label: "Sessions" },
   { href: "/progress", label: "Progress" },
-  { href: "/study", label: "Study" },
   { href: "/rubric", label: "Role & Rubric" },
 ];
 

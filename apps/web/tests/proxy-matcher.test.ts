@@ -33,7 +33,6 @@ describe("proxy matcher", () => {
       "/p/:path*",
       "/sessions/:path*",
       "/progress/:path*",
-      "/study",
       "/ops/:path*",
       "/rubric/:path*",
       "/packages/:path*",
