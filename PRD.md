@@ -64,8 +64,9 @@ Changes to targets are recorded here with date and reason — never silently.
 > "set in advance" checkable, and any re-set will be its own dated note.
 >
 > - **First-response latency ≤ 800 ms (p50) — unmeasured, and now known to
->   contradict a later decision.** Nothing instruments the interviewer side
->   of a turn. DECISIONS 009 then made the wait deliberate: a 900 ms
+>   contradict a later decision.** Nothing instrumented the interviewer
+>   side of a turn when this was written (see the table row above for
+>   what F-70 added on 2026-08-07, and why it still is not this metric). DECISIONS 009 then made the wait deliberate: a 900 ms
 >   server-VAD tail plus a client debounce (`RESPONSE_DEBOUNCE_S`)
 >   before the interviewer may answer — 1.2 s until 2026-08-08, cut to
 >   0.6 s by DECISIONS 055 on the operator's field report, so ~1.5 s of
@@ -286,15 +287,18 @@ Changes to targets are recorded here with date and reason — never silently.
   channel:** the footer's Feedback door stops being a mailto (v0.10)
   and becomes a form — a five-star rating in half-star steps plus free
   text, stored, with an operator-only inbox to read and manage what
-  arrives. DECISIONS 048–051. (Also in this release, governed by its
-  DECISIONS entries rather than product scope: the Morgan naturalness
-  measurement stack — a version-stamped provenance block in every
+  arrives. DECISIONS 048–051. (Also in this release, recorded here AFTER its
+  code — committed 2026-08-07 — because it is eval infrastructure
+  governed by its DECISIONS entries rather than product scope, each of
+  which did precede the code: the Morgan naturalness measurement stack — a version-stamped provenance block in every
   metrics document, a synthetic golden clip pinning segmentation, and
   cross-language gates on the interview timing constants. Eval
   infrastructure, DECISIONS 047 and 051.)
 
-- **v0.13 (recorded 2026-08-08, pre-code):** first real use of v0.12
-  reshapes it, both changes straight from field feedback. **Study folds
+- **v0.13 (recorded 2026-08-08, pre-code):** first use of the v0.12
+  surfaces reshapes them — the operator in the customer seat (one live
+  session plus one disclosed synthetic; DECISIONS 053), both changes
+  straight from that field feedback. **Study folds
   into the session.** The global Study tab and its Generate button go
   away: what a customer studies is per session and is already there the
   moment scoring finishes — derived from the coaching artifacts and the

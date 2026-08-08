@@ -1965,12 +1965,13 @@ the system under test, a lever, never the evaluator.
 
 ## 052 — A long answer is not a dead connection (2026-08-08)
 
-**Context.** Hotfix, from a live field kill with the operator watching:
+**Context.** Hotfix, from a live field kill — the operator in the
+customer seat, as throughout this cycle:
 sessions died with "Connection lost" at exactly 20 seconds into the
 first substantial answer, every time. The full diagnostics trail named
 it — `49.8s cand-start`, then silence, then `70.3s guard-trip
-starvation` — the customer was still talking when the guard ended the
-session. F-17's starvation detector counted candidate-audible seconds
+starvation` — the operator-as-customer was still talking when the
+guard ended the session. F-17's starvation detector counted candidate-audible seconds
 with no data-channel traffic as evidence of a dead transport, but
 server VAD speaks only at speech boundaries: a candidate mid-answer
 legitimately produces zero traffic, so the guard's expectation was
@@ -2046,7 +2047,8 @@ nothing left to run).
 
 ## 054 — Rubric trends are lines, not bars (2026-08-08)
 
-**Context.** Same session of field feedback: the dashboard's
+**Context.** Same session of field feedback (the operator in the
+customer seat): the dashboard's
 overall-trend bars "overlap and are completely unreadable." Root
 cause: `OverallTrend` rendered fixed-width flex pills with no shrink
 guard, so a narrow column collapsed them into each other. The customer

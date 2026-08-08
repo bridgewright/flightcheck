@@ -683,7 +683,7 @@ report as "the story worth keeping" — then passed on the re-run after
 a real fix. The gate doing its job once is worth more than a hundred
 green runs.
 
-## The standing ledger — opened 2026-08-03 at v0.5.0, re-read for v0.7.0
+## The standing ledger — opened 2026-08-03 at v0.5.0, re-read for v0.7.0 and again for v0.12.0 (every claim below is date-scoped and held at the re-read)
 
 *This is not a dated entry. It is the list of what the project can and cannot
 claim about itself, kept below the entries so that each release re-reads it
