@@ -133,6 +133,7 @@ describe("TrendLine", () => {
     expect(markup).not.toContain("<text");
     expect(markup.match(/<polygon/g)).toHaveLength(1);
     expect(markup).toContain('class="fill-sky"');
+    expect(markup).toContain('fill-opacity="0.45"');
     expect(markup).toContain('class="stroke-ink-muted"');
     expect(markup.match(/data-trend-dot=/g)).toHaveLength(2);
     expect(markup.match(/data-slot-label=/g)).toHaveLength(4);
@@ -146,6 +147,7 @@ describe("TrendLine", () => {
     expect(markup).toContain('viewBox="0 0 160 36"');
     expect(markup).not.toContain("<text");
     expect(markup).toContain('class="fill-sky"');
+    expect(markup).toContain('fill-opacity="0.45"');
     expect(markup).toContain('class="stroke-ink-muted"');
     expect(markup).not.toContain("data-trend-dot");
   });

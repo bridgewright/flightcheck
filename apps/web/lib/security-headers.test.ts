@@ -99,6 +99,7 @@ describe("contentSecurityPolicy", () => {
     expect(csp["img-src"]).toContain("blob:");
     expect(csp["font-src"]).toEqual(["'self'"]); // next/font self-hosts
     expect(csp["media-src"]).toContain("blob:");
+    expect(csp["media-src"]).toContain(SUPABASE);
   });
 
   it("upgrades insecure requests", () => {

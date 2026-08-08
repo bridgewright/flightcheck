@@ -19,6 +19,7 @@ import type {
   CreateSessionResponse,
   OrderRow,
   PackageRow,
+  ParaphraseMark,
   ParaphraseMarks,
   PackageStatus,
   SessionRow,
@@ -648,7 +649,7 @@ export async function getSessionCoaching(sessionId: string): Promise<SessionCoac
   return workerJson(`GET ${path}`, await workerFetch(path));
 }
 
-export async function setParaphraseMark(sessionId: string, turnIndex: number, mark: { reaction: "up" | "down" | null; bookmarked: boolean }): Promise<ParaphraseMarks> {
+export async function setParaphraseMark(sessionId: string, turnIndex: number, mark: ParaphraseMark): Promise<ParaphraseMarks> {
   const path = `/api/sessions/${encodeURIComponent(sessionId)}/coaching/marks`;
   return workerJson(`PATCH ${path}`, await workerFetch(path, { method: "PATCH", body: JSON.stringify({ turn_index: turnIndex, mark }) }));
 }

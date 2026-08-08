@@ -1,7 +1,7 @@
 "use client";
 
 import { useRef, useState } from "react";
-import CoachingDialog from "@/components/CoachingDialog";
+import CoachingCard from "@/components/CoachingCard";
 import { DspConflictBadge } from "@/components/ReportView";
 import { formatTimestamp } from "@/lib/report-format";
 import { candidateTurns, transcriptTimeline } from "@/lib/transcript";
@@ -138,10 +138,10 @@ export default function TranscriptView({
                   <p className={MUTED}>{entry.turn.text}</p>
                 </div>
                 {entry.item !== null && entry.candidateOrdinal !== null ? <>
-                  <button type="button" onClick={() => setOpenOrdinal(entry.candidateOrdinal)} className={`${entry.item.verdict === "good" ? CHIP_READY : CHIP_ALARM} w-fit`}>
+                  <button type="button" aria-expanded={openOrdinal === entry.candidateOrdinal} onClick={() => setOpenOrdinal(openOrdinal === entry.candidateOrdinal ? null : entry.candidateOrdinal)} className={`${entry.item.verdict === "good" ? CHIP_READY : CHIP_ALARM} w-fit`}>
                     {entry.item.verdict === "good" ? "✓ Well said" : "! Needs work"}
                   </button>
-                  <CoachingDialog open={openOrdinal === entry.candidateOrdinal} onClose={() => setOpenOrdinal(null)} item={entry.item} turn={entry.turn} mark={markFor(marks, entry.candidateOrdinal)} onMarkChange={(next) => updateMark(entry.candidateOrdinal!, next)} />
+                  {openOrdinal === entry.candidateOrdinal ? <CoachingCard item={entry.item} turn={entry.turn} mark={markFor(marks, entry.candidateOrdinal)} onMarkChange={(next) => updateMark(entry.candidateOrdinal!, next)} /> : null}
                 </> : null}
               </li>
             ) : (

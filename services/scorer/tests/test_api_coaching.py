@@ -37,7 +37,9 @@ def test_get_defaults_and_patch_round_trip(setup):
     response = client.get(f"/api/sessions/{session_id}/coaching", headers=AUTH)
     assert response.status_code == 200
     assert response.json()["marks"] == {"schema_version": 1, "marks": {}}
-    mark = {"reaction": "up", "bookmarked": True}
+    mark = {"reaction": "up", "bookmarked": True, "flag": {
+        "reason": "misheard", "note": "The company name was wrong",
+    }}
     patched = client.patch(
         f"/api/sessions/{session_id}/coaching/marks",
         headers=AUTH,
@@ -50,6 +52,24 @@ def test_get_defaults_and_patch_round_trip(setup):
         ]
         == mark
     )
+
+
+@pytest.mark.parametrize("flag", [
+    {"reason": "unknown", "note": "bad enum"},
+    {"reason": "misheard", "note": "x" * 501},
+    {"reason": "other", "note": ""},
+    {"reason": "other", "note": "   "},
+])
+def test_patch_rejects_invalid_flags(setup, flag):
+    client, session_id = setup
+    response = client.patch(
+        f"/api/sessions/{session_id}/coaching/marks",
+        headers=AUTH,
+        json={"turn_index": 0, "mark": {
+            "reaction": None, "bookmarked": False, "flag": flag,
+        }},
+    )
+    assert response.status_code == 422
 
 
 def test_auth_not_found_and_bad_body(setup):

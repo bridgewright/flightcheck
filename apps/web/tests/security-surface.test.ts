@@ -43,6 +43,15 @@ describe("the header rules point at real routes", () => {
       expect(rule.headers.length).toBeGreaterThan(0);
     }
   });
+
+  it("allows signed Supabase recordings from the configured origin", () => {
+    const origin = "https://project.supabase.co";
+    const csp = securityHeaderRules({ isDev: false, supabaseOrigin: origin, sentryOrigins: [] })
+      .flatMap((rule) => rule.headers)
+      .find((header) => header.key === "Content-Security-Policy")?.value;
+    expect(csp).toContain(`connect-src 'self' ${origin}`);
+    expect(csp).toContain(`media-src 'self' blob: ${origin}`);
+  });
 });
 
 // --- the secret mint honours revocation ----------------------------------

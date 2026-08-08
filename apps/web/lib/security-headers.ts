@@ -97,7 +97,7 @@ export function contentSecurityPolicy(options: SecurityHeaderOptions): string {
     // The interviewer's audio arrives as a MediaStream on srcObject, which
     // no URL directive governs; blob: covers anything the recorder hands to
     // an element.
-    ["media-src", ["'self'", "blob:"]],
+    ["media-src", ["'self'", "blob:", supabaseOrigin]],
     ["worker-src", ["'self'", "blob:"]],
     ["object-src", ["'none'"]],
     ["base-uri", ["'self'"]],

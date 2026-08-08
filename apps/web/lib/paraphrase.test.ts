@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { COACHING_MIN_WORDS, attachCoaching, bookmarkedItems, coachingEligible, markFor, nextMarkForBookmark, nextMarkForReaction, sourceQuoteIfVerbatim } from "@/lib/paraphrase";
+import { COACHING_MIN_WORDS, attachCoaching, bookmarkedItems, coachingEligible, markFor, nextMarkForBookmark, nextMarkForFlag, sourceQuoteIfVerbatim } from "@/lib/paraphrase";
 import type { TimelineEntry, TranscriptTurn } from "@/lib/transcript";
 
 const timeline: TimelineEntry[] = [
@@ -74,38 +74,33 @@ describe("attachCoaching drops what it cannot place", () => {
 });
 
 const marks = { schema_version: 1, marks: {
-  "1": { reaction: "up" as const, bookmarked: true },
-  "0": { reaction: null, bookmarked: false },
+  "1": { reaction: "up" as const, bookmarked: true, flag: null },
+  "0": { reaction: null, bookmarked: false, flag: null },
 } };
 
 describe("markFor", () => {
   it("defaults to an unmarked card", () => {
-    expect(markFor(undefined, 2)).toEqual({ reaction: null, bookmarked: false });
-    expect(markFor(null, 0)).toEqual({ reaction: null, bookmarked: false });
-    expect(markFor(marks, 7)).toEqual({ reaction: null, bookmarked: false });
+    expect(markFor(undefined, 2)).toEqual({ reaction: null, bookmarked: false, flag: null });
+    expect(markFor(null, 0)).toEqual({ reaction: null, bookmarked: false, flag: null });
+    expect(markFor(marks, 7)).toEqual({ reaction: null, bookmarked: false, flag: null });
   });
 
   it("reads a stored mark by its string ordinal key", () => {
-    expect(markFor(marks, 1)).toEqual({ reaction: "up", bookmarked: true });
+    expect(markFor(marks, 1)).toEqual({ reaction: "up", bookmarked: true, flag: null });
   });
 });
 
 describe("mark transitions", () => {
-  it("toggles a repeated reaction off", () => {
-    expect(nextMarkForReaction({ reaction: "up", bookmarked: false }, "up"))
-      .toEqual({ reaction: null, bookmarked: false });
-    expect(nextMarkForReaction({ reaction: "down", bookmarked: false }, "down"))
-      .toEqual({ reaction: null, bookmarked: false });
-  });
-
-  it("preserves a bookmark while changing reactions", () => {
-    expect(nextMarkForReaction({ reaction: "down", bookmarked: true }, "up"))
-      .toEqual({ reaction: "up", bookmarked: true });
-  });
-
   it("toggles only the bookmark", () => {
-    expect(nextMarkForBookmark({ reaction: "up", bookmarked: true }))
-      .toEqual({ reaction: "up", bookmarked: false });
+    expect(nextMarkForBookmark({ reaction: "up", bookmarked: true, flag: null }))
+      .toEqual({ reaction: "up", bookmarked: false, flag: null });
+  });
+
+  it("sets and clears a flag without changing legacy reactions or bookmarks", () => {
+    const mark = { reaction: "down" as const, bookmarked: true, flag: null };
+    const flag = { reason: "misheard" as const, note: "The name was wrong" };
+    expect(nextMarkForFlag(mark, flag)).toEqual({ ...mark, flag });
+    expect(nextMarkForFlag({ ...mark, flag }, null)).toEqual(mark);
   });
 });
 
@@ -123,7 +118,7 @@ describe("bookmarkedItems", () => {
 
   it("does not treat a thumbs-up as a bookmark", () => {
     const reactedOnly = { schema_version: 1, marks: {
-      "1": { reaction: "up" as const, bookmarked: false },
+      "1": { reaction: "up" as const, bookmarked: false, flag: null },
     } };
     expect(bookmarkedItems(paraphrases, reactedOnly)).toEqual([]);
   });
@@ -134,7 +129,7 @@ describe("bookmarkedItems", () => {
       turn: { speaker: "candidate", start_s: 0, end_s: 1, text: "Brief saved reply" },
     }];
     const short = { ...paraphrases, turn_count: 1, items: [{ ...paraphrases.items[0], turn_index: 0 }] };
-    const shortMarks = { schema_version: 1, marks: { "0": { reaction: null, bookmarked: true } } };
+    const shortMarks = { schema_version: 1, marks: { "0": { reaction: null, bookmarked: true, flag: null } } };
 
     expect(attachCoaching(shortTimeline, short, 1)[0]).toMatchObject({ item: null });
     expect(bookmarkedItems(short, shortMarks)).toEqual([{ ordinal: 0, item: short.items[0] }]);

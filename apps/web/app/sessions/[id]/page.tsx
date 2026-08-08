@@ -422,8 +422,8 @@ export default async function SessionDetailPage({
     const report = session.report;
     const dimensions = rubric ? dimensionMetaFromRubric(rubric) : [];
     const requestedTab = (await searchParams).tab;
-    const tab = requestedTab === "study" || requestedTab === "report" ? requestedTab : "transcript";
-    const tabs = ["transcript", "study", "report"] as const;
+    const tab = requestedTab === "study" || requestedTab === "transcript" ? requestedTab : "report";
+    const tabs = ["report", "transcript", "study"] as const;
     return (
       <Shell viewer={viewer}>
         <div className="flex flex-col gap-10">

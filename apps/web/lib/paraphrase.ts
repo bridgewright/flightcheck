@@ -1,5 +1,5 @@
 import type { TimelineEntry, TranscriptTurn } from "@/lib/transcript";
-import type { ParaphraseItem, ParaphraseMark, ParaphraseMarks, SessionParaphrases, TimestampedObservation } from "@/lib/types";
+import type { ParaphraseFlag, ParaphraseItem, ParaphraseMark, ParaphraseMarks, SessionParaphrases, TimestampedObservation } from "@/lib/types";
 
 export type TimelineEntryWithCoaching =
   | { kind: "turn"; turn: TranscriptTurn; candidateOrdinal: number | null; item: ParaphraseItem | null }
@@ -34,15 +34,16 @@ export function attachCoaching(timeline: TimelineEntry[], paraphrases: SessionPa
 }
 
 export function markFor(marks: ParaphraseMarks | null | undefined, ordinal: number): ParaphraseMark {
-  return marks?.marks[String(ordinal)] ?? { reaction: null, bookmarked: false };
-}
-
-export function nextMarkForReaction(mark: ParaphraseMark, reaction: "up" | "down"): ParaphraseMark {
-  return { ...mark, reaction: mark.reaction === reaction ? null : reaction };
+  const mark = marks?.marks[String(ordinal)];
+  return mark ? { ...mark, flag: mark.flag ?? null } : { reaction: null, bookmarked: false, flag: null };
 }
 
 export function nextMarkForBookmark(mark: ParaphraseMark): ParaphraseMark {
   return { ...mark, bookmarked: !mark.bookmarked };
+}
+
+export function nextMarkForFlag(mark: ParaphraseMark, flag: ParaphraseFlag | null): ParaphraseMark {
+  return { ...mark, flag };
 }
 
 export function bookmarkedItems(paraphrases: SessionParaphrases | null | undefined, marks: ParaphraseMarks | null | undefined): { ordinal: number; item: ParaphraseItem }[] {

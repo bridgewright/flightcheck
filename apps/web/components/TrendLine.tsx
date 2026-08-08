@@ -60,7 +60,7 @@ export default function TrendLine({
               />
             ))}
             {area ? (
-              <polygon points={area} className="fill-sky" stroke="none" />
+              <polygon points={area} className="fill-sky" fillOpacity={0.45} stroke="none" />
             ) : null}
             {geometry.dots.length > 1 ? (
               <polyline
@@ -119,7 +119,7 @@ export default function TrendLine({
     >
       <g aria-hidden="true">
         {area ? (
-          <polygon points={area} className="fill-sky" stroke="none" />
+          <polygon points={area} className="fill-sky" fillOpacity={0.45} stroke="none" />
         ) : null}
         {geometry.dots.length > 1 ? (
           <polyline

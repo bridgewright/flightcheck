@@ -170,10 +170,25 @@ class SessionInsights(BaseModel):
     must_answer: list[InsightAnswer]
 
 
+class ParaphraseFlag(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    reason: Literal["misheard", "inappropriate", "inaccurate", "missing", "other"]
+    note: str
+
+    @model_validator(mode="after")
+    def validate_note(self):
+        if len(self.note) > 500:
+            raise ValueError("flag note must be at most 500 characters")
+        if self.reason == "other" and not self.note.strip():
+            raise ValueError("flag note is required for other")
+        return self
+
+
 class ParaphraseMark(BaseModel):
     model_config = ConfigDict(extra="forbid")
     reaction: Literal["up", "down"] | None = None
     bookmarked: bool = False
+    flag: ParaphraseFlag | None = None
 
 
 class ParaphraseMarks(BaseModel):

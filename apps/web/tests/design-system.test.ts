@@ -214,14 +214,6 @@ const COMPOSITES: {
     kind: "ground",
     note: "a sticky bar's ground, blurred, over arbitrary scrolled content",
   },
-  {
-    utility: "bg-ink/40",
-    ink: "ink",
-    alpha: 0.4,
-    ground: "paper",
-    kind: "ground",
-    note: "the full-screen backdrop behind the centered coaching dialog",
-  },
 ];
 
 /** `ink` composited onto `ground` at `alpha`, as a hex. */
