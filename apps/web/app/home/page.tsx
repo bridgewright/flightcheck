@@ -5,6 +5,9 @@ import JourneyStrip from "@/components/JourneyStrip";
 import { packageIdentityDecision } from "@/components/package-identity";
 import PackageIdentity from "@/components/PackageIdentity";
 import PollRefresh from "@/components/PollRefresh";
+import OverallTrend from "@/components/OverallTrend";
+import ProgressDimensionTable from "@/components/ProgressDimensionTable";
+import ProgressFocus from "@/components/ProgressFocus";
 import ReadinessGauge from "@/components/ReadinessGauge";
 import ReclaimSessionButton from "@/components/ReclaimSessionButton";
 import RetryCompileButton from "@/components/RetryCompileButton";
@@ -12,6 +15,8 @@ import SessionList from "@/components/SessionList";
 import SessionTicket from "@/components/SessionTicket";
 import Shell from "@/components/Shell";
 import StartSessionButton from "@/components/StartSessionButton";
+import { trendSectionVisible } from "@/components/home-dashboard";
+import { dimensionMeta } from "@/components/progress-view";
 import { retryCompileAction } from "@/app/packages/actions";
 import { resolveActivePackage } from "@/lib/active-package";
 import type { VerdictLine } from "@/lib/home";
@@ -30,11 +35,13 @@ import {
   verdictLine,
 } from "@/lib/home";
 import type { Verdict } from "@/lib/types";
+import type { Rubric } from "@/lib/types";
+import { dimensionTrends, recurringIssues } from "@/lib/progress";
 import { CARD, DIVIDER, FINE_PRINT, LABEL, PAGE_HEADING, PRIMARY_BUTTON, LINK, SUBTLE } from "@/lib/ui";
 import type { Viewer } from "@/lib/viewer";
 import { getViewer } from "@/lib/viewer";
 import type { PackageSummary, SessionSummary } from "@/lib/worker";
-import { getPackageByToken, getSession, listPackagesForUser, listSessions } from "@/lib/worker";
+import { getPackageByToken, getPackageProgress, getSession, listPackagesForUser, listSessions } from "@/lib/worker";
 
 export const dynamic = "force-dynamic";
 
@@ -99,6 +106,7 @@ interface LastOutcome {
   line: VerdictLine | null;
   verdict: Verdict | null;
   overall: number | null;
+  rubric: Rubric | null;
 }
 
 // The ticket's most valuable line is what the last report actually said, and
@@ -110,7 +118,7 @@ async function lastOutcome(
   active: PackageSummary,
   sessions: SessionSummary[],
 ): Promise<LastOutcome> {
-  const empty: LastOutcome = { line: null, verdict: null, overall: null };
+  const empty: LastOutcome = { line: null, verdict: null, overall: null, rubric: null };
   const latest = sessions
     .filter((session) => session.status === "scored")
     .sort((a, b) => b.index - a.index)[0];
@@ -129,6 +137,7 @@ async function lastOutcome(
     line: verdictLine(report, names),
     verdict: report?.verdict ?? null,
     overall: report?.overall_score ?? latest.overall,
+    rubric: pkg?.rubric ?? null,
   };
 }
 
@@ -231,7 +240,10 @@ export default async function HomePage({
   const next = nextSessionNumber(sessions, total);
   const done = legs.filter((leg) => leg === "done").length;
   const stageLine = scoringStageLine(sessions);
-  const outcome = await lastOutcome(active, sessions);
+  const [outcome, progress] = await Promise.all([
+    lastOutcome(active, sessions),
+    getPackageProgress(active.id).catch(() => null),
+  ]);
   const unpaid = isUnpaid(active);
   const expiry = expiryLine(active, new Date());
   const dropped = sessions.find((session) => session.stopped_reporting === true);
@@ -305,6 +317,27 @@ export default async function HomePage({
           )
         }
       />
+
+      {progress !== null && trendSectionVisible(progress.sessions) ? (
+        <section className="mt-8 flex flex-col gap-5">
+          <h2 className={LABEL}>Progress so far</h2>
+          <OverallTrend entries={progress.sessions} />
+          <ProgressDimensionTable
+            trends={dimensionTrends(progress.sessions)}
+            meta={dimensionMeta(outcome.rubric)}
+          />
+          <ProgressFocus
+            entries={progress.sessions}
+            issues={recurringIssues(progress.sessions)}
+            meta={dimensionMeta(outcome.rubric)}
+          />
+          <p className="text-fine">
+            <Link href="/progress" className={LINK}>
+              Full progress
+            </Link>
+          </p>
+        </section>
+      ) : null}
 
       <div className="mt-8 grid gap-6 sm:grid-cols-[1fr_168px] sm:items-start">
         <SessionList sessions={sessions} />
