@@ -10,7 +10,7 @@ export default function FeedbackForm({ packageId }: { packageId?: string }) {
   const [rating, setRating] = useState<number | null>(null);
   const [count, setCount] = useState(0);
   const [state, action, pending] = useActionState(submitFeedbackAction, { ok: false });
-  if (state.ok) return <p className={NOTICE}>Thank you {String.fromCharCode(8212)} received.</p>;
+  if (state.ok) return <p className={NOTICE}>Thank you. Received.</p>;
   return (
     <form action={action} className="mt-8 flex flex-col gap-4">
       {packageId && <input type="hidden" name="package_id" value={packageId} />}
