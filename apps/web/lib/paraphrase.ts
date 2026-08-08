@@ -46,6 +46,34 @@ export function nextMarkForFlag(mark: ParaphraseMark, flag: ParaphraseFlag | nul
   return { ...mark, flag };
 }
 
+export const PARAPHRASE_FLAG_REASONS = [
+  "misheard",
+  "inappropriate",
+  "inaccurate",
+  "missing",
+  "other",
+] as const;
+
+export const FLAG_NOTE_MAX_CHARS = 500;
+
+/**
+ * Validates a client-supplied flag and REBUILDS it field by field, so
+ * unknown keys never travel to the worker (whose schema forbids them).
+ * A missing flag reads as null: a stale client that predates the field
+ * must keep working. "invalid" is a sentinel, never thrown here — the
+ * caller decides how to refuse.
+ */
+export function sanitizedFlag(flag: unknown): ParaphraseFlag | null | "invalid" {
+  if (flag === null || flag === undefined) return null;
+  if (typeof flag !== "object" || Array.isArray(flag)) return "invalid";
+  const { reason, note } = flag as { reason?: unknown; note?: unknown };
+  if (typeof reason !== "string") return "invalid";
+  if (!(PARAPHRASE_FLAG_REASONS as readonly string[]).includes(reason)) return "invalid";
+  if (typeof note !== "string" || note.length > FLAG_NOTE_MAX_CHARS) return "invalid";
+  if (reason === "other" && note.trim() === "") return "invalid";
+  return { reason: reason as ParaphraseFlag["reason"], note };
+}
+
 export function bookmarkedItems(paraphrases: SessionParaphrases | null | undefined, marks: ParaphraseMarks | null | undefined): { ordinal: number; item: ParaphraseItem }[] {
   if (!paraphrases) return [];
   return paraphrases.items.filter((item) => markFor(marks, item.turn_index).bookmarked).map((item) => ({ ordinal: item.turn_index, item }));

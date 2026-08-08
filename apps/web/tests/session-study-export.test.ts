@@ -26,7 +26,7 @@ const coaching = {
   session_id: "sess-1",
   paraphrases: { schema_version: 1, generated_at: "2026-08-08", turn_count: 1, items: [{ turn_index: 0, verdict: "improve", source_quote: "volume fell", suggestion: "Support volume fell by eighteen percent.", why: "Names the result." }] },
   insights: null,
-  marks: { schema_version: 1, marks: { "0": { reaction: null, bookmarked: true } } },
+  marks: { schema_version: 1, marks: { "0": { reaction: null, bookmarked: true, flag: null } } },
 };
 const segments = [
   { start_s: 0, end_s: 1, speaker: "interviewer", text: question },

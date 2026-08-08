@@ -54,6 +54,24 @@ def test_get_defaults_and_patch_round_trip(setup):
     )
 
 
+def test_patch_accepts_the_deployed_client_shape_without_a_flag(setup):
+    """A mark without a flag key is the shape every client sent before the
+    flag existed; it must keep round-tripping, with flag reading null."""
+    client, session_id = setup
+    patched = client.patch(
+        f"/api/sessions/{session_id}/coaching/marks",
+        headers=AUTH,
+        json={"turn_index": 0, "mark": {"reaction": None, "bookmarked": True}},
+    )
+    assert patched.status_code == 200
+    saved = client.get(f"/api/sessions/{session_id}/coaching", headers=AUTH)
+    assert saved.json()["marks"]["marks"]["0"] == {
+        "reaction": None,
+        "bookmarked": True,
+        "flag": None,
+    }
+
+
 @pytest.mark.parametrize("flag", [
     {"reason": "unknown", "note": "bad enum"},
     {"reason": "misheard", "note": "x" * 501},

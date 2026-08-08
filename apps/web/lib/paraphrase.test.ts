@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { COACHING_MIN_WORDS, attachCoaching, bookmarkedItems, coachingEligible, markFor, nextMarkForBookmark, nextMarkForFlag, sourceQuoteIfVerbatim } from "@/lib/paraphrase";
+import { COACHING_MIN_WORDS, attachCoaching, bookmarkedItems, coachingEligible, markFor, nextMarkForBookmark, nextMarkForFlag, sanitizedFlag, sourceQuoteIfVerbatim } from "@/lib/paraphrase";
 import type { TimelineEntry, TranscriptTurn } from "@/lib/transcript";
 
 const timeline: TimelineEntry[] = [
@@ -148,5 +148,46 @@ describe("sourceQuoteIfVerbatim", () => {
     expect(sourceQuoteIfVerbatim(turn, "invented")).toBeNull();
     expect(sourceQuoteIfVerbatim(turn, "Exact")).toBeNull();   // case is not a match
     expect(sourceQuoteIfVerbatim(turn, "")).toBeNull();        // empty is not a quote
+  });
+});
+
+describe("sanitizedFlag", () => {
+  it("passes every enumerated reason through, rebuilt to exactly two fields", () => {
+    for (const reason of ["misheard", "inappropriate", "inaccurate", "missing"]) {
+      expect(sanitizedFlag({ reason, note: "", extra: "dropped" })).toEqual({
+        reason,
+        note: "",
+      });
+    }
+  });
+
+  it("reads a missing flag as null so a stale client keeps working", () => {
+    expect(sanitizedFlag(null)).toBeNull();
+    expect(sanitizedFlag(undefined)).toBeNull();
+  });
+
+  it("refuses shapes that are not a flag", () => {
+    expect(sanitizedFlag("misheard")).toBe("invalid");
+    expect(sanitizedFlag(["misheard"])).toBe("invalid");
+    expect(sanitizedFlag({ note: "no reason" })).toBe("invalid");
+    expect(sanitizedFlag({ reason: "made-up", note: "" })).toBe("invalid");
+    expect(sanitizedFlag({ reason: "misheard", note: 7 })).toBe("invalid");
+  });
+
+  it("caps the note at 500 characters", () => {
+    expect(sanitizedFlag({ reason: "misheard", note: "x".repeat(500) })).toEqual({
+      reason: "misheard",
+      note: "x".repeat(500),
+    });
+    expect(sanitizedFlag({ reason: "misheard", note: "x".repeat(501) })).toBe("invalid");
+  });
+
+  it("requires a real note when the reason is other", () => {
+    expect(sanitizedFlag({ reason: "other", note: "" })).toBe("invalid");
+    expect(sanitizedFlag({ reason: "other", note: "   " })).toBe("invalid");
+    expect(sanitizedFlag({ reason: "other", note: "the tone is off" })).toEqual({
+      reason: "other",
+      note: "the tone is off",
+    });
   });
 });

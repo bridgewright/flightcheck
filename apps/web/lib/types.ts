@@ -231,7 +231,7 @@ export interface InsightAnswer { question: string; model_answer: string; based_o
 export interface SessionInsights { schema_version: number; generated_at: string; did_well: string[]; did_poorly: string[]; must_keep: InsightExpression[]; must_answer: InsightAnswer[]; }
 export type ParaphraseFlagReason = "misheard" | "inappropriate" | "inaccurate" | "missing" | "other";
 export interface ParaphraseFlag { reason: ParaphraseFlagReason; note: string; }
-export interface ParaphraseMark { reaction: "up" | "down" | null; bookmarked: boolean; flag?: ParaphraseFlag | null; }
+export interface ParaphraseMark { reaction: "up" | "down" | null; bookmarked: boolean; flag: ParaphraseFlag | null; }
 export interface ParaphraseMarks { schema_version: number; marks: Record<string, ParaphraseMark>; }
 export interface SessionCoaching { session_id: string; paraphrases: SessionParaphrases | null; insights: SessionInsights | null; marks: ParaphraseMarks; }
 

@@ -102,6 +102,17 @@ describe("contentSecurityPolicy", () => {
     expect(csp["media-src"]).toContain(SUPABASE);
   });
 
+  it("derives media-src from the argument origin, never a second literal", () => {
+    // Two different origins: a hardcoded hostname would track neither.
+    for (const origin of ["https://a.example", "https://b.example"]) {
+      const built = directives(
+        contentSecurityPolicy({ ...options, supabaseOrigin: origin }),
+      );
+      expect(built["media-src"]).toContain(origin);
+      expect(built["connect-src"]).toContain(origin);
+    }
+  });
+
   it("upgrades insecure requests", () => {
     expect(csp["upgrade-insecure-requests"]).toEqual([]);
   });

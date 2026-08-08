@@ -25,9 +25,9 @@ const coaching: SessionCoaching = {
   },
   insights: null,
   marks: { schema_version: 1, marks: {
-    "0": { reaction: null, bookmarked: true },
-    "1": { reaction: "up", bookmarked: true },
-    "9": { reaction: null, bookmarked: true },
+    "0": { reaction: null, bookmarked: true, flag: null },
+    "1": { reaction: "up", bookmarked: true, flag: null },
+    "9": { reaction: null, bookmarked: true, flag: null },
   } },
 };
 

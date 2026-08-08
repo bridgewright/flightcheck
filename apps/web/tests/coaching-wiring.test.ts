@@ -23,6 +23,11 @@ describe("session coaching wiring", () => {
     const actions = read("app/sessions/[id]/actions.ts");
     expect(actions.indexOf("getViewer()")).toBeLessThan(actions.indexOf("setParaphraseMark(sessionId"));
     expect(actions.indexOf("authorizeViewerSession")).toBeLessThan(actions.indexOf("setParaphraseMark(sessionId"));
+    // The flag travels only through the unit-tested sanitizer, and the
+    // mark is rebuilt from validated fields so client extras never reach
+    // the worker. Deleting either line must fail here.
+    expect(actions).toContain("sanitizedFlag(mark.flag)");
+    expect(actions).toMatch(/reaction: mark\.reaction,\s*\n\s*bookmarked: mark\.bookmarked,\s*\n\s*flag,/);
   });
 
   it("keeps mark state above the inline card subtree", () => {
@@ -40,6 +45,14 @@ describe("session coaching wiring", () => {
     expect(card).not.toContain('role="dialog"');
     expect(card).not.toContain("ThumbsUpIcon");
     expect(card).not.toContain("ThumbsDownIcon");
+    // The card may hold LOCAL state only for the flag form's draft
+    // (reason/note while the picker is open — a rejected submit keeps the
+    // typed text, deliberately). The MARK itself must never live here:
+    // pressed states read the mark prop, and updates flow through the
+    // lifted map above. This is the T1-regression pin, narrowed on purpose.
+    expect(card).not.toMatch(/useState<Paraphrase(Mark|Marks)\b/);
+    expect(card).not.toContain("markFor(");
+    expect(card).not.toMatch(/useState\([^)]*mark\.(bookmarked|reaction)/);
     expect(card).toContain("nextMarkForFlag");
     expect(card).toContain("Remove report");
   });
