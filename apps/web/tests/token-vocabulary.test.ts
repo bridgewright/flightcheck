@@ -43,6 +43,9 @@ const EXEMPT: Record<string, string> = {
     "pinned by tests/report-export.test.ts. The first version of this file " +
     "assembled its hexes from a `#` constant, which passed this scan while " +
     "declaring nothing: an exemption argued here is the only allowed route.",
+  "components/StudyPdf.tsx":
+    "a PDF has no stylesheet or custom properties, so this printable study " +
+    "export must carry the same five test-pinned colours as ReportPdf.",
 };
 
 function walk(dir: string): string[] {
