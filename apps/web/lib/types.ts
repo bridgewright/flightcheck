@@ -32,6 +32,7 @@ export interface RubricDimension {
   anchors: BarsAnchor[];
   signals: string[];
   citations: SourceCitation[];
+  license?: "jd" | "profile";
   // F-62: the verbatim JD quote that licenses this dimension. Contract: a
   // character-for-character substring of the job description the compiler
   // saw, enforced on the scorer side. Absent or null on rubrics compiled
@@ -59,7 +60,7 @@ export interface Rubric {
 
 export interface SessionPlan {
   session_index: number;
-  focus: "baseline";
+  focus: "baseline" | "targeted";
   question_sequence: QuestionSpec[];
   pressure_probe: QuestionSpec;
   time_budget_minutes: number;

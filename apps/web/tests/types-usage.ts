@@ -6,6 +6,7 @@ import type {
   CreateSessionResponse,
   PackageRow,
   Rubric,
+  RubricDimension,
   SessionPlan,
   SessionReport,
   SessionRow,
@@ -78,6 +79,12 @@ const plan: SessionPlan = {
   },
   time_budget_minutes: 20,
 };
+
+const profileLicensedDimension: RubricDimension = {
+  ...rubric.dimensions[0],
+  license: "profile",
+};
+void profileLicensedDimension;
 
 const report: SessionReport = {
   session_id: "sess-check",

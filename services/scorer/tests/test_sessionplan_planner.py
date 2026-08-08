@@ -137,9 +137,15 @@ def test_pressure_probe_targets_highest_weight_content_dimension():
 
 def test_plan_fixed_fields():
     plan = plan_baseline_session(_make_rubric())
+    # Session 1 with no history: real index 1, baseline focus, 20-minute budget.
     assert plan.session_index == 1
     assert plan.focus == "baseline"
     assert plan.time_budget_minutes == 20
+
+
+def test_plan_accepts_real_session_index_and_history_contract():
+    plan = plan_baseline_session(_make_rubric(), session_index=2, history=())
+    assert plan.session_index == 2
 
 
 def _instructions() -> str:

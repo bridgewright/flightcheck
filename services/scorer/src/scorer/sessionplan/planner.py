@@ -20,6 +20,8 @@ randomness, no clock.
 """
 from __future__ import annotations
 
+from typing import Protocol, Sequence
+
 from scorer.promptsafe import fence, inline
 from scorer.schemas import (
     CandidateProfile,
@@ -43,6 +45,13 @@ _CLOSING_LINE = (
 )
 
 
+class SessionHistoryRow(Protocol):
+    """Stored session fields used by the pure planner."""
+
+    session_plan: SessionPlan | None
+    report: object | None
+
+
 def _generated_question(dimension: RubricDimension) -> QuestionSpec:
     """Fallback question for a dimension with no question_bank entry."""
     question = f"Tell me about a time you demonstrated {dimension.name.lower()}."
@@ -59,7 +68,12 @@ def _generated_question(dimension: RubricDimension) -> QuestionSpec:
     )
 
 
-def plan_baseline_session(rubric: Rubric) -> SessionPlan:
+def plan_baseline_session(
+    rubric: Rubric,
+    *,
+    session_index: int = 1,
+    history: Sequence[SessionHistoryRow] = (),
+) -> SessionPlan:
     """Deterministic baseline plan covering every rubric dimension at least once."""
     # sorted() is stable: equal weights keep their rubric order.
     ordered = sorted(rubric.dimensions, key=lambda dim: -dim.weight)
@@ -77,7 +91,7 @@ def plan_baseline_session(rubric: Rubric) -> SessionPlan:
         source="generated",
     )
     return SessionPlan(
-        session_index=1,
+        session_index=session_index,
         focus="baseline",
         question_sequence=sequence,
         pressure_probe=pressure_probe,

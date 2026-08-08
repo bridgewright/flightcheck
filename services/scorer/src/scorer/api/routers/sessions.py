@@ -311,8 +311,9 @@ def build_router(deps: Deps) -> APIRouter:
                     "code": "package-not-ready",
                 },
             )
-        plan = plan_baseline_session(package.rubric)
         next_index = max((row.index for row in existing), default=0) + 1
+        plan = plan_baseline_session(
+            package.rubric, session_index=next_index, history=existing)
         row = db.create_session(body.package_id, next_index, plan)
         db.touch_updated_at("session", row.id)
         return _session_response(row, package)

@@ -62,6 +62,7 @@ class RubricDimension(BaseModel):
     anchors: list[BarsAnchor]         # exactly 3 (scores 1, 3, 5)
     signals: list[str]
     citations: list[SourceCitation]   # min length 1 -- enforced by Rubric validator
+    license: Literal["jd", "profile"] = "jd"
     # F-62: the verbatim JD quote that licenses this dimension -- an exact
     # substring of the job description the compiler saw, enforced in the
     # compile path (never here: this model re-validates every stored rubric
@@ -112,8 +113,8 @@ class Rubric(BaseModel):
 class SessionPlan(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
-    session_index: int                # v0.1: always 1
-    focus: Literal["baseline"]        # v0.1: baseline only
+    session_index: int                # real one-based index within the package
+    focus: Literal["baseline", "targeted"]
     question_sequence: list[QuestionSpec]  # covers every dimension at least shallowly
     pressure_probe: QuestionSpec      # exactly one challenge moment
     time_budget_minutes: int          # 20
