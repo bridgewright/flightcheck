@@ -309,6 +309,19 @@ Changes to targets are recorded here with date and reason — never silently.
   the scored sessions plotted, plus per-dimension sparklines — in the
   existing pastel accent. DECISIONS 053–054.
 
+- **v0.14 (recorded 2026-08-08, pre-code):** the same day's second
+  field pass. Coaching checks open in place (an expanding card under
+  the answer, not a popup); the thumbs pair on suggestions retires in
+  favor of bookmark plus a structured flag — a reader who distrusts a
+  suggestion says why in one tap (misheard, inappropriate, inaccurate
+  paraphrase, missing explanation, or their own words), which turns
+  distrust into countable coaching-eval data; pressed controls look
+  pressed. The session replay strip actually plays (a security-header
+  omission had silently blocked it since it shipped), the pastel trend
+  area turns translucent so the grid reads through, and the session
+  sub-tabs lead with Report again, matching the sessions list's own
+  "Report" doorway. DECISIONS 057.
+
 > 2026-08-02: v0.4 scope added above — accounts move ahead of payments
 > because login-gated interviews protect session integrity and per-session
 > cost, and the dashboard is what makes a 6-session package usable. The

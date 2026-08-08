@@ -2156,3 +2156,45 @@ the interviewer's instructions; no plan cursor reaches the browser.
   the 10-minute scoring floor; an interviewer who somehow closes
   earlier produces the same insufficient outcome a manual early end
   would — unchanged policy.
+
+## 057 — Coaching interaction, second field pass: inline cards, and a flag instead of thumbs (2026-08-08)
+
+**Context.** The customer used the shipped coaching surface within hours
+and corrected two interaction choices. The popup card (F-77's dialog)
+reads as a context switch — "the green and red should open DOWNWARD in
+place"; and the thumbs up/down pair next to bookmark is both unclear in
+its pressed state and less useful than what they actually want to tell
+us: WHAT went wrong with a suggestion.
+
+- **Chosen — inline accordion card.** The check chip toggles a card
+  that expands directly under the answer bubble (content order
+  unchanged: better answer, why, what you said). The dialog is
+  removed. This revisits the popup half of F-77's design; the
+  reference app uses an overlay, but the customer read our version as
+  a new window, and an in-flow expansion keeps the transcript's
+  reading position.
+- **Chosen — marks become bookmark + flag.** Thumbs up/down retire
+  from the UI (stored reactions keep their column shape; no data is
+  destroyed and old rows stay valid). A flag control opens a
+  structured error report: misheard speech, inappropriate content,
+  inaccurate paraphrase, missing explanation, or other with free
+  text. This is a sharper training/eval signal than a bare thumb —
+  each flag names the failure mode, which is exactly what the
+  coaching-quality eval (049's stated purpose for marks) needs.
+  Pressed states get an unmistakable treatment (washed chip ground +
+  filled icon), because the customer could not tell a pressed icon
+  from an idle one.
+- **Rejected — free-text-only feedback:** unstructured text cannot be
+  counted; the enumerated reasons make the flag data aggregable and
+  the "other" branch keeps the escape hatch.
+- **Also in this pass, recorded as defect fixes, not decisions:** the
+  replay strip never worked in production — `media-src 'self' blob:`
+  blocked the storage origin the signed URLs live on, so the browser
+  never issued the fetch (storage logs: sign 200s, zero byte reads,
+  ever); the pastel trend area gains translucency so the grid reads
+  through it (revisits 054's occlusion note by customer direction);
+  and the session sub-tabs return to Report first with Report as the
+  default — the customer's own click path is the sessions list's
+  "Report" affordance, and landing it on Transcript contradicted the
+  label (revisits the transcript-first half of 053 by the same voice
+  that asked for it).
