@@ -209,7 +209,7 @@ Two things the list does not carry, and both are deliberate:
   session history → v0.5 curriculum-lite → then payments". Payments took the
   v0.5 slot and curriculum-lite moved to v0.6; v0.6 then shipped without it,
   and so did v0.7, v0.8, v0.9, v0.10, v0.11 and v0.12. Rather than move the
-  label an eighth time, this line records the gap: every session still runs
+  label a third time, this line records the gap: every session still runs
   the same baseline plan compiled from the rubric. It is now registered as
   the next planner batch's centerpiece, alongside profile-driven personal
   questions — which will be checkable against this line.
