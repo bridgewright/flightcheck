@@ -13,7 +13,7 @@ import {
 } from "@/lib/ui";
 import type { SessionProgressEntry } from "@/lib/worker";
 
-function spoken(
+export function overallTrendAriaLabel(
   points: ReturnType<typeof overallTrend>,
   totalSlots: number,
 ): string {
@@ -23,7 +23,7 @@ function spoken(
         `session ${point.index}, ${point.score.toFixed(1)} out of ${SCORE_MAX}`,
     )
     .join("; ");
-  return `Overall score trend: ${readings}; a net change of ${formatSigned(overallNet(points))}, of ${totalSlots} planned sessions.`;
+  return `Overall score trend: ${points.length} of ${totalSlots} planned sessions scored; ${readings}; net change ${formatSigned(overallNet(points))}.`;
 }
 
 export default function OverallTrend({
@@ -43,7 +43,7 @@ export default function OverallTrend({
   return (
     <div className={`border-b pb-5 ${DIVIDER}`}>
       <div className={`${LABEL} mb-2.5`}>Overall trend</div>
-      <div className="mb-3 flex items-baseline justify-between gap-5">
+      <div className="mb-3 flex items-baseline gap-5">
         <span className="flex items-baseline gap-3">
           <span className={SCORE_NUMBER}>
             {latest.score.toFixed(1)}
@@ -56,7 +56,7 @@ export default function OverallTrend({
         points={points.map((point) => ({ slot: point.index, score: point.score }))}
         totalSlots={totalSlots}
         variant="hero"
-        ariaLabel={spoken(points, totalSlots)}
+        ariaLabel={overallTrendAriaLabel(points, totalSlots)}
       />
     </div>
   );

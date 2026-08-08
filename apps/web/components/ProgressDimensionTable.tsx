@@ -79,7 +79,7 @@ export default function ProgressDimensionTable({
                     <span className="sr-only">
                       {trend.points.map((point) => (
                         <span key={point.session_id}>
-                          Session {point.index}: {point.score.toFixed(1)}. {" "}
+                          Session {point.index}: {point.score.toFixed(1)}.{" "}
                         </span>
                       ))}
                     </span>

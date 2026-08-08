@@ -23,6 +23,7 @@ export function trendGeometry(
     pad: { x: number; top: number; bottom: number };
   },
 ): TrendGeometry {
+  const round = (value: number) => Math.round(value * 100) / 100;
   const sorted = [...points].sort((a, b) => a.slot - b.slot);
   const highestSlot = sorted.reduce((highest, point) => Math.max(highest, point.slot), 0);
   const slotCount = Math.max(0, totalSlots, highestSlot);
@@ -30,10 +31,10 @@ export function trendGeometry(
   const plotHeight = size.height - size.pad.top - size.pad.bottom;
   const xForSlot = (slot: number) =>
     slotCount === 1
-      ? size.pad.x + plotWidth / 2
-      : size.pad.x + ((slot - 1) * plotWidth) / (slotCount - 1);
+      ? round(size.pad.x + plotWidth / 2)
+      : round(size.pad.x + ((slot - 1) * plotWidth) / (slotCount - 1));
   const yForScore = (score: number) =>
-    size.pad.top + (1 - score / SCORE_MAX) * plotHeight;
+    round(size.pad.top + (1 - score / SCORE_MAX) * plotHeight);
 
   const dots = sorted.map((point, index) => ({
     x: xForSlot(point.slot),
