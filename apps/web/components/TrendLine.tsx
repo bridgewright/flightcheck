@@ -93,15 +93,14 @@ export default function TrendLine({
                 {dot.score.toFixed(1)}
               </span>
             ))}
-          <div
-            className="absolute inset-x-0 bottom-0 grid text-fine text-ink-faint"
-            style={{
-              gridTemplateColumns: `repeat(${geometry.slots.length}, minmax(0, 1fr))`,
-              paddingInline: `${SIZES.hero.pad.x}%`,
-            }}
-          >
+          <div className="absolute inset-x-0 bottom-0 h-5 text-fine text-ink-faint">
             {geometry.slots.map((slot) => (
-              <span key={slot.label} data-slot-label className="text-center">
+              <span
+                key={slot.label}
+                data-slot-label
+                className="absolute -translate-x-1/2"
+                style={{ left: `${slot.x}%` }}
+              >
                 {slot.label}
               </span>
             ))}

@@ -150,6 +150,40 @@ describe("TrendLine", () => {
     expect(markup).not.toContain("data-trend-dot");
   });
 
+  it("anchors every slot label at the same x as the dots it labels", () => {
+    const markup = renderToStaticMarkup(createElement(TrendLine, {
+      points: [
+        { slot: 1, score: 2 },
+        { slot: 6, score: 4 },
+      ],
+      totalSlots: 6,
+      variant: "hero",
+      ariaLabel: "Trend",
+    }));
+
+    const dotLefts = [...markup.matchAll(/data-trend-dot[^>]*left:([\d.]+)%/g)]
+      .map((match) => match[1]);
+    const labelLefts = [...markup.matchAll(/data-slot-label[^>]*left:([\d.]+)%/g)]
+      .map((match) => match[1]);
+    expect(dotLefts).toHaveLength(2);
+    expect(labelLefts).toHaveLength(6);
+    expect(labelLefts[0]).toBe(dotLefts[0]);
+    expect(labelLefts[5]).toBe(dotLefts[1]);
+  });
+
+  it("keeps the printed score inside the wrapper at the top of the scale", () => {
+    const markup = renderToStaticMarkup(createElement(TrendLine, {
+      points: [{ slot: 6, score: 5 }],
+      totalSlots: 6,
+      variant: "hero",
+      ariaLabel: "Trend",
+    }));
+
+    const label = markup.match(/-translate-y-full[^>]*top:([\d.]+)%/);
+    expect(label).not.toBeNull();
+    expect(Number(label![1])).toBeGreaterThan(0);
+  });
+
   it("omits the polyline and area for a lone point in both variants", () => {
     for (const variant of ["hero", "spark"] as const) {
       const markup = renderToStaticMarkup(createElement(TrendLine, {
