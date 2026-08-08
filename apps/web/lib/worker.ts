@@ -631,7 +631,13 @@ export async function listFeedback(status?: FeedbackStatus, limit?: number): Pro
   if (status !== undefined) query.set("status", status);
   if (limit !== undefined) query.set("limit", String(limit));
   const path = `/api/feedback${query.size ? `?${query}` : ""}`;
-  return workerJson(`GET ${path}`, await workerFetch(path));
+  // The worker answers an envelope so `returned` can carry the bound;
+  // callers only ever want the rows.
+  const data: { feedback: FeedbackRow[]; returned: number } = await workerJson(
+    `GET ${path}`,
+    await workerFetch(path),
+  );
+  return data.feedback;
 }
 
 export async function setFeedbackStatus(feedbackId: string, status: FeedbackStatus): Promise<void> {
