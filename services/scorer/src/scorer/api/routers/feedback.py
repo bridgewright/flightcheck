@@ -64,7 +64,6 @@ def build_router(deps: Deps) -> APIRouter:
             if package.user_id != body.user_id:
                 raise HTTPException(status_code=404, detail="package not found")
         stored = db.insert_feedback(FeedbackRow(**body.model_dump()))
-        assert stored.id is not None
         return FeedbackCreated(feedback_id=stored.id)
 
     @router.get("/feedback", response_model=FeedbackList)
