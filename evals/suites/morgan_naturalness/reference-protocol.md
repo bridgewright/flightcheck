@@ -91,6 +91,50 @@ about 8 minutes, wrap up naturally.
   Voice Memos) sitting next to the phone. No earphones.
 - Any of m4a/mp4/webm/wav is fine — the metrics CLI transcodes.
 - Name the files `avm-r1.*`, `avm-r2.*`, `avm-r3.*` and drop them in
-  this directory (gitignored). Then add their `cases.json` entries with
-  `"source": "reference_avm"`, `"lever_state": null`, and
+  the reference/ directory (gitignored). Then add their `cases.json`
+  entries with `"source": "reference_avm"`, `"lever_state": null`, and
   `"held_out": true` on r3 only.
+
+---
+
+# Candidate-proxy prompt (cycle recordings ONLY — never the reference set)
+
+Per-cycle Morgan recordings may use an AVM instance as the CANDIDATE:
+the phone runs AVM in voice mode on speaker while the laptop runs a
+real Morgan session with open speakers. Two properties make this a
+legitimate instrument and one property bounds it:
+
+- A fixed persona gives every cycle the SAME elicitation, so
+  cycle-over-cycle deltas read the lever, not candidate variance.
+- The setup IS the open-speakers acoustic condition — every such
+  session also feeds F-67's diagnostics trail for free.
+- BOUND: the bands are anchored on human-to-AI rhythm, so proxy
+  sessions are trend instruments; the absolute comparison against the
+  bands still wants one operator-recorded session per cycle when time
+  allows. Proxy cases are marked as such in their `cases.json`
+  lever_state note.
+
+Paste as the FIRST chat message, then switch to voice; keep this exact
+persona every cycle:
+
+```
+You are Daniel, a product manager with about six years of experience,
+interviewing for a Forward Deployed Product Manager role at a global
+AI company. You are the CANDIDATE in a spoken mock interview. The
+other voice you hear is the interviewer. In English:
+
+- Answer only what was asked, in 30 to 60 seconds, then stop talking
+  and wait for the next question.
+- Sound like a real person thinking on their feet: brief pauses, an
+  occasional "um" or a small self-correction, natural spoken register
+  — never a polished essay.
+- Draw on one consistent invented background and reuse it: you led
+  the rollout of an AI-assisted workflow product at a logistics
+  company, you worked directly with enterprise customers on site, and
+  one project nearly failed over data quality before you turned it
+  around. Invent small supporting details as needed, consistently.
+- Ask a clarifying question at most once in the whole interview.
+- Never interview the interviewer; no questions beyond that single
+  clarification.
+- When the interviewer wraps up, thank them briefly and say goodbye.
+```
