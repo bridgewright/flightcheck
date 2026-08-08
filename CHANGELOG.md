@@ -102,6 +102,22 @@
 
 ### Changed
 
+- **Coaching opens in place, and distrust becomes data.** The check
+  under each answer now expands an in-flow card (better answer, why,
+  what you said — same order) instead of a popup, so the reading
+  position never jumps. The thumbs pair on suggestions is gone: each
+  suggestion carries a bookmark and a flag — a reader who distrusts a
+  suggestion says why in one tap (misheard speech, inappropriate
+  content, inaccurate paraphrase, missing explanation, or their own
+  words), and those structured reports are stored, which is exactly
+  the shape the coaching-quality evaluation needs. Pressed controls
+  now look unmistakably pressed. Stored thumb reactions are preserved;
+  only the buttons retired. DECISIONS 057.
+
+- **The dashboard's pastel wash turned translucent** so the grid lines
+  read through it, and the session sub-tabs lead with Report again —
+  the sessions list's own "Report" door now lands on what it says.
+
 - **The interviewer answers about 0.6 seconds sooner.** The wait after
   an answer ends was a stack: a 0.9 s speech-detection tail, then a
   1.2 s client-side debounce held open in case the candidate was only
@@ -129,6 +145,15 @@
   minutes to seconds. DECISIONS 056.
 
 ### Fixed
+
+- **The session replay actually plays.** The recording strip under the
+  transcript had never worked in production: the security policy's
+  `media-src` did not include the storage origin the signed recording
+  URLs live on, so the browser refused the fetch before a single byte
+  moved — storage logs show sign requests succeeding and zero reads,
+  ever. The policy now derives the media origin from the same single
+  source the connection allowlist uses, pinned so a second hardcoded
+  hostname can never pass review.
 
 - **A session that already ended can no longer be joined.** The first real
   customer session ended below the scoring floor, and the room then let two
