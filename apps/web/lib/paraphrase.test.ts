@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { COACHING_MIN_WORDS, attachCoaching, bookmarkedItems, coachingEligible, markFor, sourceQuoteIfVerbatim } from "@/lib/paraphrase";
+import { COACHING_MIN_WORDS, attachCoaching, bookmarkedItems, coachingEligible, markFor, nextMarkForBookmark, nextMarkForReaction, sourceQuoteIfVerbatim } from "@/lib/paraphrase";
 import type { TimelineEntry, TranscriptTurn } from "@/lib/transcript";
 
 const timeline: TimelineEntry[] = [
@@ -90,6 +90,25 @@ describe("markFor", () => {
   });
 });
 
+describe("mark transitions", () => {
+  it("toggles a repeated reaction off", () => {
+    expect(nextMarkForReaction({ reaction: "up", bookmarked: false }, "up"))
+      .toEqual({ reaction: null, bookmarked: false });
+    expect(nextMarkForReaction({ reaction: "down", bookmarked: false }, "down"))
+      .toEqual({ reaction: null, bookmarked: false });
+  });
+
+  it("preserves a bookmark while changing reactions", () => {
+    expect(nextMarkForReaction({ reaction: "down", bookmarked: true }, "up"))
+      .toEqual({ reaction: "up", bookmarked: true });
+  });
+
+  it("toggles only the bookmark", () => {
+    expect(nextMarkForBookmark({ reaction: "up", bookmarked: true }))
+      .toEqual({ reaction: "up", bookmarked: false });
+  });
+});
+
 describe("bookmarkedItems", () => {
   it("collects only the bookmarked cards, with their ordinals", () => {
     expect(bookmarkedItems(paraphrases, marks)).toEqual([
@@ -110,8 +129,15 @@ describe("bookmarkedItems", () => {
   });
 
   it("keeps an already-bookmarked short answer", () => {
-    const short = { ...paraphrases, items: [{ ...paraphrases.items[0], suggestion: "Short saved answer" }] };
-    expect(bookmarkedItems(short, marks)).toEqual([{ ordinal: 1, item: short.items[0] }]);
+    const shortTimeline: TimelineEntry[] = [{
+      kind: "turn",
+      turn: { speaker: "candidate", start_s: 0, end_s: 1, text: "Brief saved reply" },
+    }];
+    const short = { ...paraphrases, turn_count: 1, items: [{ ...paraphrases.items[0], turn_index: 0 }] };
+    const shortMarks = { schema_version: 1, marks: { "0": { reaction: null, bookmarked: true } } };
+
+    expect(attachCoaching(shortTimeline, short, 1)[0]).toMatchObject({ item: null });
+    expect(bookmarkedItems(short, shortMarks)).toEqual([{ ordinal: 0, item: short.items[0] }]);
   });
 });
 

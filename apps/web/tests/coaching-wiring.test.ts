@@ -22,6 +22,19 @@ describe("session coaching wiring", () => {
     expect(actions.indexOf("getViewer()")).toBeLessThan(actions.indexOf("setParaphraseMark(sessionId"));
     expect(actions.indexOf("authorizeViewerSession")).toBeLessThan(actions.indexOf("setParaphraseMark(sessionId"));
   });
+
+  it("keeps mark state above the dialog subtree", () => {
+    const transcript = read("components/TranscriptView.tsx");
+    const dialog = read("components/CoachingDialog.tsx");
+
+    expect(transcript).toMatch(/useState<ParaphraseMarks>\([^\n]*coaching\?\.marks/);
+    expect(transcript).toContain("mark={markFor(marks, entry.candidateOrdinal)}");
+    expect(transcript).not.toContain("markFor(coaching?.marks, entry.candidateOrdinal)");
+    expect(dialog).not.toMatch(/useState\([^)]*(?:mark|initial)/i);
+    expect(dialog).toContain("mark: ParaphraseMark");
+    expect(dialog).toContain("onMarkChange:");
+    expect(dialog).not.toContain("markFor(coaching?.marks");
+  });
 });
 
 // The additive guarantee, checked by rendering rather than by reading the
@@ -71,8 +84,8 @@ function renderDialog(coaching = coachingDoc(1)): string {
     onClose: () => {},
     item: coaching.paraphrases!.items[0],
     turn: { speaker: "candidate", start_s: 2, end_s: 6, text: TURN_TEXT },
-    ordinal: 0,
-    initialMark: { reaction: null, bookmarked: false },
+    mark: { reaction: null, bookmarked: false },
+    onMarkChange: async () => {},
   }));
 }
 

@@ -52,18 +52,24 @@ describe("session study export route", () => {
     expect(authorizeViewerSession).not.toHaveBeenCalled();
   });
 
-  it("answers a non-owner exactly like an unknown session", async () => {
-    authorizeViewerSession.mockResolvedValueOnce({ ok: false, status: 404 });
-    const foreign = await GET(request("?format=md"), params);
-    authorizeViewerSession.mockResolvedValueOnce({ ok: false, status: 404 });
-    const unknown = await GET(request("?format=md"), params);
-    expect(foreign.status).toBe(404);
-    expect(await foreign.json()).toEqual(await unknown.json());
+  it("returns a generic 403 to a non-owner without leaking the session id", async () => {
+    authorizeViewerSession.mockResolvedValue({ ok: false, status: 403 });
+    const response = await GET(request("?format=md"), params);
+    const body = await response.text();
+
+    expect(response.status).toBe(403);
+    expect(JSON.parse(body)).toEqual({ error: "access denied" });
+    expect(body).not.toContain("sess-1");
   });
 
-  it("404s when the session has no coaching material", async () => {
+  it("returns the fixed unavailable 404 to an owner without coaching and leaks no session id", async () => {
     getSessionCoaching.mockResolvedValue({ ...coaching, paraphrases: null, insights: null });
-    expect((await GET(request("?format=md"), params)).status).toBe(404);
+    const response = await GET(request("?format=md"), params);
+    const body = await response.text();
+
+    expect(response.status).toBe(404);
+    expect(JSON.parse(body)).toEqual({ error: "study unavailable" });
+    expect(body).not.toContain("sess-1");
   });
 
   it("returns markdown with the exact filename and question", async () => {

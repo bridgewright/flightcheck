@@ -19,8 +19,11 @@ const isoDate = (value: string | null | undefined): string => {
   return Number.isNaN(parsed.getTime()) ? new Date().toISOString().slice(0, 10) : parsed.toISOString().slice(0, 10);
 };
 
+const ACCESS_DENIED = { error: "access denied" } as const;
+const STUDY_UNAVAILABLE = { error: "study unavailable" } as const;
+
 const responseError = (status: number): Response =>
-  Response.json({ error: status === 403 ? "access denied" : "study unavailable" }, { status });
+  Response.json(status === 403 ? ACCESS_DENIED : STUDY_UNAVAILABLE, { status });
 
 export async function GET(request: Request, { params }: RouteContext): Promise<Response> {
   const { sessionId } = await params;

@@ -78,6 +78,18 @@ export default function TranscriptView({
 }) {
   const audioRef = useRef<HTMLAudioElement>(null);
   const [openOrdinal, setOpenOrdinal] = useState<number | null>(null);
+  const [marks, setMarks] = useState<ParaphraseMarks>(() => coaching?.marks ?? { schema_version: 1, marks: {} });
+
+  async function updateMark(ordinal: number, next: ParaphraseMark): Promise<void> {
+    const previous = marks;
+    setMarks({ ...marks, marks: { ...marks.marks, [String(ordinal)]: next } });
+    if (!marksAction) return;
+    try {
+      setMarks(await marksAction(ordinal, next));
+    } catch {
+      setMarks(previous);
+    }
+  }
 
   const seek =
     audioUrl === null
@@ -129,7 +141,7 @@ export default function TranscriptView({
                   <button type="button" onClick={() => setOpenOrdinal(entry.candidateOrdinal)} className={`${entry.item.verdict === "good" ? CHIP_READY : CHIP_ALARM} w-fit`}>
                     {entry.item.verdict === "good" ? "✓ Well said" : "! Needs work"}
                   </button>
-                  <CoachingDialog open={openOrdinal === entry.candidateOrdinal} onClose={() => setOpenOrdinal(null)} item={entry.item} turn={entry.turn} ordinal={entry.candidateOrdinal} initialMark={markFor(coaching?.marks, entry.candidateOrdinal)} marksAction={marksAction} />
+                  <CoachingDialog open={openOrdinal === entry.candidateOrdinal} onClose={() => setOpenOrdinal(null)} item={entry.item} turn={entry.turn} mark={markFor(marks, entry.candidateOrdinal)} onMarkChange={(next) => updateMark(entry.candidateOrdinal!, next)} />
                 </> : null}
               </li>
             ) : (

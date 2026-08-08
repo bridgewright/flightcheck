@@ -37,6 +37,14 @@ export function markFor(marks: ParaphraseMarks | null | undefined, ordinal: numb
   return marks?.marks[String(ordinal)] ?? { reaction: null, bookmarked: false };
 }
 
+export function nextMarkForReaction(mark: ParaphraseMark, reaction: "up" | "down"): ParaphraseMark {
+  return { ...mark, reaction: mark.reaction === reaction ? null : reaction };
+}
+
+export function nextMarkForBookmark(mark: ParaphraseMark): ParaphraseMark {
+  return { ...mark, bookmarked: !mark.bookmarked };
+}
+
 export function bookmarkedItems(paraphrases: SessionParaphrases | null | undefined, marks: ParaphraseMarks | null | undefined): { ordinal: number; item: ParaphraseItem }[] {
   if (!paraphrases) return [];
   return paraphrases.items.filter((item) => markFor(marks, item.turn_index).bookmarked).map((item) => ({ ordinal: item.turn_index, item }));
