@@ -172,7 +172,7 @@ curl -s "https://api.github.com/repos/bridgewright/flightcheck/events?per_page=1
 
 1. **A verdict, not a chat** — an evidence-grounded rubric compiled from your target JD and real interview experiences for that company and role, with behaviorally-anchored scoring.
 2. **Delivery is scored from raw audio** — hesitation, fillers, hedging intonation. Cascade pipelines erase these before the model ever hears them.
-3. **Growth across sessions** — a paid package is six sessions against the one JD, and the product reads them as a sequence: the session archive, per-dimension trends, the delta against your previous session, and recurring gaps and weak dimensions surfaced across sessions. What is *not* built yet, plainly: every session still runs the same baseline plan compiled from the rubric, so the questions do not vary session to session. The curriculum that aims each next session at your weak dimensions has now slipped two releases and no longer carries a version — see the Roadmap.
+3. **Growth across sessions** — a paid package is six sessions against the one JD, and the product reads them as a sequence: the session archive, per-dimension trends, the delta against your previous session, and recurring gaps and weak dimensions surfaced across sessions. What is *not* built yet, plainly: every session still runs the same baseline plan compiled from the rubric, so the questions do not vary session to session. The curriculum that aims each next session at your weak dimensions has now slipped seven releases and no longer carries a version — see the Roadmap.
 
 ## Roadmap
 
@@ -188,8 +188,8 @@ curl -s "https://api.github.com/repos/bridgewright/flightcheck/events?per_page=1
 - **v0.11** — the rubric proves itself: every content dimension carries verbatim JD evidence, enforced by a fourth eval suite in the release gate. Shipped 2026-08-05, tag `v0.11.0`. [Release notes](docs/releases/v0.11.md).
 - **v0.12** — the after-the-session product, and the session itself gets out of your way: per-answer coaching with study notes inside each session, a dashboard that draws trends as lines, structured feedback with an operator inbox, measurement provenance for the naturalness loop, a 0.6 s faster interviewer, and a goodbye that ends the session on its own. Shipped 2026-08-08, tag `v0.12.0`. [Release notes](docs/releases/v0.12.md).
 
-Both of those tags were cut on 2026-08-04, after the work was already in
-production: `v0.6.0` sits on `da254e3`, exactly the commit that deployed on
+The `v0.6.0` and `v0.7.0` tags were both cut on 2026-08-04, after the work
+was already in production: `v0.6.0` sits on `da254e3`, exactly the commit that deployed on
 2026-08-03. Putting a tag on a boundary that shipped is a different thing from
 inventing one that never did, which is why there is still no `v0.3.0` or
 `v0.4.0`.
@@ -203,14 +203,16 @@ Two things the list does not carry, and both are deliberate:
   page had said what the product is. It was removed whole rather than
   restyled, because the fault was placement. What that gives up — and what it
   buys back — is [DECISIONS.md](DECISIONS.md) #030.
-- **Curriculum-lite has now missed two releases and no longer carries a
+- **Curriculum-lite has now missed seven releases and no longer carries a
   version.** The published plan is left visible rather than rewritten:
   [DECISIONS.md](DECISIONS.md) #008 sequenced "v0.3 report quality → v0.4
   session history → v0.5 curriculum-lite → then payments". Payments took the
   v0.5 slot and curriculum-lite moved to v0.6; v0.6 then shipped without it,
-  and so did v0.7. Rather than move the label a third time, this line records
-  the gap: every session still runs the same baseline plan compiled from the
-  rubric.
+  and so did v0.7, v0.8, v0.9, v0.10, v0.11 and v0.12. Rather than move the
+  label an eighth time, this line records the gap: every session still runs
+  the same baseline plan compiled from the rubric. It is now registered as
+  the next planner batch's centerpiece, alongside profile-driven personal
+  questions — which will be checkable against this line.
 
 **On the payment path, precisely.** Exactly one $49 order exists. The author
 placed it himself to prove checkout → webhook → provisioning end to end, then
