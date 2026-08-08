@@ -287,6 +287,28 @@ Changes to targets are recorded here with date and reason — never silently.
   text, stored, with an operator-only inbox to read and manage what
   arrives. DECISIONS 048–051.
 
+- **v0.13 (recorded 2026-08-08, pre-code):** first real use of v0.12
+  reshapes it, both changes straight from field feedback. **Study folds
+  into the session.** The global Study tab and its Generate button go
+  away: what a customer studies is per session and is already there the
+  moment scoring finishes — derived from the coaching artifacts and the
+  customer's own bookmarks, so there is nothing to build and nothing to
+  go stale. Opening a session now leads with the conversation itself
+  (Transcript is the first tab), not the verdict; the report keeps its
+  own tab. Each answer bubble carries its check below it, and opening a
+  check shows the better answer first, then the why, then what was
+  actually said; very short answers are left alone. Bookmarking builds
+  the session's study notes: every saved item becomes an
+  interviewer-question + answer set, joined by the session's core
+  questions with model answers, exportable per session as Markdown or
+  PDF in plain question-and-answer form — a wrong-answer notebook a
+  candidate can memorize from. **The dashboard becomes readable.** The
+  overall-trend bars could collapse into an unreadable smear; every
+  rubric trend is now a line chart — a tall overall line as the
+  dashboard's opening visual with all six package slots on the axis and
+  the scored sessions plotted, plus per-dimension sparklines — in the
+  existing pastel accent. DECISIONS 053–054.
+
 > 2026-08-02: v0.4 scope added above — accounts move ahead of payments
 > because login-gated interviews protect session integrity and per-session
 > cost, and the dashboard is what makes a 6-session package usable. The

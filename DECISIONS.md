@@ -2004,3 +2004,67 @@ window.
 - **Revisit when:** the transport gains a real server keepalive (then
   starvation can watch it), or F-50 rebuilds the room's connection
   layer.
+
+## 053 — Study lives inside the session; the package guide retires (2026-08-08)
+
+**Context.** First real two-session use of the v0.12 surfaces. The
+customer's verdict on the Study tab reversed 050's shape: study
+material belongs inside each session, a session should open on the
+conversation itself rather than a verdict, and nothing a customer
+studies should sit behind a Generate button ("run in the background
+and keep it filled" — and the chosen design goes one better: there is
+nothing left to run).
+
+- **Chosen — session-first, derived at read time.** The global /study
+  tab, its Generate flow, and the package-level guide are removed. The
+  session detail page opens on the Transcript tab; the verdict and
+  report keep their own tab. Bookmarking a coaching suggestion builds
+  the session's study notes: each saved item is rendered as an
+  interviewer-question + answer set (question, better answer, what you
+  said, why), joined by the session's core questions with model
+  answers, exported per session as Markdown or PDF in plain Q&A form —
+  a wrong-answer notebook to memorize from. Everything derives from
+  coaching artifacts already generated at scoring time plus the user's
+  own marks, so the tab is always current by construction: no build
+  step, no staleness, no per-session regeneration.
+- **Rejected — keeping both surfaces:** two doors to the same
+  material, and the global door led with status chrome the customer
+  explicitly did not want.
+- **Rejected — auto-generating the package guide in the background
+  after each scoring:** satisfies "always filled" literally, but keeps
+  a second document whose only unique content (the package summary)
+  lost its reader; recurring generation cost with no surface.
+- **Left dormant, deliberately:** the scorer's package-study endpoints
+  and `study_materials` table stay in place unused — removing them
+  churns a tested API surface for no product gain. Revisit when a
+  cross-session aggregation view is asked for again (the
+  bookmarks-by-session join already exists server-side), or after two
+  releases of disuse (then strip).
+
+## 054 — Rubric trends are lines, not bars (2026-08-08)
+
+**Context.** Same session of field feedback: the dashboard's
+overall-trend bars "overlap and are completely unreadable." Root
+cause: `OverallTrend` rendered fixed-width flex pills with no shrink
+guard, so a narrow column collapsed them into each other. The customer
+asked for line charts everywhere a rubric trend appears, a much taller
+overall chart, all six package sessions visible as slots, and pastel
+accents beyond the ivory/brown core.
+
+- **Chosen — one hand-rolled SVG line component, two variants.** Hero
+  (overall score): tall, airy, x-axis spans every package slot S1..S6
+  so future sessions are visibly waiting, scored sessions plotted as
+  the line; spark (per-dimension table rows): small inline lines with
+  a shared x-domain. Line stroke is the existing pastel `sky` token
+  (its first use in app chrome), dots in ink, latest point emphasized
+  with its score printed. Geometry lives in a JSX-free module with
+  unit tests.
+- **Rejected — fixing the flex-shrink bug and keeping bars:** the ask
+  was trajectory ("am I getting better"), and a line answers it
+  directly; bars at 6 sessions × 8 dimensions stay a density
+  instrument even when they stop overlapping.
+- **Rejected — a chart library:** one dependency for two variants of
+  one chart; hand-rolled SVG keeps the token-only color rule
+  enforceable by the existing scans.
+- **Revisit when:** packages exceed ~8 sessions or a multi-package
+  comparison view appears — then a library earns its keep.
