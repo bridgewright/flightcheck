@@ -1962,3 +1962,45 @@ the system under test, a lever, never the evaluator.
   model ids (then the golden clip becomes a scheduled canary rather
   than a config-change check), or bar Round 1 finds the stamp is
   missing a field it needed.
+
+## 052 — A long answer is not a dead connection (2026-08-08)
+
+**Context.** Hotfix, from a live field kill with the operator watching:
+sessions died with "Connection lost" at exactly 20 seconds into the
+first substantial answer, every time. The full diagnostics trail named
+it — `49.8s cand-start`, then silence, then `70.3s guard-trip
+starvation` — the customer was still talking when the guard ended the
+session. F-17's starvation detector counted candidate-audible seconds
+with no data-channel traffic as evidence of a dead transport, but
+server VAD speaks only at speech boundaries: a candidate mid-answer
+legitimately produces zero traffic, so the guard's expectation was
+wrong by design, and interview answers routinely outlive the trip
+window.
+
+- **Chosen — candidate speech expects nothing.** The starvation
+  accumulator now runs only while the interviewer is audible (his audio
+  streams transcript deltas over the channel) or a response is owed. A
+  genuinely dead transport is still caught four ways: ice-failed,
+  channel-closed, ice-disconnected, and starvation the moment a
+  response is requested. Pinned by a test that runs a 400-second
+  answer through the guard and requires zero accumulation.
+- **Rejected — lengthening the trip window:** any window loses to a
+  longer answer; the failure was the expectation, not the number.
+- **Rejected — client-side keepalive pings:** the client cannot force
+  the server to produce traffic, so a ping proves only the client's
+  own half of the channel.
+- **Also fixed in the same incident:** the Permissions-Policy
+  microphone grant is global now (`microphone=(self)`) — the per-path
+  room exception never governed the document under client-side
+  navigation, so first entries failed as "blocked" until a refresh
+  (the SPA lesson is recorded in lib/security-headers.ts and pinned by
+  test); and the Diagnostics disclosure opens scrolled to its newest
+  entries, because the scroll box hiding the trail's tail cost this
+  incident a debugging round.
+- **Evidence filed to F-67:** the same trail shows a real first answer
+  purged as echo (`commit-echo-suppressed 1066ms`, open speakers) —
+  the echo-outlive floor swallowed genuine speech once. Logged for the
+  F-67 evidence pile, not tuned here.
+- **Revisit when:** the transport gains a real server keepalive (then
+  starvation can watch it), or F-50 rebuilds the room's connection
+  layer.
