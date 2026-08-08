@@ -1,6 +1,6 @@
 # Changelog
 
-## [Unreleased]
+## [0.12.0] — 2026-08-08
 
 > Disclosure, so rule ⑦ stays checkable: every "customer", "field use",
 > and "real session" in this cycle's notes is the OPERATOR running the
