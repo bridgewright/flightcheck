@@ -8,6 +8,7 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  INITIAL_SILENCE_STATE,
   RESPONSE_DEBOUNCE_S,
   SILENCE_STAGES,
   STALL_BLIP_MAX_S,
@@ -179,12 +180,19 @@ describe("seed ③: background-tab throttling burst", () => {
   it("the gap tick itself produces no effects and resets the stretch", () => {
     const run = runScenario([...quietTicks(6), tick({ dtS: 60 })]);
     const gap = run.steps[run.steps.length - 1];
-    expect(gap.effects).toEqual({ stage: null, triggerResponse: false });
+    expect(gap.effects).toEqual({
+      stage: null,
+      triggerResponse: false,
+      endInterview: false,
+    });
     expect(gap.after).toEqual({
       quietS: 0,
       episodeS: 0,
       stagesSent: 0,
       responseDueInS: null,
+      closingSeen: false,
+      closingQuietS: 0,
+      interviewEnded: false,
     });
   });
 
@@ -418,9 +426,9 @@ describe("round finding: the debounce must be measured from the commit", () => {
   // promises. The audio in that interval is the tail of the utterance the
   // commit closes — it is not the room going quiet.
   it("does not count the tick that carried the commit", () => {
-    const short = runScenario([commitTick(), ...quietTicks(1.0)]);
+    const short = runScenario([commitTick(), ...quietTicks(0.4, 0.05)]);
     expect(short.triggers).toBe(0);
-    const full = runScenario([commitTick(), ...quietTicks(1.25)]);
+    const full = runScenario([commitTick(), ...quietTicks(0.65, 0.05)]);
     expect(full.triggers).toBe(1);
   });
 
@@ -445,11 +453,10 @@ describe("round finding: one tick, one thing to say", () => {
   // response.create frames. The reducer now states it: a scaffold carries
   // its own response, so it supersedes the pending one.
   it("a scaffold and a debounced response never fire on the same tick", () => {
-    const run = runScenario([
-      ...quietTicks(6.5),
-      commitTick(),
-      ...quietTicks(1.25),
-    ]);
+    const run = runScenario(
+      [commitTick(), ...quietTicks(0.6, 0.05)],
+      { ...INITIAL_SILENCE_STATE, quietS: 7.4 },
+    );
     const both = run.steps.filter(
       (s) => s.effects.stage !== null && s.effects.triggerResponse,
     );

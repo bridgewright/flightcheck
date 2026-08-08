@@ -66,8 +66,10 @@ import {
   SESSION_BUDGET_S,
   SUSPEND_GAP_S,
   committedItemId,
+  closingArmedAt,
   dueTimeStatus,
   formatTimer,
+  finishedTranscriptForEvent,
   greetingTriggerEvent,
   indicatorForEvent,
   interviewerStateForEvent,
@@ -196,6 +198,7 @@ export default function SessionRoom({
   const timeStatusSentRef = useRef(0);
   const candidateAudibleRef = useRef(false);
   const commitArrivedRef = useRef(false);
+  const finishedTranscriptRef = useRef<string | null>(null);
   const morganEventAudibleRef = useRef(false);
   const diagTickRef = useRef(0);
   const lastMorganAudibleAtRef = useRef(0);
@@ -655,6 +658,10 @@ export default function SessionRoom({
       });
       dc.addEventListener("message", (ev) => {
         messageArrivedRef.current = true;
+        const finishedTranscript = finishedTranscriptForEvent(String(ev.data));
+        if (finishedTranscript !== null) {
+          finishedTranscriptRef.current = finishedTranscript;
+        }
         const speech = speechStateForEvent(String(ev.data));
         if (speech !== null) console.debug("[silence] cand-ev", speech);
         if (speech === "started") {
@@ -833,13 +840,21 @@ export default function SessionRoom({
         if (dtS >= SUSPEND_GAP_S) {
           console.debug("[silence] suspend-resume", Number(dtS.toFixed(1)));
         }
+        const beforeClosing = silenceStateRef.current.closingSeen;
         const { state, effects } = nextSilenceState(silenceStateRef.current, {
           dtS,
           candidateAudible: candidateAudibleRef.current,
           interviewerAudible,
           commitArrived,
+          elapsedS: elapsed,
+          finishedTranscript: finishedTranscriptRef.current,
         });
+        finishedTranscriptRef.current = null;
         silenceStateRef.current = state;
+        if (!beforeClosing && state.closingSeen) {
+          const fromWrapUpS = elapsed - closingArmedAt(SESSION_BUDGET_S);
+          diag("closing-detected", `${fromWrapUpS >= 0 ? "+" : ""}${fromWrapUpS}s vs wrap-up`);
+        }
         if (!due) {
           if (effects.stage) {
             diag("response-trigger", "stage");
@@ -853,6 +868,10 @@ export default function SessionRoom({
             responseRequestedRef.current = true;
             dcRef.current.send(responseTriggerEvent());
           }
+        }
+        if (effects.endInterview) {
+          diag("auto-end", "interview-complete");
+          void endSession();
         }
       }
       const messageArrived = messageArrivedRef.current;

@@ -96,6 +96,12 @@ describe("F-67 turn-system trail", () => {
   });
 });
 
+describe("closing auto-end trail", () => {
+  it.each([["closing-detected"], ["auto-end"]])("records %s", (tag) => {
+    expect(sessionRoom).toContain(`"${tag}"`);
+  });
+});
+
 describe("the disclosure is honest chrome, silent until opened", () => {
   it("renders through the shared label on the room's surfaces", () => {
     expect(sessionRoom.match(/<DiagTrail /g)?.length ?? 0).toBeGreaterThanOrEqual(

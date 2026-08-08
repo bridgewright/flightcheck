@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  CLOSING_LINGER_S,
+  CLOSING_MARKER,
   HARD_CUT_S,
   INITIAL_SILENCE_STATE,
   endedRoomNotice,
@@ -13,6 +15,7 @@ import {
   committedItemId,
   dueTimeStatus,
   formatTimer,
+  finishedTranscriptForEvent,
   itemDeleteEvent,
   greetingTriggerEvent,
   indicatorForEvent,
@@ -110,6 +113,61 @@ describe("timeStatusCheckpoints", () => {
     const [threeQ, wrap] = timeStatusCheckpoints();
     expect(threeQ.text).toContain("About 5 minutes remain");
     expect(wrap.text).toContain("About 2 minutes remain");
+  });
+});
+
+describe("closing behavior", () => {
+  const transcriptEvent = (transcript: unknown) => JSON.stringify({
+    type: "response.output_audio_transcript.done",
+    transcript,
+  });
+
+  it("extracts only finished interviewer transcripts", () => {
+    expect(finishedTranscriptForEvent(transcriptEvent("Good luck out there."))).toBe("Good luck out there.");
+    expect(finishedTranscriptForEvent(transcriptEvent(7))).toBeNull();
+    expect(finishedTranscriptForEvent("not json")).toBeNull();
+  });
+
+  it("arms only at wrap-up and detects the marker case-insensitively", () => {
+    const before = nextSilenceState(INITIAL_SILENCE_STATE, {
+      dtS: 0.25, candidateAudible: false, interviewerAudible: false,
+      commitArrived: false, elapsedS: 1079, finishedTranscript: CLOSING_MARKER,
+    });
+    expect(before.state.closingSeen).toBe(false);
+    const armed = nextSilenceState(INITIAL_SILENCE_STATE, {
+      dtS: 0.25, candidateAudible: false, interviewerAudible: false,
+      commitArrived: false, elapsedS: 1080, finishedTranscript: "GOOD LUCK OUT THERE!",
+    });
+    expect(armed.state.closingSeen).toBe(true);
+    const other = nextSilenceState(INITIAL_SILENCE_STATE, {
+      dtS: 0.25, candidateAudible: false, interviewerAudible: false,
+      commitArrived: false, elapsedS: 1080, finishedTranscript: "Thank you.",
+    });
+    expect(other.state.closingSeen).toBe(false);
+  });
+
+  it("suppresses all responses and cancels pending debounce after closing", () => {
+    const result = nextSilenceState({
+      ...INITIAL_SILENCE_STATE, closingSeen: true,
+      quietS: SILENCE_STAGES[0].at, responseDueInS: 0.1,
+    }, { ...QUIET, commitArrived: true });
+    expect(result.effects.stage).toBeNull();
+    expect(result.effects.triggerResponse).toBe(false);
+    expect(result.state.responseDueInS).toBeNull();
+  });
+
+  it("ends once after full quiet, with either speaker resetting linger", () => {
+    let state = { ...INITIAL_SILENCE_STATE, closingSeen: true };
+    let ends = 0;
+    for (const tick of quietFor(CLOSING_LINGER_S + 1)) {
+      const result = nextSilenceState(state, tick); state = result.state;
+      ends += Number(result.effects.endInterview);
+    }
+    expect(ends).toBe(1);
+    const candidate = nextSilenceState({ ...INITIAL_SILENCE_STATE, closingSeen: true, closingQuietS: 1 }, { ...QUIET, candidateAudible: true });
+    const interviewer = nextSilenceState({ ...INITIAL_SILENCE_STATE, closingSeen: true, closingQuietS: 1 }, { ...QUIET, interviewerAudible: true });
+    expect(candidate.state.closingQuietS).toBe(0);
+    expect(interviewer.state.closingQuietS).toBe(0);
   });
 });
 

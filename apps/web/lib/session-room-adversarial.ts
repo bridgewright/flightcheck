@@ -13,6 +13,7 @@
 // it without a browser, a network, or a provider key.
 
 import {
+  CLOSING_LINGER_S,
   INITIAL_SILENCE_STATE,
   RESPONSE_DEBOUNCE_S,
   SILENCE_STAGES,
@@ -175,13 +176,33 @@ function freshShadow(): Shadow {
 function checkTrace(run: ScenarioRun): Violation[] {
   const violations: Violation[] = [];
   const s = freshShadow();
+  let closingQuietS = 0;
+  let endEffects = 0;
   const add = (invariant: string, tickIndex: number, message: string) =>
     violations.push({ invariant, tickIndex, message });
 
   for (const step of run.steps) {
-    const { index, tick: t, effects } = step;
+    const { index, tick: t, after, effects } = step;
     const kind = classify(t);
     const carriedCommit = t.commitArrived && kind !== "suspend";
+
+    if (after.closingSeen) {
+      if (t.candidateAudible || t.interviewerAudible) closingQuietS = 0;
+      else if (t.dtS < SUSPEND_GAP_S && !step.before.interviewEnded) {
+        closingQuietS += t.dtS;
+      }
+      if (effects.stage || effects.triggerResponse) {
+        add("I7", index, "a response fired after closingSeen");
+      }
+      if (effects.endInterview) {
+        endEffects += 1;
+        if (closingQuietS + 1e-9 < CLOSING_LINGER_S) {
+          add("I8", index, `end fired after only ${closingQuietS.toFixed(2)} s of full quiet`);
+        }
+      }
+      if (endEffects > 1) add("I8", index, "endInterview fired more than once");
+      continue;
+    }
 
     if (carriedCommit) {
       s.armedAtIndex = index;
@@ -327,7 +348,7 @@ function checkPerTick(run: ScenarioRun): Violation[] {
       add("I4", index, `${what} fired while the interviewer was audible`);
     }
     // I5 — a suspension gap is absence, not silence.
-    if (t.dtS >= SUSPEND_GAP_S) {
+    if (t.dtS >= SUSPEND_GAP_S && !after.closingSeen) {
       if (acted) {
         add("I5", index, `${what} fired on a ${t.dtS.toFixed(2)} s gap tick`);
       }
@@ -512,6 +533,18 @@ const dtSpikes: Generator = (rng, length) =>
     }),
   );
 
+/** Closing sentinel followed by hostile goodbye overlap and commit noise. */
+const closingPhases: Generator = (rng, length) =>
+  Array.from({ length }, (_, index) =>
+    tick({
+      elapsedS: 1080 + index * TICK_S,
+      finishedTranscript: index === 0 ? "Good luck out there." : null,
+      candidateAudible: index > 0 && rng() < 0.15,
+      interviewerAudible: index > 0 && rng() < 0.2,
+      commitArrived: index > 0 && rng() < 0.1,
+    }),
+  );
+
 /** Everything at once, for long runs. */
 const soup: Generator = (rng, length) => {
   const parts: SilenceTick[] = [];
@@ -521,6 +554,7 @@ const soup: Generator = (rng, length) => {
     commitFlagNoise,
     overlapPatterns,
     dtSpikes,
+    closingPhases,
   ];
   while (parts.length < length) {
     const maker = pick(rng, makers);
@@ -535,6 +569,7 @@ export const GENERATORS: Record<string, Generator> = {
   commitFlagNoise,
   overlapPatterns,
   dtSpikes,
+  closingPhases,
   soup,
 };
 

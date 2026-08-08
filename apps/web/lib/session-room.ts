@@ -79,7 +79,7 @@ export function timeStatusCheckpoints(
   budgetS: number = SESSION_BUDGET_S,
 ): TimeStatusCheckpoint[] {
   const threeQuartersAt = Math.round(budgetS * 0.75);
-  const wrapUpAt = budgetS - 120;
+  const wrapUpAt = closingArmedAt(budgetS);
   const threeQuartersMin = Math.round((budgetS - threeQuartersAt) / 60);
   const wrapUpMin = Math.round((budgetS - wrapUpAt) / 60);
   return [
@@ -138,9 +138,22 @@ export const SILENCE_STATUS_PREFIX = "[silence status]";
  * cough): it pauses the silence clock instead of resetting it. */
 export const STALL_BLIP_MAX_S = 2.0;
 
+/** Finished-transcript sentinel shared with the planner's closing line. */
+export const CLOSING_MARKER = "good luck out there";
+
+/** Full-room quiet after the closing audio before normal completion. */
+export const CLOSING_LINGER_S = 2.0;
+
+/** The planner's two-minute wrap-up boundary, reused by closing detection. */
+export function closingArmedAt(budgetS: number = SESSION_BUDGET_S): number {
+  return budgetS - 120;
+}
+
 /** Quiet seconds between a committed turn and the client-armed
- * response.create — the room to resume that server VAD (900 ms) doesn't give. */
-export const RESPONSE_DEBOUNCE_S = 1.2;
+ * response.create. Server VAD retains the 0.9 s acoustic hesitation guard;
+ * this 0.6 s client guard still catches a sentence resumed after an early
+ * commit, while total required quiet falls from about 2.1 s to 1.5 s. */
+export const RESPONSE_DEBOUNCE_S = 0.6;
 
 /** A tick longer than this did not measure real silence: the tab was
  * backgrounded, throttled, or the machine slept. */
@@ -201,6 +214,9 @@ export interface SilenceClockState {
   stagesSent: number;
   /** Seconds until a client-armed response.create, null when none pending. */
   responseDueInS: number | null;
+  closingSeen: boolean;
+  closingQuietS: number;
+  interviewEnded: boolean;
 }
 
 export const INITIAL_SILENCE_STATE: SilenceClockState = {
@@ -208,6 +224,9 @@ export const INITIAL_SILENCE_STATE: SilenceClockState = {
   episodeS: 0,
   stagesSent: 0,
   responseDueInS: null,
+  closingSeen: false,
+  closingQuietS: 0,
+  interviewEnded: false,
 };
 
 export interface SilenceTick {
@@ -216,6 +235,8 @@ export interface SilenceTick {
   interviewerAudible: boolean;
   /** True when an input_audio_buffer.committed arrived since the last tick. */
   commitArrived: boolean;
+  elapsedS?: number;
+  finishedTranscript?: string | null;
 }
 
 export interface SilenceEffects {
@@ -223,6 +244,7 @@ export interface SilenceEffects {
   stage: SilenceStage | null;
   /** Send responseTriggerEvent() — the debounced answer to a committed turn. */
   triggerResponse: boolean;
+  endInterview: boolean;
 }
 
 /**
@@ -237,8 +259,41 @@ export function nextSilenceState(
   state: SilenceClockState,
   tick: SilenceTick,
 ): { state: SilenceClockState; effects: SilenceEffects } {
-  let { quietS, episodeS, stagesSent, responseDueInS } = state;
-  const effects: SilenceEffects = { stage: null, triggerResponse: false };
+  let {
+    quietS, episodeS, stagesSent, responseDueInS,
+    closingSeen, closingQuietS, interviewEnded,
+  } = state;
+  const effects: SilenceEffects = {
+    stage: null, triggerResponse: false, endInterview: false,
+  };
+
+  if (
+    !closingSeen &&
+    (tick.elapsedS ?? -1) >= closingArmedAt() &&
+    tick.finishedTranscript?.toLowerCase().includes(CLOSING_MARKER)
+  ) {
+    closingSeen = true;
+  }
+
+  if (closingSeen) {
+    responseDueInS = null;
+    if (tick.candidateAudible || tick.interviewerAudible) {
+      closingQuietS = 0;
+    } else if (tick.dtS < SUSPEND_GAP_S && !interviewEnded) {
+      closingQuietS += tick.dtS;
+      if (closingQuietS >= CLOSING_LINGER_S) {
+        interviewEnded = true;
+        effects.endInterview = true;
+      }
+    }
+    return {
+      state: {
+        quietS, episodeS, stagesSent, responseDueInS,
+        closingSeen, closingQuietS, interviewEnded,
+      },
+      effects,
+    };
+  }
 
   if (tick.dtS >= SUSPEND_GAP_S) {
     // Resume from suspension. A candidate whose tab was backgrounded stepped
@@ -249,7 +304,10 @@ export function nextSilenceState(
     // up. Nothing is emitted on this tick, including a response armed before
     // the gap: the moment it was meant for is gone.
     return {
-      state: { quietS: 0, episodeS: 0, stagesSent: 0, responseDueInS: null },
+      state: {
+        quietS: 0, episodeS: 0, stagesSent: 0, responseDueInS: null,
+        closingSeen, closingQuietS, interviewEnded,
+      },
       effects,
     };
   }
@@ -298,7 +356,13 @@ export function nextSilenceState(
       responseDueInS = null;
     }
   }
-  return { state: { quietS, episodeS, stagesSent, responseDueInS }, effects };
+  return {
+    state: {
+      quietS, episodeS, stagesSent, responseDueInS,
+      closingSeen, closingQuietS, interviewEnded,
+    },
+    effects,
+  };
 }
 
 /** Same payload as timeStatusEvent — a system note that shapes the next turn. */
@@ -328,6 +392,19 @@ export function speechStateForEvent(
       default:
         return null;
     }
+  } catch {
+    return null;
+  }
+}
+
+/** Full interviewer utterance from a completed audio-transcript event. */
+export function finishedTranscriptForEvent(raw: string): string | null {
+  try {
+    const event = JSON.parse(raw) as { type?: unknown; transcript?: unknown };
+    return event.type === "response.output_audio_transcript.done" &&
+      typeof event.transcript === "string"
+      ? event.transcript
+      : null;
   } catch {
     return null;
   }

@@ -208,7 +208,11 @@ def test_instructions_embed_pacing_and_closing():
     text = _instructions()
     assert "The session budget is 20 minutes." in text
     assert "Begin wrapping up at 18 minutes" in text
-    assert "Close by thanking the candidate." in text
+    assert (
+        "Deliver the following closing line exactly, word for word, as the final sentence."
+        in text
+    )
+    assert "Say nothing after it." in text
     assert "Thanks for taking the time today." in text
 
 
