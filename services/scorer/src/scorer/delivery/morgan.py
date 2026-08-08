@@ -4,13 +4,28 @@ from __future__ import annotations
 import hashlib
 from itertools import pairwise
 from pathlib import Path
+from typing import Literal
 
 import numpy as np
 import soundfile as sf
 from pydantic import BaseModel, ConfigDict
 
+from scorer.config import load_product_config
 from scorer.delivery.dsp import compute_delivery_metrics
 from scorer.schemas import TranscriptSegment
+
+# Bump whenever any segmentation-relevant constant in delivery/dsp.py changes.
+DSP_CONSTANTS_VERSION = "2026-08-08"
+MIN_OVERLAP_S = 0.3
+
+
+class MeasurementProvenance(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    transcription_model: str
+    dsp_constants_version: str
+    min_overlap_s: float
+    transcript_source: Literal["cache", "fresh"]
 
 
 class TurnStats(BaseModel):
@@ -59,6 +74,7 @@ class MorganMetricsDoc(BaseModel):
     audio_sha256: str
     duration_s: float
     segments_path: str
+    measurement: MeasurementProvenance
     metrics: MorganMetrics
 
 
@@ -133,7 +149,7 @@ def turn_stats(segments: list[TranscriptSegment]) -> TurnStats:
 
 
 def morgan_interruptions(
-    segments: list[TranscriptSegment], min_overlap_s: float = 0.3
+    segments: list[TranscriptSegment], min_overlap_s: float = MIN_OVERLAP_S
 ) -> tuple[int, float]:
     """Count Morgan starts inside candidate speech, and total double-talk.
 
@@ -197,6 +213,12 @@ def compute_morgan_metrics(
         audio_sha256=hashlib.sha256(audio_path.read_bytes()).hexdigest(),
         duration_s=float(sf.info(audio_path).duration),
         segments_path="",
+        measurement=MeasurementProvenance(
+            transcription_model=load_product_config().models.scorer,
+            dsp_constants_version=DSP_CONSTANTS_VERSION,
+            min_overlap_s=MIN_OVERLAP_S,
+            transcript_source="fresh",
+        ),
         metrics=MorganMetrics(
             talk_time_ratio=talk_time_ratio(segments),
             morgan_speaking_s=morgan_s,

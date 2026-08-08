@@ -1,0 +1,16 @@
+{
+  "status": "unmeasured",
+  "segment_count": {
+    "expected": 4,
+    "tolerance": 1
+  },
+  "total_speech_s": {
+    "expected": 13.0,
+    "tolerance_fraction": 0.15
+  },
+  "pause_boundaries": [
+    {"start_s": 3.5, "end_s": 5.3, "tolerance_s": 0.75},
+    {"start_s": 10.0, "end_s": 12.0, "tolerance_s": 0.75},
+    {"start_s": 15.0, "end_s": 16.7, "tolerance_s": 0.75}
+  ]
+}

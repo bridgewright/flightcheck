@@ -10,3 +10,7 @@ File names match `cases.json` entries with `source: "reference_avm"`. The
 entry marked `held_out: true` is excluded from all tuning discussions and
 consulted only when the bar itself is revised — a reference you tune
 toward stops being a reference.
+
+When adding a reference case, record `"lever_state": null` in
+`cases.json`: Advanced Voice Mode's instructions and VAD levers are not
+Morgan's, so they are deliberately outside this suite's lever-state contract.

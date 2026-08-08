@@ -9,8 +9,14 @@ from pathlib import Path
 from typing import Any
 
 from scorer.audio_utils import ensure_wav
+from scorer.config import load_product_config
 from scorer.content.transcribe import transcribe_verbatim
-from scorer.delivery.morgan import compute_morgan_metrics
+from scorer.delivery.morgan import (
+    DSP_CONSTANTS_VERSION,
+    MIN_OVERLAP_S,
+    MeasurementProvenance,
+    compute_morgan_metrics,
+)
 from scorer.genai_compat import make_client
 from scorer.schemas import GenAIClientLike, TranscriptSegment
 
@@ -58,9 +64,11 @@ def main(argv: list[str] | None = None) -> int:
         relative_segments = Path("transcripts") / f"{case_id}.{digest[:12]}.segments.json"
         segments_file = out / relative_segments
         if segments_file.is_file() and not args.force_transcribe:
+            transcript_source = "cache"
             raw_segments = json.loads(segments_file.read_text(encoding="utf-8"))
             segments = [TranscriptSegment.model_validate(item) for item in raw_segments]
         else:
+            transcript_source = "fresh"
             segments = transcribe_verbatim(wav, _make_client())
             segments_file.parent.mkdir(parents=True, exist_ok=True)
             segments_file.write_text(
@@ -76,6 +84,14 @@ def main(argv: list[str] | None = None) -> int:
                 "case_id": case_id,
                 "source": source if isinstance(source, str) else "morgan",
                 "segments_path": relative_segments.as_posix(),
+                # Keep coupled to transcribe_verbatim, which resolves this same
+                # config value internally at the provider call boundary.
+                "measurement": MeasurementProvenance(
+                    transcription_model=load_product_config().models.scorer,
+                    dsp_constants_version=DSP_CONSTANTS_VERSION,
+                    min_overlap_s=MIN_OVERLAP_S,
+                    transcript_source=transcript_source,
+                ),
             }
         )
         out.mkdir(parents=True, exist_ok=True)

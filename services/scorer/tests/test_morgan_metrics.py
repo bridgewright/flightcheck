@@ -7,9 +7,14 @@ from pathlib import Path
 import numpy as np
 import pytest
 import soundfile as sf
+from pydantic import ValidationError
 
-from scorer.delivery import morgan_cli
+from scorer.delivery import dsp, morgan_cli
 from scorer.delivery.morgan import (
+    DSP_CONSTANTS_VERSION,
+    MIN_OVERLAP_S,
+    MeasurementProvenance,
+    MorganMetricsDoc,
     compute_morgan_metrics,
     interviewer_turns,
     invert_speakers,
@@ -148,6 +153,12 @@ def test_compute_morgan_metrics_on_synthetic_wav(tmp_path):
     assert doc.source == "morgan"
     assert len(doc.audio_sha256) == 64
     assert doc.duration_s == pytest.approx(4.0)
+    assert doc.measurement == MeasurementProvenance(
+        transcription_model="gemini-2.5-flash",
+        dsp_constants_version="2026-08-08",
+        min_overlap_s=MIN_OVERLAP_S,
+        transcript_source="fresh",
+    )
     assert doc.metrics.talk_time_ratio == pytest.approx(0.5)
     assert doc.metrics.morgan_speaking_s == 1.5
     assert doc.metrics.candidate_speaking_s == 1.5
@@ -159,6 +170,33 @@ def test_compute_morgan_metrics_on_synthetic_wav(tmp_path):
     assert doc.metrics.morgan_filler_rate_per_min == pytest.approx(40.0)
     assert doc.metrics.morgan_f0_variance is not None
     assert "text" not in doc.model_dump_json()
+
+
+def test_metrics_document_requires_measurement_provenance(tmp_path):
+    wav = tmp_path / "sample.wav"
+    _wav(wav)
+    payload = compute_morgan_metrics(wav, []).model_dump()
+    payload.pop("measurement")
+
+    with pytest.raises(ValidationError):
+        MorganMetricsDoc.model_validate(payload)
+
+
+def test_dsp_constants_version_pins_segmentation_inputs():
+    expected = {
+        "_SILENCE_RMS_RATIO": 0.02,
+        "_MIN_SILENCE_S": 1.0,
+        "_RMS_FRAME_LENGTH": 2048,
+        "_RMS_HOP_LENGTH": 512,
+        "_PYIN_FMIN_HZ": 65.0,
+        "_PYIN_FMAX_HZ": 400.0,
+    }
+    actual = {name: getattr(dsp, name) for name in expected}
+
+    assert DSP_CONSTANTS_VERSION == "2026-08-08"
+    assert actual == expected, (
+        "constants changed → bump DSP_CONSTANTS_VERSION and update these pins"
+    )
 
 
 def test_latency_percentiles_interpolate_over_small_samples(tmp_path):
@@ -210,8 +248,32 @@ def test_cli_reuses_transcript_cache_without_constructing_client(tmp_path, monke
     written = json.loads((out / "s014.metrics.json").read_text(encoding="utf-8"))
     assert written["case_id"] == "s014"
     assert written["segments_path"].startswith("transcripts/s014.")
+    assert written["measurement"]["transcript_source"] == "cache"
+    assert written["measurement"]["transcription_model"] == "gemini-2.5-flash"
     assert "text" not in json.dumps(written)
     assert "s014" in capsys.readouterr().out
+
+
+def test_cli_marks_forced_transcription_fresh(tmp_path, monkeypatch):
+    suite = tmp_path / "suite"
+    out = tmp_path / "out"
+    suite.mkdir()
+    _wav(suite / "clip.wav")
+    (suite / "cases.json").write_text(
+        json.dumps({"cases": [{"id": "s014", "audio": "clip.wav"}]}),
+        encoding="utf-8",
+    )
+    monkeypatch.setattr(morgan_cli, "_make_client", lambda: object())
+    monkeypatch.setattr(
+        morgan_cli,
+        "transcribe_verbatim",
+        lambda _audio, _client: [_seg(0, 1, "interviewer", "Hello?")],
+    )
+
+    assert morgan_cli.main(["--suite", str(suite), "--out", str(out)]) == 0
+    written = json.loads((out / "s014.metrics.json").read_text(encoding="utf-8"))
+
+    assert written["measurement"]["transcript_source"] == "fresh"
 
 
 def test_cli_carries_each_case_source_into_its_metrics_document(tmp_path, monkeypatch):

@@ -16,3 +16,8 @@ run, nothing else.
 Fresh cycle recordings should be SHORT (about five minutes — a greeting
 and a few turns is what the naturalness axes need); a short session ends
 `insufficient` and preserves its slot.
+
+When adding a Morgan case, record its structured `lever_state` in
+`cases.json`: the short instructions commit, the VAD silence duration,
+threshold and prefix padding, plus optional free text. The manifest documents
+this operator contract; no code consumes `lever_state` yet.
