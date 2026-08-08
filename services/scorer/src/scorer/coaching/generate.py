@@ -105,6 +105,10 @@ def generate_paraphrases(
     items: list[ParaphraseItem] = []
     seen: set[int] = set()
     for candidate in raw.items:
+        # Checked before the append, not after: testing it afterwards lets a
+        # cap of 0 through with one item still attached.
+        if len(items) >= max_items:
+            break
         if candidate.turn_index in seen or not 0 <= candidate.turn_index < len(turns):
             continue
         if candidate.verdict not in {"good", "improve"}:
@@ -122,8 +126,6 @@ def generate_paraphrases(
                 why=candidate.why,
             )
         )
-        if len(items) >= max(0, max_items):
-            break
     return SessionParaphrases(generated_at=_now(), turn_count=len(turns), items=items)
 
 
