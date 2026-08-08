@@ -454,11 +454,14 @@ describe("round finding: one tick, one thing to say", () => {
   // its own response, so it supersedes the pending one.
   it("a scaffold and a debounced response never fire on the same tick", () => {
     const run = runScenario(
-      [commitTick(), ...quietTicks(0.6, 0.05)],
-      // 7.16 + the commit tick's 0.25 + twelve 0.05 ticks = 8.01: the
-      // stage crosses 8 s on exactly the tick the 0.6 s debounce hits
-      // zero, with float headroom (7.15 lands at 7.999... and misses).
-      { ...INITIAL_SILENCE_STATE, quietS: 7.16 },
+      [commitTick(), ...quietTicks(0.75)],
+      // Production-dt ticks (0.25), far from any float boundary: commit
+      // brings quietS to 7.30 with the debounce at 0.60; three quiet
+      // ticks later quietS is 8.05 (stage due) on the same tick the
+      // debounce reaches -0.15 (trigger due). Fine-grained 0.05 ticks
+      // left the debounce at +1.4e-17 on the closing tick - never zero,
+      // so the collision this test exists for never happened.
+      { ...INITIAL_SILENCE_STATE, quietS: 7.05 },
     );
     const both = run.steps.filter(
       (s) => s.effects.stage !== null && s.effects.triggerResponse,
