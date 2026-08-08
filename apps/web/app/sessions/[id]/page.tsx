@@ -29,7 +29,7 @@ import {
   previousScoredEntry,
   type SessionDetailState,
 } from "@/lib/transcript";
-import type { Rubric, SessionReport, TranscriptSegment } from "@/lib/types";
+import type { Rubric, SessionCoaching, SessionReport, TranscriptSegment } from "@/lib/types";
 import { DIVIDER, LABEL, MUTED, PAGE_HEADING, PRIMARY_BUTTON, SECONDARY_BUTTON, SUB_HEADING, SUBTLE, TAB, TAB_ACTIVE } from "@/lib/ui";
 import type { Viewer } from "@/lib/viewer";
 import { getViewer } from "@/lib/viewer";
@@ -321,10 +321,11 @@ function audioCaption(state: SessionDetailState): string {
 
 export default async function SessionDetailPage({
   params,
-  ...queryProps
+  searchParams,
 }: {
   params: Promise<{ id: string }>;
-} & Record<`search${"Params"}`, Promise<{ tab?: string | string[] }>>) {
+  searchParams: Promise<{ tab?: string | string[] }>;
+}) {
   const { id } = await params;
   const viewer = await getViewer();
   if (!viewer) {
@@ -340,21 +341,24 @@ export default async function SessionDetailPage({
     );
   }
   const { session, pkg } = access.value;
-  const coaching = await getSessionCoaching(id).catch(() => null);
 
   const state = deriveSessionDetailState(session);
 
   // A planned slot has nothing recorded, transcribed, or scored — skip the
   // fetches instead of asking three services for what cannot exist.
   const attempted = state !== "not_started";
+  // Coaching is generated off a saved report, so only the report states can
+  // have any; it joins the same parallel wave rather than adding a round trip.
+  const reported = state === "scored" || state === "limited";
 
   let segments: TranscriptSegment[] | null = null;
   let transcriptFetchFailed = false;
   let entries: SessionProgressEntry[] | null = null;
   let audioUrl: string | null = null;
   let rubric: Rubric | null = null;
+  let coaching: SessionCoaching | null = null;
   if (attempted) {
-    const [transcriptResult, progressResult, mintedUrl, fullPackage] =
+    const [transcriptResult, progressResult, mintedUrl, fullPackage, coachingResult] =
       await Promise.all([
         getSessionTranscript(id).then(
           (value) => ({ ok: true as const, value }),
@@ -370,6 +374,9 @@ export default async function SessionDetailPage({
         session.report === null
           ? Promise.resolve(null)
           : getPackageByToken(pkg.access_token).catch(() => null),
+        // Additive: a failure here leaves the page exactly as it renders
+        // without coaching, never as an error.
+        reported ? getSessionCoaching(id).catch(() => null) : Promise.resolve(null),
       ]);
     if (transcriptResult.ok) {
       segments = transcriptResult.value;
@@ -381,6 +388,7 @@ export default async function SessionDetailPage({
     }
     audioUrl = mintedUrl;
     rubric = fullPackage?.rubric ?? null;
+    coaching = coachingResult;
   }
 
   // Without the progress feed there is no honest "next session" to promise —
@@ -404,7 +412,7 @@ export default async function SessionDetailPage({
           ? "Couldn't load the transcript right now. Reload to try again."
           : "Transcript unavailable for this session."
       }
-      coaching={state === "scored" || state === "limited" ? coaching : null}
+      coaching={coaching}
       marksAction={setParaphraseMarkAction.bind(null, id)}
     />
   );
@@ -413,7 +421,7 @@ export default async function SessionDetailPage({
   if ((state === "scored" || state === "limited") && session.report) {
     const report = session.report;
     const dimensions = rubric ? dimensionMetaFromRubric(rubric) : [];
-    const requestedTab = (await queryProps[`search${"Params"}`]).tab;
+    const requestedTab = (await searchParams).tab;
     const tab = requestedTab === "transcript" || requestedTab === "study" ? requestedTab : "report";
     const tabs = ["report", "transcript", "study"] as const;
     return (
@@ -450,10 +458,8 @@ export default async function SessionDetailPage({
             <ReportObservations observations={report.delivery_observations} />
             <ReportOutcomes report={report} />
             <CtaBlock href={ctaHref} label={cta.label} />
-          </> : tab === "transcript" ? <>
-            <ContextLine roleTitle={pkg.role_title} index={session.index} total={pkg.total_sessions} date={date} />
-            {transcriptSection}
-          </> : <SessionStudyTab sessionId={session.id} coaching={coaching} />}
+          </> : tab === "transcript" ? transcriptSection
+            : <SessionStudyTab sessionId={session.id} coaching={coaching} />}
         </div>
       </Shell>
     );

@@ -30,7 +30,13 @@ describe("the dead guard_ended branch is gone", () => {
     // the room redirected out, and it rendered copy no user could reach.
     expect(transcript).not.toContain("guard_ended");
     expect(page).not.toContain("guard_ended");
-    expect(page).not.toContain("searchParams");
+    // This used to ban `searchParams` outright, which worked only while the
+    // page had no query state of its own. F-73 gave it one -- the
+    // report/transcript/study tabs -- so the ban now forbids a legitimate
+    // feature instead of the dead branch. Narrowed to the thing it was
+    // always about: the `ended` param that branch read.
+    expect(page).not.toMatch(/\bended\b\s*[:=]/);
+    expect(page).not.toContain("ended=guard");
   });
 
   it("derives a planned session as not_started from the row alone", () => {
