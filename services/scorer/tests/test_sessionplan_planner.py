@@ -1,4 +1,6 @@
 """Tests for scorer.sessionplan.planner -- deterministic planning, no LLM."""
+from types import SimpleNamespace
+
 from scorer.schemas import (
     BarsAnchor,
     CandidateProfile,
@@ -104,6 +106,85 @@ def test_plan_picks_first_bank_entry_per_dimension():
     assert by_key["quantified-impact"].source == "research-sweep"
     assert by_key["structured-answers"].question == (
         "Walk me through a project you led end to end.")
+
+
+def test_session_two_rotates_to_second_bank_entry():
+    plan = plan_baseline_session(_make_rubric(), session_index=2)
+    by_key = {q.dimension_key: q for q in plan.question_sequence}
+    assert by_key["quantified-impact"].question == (
+        "Second banked question that must not be picked.")
+
+
+def test_prior_question_texts_are_excluded_even_when_indexes_collide():
+    rubric = _make_rubric()
+    prior = plan_baseline_session(rubric)
+    history = [SimpleNamespace(session_plan=prior, report=None)]
+    current = plan_baseline_session(rubric, session_index=1, history=history)
+    prior_texts = {q.question for q in prior.question_sequence}
+    assert all(q.question not in prior_texts for q in current.question_sequence)
+
+
+def test_exhausted_bank_uses_session_varied_generated_question():
+    rubric = _make_rubric()
+    prior = plan_baseline_session(rubric)
+    history = [SimpleNamespace(session_plan=prior, report=None)]
+    second = plan_baseline_session(rubric, session_index=2, history=history)
+    history.append(SimpleNamespace(session_plan=second, report=None))
+    third = plan_baseline_session(rubric, session_index=3, history=history)
+    second_by_key = {q.dimension_key: q for q in second.question_sequence}
+    third_by_key = {q.dimension_key: q for q in third.question_sequence}
+    assert second_by_key["structured-answers"].question != (
+        third_by_key["structured-answers"].question)
+
+
+def _scored_history(scores: dict[str, float]):
+    return [SimpleNamespace(
+        session_plan=None,
+        report=SimpleNamespace(dimension_scores=[
+            SimpleNamespace(dimension_key=key, score=score)
+            for key, score in scores.items()
+        ]),
+    )]
+
+
+def test_scored_history_orders_weakest_first_then_unscored_by_weight():
+    plan = plan_baseline_session(
+        _make_rubric(),
+        session_index=2,
+        history=_scored_history({"role-knowledge": 2.0, "quantified-impact": 4.0}),
+    )
+    assert [q.dimension_key for q in plan.question_sequence] == [
+        "role-knowledge",
+        "quantified-impact",
+        "pacing-control",
+        "structured-answers",
+        "composure",
+    ]
+    assert plan.focus == "targeted"
+
+
+def test_focus_is_targeted_only_with_scored_history():
+    unscored = [SimpleNamespace(session_plan=None, report=None)]
+    assert plan_baseline_session(
+        _make_rubric(), session_index=2, history=unscored).focus == "baseline"
+    assert plan_baseline_session(
+        _make_rubric(), session_index=2,
+        history=_scored_history({"role-knowledge": 2.0})).focus == "targeted"
+
+
+def test_pressure_probe_rotates_and_aims_at_weakest_scored_content_dimension():
+    history = _scored_history({"role-knowledge": 1.0, "quantified-impact": 4.0})
+    first = plan_baseline_session(_make_rubric())
+    second = plan_baseline_session(_make_rubric(), session_index=2, history=history)
+    assert second.pressure_probe.dimension_key == "role-knowledge"
+    assert second.pressure_probe.question != first.pressure_probe.question
+
+
+def test_same_adaptive_inputs_produce_identical_plans():
+    history = _scored_history({"role-knowledge": 1.0})
+    first = plan_baseline_session(_make_rubric(), session_index=3, history=history)
+    second = plan_baseline_session(_make_rubric(), session_index=3, history=history)
+    assert first == second
 
 
 def test_plan_generates_fallback_question_with_name_and_top_signal():
@@ -249,14 +330,18 @@ def test_same_input_produces_identical_plan_and_instructions():
 
 
 def test_instructions_open_by_speaking_first_with_time_and_areas():
-    text = _instructions()
+    rubric = _make_rubric()
+    plan = plan_baseline_session(rubric)
+    text = build_interviewer_instructions(plan, rubric, _make_profile())
     assert "# OPENING" in text
     assert "Speak first, the moment the call connects" in text
     assert "can you hear me okay?" in text
     assert "Wait for their reply" in text
     assert "about 20 minutes" in text
-    assert ("touching on things like pacing control and quantified "
-            "impact.") in text
+    names = {dim.key: dim.name.lower() for dim in rubric.dimensions}
+    expected_areas = " and ".join(
+        names[question.dimension_key] for question in plan.question_sequence[:2])
+    assert f"touching on things like {expected_areas}." in text
     assert "never recite the job description" in text
     assert "they can pause to think whenever they need" in text
     assert "move into your first question naturally" in text

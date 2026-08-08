@@ -20,7 +20,8 @@ randomness, no clock.
 """
 from __future__ import annotations
 
-from typing import Protocol, Sequence
+from collections.abc import Sequence
+from typing import Protocol
 
 from scorer.promptsafe import fence, inline
 from scorer.schemas import (
@@ -34,9 +35,19 @@ from scorer.schemas import (
 _TIME_BUDGET_MINUTES = 20
 _WRAP_UP_MARGIN_MINUTES = 2
 
-_PRESSURE_PROBE_TEXT = (
-    "Hm — I'm not sure that would hold up in practice. Help me see why "
-    "you're confident: what makes you sure, specifically?"
+_PRESSURE_PROBES = (
+    (
+        "Hm — I'm not sure that would hold up in practice. Help me see why "
+        "you're confident: what makes you sure, specifically?"
+    ),
+    (
+        "Let me push on that. What concrete evidence tells you this approach "
+        "would work under real constraints?"
+    ),
+    (
+        "I'm not fully convinced yet. Which specific result best supports "
+        "your judgment here?"
+    ),
 )
 
 _CLOSING_LINE = (
@@ -45,18 +56,45 @@ _CLOSING_LINE = (
 )
 
 
+class DimensionScoreLike(Protocol):
+    dimension_key: str
+    score: float
+
+
+class SessionReportLike(Protocol):
+    dimension_scores: Sequence[DimensionScoreLike]
+
+
 class SessionHistoryRow(Protocol):
     """Stored session fields used by the pure planner."""
 
     session_plan: SessionPlan | None
-    report: object | None
+    report: SessionReportLike | None
 
 
-def _generated_question(dimension: RubricDimension) -> QuestionSpec:
+def _generated_question(
+    dimension: RubricDimension,
+    session_index: int = 1,
+    asked: set[str] | None = None,
+) -> QuestionSpec:
     """Fallback question for a dimension with no question_bank entry."""
-    question = f"Tell me about a time you demonstrated {dimension.name.lower()}."
-    if dimension.signals:
-        question += f" I'm especially interested in {dimension.signals[0]}."
+    templates = (
+        "Tell me about a time you demonstrated {name}.",
+        "Walk me through a situation where your {name} made a difference.",
+        "What is a concrete example that best shows your {name}?",
+    )
+    candidates = []
+    for template in templates:
+        candidate = template.format(name=dimension.name.lower())
+        if dimension.signals:
+            candidate += f" I'm especially interested in {dimension.signals[0]}."
+        candidates.append(candidate)
+    start = (session_index - 1) % len(candidates)
+    rotated = candidates[start:] + candidates[:start]
+    question = next(
+        (candidate for candidate in rotated if candidate not in (asked or set())),
+        rotated[0],
+    )
     return QuestionSpec(
         dimension_key=dimension.key,
         question=question,
@@ -68,6 +106,26 @@ def _generated_question(dimension: RubricDimension) -> QuestionSpec:
     )
 
 
+def _asked_question_texts(history: Sequence[SessionHistoryRow]) -> set[str]:
+    return {
+        question.question
+        for row in history
+        if row.session_plan is not None
+        for question in row.session_plan.question_sequence
+    }
+
+
+def _latest_scores(history: Sequence[SessionHistoryRow]) -> dict[str, float]:
+    scores: dict[str, float] = {}
+    for row in history:
+        if row.report is not None:
+            scores.update(
+                (score.dimension_key, score.score)
+                for score in row.report.dimension_scores
+            )
+    return scores
+
+
 def plan_baseline_session(
     rubric: Rubric,
     *,
@@ -75,24 +133,41 @@ def plan_baseline_session(
     history: Sequence[SessionHistoryRow] = (),
 ) -> SessionPlan:
     """Deterministic baseline plan covering every rubric dimension at least once."""
-    # sorted() is stable: equal weights keep their rubric order.
-    ordered = sorted(rubric.dimensions, key=lambda dim: -dim.weight)
+    latest_scores = _latest_scores(history)
+    # sorted() is stable: equal scores and weights keep their rubric order.
+    ordered = sorted(
+        rubric.dimensions,
+        key=lambda dim: (
+            (0, latest_scores[dim.key], -dim.weight)
+            if dim.key in latest_scores
+            else (1, 0.0, -dim.weight)
+        ),
+    )
+    asked = _asked_question_texts(history)
     sequence: list[QuestionSpec] = []
     for dimension in ordered:
-        banked = next(
-            (q for q in rubric.question_bank if q.dimension_key == dimension.key), None)
-        sequence.append(banked if banked is not None else _generated_question(dimension))
+        remaining = [
+            question for question in rubric.question_bank
+            if question.dimension_key == dimension.key and question.question not in asked
+        ]
+        if remaining:
+            sequence.append(remaining[(session_index - 1) % len(remaining)])
+        else:
+            sequence.append(_generated_question(dimension, session_index, asked))
     content_dims = [dim for dim in ordered if dim.channel == "content"]
-    pressure_target = content_dims[0] if content_dims else ordered[0]
+    scored_content = [dim for dim in content_dims if dim.key in latest_scores]
+    pressure_target = min(
+        scored_content, key=lambda dim: (latest_scores[dim.key], -dim.weight)
+    ) if scored_content else content_dims[0] if content_dims else ordered[0]
     pressure_probe = QuestionSpec(
         dimension_key=pressure_target.key,
-        question=_PRESSURE_PROBE_TEXT,
+        question=_PRESSURE_PROBES[(session_index - 1) % len(_PRESSURE_PROBES)],
         probes=["Give me one concrete example that backs that up."],
         source="generated",
     )
     return SessionPlan(
         session_index=session_index,
-        focus="baseline",
+        focus="targeted" if latest_scores else "baseline",
         question_sequence=sequence,
         pressure_probe=pressure_probe,
         time_budget_minutes=_TIME_BUDGET_MINUTES,

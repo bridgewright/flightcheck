@@ -73,6 +73,9 @@ _RULES = (
     "  is a behavioral statement describing observable answer behavior, question-independent\n"
     "  (it must apply to any question probing that dimension).\n"
     "- Build question_bank preferentially from the reported questions in the findings;\n"
+    "- Provide 2 to 4 question_bank entries per content dimension, each a genuinely\n"
+    "  different angle on the dimension -- the interview runs up to six sessions and\n"
+    "  must not repeat itself.\n"
     '  mark those source "research-sweep". Questions adapted from corpus docs are source\n'
     '  "corpus"; questions you write yourself are source "generated".\n'
     "- Set role_title (and company, when the job description names one) from the job\n"
