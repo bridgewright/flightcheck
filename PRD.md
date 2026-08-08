@@ -251,6 +251,42 @@ Changes to targets are recorded here with date and reason — never silently.
   dimension's receipt, the JD sentence that earned it. Rubrics stored
   before the field existed parse and render exactly as they do today.
 
+- **v0.12 (recorded 2026-08-08, pre-code):** the after-the-session
+  product — what the customer does between interviews. Four features,
+  one batch. **Session coaching:** the session detail grows sub-tabs
+  (Report, Transcript, Study). Under each answer in the transcript, a
+  coloured check says whether the answer read as strong or as needing
+  work; opening it shows a stronger phrasing of the whole answer and a
+  short why naming the specific phrases. Every suggestion can be
+  bookmarked and rated up or down, and those marks are stored — they are
+  the raw material for later analysis of whether the coaching is any
+  good. Suggestions are generated text and are labelled as such; the
+  transcript itself and every quoted anchor stay verbatim, the same
+  contract the report already enforces. Coaching is generated right
+  after scoring, never delays or fails a report, and is not produced
+  for sessions the eligibility gate refused to score — advice built on
+  evidence the product called too thin would be fake coaching. The
+  session Study sub-tab collects what was saved plus this session's
+  review: what went well, what did not, the expressions worth keeping,
+  and the questions from this session the candidate must be able to
+  answer, each with a model answer built from the candidate's own best
+  material and labelled as generated. **Study tab:** a new top-level
+  tab aggregates across the package — every bookmarked expression
+  organized by session, and a package-level summary of recurring
+  problems, an improvement strategy, and the job's core questions with
+  model answers to memorize; exportable as Markdown and PDF, the same
+  two-format door the report already has. Built on demand at the
+  customer's request and marked stale when new sessions score, rather
+  than regenerated silently on every visit. **Dashboard home:** the
+  signed-in home stops being a row of dots and starts answering "am I
+  getting better" at a glance — overall score trend, per-dimension
+  trajectories, and the recurring gaps, composed from the progress
+  screen's existing instruments; /progress keeps the detail. **Feedback
+  channel:** the footer's Feedback door stops being a mailto (v0.10)
+  and becomes a form — a five-star rating in half-star steps plus free
+  text, stored, with an operator-only inbox to read and manage what
+  arrives. DECISIONS 048–051.
+
 > 2026-08-02: v0.4 scope added above — accounts move ahead of payments
 > because login-gated interviews protect session integrity and per-session
 > cost, and the dashboard is what makes a 6-session package usable. The

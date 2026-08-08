@@ -1787,3 +1787,178 @@ of the work.
   (promote to release gate); recordings become the iteration bottleneck
   (build the headless scripted-session harness on realtime_probe); or two
   manual cycles complete (consider optimizer-assisted lever search).
+
+## 048 — The feedback door grows structure: stored ratings and an operator inbox (2026-08-08)
+
+**Context.** F-71. DECISIONS 040 shipped feedback as a labelled mailto and
+named its own revisit condition: structure gets built when real feedback
+asks for it. The operator has now asked for it directly — a rating plus
+free text, stored, with an in-app place to read and manage what arrives.
+The reference product the operator studied (a Korean AI phone-English
+app) does exactly this as a post-call modal: five stars and a textarea.
+
+- **Chosen — a `feedback` table, a worker router, and an operator-only
+  inbox at `/ops/feedback`.** Rating stored as a half-star count
+  (`rating_half_stars`, integer 1–10): the 0.5 granularity becomes a
+  database CHECK constraint instead of a float-equality convention.
+  Rating required, text optional — a silent two-star is still signal.
+  Signed-in only; the user id comes from the session, never the request
+  body. Fixed-window rate limit plus an absolute per-user cap plus a
+  body-size cap, because a free-text POST is an abuse surface. Statuses
+  `new → seen → archived`. The submitter's stored id is shown in the
+  inbox; no email address enters the table. Feedback text is untrusted
+  input: rendered escaped, never fed to any model.
+- **Chosen — operator identity is `OPERATOR_USER_ID`, an env-supplied
+  Supabase user id checked in the Next layer, failing closed.** The
+  house already solved "one known operator, no role system" this way
+  (comp accounts): an id is the key every other table uses and is not a
+  contact detail; unset means nobody is operator. Not added to the
+  required-env list — a deploy without it must succeed with the inbox
+  off, not fail. The inbox route 404s for everyone else and is linked
+  from nowhere.
+- **Rejected — email-matched operator:** aliases, case, domain variants,
+  and the operator changing addresses all break it quietly; the id
+  cannot drift.
+- **Rejected — a worker-side role system:** one operator does not need
+  an authorization framework; the web layer is already the identity
+  seam for every other user-facing read.
+- **Rejected — anonymous submissions:** attribution is what makes
+  feedback actionable at this scale, and the abuse story of an
+  unauthenticated write endpoint is a poor trade for one door.
+- **Revisit when:** feedback needs replies (then statuses grow a loop
+  and the table a thread), or a second operator exists (then the env
+  var becomes a list or a real role).
+
+## 049 — Post-session coaching: verdicts, stronger phrasings, and the customer's marks (2026-08-08)
+
+**Context.** F-73. The operator wants what the reference app does after a
+call, adapted to interviews: every answer in the transcript carries a
+verdict mark (strong, or needs work), opening it shows a stronger
+phrasing of the whole answer with a why that names specific word
+choices, and each suggestion can be bookmarked and rated up or down —
+the marks stored, because they are the raw material for judging the
+coaching itself later.
+
+- **Chosen — three new columns on `sessions`, one artifact each.**
+  `paraphrases` (generated: per candidate turn, a verdict
+  good-or-improve, a verbatim source anchor, a full-turn rewrite, a
+  why), `insights` (generated: this session's did-well, did-poorly,
+  must-keep expressions, must-answer questions with model answers), and
+  `paraphrase_marks` (the customer's state: reaction and bookmark per
+  turn). Columns rather than tables because the transcript already
+  proved the pattern: they ride session deletion for free, and they are
+  excluded from the hot-read column list so no poll ever carries them.
+  Generated state and user state stay in separate columns — a
+  regeneration must never wipe a bookmark.
+- **Chosen — keying by candidate-turn ordinal over a shared grouping
+  rule, pinned across languages.** The transcript is a positional
+  segment array; the web merges consecutive same-speaker segments into
+  turns before rendering. The Python side now mirrors that rule
+  (`scorer/turns.py`), and a committed golden-vector fixture with twin
+  test gates (one per language) fails if either side's grouping drifts.
+  The stored artifact also records the candidate-turn count it saw — a
+  reader that derives a different count renders no coaching rather than
+  misaligned coaching.
+- **Chosen — generated inside the scoring job, immediately after the
+  report is saved, each artifact in its own try/except.** The report is
+  already visible when coaching starts; a coaching failure is a log
+  line, never a scoring failure, and deliberately not a dead-letter —
+  the run succeeded. Scored and limited sessions only: the eligibility
+  gate's whole posture is that below the floor, no model spend, and
+  coaching built on refused evidence would be advice the product does
+  not stand behind. The reference app draws the same line.
+- **Chosen — the verbatim contract extends, not bends.** Suggestions
+  and model answers are generated text, labelled as such everywhere
+  they render. The only verbatim fields are the anchors, located with
+  the same span machinery the report uses; an anchor that cannot be
+  located drops its item rather than shipping a misquote.
+- **Rejected — fields on SessionReport:** the report schema is
+  extra="forbid" with a tested verbatim contract; coaching is a
+  different artifact with a different truth standard.
+- **Rejected — on-demand generation:** puts model latency in front of
+  the first transcript view and needs concurrent-generation dedup, to
+  save roughly a cent per session.
+- **Rejected — per-turn model calls:** ten to twenty requests repeating
+  the same rules for the tokens one batched call carries.
+- **Revisit when:** the marks accumulate enough volume to analyse
+  (they become an eval input for coaching quality), or old sessions
+  deserve a backfill pass, or the insufficient-session line draws real
+  customer complaints.
+
+## 050 — Study materials: a package-level table, built on demand, stale by set-difference (2026-08-08)
+
+**Context.** F-74. The operator wants a Study tab: bookmarked expressions
+organized by session, plus a package-level summary — recurring problems,
+an improvement strategy, the job's core questions with model answers to
+memorize — exportable as Markdown and PDF.
+
+- **Chosen — a `study_materials` table whose primary key IS the package
+  id.** Every package read in the data layer is `select("*")`; a
+  30–60 KB document as a packages column would ride every home and
+  progress poll — the exact size class the transcript column was
+  engineered out of hot reads for. One row per package by primary key;
+  package deletion sweeps it.
+- **Chosen — built on demand, 202-plus-poll, stale by set-difference.**
+  Generation is a button, not a side effect of scoring: model spend
+  happens when the customer asks for the artifact. The stored document
+  records exactly which scored sessions it consumed; staleness is a
+  set comparison at read time, so a deleted session reads stale too.
+  A failed or in-flight regeneration keeps the last good document, and
+  a generation stuck longer than the configured window reads as failed
+  at GET time — no new reaper machinery. Regeneration is allowed even
+  when fresh (rate-limited); generation is refused on expired packages
+  while reads stay open, matching the standing rule that reports and
+  replays outlive the window.
+- **Chosen — the bookmark view is a join, not a generation.** Saved
+  expressions organized by session come from joining the coaching
+  artifacts with the customer's marks server-side at read time.
+  Generating a copy would go stale the moment the customer bookmarks
+  one more card.
+- **Rejected — a packages column:** hot-read weight, and a wide shared
+  refactor to avoid it that three parallel tracks would collide on.
+- **Rejected — regenerating on every scored session:** spend without a
+  reader; the stale banner plus a button is the honest version.
+- **Revisit when:** generation cost or latency makes precomputation
+  worth it, or the export grows an audience beyond the customer (then
+  the capability-token rules apply to it).
+
+## 051 — The measurement stack gets a version stamp, a golden clip, and one less lucky duplicate (2026-08-08)
+
+**Context.** F-70. An outside comment the operator relayed: voice-activity
+detection is a hidden source of evaluator-side drift — change the VAD
+model or its thresholds and talk-time ratios move even when the audio and
+transcript are identical, so version the VAD like code and pin its output
+on golden audio. The comment's principle is right and its mapping onto
+this repo needed correcting first: the evaluation path has no standalone
+VAD model — segmentation comes from the transcription model plus DSP
+constants — and the OpenAI server-VAD in the interview room is part of
+the system under test, a lever, never the evaluator.
+
+- **Chosen — a `measurement` provenance block in every Morgan metrics
+  document:** the transcription model id in force, the DSP constants
+  version, the interruption overlap floor, and whether the transcript
+  came from cache or a fresh transcription. Two reports that disagree
+  now carry the evidence of whether the ruler moved.
+- **Chosen — a committed synthetic golden clip with expected
+  segmentation:** a generated voice clip (no privacy surface) whose
+  expected segment boundaries and total speech time are committed with
+  tolerances; re-run when transcription configuration changes, it
+  answers "did the ruler move" directly.
+- **Chosen — the lucky duplicate gets a gate.** `silence_duration_ms`
+  exists in three places (web room literals, product config, the
+  webroom harness) with nothing comparing them; the session-timing SSOT
+  twin-gate pattern extends to the VAD tail and the interviewer model
+  id. The repo's own contract file called this open work; it stops
+  being open.
+- **Chosen — `lever_state` in the naturalness suite becomes structured:**
+  the instructions commit and the VAD parameters a recording was made
+  under, so system-side versions are locked with the same discipline as
+  evaluator-side ones.
+- **Rejected — pinning the room's VAD parameters as evaluator config:**
+  that mixes the lever with the ruler and would quietly bypass the
+  F-67 boundary (DECISIONS 046) that keeps turn-system tuning behind
+  recorded evidence.
+- **Revisit when:** the transcription provider stops honouring pinned
+  model ids (then the golden clip becomes a scheduled canary rather
+  than a config-change check), or bar Round 1 finds the stamp is
+  missing a field it needed.
