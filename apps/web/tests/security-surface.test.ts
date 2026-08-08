@@ -4,8 +4,8 @@ import { fileURLToPath } from "node:url";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import {
-  ROOM_PATH_SOURCE,
   TOKEN_LINK_SOURCE,
+  permissionsPolicy,
   securityHeaderRules,
 } from "@/lib/security-headers";
 
@@ -17,11 +17,15 @@ const repoPath = (path: string) =>
   fileURLToPath(new URL(`../${path}`, import.meta.url));
 
 describe("the header rules point at real routes", () => {
-  it("the microphone exception matches the room page that exists", () => {
-    // If the room moves, the Permissions-Policy override silently stops
-    // applying and getUserMedia fails with a policy error that looks like a
-    // browser bug. This is the only thing that would catch it.
-    expect(ROOM_PATH_SOURCE).toBe("/sessions/:id/room");
+  it("the microphone grant is global, and the room it serves exists", () => {
+    // The per-path microphone exception is gone BY DESIGN (2026-08-08):
+    // Permissions-Policy binds to the document, and under client-side
+    // navigation the room was still governed by the entry route's
+    // microphone=() — getUserMedia failed with a policy error that looked
+    // like the customer had blocked the site. The grant is now
+    // microphone=(self) on every route; this pin keeps anyone from
+    // reintroducing the path-scoped version that never worked in an SPA.
+    expect(permissionsPolicy()).toContain("microphone=(self)");
     expect(existsSync(repoPath("app/sessions/[id]/room/page.tsx"))).toBe(true);
   });
 
