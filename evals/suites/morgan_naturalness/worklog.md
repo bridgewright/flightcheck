@@ -73,6 +73,15 @@ discussion happens.
   provenance stamps); a field failure becomes a case; the evaluators
   are themselves evaluated; one lever, one run, one entry. The suite
   already practiced these; naming them is what makes them survivable.
+- **Measurement discipline shipped same day (F-70, item 0 of this
+  round):** the provenance stamp (transcription model, DSP constants
+  version, overlap floor, cache-vs-fresh) rides every metrics
+  document; the golden segmentation regression is armed with pins
+  CONFIRMED by a live transcription pass; and the three-way
+  `silence_duration_ms` duplicate plus the interviewer model id are
+  now twin-gated across the language boundary. The ruler is versioned
+  before the first band is measured — the order the outside comment
+  argued for, adopted.
 
 ## 2026-08-07 — Round 0: the loop exists, and its shape
 
