@@ -172,7 +172,7 @@ curl -s "https://api.github.com/repos/bridgewright/flightcheck/events?per_page=1
 
 1. **A verdict, not a chat** — an evidence-grounded rubric compiled from your target JD and real interview experiences for that company and role, with behaviorally-anchored scoring.
 2. **Delivery is scored from raw audio** — hesitation, fillers, hedging intonation. Cascade pipelines erase these before the model ever hears them.
-3. **Growth across sessions** — a paid package is six sessions against the one JD, and the product reads them as a sequence: the session archive, per-dimension trends, the delta against your previous session, and recurring gaps and weak dimensions surfaced across sessions. Questions rotate through the rubric's bank, skip question text already stored in prior plans, and lead with the weakest scored dimensions while the scoring bar stays fixed.
+3. **Growth across sessions** — a paid package is six sessions against the one JD, and the product reads them as a sequence: the session archive, per-dimension trends, the delta against your previous session, and recurring gaps and weak dimensions surfaced across sessions. Questions never repeat within the package, and the weakest scored dimensions lead while the scoring bar stays fixed.
 
 ## Roadmap
 
@@ -209,7 +209,8 @@ Two things the list does not carry, and both are deliberate:
   session history → v0.5 curriculum-lite → then payments". Payments took the
   v0.5 slot and curriculum-lite moved to v0.6; v0.6 then shipped without it,
   and so did v0.7, v0.8, v0.9, v0.10, v0.11 and v0.12. The next planner batch
-  finally landed the promise: bank rotation, history-aimed ordering, rotating
+  finally landed the promise: no repeated questions within the six-session
+  package, history-aimed ordering, rotating
   pressure probes, and profile-driven personal questions (DECISIONS 058-059).
 
 **On the payment path, precisely.** Exactly one $49 order exists. The author

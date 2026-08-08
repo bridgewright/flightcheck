@@ -46,7 +46,7 @@ function llmsTxt(): string {
     `- Trial: the first package starts as a free trial of ${TRIAL_SESSIONS} full session, scored, with no card required.`,
     `- Refunds: technical failures on our side, reported within ${REFUND_WINDOW_DAYS} days of payment. A verdict the customer did not like is not refund grounds.`,
     "- Privacy: recordings, transcripts, and reports stay in private storage tied to the account. They are never public and never shared with other users.",
-    `- Every session on a package runs against the same bar, while questions rotate by session and scored history so weaker dimensions lead. The ${PACKAGE_SESSIONS} scores remain comparable.`,
+    `- Every session on a package runs against the same bar, with no repeated questions within the package and scored history making weaker dimensions lead. The ${PACKAGE_SESSIONS} scores remain comparable.`,
     "- What it is not: live interview assistance. It never joins, listens to, or answers a real interview, and nothing said in practice reaches an employer.",
     "",
     "## Pages",

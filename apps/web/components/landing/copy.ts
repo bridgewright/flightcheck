@@ -89,7 +89,7 @@ export const HOW_IT_WORKS: Step[] = [
   {
     title: "Go again until the verdict changes",
     detail:
-      `${PACKAGE_SESSIONS} sessions on one job description, with fresh topics each session and questions aimed at your weaker dimensions. Every session keeps the same scoring bar, so you can read the scores against each other.`,
+      `${PACKAGE_SESSIONS} sessions on one job description, with no repeated questions within the package and questions aimed at your weaker dimensions. Every session keeps the same scoring bar, so you can read the scores against each other.`,
   },
 ];
 
@@ -122,7 +122,7 @@ export const PRICING_LINES: PricingLine[] = [
   { label: "1 job description", detail: "One package, compiled from the JD you paste." },
   {
     label: `${PACKAGE_SESSIONS} sessions`,
-    detail: `About ${SESSION_MINUTES} minutes each, with fresh topics that rotate and aim at weaker dimensions while the scoring bar stays fixed.`,
+    detail: `About ${SESSION_MINUTES} minutes each, with no repeated questions within the package and weaker dimensions leading while the scoring bar stays fixed.`,
   },
   {
     label: "Scored reports",

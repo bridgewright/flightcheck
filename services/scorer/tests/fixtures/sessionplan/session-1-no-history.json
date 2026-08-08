@@ -1,0 +1,43 @@
+{
+  "session_index": 1,
+  "focus": "baseline",
+  "question_sequence": [
+    {
+      "dimension_key": "pacing-control",
+      "question": "Tell me about a time you demonstrated pacing control. I'm especially interested in Pacing control: named specifics.",
+      "probes": ["What exactly did you do yourself, step by step?", "What was the measurable outcome?"],
+      "source": "generated"
+    },
+    {
+      "dimension_key": "quantified-impact",
+      "question": "Tell me about a result you are most proud of, with numbers.",
+      "probes": ["What was the baseline before your change?"],
+      "source": "research-sweep"
+    },
+    {
+      "dimension_key": "structured-answers",
+      "question": "Walk me through a project you led end to end.",
+      "probes": ["What was your specific role?", "What was the measurable outcome?"],
+      "source": "research-sweep"
+    },
+    {
+      "dimension_key": "role-knowledge",
+      "question": "Tell me about a time you demonstrated role knowledge. I'm especially interested in Role knowledge: named specifics.",
+      "probes": ["What exactly did you do yourself, step by step?", "What was the measurable outcome?"],
+      "source": "generated"
+    },
+    {
+      "dimension_key": "composure",
+      "question": "Tell me about a time you demonstrated composure.",
+      "probes": ["What exactly did you do yourself, step by step?", "What was the measurable outcome?"],
+      "source": "generated"
+    }
+  ],
+  "pressure_probe": {
+    "dimension_key": "quantified-impact",
+    "question": "Hm — I'm not sure that would hold up in practice. Help me see why you're confident: what makes you sure, specifically?",
+    "probes": ["Give me one concrete example that backs that up."],
+    "source": "generated"
+  },
+  "time_budget_minutes": 20
+}

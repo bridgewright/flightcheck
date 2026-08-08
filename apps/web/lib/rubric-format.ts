@@ -40,8 +40,10 @@ type ReceiptCarrier = Pick<RubricDimension, "jd_evidence" | "license">;
 
 /**
  * True only for a post-F-62 rubric: at least one dimension carries a
- * non-blank receipt. The delivery line keys on this, never on channel
- * alone, so a pre-F-62 rubric renders byte-identical to today.
+ * non-blank JD receipt or a profile-licensed dimension. The profile branch
+ * has no JD quote by design: the candidate's own background licenses it.
+ * The delivery line keys on this, never on channel alone, so a pre-F-62
+ * rubric renders byte-identical to today.
  */
 export function hasReceipts(dimensions: ReceiptCarrier[]): boolean {
   return dimensions.some(

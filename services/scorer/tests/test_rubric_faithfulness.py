@@ -243,6 +243,17 @@ def test_one_profile_licensed_fit_dimension_is_accepted_with_profile():
     assert len(fake.calls) == 1
 
 
+def test_profile_license_on_values_dimension_is_a_faithfulness_problem():
+    invalid = _rubric([
+        _dim("cultural-alignment-and-values", "content", 0.1, None, "profile"),
+        _dim("structured-answers", "content", 0.5, "own growth analytics"),
+        _dim("pacing-control", "delivery", 0.4),
+    ])
+    fake = FakeGenAI([json.dumps(invalid), json.dumps(_good_rubric())])
+    _compile(fake)
+    assert "only the role-and-company-fit dimension may be profile-licensed" in _appended(fake)
+
+
 def test_profile_licensed_dimension_with_jd_quote_is_a_problem():
     invalid = _rubric([
         _dim("structured-answers", "content", 0.4, "own growth analytics"),

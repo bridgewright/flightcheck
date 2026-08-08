@@ -36,6 +36,7 @@ def test_stored_dimension_predating_jd_evidence_still_validates():
     # existed must keep validating on read and carry None.
     dim = RubricDimension.model_validate(_stored_dimension_payload())
     assert dim.jd_evidence is None
+    assert dim.license == "jd"
 
 
 def test_jd_evidence_round_trips_when_present():

@@ -60,10 +60,16 @@ def _machinery_problems(rubric: Rubric, processed_jd: str) -> list[str]:
         if dim.channel != "content":
             continue  # delivery dimensions are licensed by the product, not the JD
         if dim.license == "profile":
-            if dim.jd_evidence is not None:
+            if dim.key != "role-and-company-fit" or dim.channel != "content":
+                problems.append(
+                    f"profile license is not allowed for dimension '{dim.key}'; "
+                    "only role-and-company-fit content may use it")
+            elif dim.jd_evidence is not None:
                 problems.append(
                     f"profile dimension '{dim.key}' must have null jd_evidence")
-            continue
+                continue
+            else:
+                continue
         if not dim.jd_evidence:
             problems.append(f"content dimension '{dim.key}' has no jd_evidence")
         elif dim.jd_evidence not in processed_jd:

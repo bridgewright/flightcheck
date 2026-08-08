@@ -1,4 +1,4 @@
-import { readdirSync, readFileSync } from "node:fs";
+import { readdirSync, readFileSync, statSync } from "node:fs";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -28,6 +28,20 @@ import { EXPIRY_DAYS, PACKAGE_SESSIONS, PRICE_DISPLAY } from "@/lib/pricing";
 
 const webRoot = fileURLToPath(new URL("..", import.meta.url));
 const landingDir = join(webRoot, "components/landing");
+
+function walkScreens(dir: string): string[] {
+  const out: string[] = [];
+  for (const entry of readdirSync(join(webRoot, dir))) {
+    const rel = `${dir}/${entry}`;
+    if (statSync(join(webRoot, rel)).isDirectory()) {
+      out.push(...walkScreens(rel));
+      continue;
+    }
+    if (!/\.tsx?$/.test(entry) || /\.test\.tsx?$/.test(entry)) continue;
+    out.push(rel);
+  }
+  return out;
+}
 
 const PROSE: string[] = [
   HERO.heading,
@@ -80,15 +94,6 @@ const FORBIDDEN = [
   "trusted by",
   "users report",
   "testimonial",
-];
-
-const ALLOWED_CAPABILITY_CLAIMS = [
-  {
-    needle: "fresh topic",
-    why:
-      "allowed because the planner varies questions by session index and stored " +
-      "history as of DECISIONS 058",
-  },
 ];
 
 // The same risk class, where a plain substring would fire on innocent prose.
@@ -280,14 +285,25 @@ describe("the landing components", () => {
   });
 });
 
-describe("capability claims the planner can now keep", () => {
-  it.each(ALLOWED_CAPABILITY_CLAIMS)(
-    "records why $needle is allowed",
-    ({ needle, why }) => {
-      expect(PROSE.join(" ").toLowerCase()).toContain(needle);
-      expect(why).toContain("session index");
-      expect(why).toContain("history");
-      expect(why).toContain("DECISIONS 058");
-    },
-  );
+// "fresh topic" is intentionally absent: DECISIONS 058 made that claim true
+// through session-index rotation and stored-history exclusion. The remaining
+// high-risk claims stay forbidden across every screen, not only landing copy.
+describe("forbidden capability claims across the screen tree", () => {
+  const claims = ["coming soon", "trusted by", "users report", "testimonial"];
+  const screens = walkScreens("app").concat(walkScreens("components"));
+
+  it("has screens to check", () => {
+    expect(screens.length).toBeGreaterThan(30);
+  });
+
+  it.each(claims)("no screen claims %s", (needle) => {
+    const hits = screens.filter((rel) => {
+      const source = readFileSync(join(webRoot, rel), "utf8");
+      const withoutComments = source
+        .replace(/\/\*[\s\S]*?\*\//g, "")
+        .replace(/^\s*\/\/.*$/gm, "");
+      return withoutComments.toLowerCase().includes(needle);
+    });
+    expect(hits, `forbidden capability claim: ${needle}`).toEqual([]);
+  });
 });

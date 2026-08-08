@@ -1,4 +1,6 @@
 """Tests for scorer.sessionplan.planner -- deterministic planning, no LLM."""
+import json
+from pathlib import Path
 from types import SimpleNamespace
 
 from scorer.schemas import (
@@ -226,6 +228,110 @@ def test_fit_question_rotates_across_sessions():
                       if q.dimension_key == "role-and-company-fit")
     assert first_fit.question != second_fit.question
     assert "ExampleCo" in second_fit.question
+
+
+def test_fit_dimension_uses_model_authored_bank_before_fallbacks():
+    rubric = _rubric_with_fit_dimension()
+    authored = QuestionSpec(
+        dimension_key="role-and-company-fit",
+        question="What specifically makes ExampleCo the right company for you?",
+        probes=[],
+        source="research-sweep",
+    )
+    rubric = rubric.model_copy(update={
+        "question_bank": [*rubric.question_bank, authored],
+    })
+    fit = next(
+        question for question in plan_baseline_session(
+            rubric, profile=_pivot_profile()).question_sequence
+        if question.dimension_key == "role-and-company-fit"
+    )
+    assert fit == authored
+
+
+def test_all_six_fit_fallbacks_are_exact_and_grammatical_for_pivot_profile():
+    expected = [
+        "You've spent 6 years as a Management Consultant, why move to "
+        "Forward Deployed Product Manager, and why ExampleCo?",
+        "Why ExampleCo for this role, rather than another company doing similar work?",
+        "How does your career story lead from Management Consultant to "
+        "Forward Deployed Product Manager at ExampleCo?",
+        "What would you miss about your work as a Management Consultant if you "
+        "joined ExampleCo as a Forward Deployed Product Manager?",
+        "Why not join a competitor doing similar work instead of ExampleCo?",
+        "What worries you most about moving from Management Consultant to "
+        "Forward Deployed Product Manager at ExampleCo?",
+    ]
+    actual = []
+    for index in range(1, 7):
+        plan = plan_baseline_session(
+            _rubric_with_fit_dimension(), session_index=index, profile=_pivot_profile())
+        actual.append(next(q.question for q in plan.question_sequence
+                           if q.dimension_key == "role-and-company-fit"))
+    assert actual == expected
+
+
+def test_non_pivot_fit_fallbacks_are_distinct_and_not_dimension_name_mad_libs():
+    profile = CandidateProfile(
+        name="Taylor Example", headline="Forward Deployed Product Manager",
+        years_experience="5 years",
+        roles=["Forward Deployed Product Manager, CurrentCo"],
+        skills=[], achievements=[],
+    )
+    questions = []
+    for index in range(1, 7):
+        plan = plan_baseline_session(
+            _rubric_with_fit_dimension(), session_index=index, profile=profile)
+        questions.append(next(q.question for q in plan.question_sequence
+                              if q.dimension_key == "role-and-company-fit"))
+    assert questions == [
+        "Why this Forward Deployed Product Manager role at ExampleCo, specifically?",
+        "Why ExampleCo for this role, rather than another company doing similar work?",
+        "How has your career story prepared you for this role at ExampleCo?",
+        "What would you miss most about your current work if you joined ExampleCo?",
+        "Why not join a competitor doing similar work instead of ExampleCo?",
+        "What worries you most about taking this role at ExampleCo?",
+    ]
+    assert all("demonstrated role & company fit" not in question.lower()
+               for question in questions)
+
+
+def test_free_text_years_are_omitted_from_fit_question():
+    profile = _pivot_profile().model_copy(update={"years_experience": "about six-ish"})
+    plan = plan_baseline_session(
+        _rubric_with_fit_dimension(), session_index=1, profile=profile)
+    fit = next(q.question for q in plan.question_sequence
+               if q.dimension_key == "role-and-company-fit")
+    assert fit == (
+        "You've been a Management Consultant, why move to Forward Deployed Product Manager, "
+        "and why ExampleCo?"
+    )
+
+
+def test_six_session_package_never_repeats_content_or_delivery_questions():
+    rubric = _make_rubric().model_copy(update={
+        "question_bank": [
+            QuestionSpec(
+                dimension_key=dimension.key,
+                question=f"Banked question for {dimension.name.lower()}?",
+                probes=[], source="research-sweep",
+            )
+            for dimension in _make_rubric().dimensions
+        ],
+    })
+    history = []
+    texts = []
+    for index in range(1, 7):
+        plan = plan_baseline_session(rubric, session_index=index, history=history)
+        texts.extend(question.question for question in plan.question_sequence)
+        history.append(SimpleNamespace(session_plan=plan, report=None))
+    assert len(texts) == len(set(texts))
+
+
+def test_session_one_with_no_history_matches_committed_golden():
+    plan = plan_baseline_session(_make_rubric())
+    fixture = Path(__file__).parent / "fixtures" / "sessionplan" / "session-1-no-history.json"
+    assert plan.model_dump(mode="json") == json.loads(fixture.read_text())
 
 
 def test_fit_questions_are_absent_without_profile_licensed_dimension():

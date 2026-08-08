@@ -316,6 +316,27 @@ class TestTheRunner:
                 for dim in result["fixtures"]["plain-control"]["dimensions"]}
         assert dims["growth-analytics-ownership"]["has_jd_evidence"] is False
 
+    def test_profile_license_cannot_bypass_machinery_for_a_values_dimension(
+            self, monkeypatch):
+        fdpm = _fdpm_rubric()
+        fdpm["dimensions"][3] = {
+            **_dim("cultural-alignment-and-values", "Cultural alignment and values",
+                   "content", 0.15),
+            "license": "profile",
+        }
+        _regressed_compiler(monkeypatch, fdpm=fdpm)
+
+        result = run_faithfulness_suite(SUITE_DIR, FakeGenAI([]))
+
+        assert (
+            "values-boilerplate-fdpm: profile license is not allowed for dimension "
+            "'cultural-alignment-and-values'; only role-and-company-fit content may use it"
+        ) in result["failures"]
+        assert (
+            "values-boilerplate-fdpm: content dimension "
+            "'cultural-alignment-and-values' has no jd_evidence"
+        ) in result["failures"]
+
     def test_empty_string_jd_evidence_is_missing_not_a_trivial_match(
             self, monkeypatch):
         # "" is a substring of every haystack: if the presence check tested
