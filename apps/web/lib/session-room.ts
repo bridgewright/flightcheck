@@ -491,6 +491,11 @@ export interface GuardTick {
   responseRequested: boolean;
   /** A response.done arrived since the last tick. */
   responseDone: boolean;
+  /** Deliberately NOT a traffic expectation: a candidate mid-answer
+   * produces zero channel traffic (server VAD speaks only at speech
+   * boundaries), and counting it starved every answer longer than the
+   * trip window. Kept in the tick so the reducer's inputs stay a
+   * complete picture of the room. */
   candidateAudible: boolean;
   interviewerAudible: boolean;
 }
@@ -498,11 +503,18 @@ export interface GuardTick {
 /**
  * One tick of the connection guard (spec: F-17). Pure, same contract as
  * nextSilenceState. Detection is honest by construction: starvation only
- * accumulates while traffic is EXPECTED — candidate audible (speech must
- * produce VAD events), interviewer audible (audio must produce lifecycle
- * events), or a response in flight — so an AFK-silent candidate on a
- * healthy connection can idle forever without being lied to about a
- * "connection problem".
+ * accumulates while traffic is EXPECTED — interviewer audible (his audio
+ * streams transcript deltas and lifecycle events over the channel) or a
+ * response in flight — so an AFK-silent candidate on a healthy connection
+ * can idle forever without being lied to about a "connection problem".
+ *
+ * Candidate speech deliberately expects NOTHING (2026-08-08 field kill):
+ * server VAD speaks only at speech boundaries, so a candidate mid-answer
+ * produces zero channel traffic — and counting that silence as starvation
+ * ended the session at exactly STARVATION_TRIP_S into every answer longer
+ * than the trip window, which real interview answers routinely are. A
+ * genuinely dead transport is still caught by ice-failed, channel-closed,
+ * ice-disconnected, and by starvation the moment a response is owed.
  */
 export function nextGuardState(
   state: ConnectionGuardState,
@@ -524,11 +536,7 @@ export function nextGuardState(
       : 0;
   if (tick.messageArrived) {
     starvedS = 0;
-  } else if (
-    tick.candidateAudible ||
-    tick.interviewerAudible ||
-    responsePending
-  ) {
+  } else if (tick.interviewerAudible || responsePending) {
     starvedS += tick.dtS;
   }
   const next = { disconnectedForS, starvedS, responsePending };

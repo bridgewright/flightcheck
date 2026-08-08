@@ -152,10 +152,19 @@ describe("nextGuardState — starvation (traffic expected, none arrives)", () =>
     expect(state.responsePending).toBe(true);
   });
 
-  it("candidate speech into a dead channel accumulates starvation", () => {
-    const n = Math.round(STARVATION_TRIP_S / 0.25);
-    const { endReason } = run(times(n, tick({ candidateAudible: true })));
-    expect(endReason).toBe("starvation");
+  it("a long candidate answer NEVER reads as starvation", () => {
+    // The 2026-08-08 field kill: server VAD speaks only at speech
+    // boundaries, so a candidate mid-answer legitimately produces ZERO
+    // data-channel traffic — and the guard read every answer longer than
+    // STARVATION_TRIP_S as a dead connection and ended the session while
+    // the customer was still talking. Candidate speech alone must expect
+    // nothing. A genuinely dead transport is still caught by ice-failed /
+    // channel-closed / ice-disconnected, and by starvation the moment a
+    // response is owed or the interviewer is audible.
+    const n = Math.round((STARVATION_TRIP_S * 20) / 0.25); // a 400 s answer
+    const { endReason, state } = run(times(n, tick({ candidateAudible: true })));
+    expect(endReason).toBeNull();
+    expect(state.starvedS).toBe(0);
   });
 
   it("interviewer audio without any events accumulates starvation", () => {
