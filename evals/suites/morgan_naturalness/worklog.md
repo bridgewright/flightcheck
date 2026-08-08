@@ -47,14 +47,32 @@ discussion happens.
     reads the interviewer side. Protocol + paste-ready AVM role
     prompts pinned in `reference-protocol.md` (three recordings, 5–10
     minutes, r3 held out).
-- Open (awaiting the operator): the experience statement itself. The
-  controller's strawman — "I just had a real interview: they listened,
-  built the next question on my answer, and it was demanding without
-  feeling mechanical" — decomposed into five audible qualities
-  (thinks-then-responds; asks-and-listens; one question at a time,
-  derived from my answer; a voice that is alive; never talks over me).
-  The operator confirms, edits, or extends; the agreed statement then
-  leads bar.md and the axes re-anchor to it.
+- **Experience definition agreed (operator-authored).** The product's
+  north star is REMOVING THE UNCERTAINTY around English interviews for
+  non-native speakers — belief that "preparing with this is enough."
+  The voice agent's piece: "that felt like interviewing with a real
+  interviewer." That decomposes into "sounds like a real person"
+  (this suite's whole scope) and "acts like a real interviewer"
+  (company-aware commentary, adaptive warmth/pacing — instruction-side,
+  split to its own feature, out of this suite, later a recorded
+  lever). bar.md section 1 rewritten to lead with this.
+- **Axes reorganized into four families** (rhythm / texture /
+  structure / holistic), one table, eleven entries. Speech rate
+  (`morgan_wpm_overall`) promoted to axis 2.3 at zero measurement cost
+  (already computed and stamped). "Built on my answer" and
+  "acknowledges, then asks" are named JUDGE CRITERIA rather than
+  metrics — lexical proxies reward parroting and get gamed. The judge
+  rubric, when authored, must include them plus silence-respect, and
+  must not penalize warmth.
+- **Operating principles written down (bar.md section 5)** after
+  studying eval-driven-development practice (Fractional AI's
+  dimensional-evals and evals-as-instrument-panel writing, plus the
+  EDD-as-TDD framing): dimensional never aggregate; deterministic
+  first, judge last; instrument panel, not a gate; determinism over
+  averaging (pins instead of reruns — temp 0, frozen transcripts,
+  provenance stamps); a field failure becomes a case; the evaluators
+  are themselves evaluated; one lever, one run, one entry. The suite
+  already practiced these; naming them is what makes them survivable.
 
 ## 2026-08-07 — Round 0: the loop exists, and its shape
 

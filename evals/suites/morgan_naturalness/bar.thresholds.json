@@ -38,6 +38,11 @@
       "band": [400, 2000],
       "status": "placeholder"
     },
+    "morgan_wpm_overall": {
+      "metric": "morgan_wpm_overall",
+      "band": [110, 190],
+      "status": "placeholder"
+    },
     "morgan_interruption_count": {
       "metric": "morgan_interruption_count",
       "band": [0, 1],
