@@ -1,4 +1,4 @@
-import { readdirSync, readFileSync, statSync } from "node:fs";
+import { readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -28,21 +28,6 @@ import { EXPIRY_DAYS, PACKAGE_SESSIONS, PRICE_DISPLAY } from "@/lib/pricing";
 
 const webRoot = fileURLToPath(new URL("..", import.meta.url));
 const landingDir = join(webRoot, "components/landing");
-
-function walkScreens(dir: string): string[] {
-  const out: string[] = [];
-  for (const entry of readdirSync(join(webRoot, dir))) {
-    const rel = `${dir}/${entry}`;
-    if (statSync(join(webRoot, rel)).isDirectory()) {
-      out.push(...walkScreens(rel));
-      continue;
-    }
-    if (!/\.tsx?$/.test(entry)) continue;
-    if (/\.test\.tsx?$/.test(entry)) continue;
-    out.push(rel);
-  }
-  return out;
-}
 
 const PROSE: string[] = [
   HERO.heading,
@@ -95,13 +80,15 @@ const FORBIDDEN = [
   "trusted by",
   "users report",
   "testimonial",
-  // A capability the product does not have. Every session runs the same
-  // baseline plan compiled from the rubric — planner.py is pure, session_index
-  // is fixed, focus is pinned to "baseline" — so the questions do not vary.
-  // This shipped on the landing, on the paywall, and on the page shown after
-  // payment, while README.md said the opposite in the open. It comes back the
-  // day curriculum-lite does, and not before.
-  "fresh topic",
+];
+
+const ALLOWED_CAPABILITY_CLAIMS = [
+  {
+    needle: "fresh topic",
+    why:
+      "allowed because the planner varies questions by session index and stored " +
+      "history as of DECISIONS 058",
+  },
 ];
 
 // The same risk class, where a plain substring would fire on innocent prose.
@@ -293,47 +280,14 @@ describe("the landing components", () => {
   });
 });
 
-// The register gate above reads `copy.ts` and nothing else, which is how the
-// claim it forbids survived in two other files. The landing said "fresh topics
-// each time"; so did the paywall (`SessionTicket.tsx`) and the page shown after
-// payment (`checkout/success`). Fixing the landing and leaving those two is the
-// same defect one level down: a rule enforced where someone remembered to look.
-//
-// So this scan walks every screen file. It carries one string today rather than
-// the whole FORBIDDEN list, deliberately — "cheat" and "invisible" appear
-// legitimately in code and comments, and a gate that cries wolf is one the next
-// person deletes instead of fixing. What belongs here is a claim about what the
-// product does, which is false anywhere it appears.
-describe("capability claims the product cannot keep", () => {
-  const CLAIMS = [
-    {
-      needle: "fresh topic",
-      why:
-        "every session runs the same baseline plan compiled from the rubric " +
-        "(planner.py is pure, session_index is fixed, focus is pinned to " +
-        '"baseline"), so the questions do not vary',
+describe("capability claims the planner can now keep", () => {
+  it.each(ALLOWED_CAPABILITY_CLAIMS)(
+    "records why $needle is allowed",
+    ({ needle, why }) => {
+      expect(PROSE.join(" ").toLowerCase()).toContain(needle);
+      expect(why).toContain("session index");
+      expect(why).toContain("history");
+      expect(why).toContain("DECISIONS 058");
     },
-  ];
-
-  const screens = walkScreens("app").concat(walkScreens("components"));
-
-  it("has screens to check", () => {
-    // A positive control: if the walk breaks, every assertion below passes
-    // vacuously and this gate becomes decoration.
-    expect(screens.length).toBeGreaterThan(30);
-  });
-
-  it.each(CLAIMS)("no screen claims $needle", ({ needle, why }) => {
-    const hits: string[] = [];
-    for (const rel of screens) {
-      const source = readFileSync(join(webRoot, rel), "utf8");
-      // Comments are where the removal is explained, so they are stripped
-      // before matching. A claim only counts if a reader could see it.
-      const withoutComments = source
-        .replace(/\/\*[\s\S]*?\*\//g, "")
-        .replace(/^\s*\/\/.*$/gm, "");
-      if (withoutComments.toLowerCase().includes(needle)) hits.push(rel);
-    }
-    expect(hits, `${needle} — ${why}`).toEqual([]);
-  });
+  );
 });

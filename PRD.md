@@ -20,6 +20,10 @@ Paste the job description you are applying to. flightcheck researches how that c
 > fresh topics" until 2026-08-04, when the release audit found the same claim on the
 > landing page, the paywall and the page shown after payment, while `README.md` said
 > the opposite in the open.
+>
+> **Resolved 2026-08-08 (DECISIONS 058):** the original lateness record above
+> remains visible. Sessions now vary by question-bank rotation and history-aimed
+> ordering, with prior stored question text excluded before each selection.
 
 ## Users
 

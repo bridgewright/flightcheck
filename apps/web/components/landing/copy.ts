@@ -88,19 +88,8 @@ export const HOW_IT_WORKS: Step[] = [
   },
   {
     title: "Go again until the verdict changes",
-    // This said "fresh topics each time", and that was not true. Every session
-    // runs the same baseline plan compiled from the rubric (planner.py is
-    // pure, session_index is fixed, focus is pinned to "baseline"), so the
-    // questions do not vary. README.md said exactly that, in the open, under
-    // "what is not built yet", while this line sold the opposite to the person
-    // about to pay.
-    //
-    // The honest version is not a smaller claim, it is a different one: six
-    // runs at one unchanging bar is what makes the six scores comparable at
-    // all, and comparability is the thing a moving verdict is made of. A
-    // varying topic set would cost that.
     detail:
-      `${PACKAGE_SESSIONS} sessions on one job description, every one held to the same bar, so the scores can be read against each other. The verdict moves from Not yet ready to Approaching to Ready, or it says plainly what is still holding it down.`,
+      `${PACKAGE_SESSIONS} sessions on one job description, with fresh topics each session and questions aimed at your weaker dimensions. Every session keeps the same scoring bar, so you can read the scores against each other.`,
   },
 ];
 
@@ -132,14 +121,8 @@ export interface PricingLine {
 export const PRICING_LINES: PricingLine[] = [
   { label: "1 job description", detail: "One package, compiled from the JD you paste." },
   {
-    // The worst-placed of the five "fresh topics" claims the product carried:
-    // it sat in the itemized list directly above the price. The others were the
-    // fourth how-it-works step, the paywall line and the tag row in
-    // SessionTicket.tsx, and the page shown after payment. All five are gone;
-    // the tree-wide scan in tests/landing-copy-register.test.ts is what stops
-    // a sixth, since this file's FORBIDDEN list only ever saw this file.
     label: `${PACKAGE_SESSIONS} sessions`,
-    detail: `About ${SESSION_MINUTES} minutes each, all scored against the one bar, so you can watch the score move.`,
+    detail: `About ${SESSION_MINUTES} minutes each, with fresh topics that rotate and aim at weaker dimensions while the scoring bar stays fixed.`,
   },
   {
     label: "Scored reports",
