@@ -26,6 +26,12 @@ def test_golden_clip_segmentation_matches_committed_expectations():
         pytest.skip("golden/golden.wav is absent; run make_golden.sh locally")
 
     expected = json.loads(EXPECTED_JSON.read_text(encoding="utf-8"))
+    if expected["status"] != "measured":
+        # Estimates that were never confirmed against a transcription run
+        # would fail as "the ruler moved" when nothing had moved. A drift
+        # gate that can cry drift on its own guesses is worse than absent.
+        pytest.skip("expected.json is still status=unmeasured; run the measurement pass first")
+
     segments = transcribe_verbatim(
         GOLDEN_WAV, make_client(os.environ["GEMINI_API_KEY"])
     )
