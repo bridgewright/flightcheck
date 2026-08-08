@@ -11,6 +11,51 @@ discussion happens.
 
 ---
 
+## 2026-08-08 — Round 1 (opening): experience first, and how bands get set
+
+- Question on the table: the operator redirected the bar review before
+  it reached any axis — defining evals IS defining the customer
+  experience, so the discussion must start from "what state do we want
+  the customer in", then derive observable behaviors, then metrics,
+  then bands. The axes become instruments serving that definition, not
+  the definition itself. Alongside it, two method questions: how is a
+  band actually set, and does this need a golden dataset?
+- Resolutions:
+  - **Band-setting method.** (1) Measure the AVM reference recordings
+    with the same pipeline — "natural" becomes numbers with provenance.
+    (2) A band is the AVM number ± tolerance ± PRODUCT JUDGMENT, never
+    the raw number: transcript timestamps carry jitter; the sample is
+    tiny; and AVM is a chat partner while Morgan is an interviewer, so
+    some axes must deviate from AVM on purpose (an interviewer holds
+    less air, restrains fillers, asks strictly one question). Every
+    deliberate deviation is recorded here with its reason. (3) Measure
+    the frozen Morgan baseline with the same pipeline; the per-axis gap
+    map picks which lever to pull first. (4) One lever per cycle so
+    causality stays readable.
+  - **The golden dataset has three frozen parts**: the AVM reference
+    set (the anchor, one recording held out as an overfitting alarm on
+    our own judgment), the Morgan baseline set (existing session
+    recordings, re-scored every cycle as trend line and judge-drift
+    canary), and the per-cycle fresh recordings (the only new data each
+    cycle). A fourth appears when the judge axis turns on:
+    operator-rated transcripts to calibrate judge-human agreement.
+  - **Reference recordings are operator-with-AVM, not AVM-with-AVM.**
+    The bands describe human-to-AI turn-taking; two AVM instances
+    produce machine-to-machine rhythm no human session can exhibit,
+    and the candidate side must match the Morgan baseline's speaker
+    for ratios to compare. Answer quality is irrelevant — every axis
+    reads the interviewer side. Protocol + paste-ready AVM role
+    prompts pinned in `reference-protocol.md` (three recordings, 5–10
+    minutes, r3 held out).
+- Open (awaiting the operator): the experience statement itself. The
+  controller's strawman — "I just had a real interview: they listened,
+  built the next question on my answer, and it was demanding without
+  feeling mechanical" — decomposed into five audible qualities
+  (thinks-then-responds; asks-and-listens; one question at a time,
+  derived from my answer; a voice that is alive; never talks over me).
+  The operator confirms, edits, or extends; the agreed statement then
+  leads bar.md and the axes re-anchor to it.
+
 ## 2026-08-07 — Round 0: the loop exists, and its shape
 
 - Question on the table: the operator compared Morgan with ChatGPT
