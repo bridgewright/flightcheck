@@ -254,7 +254,7 @@ def test_cli_reuses_transcript_cache_without_constructing_client(tmp_path, monke
     assert "s014" in capsys.readouterr().out
 
 
-def test_cli_marks_forced_transcription_fresh(tmp_path, monkeypatch):
+def test_cli_marks_cache_miss_fresh(tmp_path, monkeypatch):
     suite = tmp_path / "suite"
     out = tmp_path / "out"
     suite.mkdir()
@@ -274,6 +274,49 @@ def test_cli_marks_forced_transcription_fresh(tmp_path, monkeypatch):
     written = json.loads((out / "s014.metrics.json").read_text(encoding="utf-8"))
 
     assert written["measurement"]["transcript_source"] == "fresh"
+
+
+def test_cli_marks_forced_retranscription_fresh_over_a_warm_cache(tmp_path, monkeypatch):
+    """--force-transcribe is the other way into the fresh branch: the cache
+    file exists and is deliberately bypassed, so the stamp must not read it."""
+    suite = tmp_path / "suite"
+    out = tmp_path / "out"
+    suite.mkdir()
+    _wav(suite / "clip.wav")
+    (suite / "cases.json").write_text(
+        json.dumps({"cases": [{"id": "s014", "audio": "clip.wav"}]}),
+        encoding="utf-8",
+    )
+    calls = {"transcribe": 0}
+
+    def fake_transcribe(_audio, _client):
+        calls["transcribe"] += 1
+        return [_seg(0, 1, "interviewer", "Hello?")]
+
+    monkeypatch.setattr(morgan_cli, "_make_client", lambda: object())
+    monkeypatch.setattr(morgan_cli, "transcribe_verbatim", fake_transcribe)
+
+    assert morgan_cli.main(["--suite", str(suite), "--out", str(out)]) == 0
+    assert json.loads((out / "s014.metrics.json").read_text(encoding="utf-8"))[
+        "measurement"
+    ]["transcript_source"] == "fresh"
+
+    # Warm cache, no force: the stamp flips to cache.
+    assert morgan_cli.main(["--suite", str(suite), "--out", str(out)]) == 0
+    assert calls == {"transcribe": 1}
+    assert json.loads((out / "s014.metrics.json").read_text(encoding="utf-8"))[
+        "measurement"
+    ]["transcript_source"] == "cache"
+
+    # Same warm cache, forced: transcribes again and stamps fresh.
+    assert (
+        morgan_cli.main(["--suite", str(suite), "--out", str(out), "--force-transcribe"])
+        == 0
+    )
+    assert calls == {"transcribe": 2}
+    assert json.loads((out / "s014.metrics.json").read_text(encoding="utf-8"))[
+        "measurement"
+    ]["transcript_source"] == "fresh"
 
 
 def test_cli_carries_each_case_source_into_its_metrics_document(tmp_path, monkeypatch):
