@@ -10,8 +10,12 @@ const source = readFileSync(
 
 describe("home dashboard progress wiring", () => {
   it("loads progress additively with a catch-to-null", () => {
+    // `[^}]` rather than `[\s\S]`: the lazy any-character version matched
+    // across whole import blocks, so it stayed green with getPackageProgress
+    // imported from an entirely different module as long as some later import
+    // closed on "@/lib/worker".
     expect(source).toMatch(
-      /import \{[\s\S]*?\bgetPackageProgress\b[\s\S]*?\} from "@\/lib\/worker"/,
+      /import \{[^}]*?\bgetPackageProgress\b[^}]*?\} from "@\/lib\/worker"/,
     );
     expect(source).toMatch(/getPackageProgress\(active\.id\)\.catch\(\(\) => null\)/);
   });
