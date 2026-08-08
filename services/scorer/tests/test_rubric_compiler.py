@@ -173,6 +173,10 @@ def test_prompt_states_the_strict_rules():
     assert "Delivery dimensions need no jd_evidence -- set it to null there." in prompt
     assert "Weights follow the job description's own emphasis" in prompt
     assert "That is their age, not a license" in prompt
+    assert "2 to 4 question_bank entries per content dimension" in prompt
+    assert 'keyed "role-and-company-fit"' in prompt
+    assert 'license "profile", jd_evidence null' in prompt
+    assert "With a minimal profile, add no such dimension" in prompt
 
 
 def _citationless_rubric_dict() -> dict:

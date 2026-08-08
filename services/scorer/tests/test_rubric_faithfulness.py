@@ -35,7 +35,7 @@ FINDINGS = ResearchFindings(
 
 
 def _dim(key: str, channel: str, weight: float,
-         jd_evidence: str | None = None) -> dict:
+         jd_evidence: str | None = None, license_value: str = "jd") -> dict:
     return {
         "key": key,
         "name": key.replace("-", " ").capitalize(),
@@ -53,6 +53,7 @@ def _dim(key: str, channel: str, weight: float,
             "snippet": "asked about metrics",
         }],
         "jd_evidence": jd_evidence,
+        "license": license_value,
     }
 
 
@@ -222,6 +223,63 @@ def test_pydantic_then_faithfulness_failure_shares_one_retry_budget():
     with pytest.raises(RubricCompileError):
         _compile(fake)
     assert len(fake.calls) == 2
+
+
+def test_one_profile_licensed_fit_dimension_is_accepted_with_profile():
+    with_fit = _rubric([
+        _dim("structured-answers", "content", 0.35, "own growth analytics"),
+        _dim("role-and-company-fit", "content", 0.1, None, "profile"),
+        _dim("role-knowledge", "content", 0.25, "Senior Product Analyst"),
+        _dim("pacing-control", "delivery", 0.3),
+    ])
+    fake = FakeGenAI([json.dumps(with_fit)])
+    rubric = compile_rubric(JD_TEXT, CandidateProfile(
+        name="Alex Example", headline="Management Consultant",
+        years_experience="6 years", roles=["Management Consultant"],
+        skills=[], achievements=[]), FINDINGS, [], [], fake)
+    fit = [dim for dim in rubric.dimensions if dim.license == "profile"]
+    assert [dim.key for dim in fit] == ["role-and-company-fit"]
+    assert fit[0].jd_evidence is None
+    assert len(fake.calls) == 1
+
+
+def test_profile_licensed_dimension_with_jd_quote_is_a_problem():
+    invalid = _rubric([
+        _dim("structured-answers", "content", 0.4, "own growth analytics"),
+        _dim("role-and-company-fit", "content", 0.1,
+             "Senior Product Analyst", "profile"),
+        _dim("pacing-control", "delivery", 0.5),
+    ])
+    fake = FakeGenAI([json.dumps(invalid), json.dumps(_good_rubric())])
+    _compile(fake)
+    assert "profile-licensed" in _appended(fake)
+    assert "jd_evidence null" in _appended(fake)
+
+
+def test_two_profile_licensed_dimensions_are_a_problem():
+    invalid = _rubric([
+        _dim("role-and-company-fit", "content", 0.1, None, "profile"),
+        _dim("career-fit", "content", 0.1, None, "profile"),
+        _dim("structured-answers", "content", 0.4, "own growth analytics"),
+        _dim("pacing-control", "delivery", 0.4),
+    ])
+    fake = FakeGenAI([json.dumps(invalid), json.dumps(_good_rubric())])
+    _compile(fake)
+    assert "at most one" in _appended(fake)
+
+
+def test_minimal_profile_cannot_license_a_fit_dimension():
+    invalid = _rubric([
+        _dim("role-and-company-fit", "content", 0.1, None, "profile"),
+        _dim("structured-answers", "content", 0.5, "own growth analytics"),
+        _dim("pacing-control", "delivery", 0.4),
+    ])
+    fake = FakeGenAI([json.dumps(invalid), json.dumps(_good_rubric())])
+    rubric = compile_rubric(JD_TEXT, CandidateProfile(
+        name=None, headline=None, years_experience=None,
+        roles=[], skills=[], achievements=[]), FINDINGS, [], [], fake)
+    assert isinstance(rubric, Rubric)
+    assert "minimal candidate profile" in _appended(fake)
 
 
 def test_problem_lines_neutralize_marker_characters_from_the_claim():

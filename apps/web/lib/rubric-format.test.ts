@@ -8,6 +8,7 @@ import {
   formatWeight,
   hasReceipts,
   sortedAnchors,
+  PROFILE_RECEIPT,
 } from "./rubric-format";
 
 describe("formatWeight", () => {
@@ -72,6 +73,10 @@ describe("hasReceipts", () => {
     ).toBe(true);
   });
 
+  it("is true for a profile-licensed dimension without a JD quote", () => {
+    expect(hasReceipts([{ license: "profile", jd_evidence: null }])).toBe(true);
+  });
+
   it("is false for no dimensions at all", () => {
     expect(hasReceipts([])).toBe(false);
   });
@@ -90,5 +95,13 @@ describe("DELIVERY_RECEIPT", () => {
     expect(DELIVERY_RECEIPT).not.toMatch(/[–—]/);
     expect(DELIVERY_RECEIPT).not.toContain("!");
     expect(DELIVERY_RECEIPT.trim().endsWith(".")).toBe(true);
+  });
+});
+
+describe("PROFILE_RECEIPT", () => {
+  it("attributes the bar to the candidate's profile", () => {
+    expect(PROFILE_RECEIPT).toBe(
+      "This bar comes from your own profile - the interview probes your motivation and fit for this specific company and role.",
+    );
   });
 });

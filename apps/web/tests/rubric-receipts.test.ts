@@ -65,7 +65,7 @@ describe("absence renders exactly as before F-62", () => {
   });
 
   it("renders the receipt behind the ternary guard", () => {
-    expect(code).toMatch(/\{evidence \? \(/);
+    expect(code).toMatch(/\) : evidence \? \(/);
   });
 });
 
@@ -99,6 +99,18 @@ describe("the delivery line is licensed by the rubric's receipts", () => {
     // The built-copy gate's lesson: joined copy can be folded apart by the
     // production bundler. One quoted literal has nothing to fold.
     expect(format).toMatch(/export const DELIVERY_RECEIPT =\s*\n?\s*"[^"]+";/);
+  });
+});
+
+describe("the profile line has its own receipt branch", () => {
+  it("renders the profile receipt for profile-licensed dimensions", () => {
+    expect(code).toMatch(/dimension\.license === "profile"/);
+    expect(code).toMatch(/<p className=\{FINE_PRINT\}>\{PROFILE_RECEIPT\}<\/p>/);
+  });
+
+  it("keeps JD quotes and delivery receipts in their existing branches", () => {
+    expect(code).toMatch(/&ldquo;\{evidence\}&rdquo;/);
+    expect(code).toMatch(/<p className=\{FINE_PRINT\}>\{DELIVERY_RECEIPT\}<\/p>/);
   });
 });
 

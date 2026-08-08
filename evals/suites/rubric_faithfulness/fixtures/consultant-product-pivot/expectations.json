@@ -1,0 +1,8 @@
+{
+  "forbidden_topics": ["finance", "market.entry", "case.interview"],
+  "required_topics": ["discovery|customer", "roadmap|priorit", "role.and.company.fit"],
+  "delivery_dims_min": 1,
+  "delivery_dims_max": 3,
+  "profile_dimension_required": true,
+  "notes": "The JD still licenses every ordinary content bar; the structured profile licenses exactly one fit bar for the consultant-to-product pivot."
+}

@@ -59,6 +59,11 @@ def _machinery_problems(rubric: Rubric, processed_jd: str) -> list[str]:
     for dim in rubric.dimensions:
         if dim.channel != "content":
             continue  # delivery dimensions are licensed by the product, not the JD
+        if dim.license == "profile":
+            if dim.jd_evidence is not None:
+                problems.append(
+                    f"profile dimension '{dim.key}' must have null jd_evidence")
+            continue
         if not dim.jd_evidence:
             problems.append(f"content dimension '{dim.key}' has no jd_evidence")
         elif dim.jd_evidence not in processed_jd:
@@ -89,6 +94,11 @@ def _behavior_problems(rubric: Rubric, expectations: dict) -> list[str]:
     if not low <= delivery_count <= high:
         problems.append(
             f"delivery-channel count {delivery_count} outside [{low}, {high}]")
+    if expectations.get("profile_dimension_required"):
+        profile_dims = [dim for dim in rubric.dimensions if dim.license == "profile"]
+        if [dim.key for dim in profile_dims] != ["role-and-company-fit"]:
+            problems.append(
+                "expected exactly one profile-licensed role-and-company-fit dimension")
     return problems
 
 
@@ -119,13 +129,19 @@ def run_faithfulness_suite(suite_dir: Path,
         findings = ResearchFindings.model_validate_json(
             (fixture_dir / "findings.json").read_text())
         expectations = json.loads((fixture_dir / "expectations.json").read_text())
+        profile_path = fixture_dir / "profile.json"
+        profile = (
+            CandidateProfile.model_validate_json(profile_path.read_text())
+            if profile_path.is_file()
+            else _empty_profile()
+        )
 
         problems: list[str] = []
         dimensions: list[dict] = []
         try:
             # ONE compile per fixture; corpus and fewshots empty so the only
             # sources in tension are the JD and the (salted) findings.
-            rubric = compile_rubric(jd_text, _empty_profile(), findings,
+            rubric = compile_rubric(jd_text, profile, findings,
                                     [], [], client)
         except RubricCompileError as exc:
             problems.append(f"compile failed: {exc}")
@@ -135,6 +151,7 @@ def run_faithfulness_suite(suite_dir: Path,
             problems.extend(_behavior_problems(rubric, expectations))
             dimensions = [
                 {"key": dim.key, "channel": dim.channel, "weight": dim.weight,
+                 "license": dim.license,
                  "has_jd_evidence": bool(dim.jd_evidence)}
                 for dim in rubric.dimensions
             ]

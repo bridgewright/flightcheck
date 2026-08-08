@@ -36,7 +36,7 @@ export function sortedAnchors(anchors: BarsAnchor[]): BarsAnchor[] {
 // the whole rubric and lives here rather than in the component.
 
 /** The slice of a dimension the receipt decision reads. */
-type ReceiptCarrier = Pick<RubricDimension, "jd_evidence">;
+type ReceiptCarrier = Pick<RubricDimension, "jd_evidence" | "license">;
 
 /**
  * True only for a post-F-62 rubric: at least one dimension carries a
@@ -45,7 +45,9 @@ type ReceiptCarrier = Pick<RubricDimension, "jd_evidence">;
  */
 export function hasReceipts(dimensions: ReceiptCarrier[]): boolean {
   return dimensions.some(
-    (dimension) => (dimension.jd_evidence ?? "").trim() !== "",
+    (dimension) =>
+      dimension.license === "profile" ||
+      (dimension.jd_evidence ?? "").trim() !== "",
   );
 }
 
@@ -56,3 +58,6 @@ export function hasReceipts(dimensions: ReceiptCarrier[]): boolean {
  */
 export const DELIVERY_RECEIPT =
   "This bar comes from the product, not your JD: how you sound is part of every interview.";
+
+export const PROFILE_RECEIPT =
+  "This bar comes from your own profile - the interview probes your motivation and fit for this specific company and role.";

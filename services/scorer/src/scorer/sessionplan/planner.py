@@ -20,6 +20,7 @@ randomness, no clock.
 """
 from __future__ import annotations
 
+import re
 from collections.abc import Sequence
 from typing import Protocol
 
@@ -126,11 +127,45 @@ def _latest_scores(history: Sequence[SessionHistoryRow]) -> dict[str, float]:
     return scores
 
 
+def _fit_questions(profile: CandidateProfile | None, rubric: Rubric) -> list[QuestionSpec]:
+    """Build one or two deterministic biography questions for a licensed fit bar."""
+    if profile is None or not any(
+        dim.key == "role-and-company-fit" and dim.license == "profile"
+        for dim in rubric.dimensions
+    ):
+        return []
+    company = rubric.company or "this company"
+    questions: list[str] = []
+    if profile.roles:
+        latest_area = profile.roles[0].split(",", 1)[0].strip()
+        latest_words = set(re.findall(r"[a-z]+", latest_area.lower()))
+        target_words = set(re.findall(r"[a-z]+", rubric.role_title.lower()))
+        if latest_words.isdisjoint(target_words):
+            experience = profile.years_experience or "your career"
+            questions.append(
+                f"You've spent {experience} in {latest_area.lower()} - why "
+                f"{rubric.role_title}, and why {company}?"
+            )
+    questions.append(
+        f"Why {company} for this, rather than another team doing similar work?"
+    )
+    return [
+        QuestionSpec(
+            dimension_key="role-and-company-fit",
+            question=question,
+            probes=["What in your own career makes that choice specific?"],
+            source="generated",
+        )
+        for question in questions[:2]
+    ]
+
+
 def plan_baseline_session(
     rubric: Rubric,
     *,
     session_index: int = 1,
     history: Sequence[SessionHistoryRow] = (),
+    profile: CandidateProfile | None = None,
 ) -> SessionPlan:
     """Deterministic baseline plan covering every rubric dimension at least once."""
     latest_scores = _latest_scores(history)
@@ -144,10 +179,14 @@ def plan_baseline_session(
         ),
     )
     asked = _asked_question_texts(history)
+    fit_bank = _fit_questions(profile, rubric)
     sequence: list[QuestionSpec] = []
     for dimension in ordered:
+        dimension_bank = (
+            fit_bank if dimension.key == "role-and-company-fit" else rubric.question_bank
+        )
         remaining = [
-            question for question in rubric.question_bank
+            question for question in dimension_bank
             if question.dimension_key == dimension.key and question.question not in asked
         ]
         if remaining:

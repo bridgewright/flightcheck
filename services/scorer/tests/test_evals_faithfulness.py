@@ -25,7 +25,12 @@ from scorer.schemas import ResearchFindings, Rubric
 SUITE_DIR = REPO_ROOT / "evals" / "suites" / "rubric_faithfulness"
 BASELINES = json.loads((REPO_ROOT / "evals" / "baselines.json").read_text())
 
-FIXTURE_NAMES = ["ai-safety-genuine", "plain-control", "values-boilerplate-fdpm"]
+FIXTURE_NAMES = [
+    "ai-safety-genuine",
+    "consultant-product-pivot",
+    "plain-control",
+    "values-boilerplate-fdpm",
+]
 
 _CITATION = {
     "url": "https://interview-notes.example/generic",
@@ -129,14 +134,36 @@ def _fdpm_rubric() -> dict:
     }
 
 
+def _pivot_rubric() -> dict:
+    return {
+        "role_title": "Product Manager, Workflow Automation",
+        "company": "Cedar Systems",
+        "dimensions": [
+            _dim("product-discovery", "Product discovery", "content", 0.3,
+                 "Lead discovery with operations teams and turn ambiguous workflow"),
+            _dim("roadmap-ownership", "Roadmap ownership", "content", 0.25,
+                 "Own the roadmap for our workflow automation product"),
+            _dim("customer-collaboration", "Customer collaboration", "content", 0.2,
+                 "Partner directly with enterprise customers through implementation"),
+            {**_dim("role-and-company-fit", "Role & company fit", "content", 0.1),
+             "license": "profile"},
+            _dim("spoken-clarity", "Spoken clarity", "delivery", 0.15),
+        ],
+        "question_bank": [],
+        "research_summary": "Canned profile-aware rubric for the faithfulness tests.",
+    }
+
+
 def _fake_for(safety: dict | None = None, control: dict | None = None,
               fdpm: dict | None = None,
+              pivot: dict | None = None,
               control_script: list[str] | None = None) -> FakeGenAI:
     """One keyed reply per fixture. The key is the company name, which appears
     in exactly one fixture's fenced JD, so replies cannot cross wires no
     matter which order the runner visits the fixture dirs in."""
     return FakeGenAI(keyed_texts={
         "Windrose Research": [json.dumps(safety or _safety_rubric())],
+        "Cedar Systems": [json.dumps(pivot or _pivot_rubric())],
         "Harbor Lane": control_script or [json.dumps(control or _control_rubric())],
         "Meridian Flow": [json.dumps(fdpm or _fdpm_rubric())],
     })
@@ -161,6 +188,7 @@ def _regressed_compiler(monkeypatch, safety: dict | None = None,
         "Windrose Research": safety or _safety_rubric(),
         "Harbor Lane": control or _control_rubric(),
         "Meridian Flow": fdpm or _fdpm_rubric(),
+        "Cedar Systems": _pivot_rubric(),
     }
 
     def fake_compile(jd_text, profile, findings, corpus, fewshots, client):
@@ -205,8 +233,8 @@ class TestTheRunner:
         result = run_faithfulness_suite(SUITE_DIR, fake)
 
         assert result is not None
-        assert result["fixtures_total"] == 3
-        assert result["fixtures_passed"] == 3
+        assert result["fixtures_total"] == 4
+        assert result["fixtures_passed"] == 4
         assert result["pass_rate"] == 1.0
         assert result["failures"] == []
         assert sorted(result["fixtures"]) == FIXTURE_NAMES
@@ -215,12 +243,13 @@ class TestTheRunner:
             assert fixture["status"] == "PASS"
             assert fixture["problems"] == []
             for dim in fixture["dimensions"]:
-                assert set(dim) == {"key", "channel", "weight", "has_jd_evidence"}
-                if dim["channel"] == "content":
+                assert set(dim) == {
+                    "key", "channel", "weight", "license", "has_jd_evidence"}
+                if dim["channel"] == "content" and dim["license"] == "jd":
                     assert dim["has_jd_evidence"] is True
         # ONE compile call per fixture: the compiler's internal repair retry
         # is the only smoothing mechanism, and none was needed here.
-        assert len(fake.calls) == 3
+        assert len(fake.calls) == 4
 
     def test_an_ethics_dimension_fails_the_pathological_fixture_named(self):
         # The production failure of 2026-08-04, replayed: an ethics dimension
@@ -235,8 +264,8 @@ class TestTheRunner:
 
         result = run_faithfulness_suite(SUITE_DIR, fake)
 
-        assert result["fixtures_passed"] == 2
-        assert result["pass_rate"] == 2 / 3
+        assert result["fixtures_passed"] == 3
+        assert result["pass_rate"] == 3 / 4
         assert result["fixtures"]["values-boilerplate-fdpm"]["status"] == "FAIL"
         assert ("values-boilerplate-fdpm: forbidden topic 'ethic' matched "
                 "dimension 'ethical-judgment' (content)") in result["failures"]
@@ -280,7 +309,7 @@ class TestTheRunner:
 
         result = run_faithfulness_suite(SUITE_DIR, FakeGenAI([]))
 
-        assert result["fixtures_passed"] == 2
+        assert result["fixtures_passed"] == 3
         assert ("plain-control: content dimension 'growth-analytics-ownership' "
                 "has no jd_evidence") in result["failures"]
         dims = {dim["key"]: dim
@@ -424,8 +453,8 @@ class TestTheRunner:
 
         result = run_faithfulness_suite(SUITE_DIR, fake)
 
-        assert result["fixtures_total"] == 3
-        assert result["fixtures_passed"] == 2
+        assert result["fixtures_total"] == 4
+        assert result["fixtures_passed"] == 3
         failed = result["fixtures"]["plain-control"]
         assert failed["status"] == "FAIL"
         assert failed["dimensions"] == []
@@ -433,7 +462,7 @@ class TestTheRunner:
         assert any(entry.startswith("plain-control: compile failed:")
                    for entry in result["failures"])
         # 2 calls for the failing fixture (compile + repair), 1 each for the rest.
-        assert len(fake.calls) == 4
+        assert len(fake.calls) == 5
 
     def test_an_absent_or_empty_fixtures_dir_is_none_not_an_empty_pass(self, tmp_path):
         silent = FakeGenAI([])  # would raise IndexError if the runner called it

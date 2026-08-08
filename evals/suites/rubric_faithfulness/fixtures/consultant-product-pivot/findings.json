@@ -1,0 +1,13 @@
+{
+  "queries": ["B2B workflow automation product manager interviews"],
+  "reported_questions": ["Tell me about a workflow problem you turned into a product decision."],
+  "probe_areas": ["customer discovery", "roadmap tradeoffs", "implementation partnership"],
+  "evaluation_signals": ["specific customer evidence", "clear product judgment"],
+  "citations": [
+    {
+      "url": "https://interview-notes.example/workflow-product",
+      "title": "Workflow product interviews",
+      "snippet": "Interviewers probe customer discovery and evidence-based roadmap decisions."
+    }
+  ]
+}

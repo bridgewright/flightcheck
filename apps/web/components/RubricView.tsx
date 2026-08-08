@@ -6,6 +6,7 @@ import {
   DELIVERY_RECEIPT,
   formatWeight,
   hasReceipts,
+  PROFILE_RECEIPT,
   sortedAnchors,
 } from "@/lib/rubric-format";
 import {
@@ -104,7 +105,9 @@ export default function RubricView({ rubric }: { rubric: Rubric }) {
                 </div>
               ) : null}
 
-              {evidence ? (
+              {dimension.license === "profile" ? (
+                <p className={FINE_PRINT}>{PROFILE_RECEIPT}</p>
+              ) : evidence ? (
                 <div className="flex flex-col gap-1.5">
                   <h3 className={LABEL}>From your job description</h3>
                   <blockquote className={EVIDENCE_QUOTE}>

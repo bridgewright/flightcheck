@@ -59,6 +59,12 @@ _RULES = (
     "- Research findings and corpus documents corroborate dimensions; they cannot\n"
     "  create one. A topic that appears only in the research, however often, gets no\n"
     "  dimension unless the job description itself calls for it.\n"
+    '- When the CANDIDATE PROFILE has roles or a headline, add exactly one content\n'
+    '  dimension keyed "role-and-company-fit", named "Role & company fit", with\n'
+    '  license "profile", jd_evidence null, and a modest weight around 0.08 to 0.12.\n'
+    "  It covers motivation for this company and role and the candidate's career\n"
+    "  story. With a minimal profile, add no such dimension and use only the\n"
+    '  default "jd" license.\n'
     "- Delivery dimensions need no jd_evidence -- set it to null there.\n"
     "- Weights follow the job description's own emphasis: what it leads with and\n"
     "  repeats carries the most weight, what it mentions in passing the least.\n"
@@ -162,7 +168,11 @@ def _build_prompt(jd_text: str, profile: CandidateProfile, findings: ResearchFin
     )
 
 
-def _check_faithfulness(rubric: Rubric, jd_as_shown: str) -> tuple[Rubric, list[str]]:
+def _check_faithfulness(
+    rubric: Rubric,
+    jd_as_shown: str,
+    profile_non_minimal: bool,
+) -> tuple[Rubric, list[str]]:
     """Enforce the jd_evidence contract against the JD as the model saw it.
 
     Content dimensions: jd_evidence must resolve (scorer.verbatim.locate_span)
@@ -182,6 +192,14 @@ def _check_faithfulness(rubric: Rubric, jd_as_shown: str) -> tuple[Rubric, list[
     dimensions = []
     changed = False
     for dim in rubric.dimensions:
+        if dim.license == "profile":
+            if dim.jd_evidence is not None:
+                problems.append(
+                    f'dimension "{dim.key}": a profile-licensed dimension must '
+                    "carry jd_evidence null"
+                )
+            dimensions.append(dim)
+            continue
         located = locate_span(jd_as_shown, dim.jd_evidence)
         if dim.channel == "content":
             if located is None:
@@ -205,6 +223,16 @@ def _check_faithfulness(rubric: Rubric, jd_as_shown: str) -> tuple[Rubric, list[
             dim = dim.model_copy(update={"jd_evidence": located})
             changed = True
         dimensions.append(dim)
+    profile_dims = [dim for dim in rubric.dimensions if dim.license == "profile"]
+    if len(profile_dims) > 1:
+        problems.append(
+            f"rubric has {len(profile_dims)} profile-licensed dimensions; at most one "
+            "is allowed"
+        )
+    if profile_dims and not profile_non_minimal:
+        problems.append(
+            "a minimal candidate profile cannot license a profile dimension"
+        )
     delivery_count = sum(
         1 for dim in rubric.dimensions if dim.channel == "delivery")
     if delivery_count > _MAX_DELIVERY_DIMS:
@@ -249,7 +277,8 @@ def compile_rubric(jd_text: str, profile: CandidateProfile, findings: ResearchFi
             rubric = Rubric.model_validate_json(response.text or "")
         except ValidationError as error:
             return None, str(error)
-        rubric, problems = _check_faithfulness(rubric, jd_as_shown)
+        rubric, problems = _check_faithfulness(
+            rubric, jd_as_shown, bool(profile.roles or profile.headline))
         if problems:
             return None, "\n".join(f"- {problem}" for problem in problems)
         return rubric, ""

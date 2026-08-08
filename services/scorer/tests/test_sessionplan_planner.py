@@ -187,6 +187,53 @@ def test_same_adaptive_inputs_produce_identical_plans():
     assert first == second
 
 
+def _rubric_with_fit_dimension() -> Rubric:
+    rubric = _make_rubric()
+    fit = _dim("role-and-company-fit", "Role & company fit", "content", 0.1)
+    fit = fit.model_copy(update={"license": "profile", "jd_evidence": None})
+    return rubric.model_copy(update={"dimensions": [*rubric.dimensions, fit]})
+
+
+def _pivot_profile() -> CandidateProfile:
+    return CandidateProfile(
+        name="Jordan Example",
+        headline="Management Consultant",
+        years_experience="6 years",
+        roles=["Management Consultant, Northstar Advisory"],
+        skills=["Strategy"],
+        achievements=["Led a market-entry program"],
+    )
+
+
+def test_fit_questions_name_pivot_role_and_company():
+    plan = plan_baseline_session(_rubric_with_fit_dimension(), profile=_pivot_profile())
+    fit = next(q for q in plan.question_sequence
+               if q.dimension_key == "role-and-company-fit")
+    assert "6 years" in fit.question
+    assert "management consultant" in fit.question.lower()
+    assert "Forward Deployed Product Manager" in fit.question
+    assert "ExampleCo" in fit.question
+
+
+def test_fit_question_rotates_across_sessions():
+    rubric = _rubric_with_fit_dimension()
+    first = plan_baseline_session(rubric, profile=_pivot_profile())
+    second = plan_baseline_session(
+        rubric, session_index=2, profile=_pivot_profile())
+    first_fit = next(q for q in first.question_sequence
+                     if q.dimension_key == "role-and-company-fit")
+    second_fit = next(q for q in second.question_sequence
+                      if q.dimension_key == "role-and-company-fit")
+    assert first_fit.question != second_fit.question
+    assert "ExampleCo" in second_fit.question
+
+
+def test_fit_questions_are_absent_without_profile_licensed_dimension():
+    plan = plan_baseline_session(_make_rubric(), profile=_pivot_profile())
+    assert all(q.dimension_key != "role-and-company-fit"
+               for q in plan.question_sequence)
+
+
 def test_plan_generates_fallback_question_with_name_and_top_signal():
     plan = plan_baseline_session(_make_rubric())
     by_key = {q.dimension_key: q for q in plan.question_sequence}
