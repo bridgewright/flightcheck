@@ -20,7 +20,19 @@ import {
 
 function MarkActions({ ordinal, initial, action }: { ordinal: number; initial: ParaphraseMark; action?: (ordinal: number, mark: ParaphraseMark) => Promise<ParaphraseMarks> }) {
   const [mark, setMark] = useState(initial);
-  async function update(next: ParaphraseMark) { setMark(next); if (action) { const saved = await action(ordinal, next); setMark(markFor(saved, ordinal)); } }
+  // Optimistic, then reconciled with what the server actually stored. A
+  // refused or failed save rolls back: a row that claims it saved when it
+  // did not is worse than one that visibly did nothing.
+  async function update(next: ParaphraseMark) {
+    const previous = mark;
+    setMark(next);
+    if (!action) return;
+    try {
+      setMark(markFor(await action(ordinal, next), ordinal));
+    } catch {
+      setMark(previous);
+    }
+  }
   const button = (pressed: boolean) => `p-1 ${pressed ? "text-ink" : "text-ink-faint"}`;
   return <div className="flex gap-2">
     <button type="button" aria-label="Helpful" aria-pressed={mark.reaction === "up"} className={button(mark.reaction === "up")} onClick={() => void update({ ...mark, reaction: mark.reaction === "up" ? null : "up" })}><ThumbsUpIcon className="size-5" /></button>

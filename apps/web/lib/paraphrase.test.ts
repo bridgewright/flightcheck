@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 
-import { attachCoaching, markFor, sourceQuoteIfVerbatim } from "@/lib/paraphrase";
-import type { TimelineEntry } from "@/lib/transcript";
+import { attachCoaching, bookmarkedItems, markFor, sourceQuoteIfVerbatim } from "@/lib/paraphrase";
+import type { TimelineEntry, TranscriptTurn } from "@/lib/transcript";
 
 const timeline: TimelineEntry[] = [
   { kind: "turn", turn: { speaker: "candidate", start_s: 0, end_s: 2, text: "One merged answer" } },
@@ -29,8 +29,80 @@ describe("attachCoaching", () => {
   });
 });
 
-it("defaults marks and guards verbatim quotes", () => {
-  expect(markFor(undefined, 2)).toEqual({ reaction: null, bookmarked: false });
-  expect(sourceQuoteIfVerbatim({ speaker: "candidate", start_s: 0, end_s: 1, text: "exact words" }, "exact")).toBe("exact");
-  expect(sourceQuoteIfVerbatim({ speaker: "candidate", start_s: 0, end_s: 1, text: "exact words" }, "invented")).toBeNull();
+describe("attachCoaching drops what it cannot place", () => {
+  it("ignores an out-of-range index rather than shifting it onto a real turn", () => {
+    const result = attachCoaching(timeline, paraphrases, 2);
+    expect(result.filter((entry) => entry.kind === "turn" && entry.item !== null)).toHaveLength(1);
+  });
+
+  it("keeps the first item when a turn is claimed twice", () => {
+    const duplicated = { ...paraphrases, items: [
+      { turn_index: 0, verdict: "good" as const, source_quote: "One", suggestion: "first", why: "w" },
+      { turn_index: 0, verdict: "improve" as const, source_quote: "One", suggestion: "second", why: "w" },
+    ] };
+    const result = attachCoaching(timeline, duplicated, 2);
+    expect(result[0]).toMatchObject({ item: { suggestion: "first" } });
+  });
+
+  it("attaches nothing when there are no paraphrases at all", () => {
+    for (const doc of [null, undefined]) {
+      const result = attachCoaching(timeline, doc, 2);
+      expect(result.filter((entry) => entry.kind === "turn").every((entry) => entry.item === null)).toBe(true);
+      // Ordinals are still assigned: they describe the transcript, not the coaching.
+      expect(result[0]).toMatchObject({ candidateOrdinal: 0 });
+      expect(result[3]).toMatchObject({ candidateOrdinal: 1 });
+    }
+  });
+});
+
+const marks = { schema_version: 1, marks: {
+  "1": { reaction: "up" as const, bookmarked: true },
+  "0": { reaction: null, bookmarked: false },
+} };
+
+describe("markFor", () => {
+  it("defaults to an unmarked card", () => {
+    expect(markFor(undefined, 2)).toEqual({ reaction: null, bookmarked: false });
+    expect(markFor(null, 0)).toEqual({ reaction: null, bookmarked: false });
+    expect(markFor(marks, 7)).toEqual({ reaction: null, bookmarked: false });
+  });
+
+  it("reads a stored mark by its string ordinal key", () => {
+    expect(markFor(marks, 1)).toEqual({ reaction: "up", bookmarked: true });
+  });
+});
+
+describe("bookmarkedItems", () => {
+  it("collects only the bookmarked cards, with their ordinals", () => {
+    expect(bookmarkedItems(paraphrases, marks)).toEqual([
+      { ordinal: 1, item: paraphrases.items[0] },
+    ]);
+  });
+
+  it("is empty without paraphrases or without marks", () => {
+    expect(bookmarkedItems(null, marks)).toEqual([]);
+    expect(bookmarkedItems(paraphrases, null)).toEqual([]);
+  });
+
+  it("does not treat a thumbs-up as a bookmark", () => {
+    const reactedOnly = { schema_version: 1, marks: {
+      "1": { reaction: "up" as const, bookmarked: false },
+    } };
+    expect(bookmarkedItems(paraphrases, reactedOnly)).toEqual([]);
+  });
+});
+
+describe("sourceQuoteIfVerbatim", () => {
+  const turn: TranscriptTurn = { speaker: "candidate", start_s: 0, end_s: 1, text: "exact words" };
+
+  it("returns the quote only when the turn really contains it", () => {
+    expect(sourceQuoteIfVerbatim(turn, "exact")).toBe("exact");
+    expect(sourceQuoteIfVerbatim(turn, "exact words")).toBe("exact words");
+  });
+
+  it("refuses a quote the turn does not contain, rather than showing a misquote", () => {
+    expect(sourceQuoteIfVerbatim(turn, "invented")).toBeNull();
+    expect(sourceQuoteIfVerbatim(turn, "Exact")).toBeNull();   // case is not a match
+    expect(sourceQuoteIfVerbatim(turn, "")).toBeNull();        // empty is not a quote
+  });
 });
