@@ -4,6 +4,56 @@
 
 ### Added
 
+- **Every answer gets a coach.** After a session is scored, each of the
+  candidate's answers in the transcript carries a verdict mark — strong,
+  or worth reworking — and opening it shows the whole answer rewritten
+  stronger, with a short why naming the specific phrases. Suggestions
+  are generated text and say so on their face; the transcript itself
+  and every quoted anchor stay verbatim, the same contract the report
+  already enforces, and an anchor that cannot be located drops its
+  suggestion rather than shipping a misquote. Each suggestion can be
+  rated up or down and bookmarked, and those marks are stored — they
+  are the raw material for judging the coaching itself later. Coaching
+  is generated right after scoring, never delays or fails a report,
+  and is not produced for sessions the eligibility gate refused to
+  score. The session page grew sub-tabs to hold it: Report, Transcript,
+  and Study — the last collecting this session's saved suggestions and
+  its review (what went well, what did not, the expressions worth
+  keeping, and the questions from this session worth having an answer
+  to, each with a model answer built from the candidate's own strongest
+  material and labelled as generated). Requires migration 010.
+
+- **A Study tab that aggregates the package.** Every bookmarked
+  suggestion, organized by session and linking back to it, plus a
+  package-level summary built on demand: the recurring problems across
+  sessions, an improvement strategy, the priority expressions, and the
+  job's core questions with model answers to memorize. The summary
+  knows exactly which sessions it was built from and says so when new
+  ones have scored since; rebuilding is a button, never a silent side
+  effect. Exportable as Markdown and PDF through the same two-format
+  door the report already has. Requires migration 011.
+
+- **The home tab answers "am I getting better".** The signed-in home
+  composes the progress screen's instruments into a glance dashboard —
+  overall score trend, per-dimension trajectories, and the recurring
+  gaps when there are any — above the session list it already had.
+  The full progress screen stays for the detail.
+
+- **Feedback becomes a form that remembers.** The footer's Feedback
+  door stops being a mailto: a five-star rating in half-star steps
+  plus optional text, stored with rate limits and size caps, and an
+  operator-only inbox to read and manage what arrives. Requires
+  migration 009.
+
+- **The Morgan naturalness suite gets a version-stamped ruler.** Every
+  metrics document now records which transcription model and DSP
+  constants measured it and whether its transcript came from cache; a
+  committed synthetic golden clip with measured segmentation pins
+  answers "did the ruler move" whenever transcription config changes;
+  and the three-way `silence_duration_ms` duplicate the repo's own
+  contract called "equal by luck" is now equal by gate, on both sides
+  of the language boundary.
+
 - **The interview room keeps a readable trail.** Two defects from the first
   real customer session could not be diagnosed because the room could not
   say what happened: the interviewer once greeted and moved on with no
