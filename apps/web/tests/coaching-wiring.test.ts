@@ -35,6 +35,13 @@ describe("session coaching wiring", () => {
     expect(dialog).toContain("onMarkChange:");
     expect(dialog).not.toContain("markFor(coaching?.marks");
   });
+
+  it("reconciles marks with the server response and rolls back on throw", () => {
+    const transcript = read("components/TranscriptView.tsx");
+
+    expect(transcript).toContain("setMarks(await marksAction(ordinal, next))");
+    expect(transcript).toMatch(/catch\s*{\s*\n?\s*setMarks\(previous\)/);
+  });
 });
 
 // The additive guarantee, checked by rendering rather than by reading the
