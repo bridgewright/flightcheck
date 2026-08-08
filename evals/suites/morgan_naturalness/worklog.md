@@ -119,3 +119,20 @@ discussion happens.
   placeholder band in `bar.thresholds.json` with a measured one; Round 1
   also authors the judge rubric (bar.md section 4), which unblocks the
   judge scorer.
+
+## 2026-08-08 — response policy moved before Round 1 baselines
+
+- Two turn-feel levers changed from field feedback, BEFORE any baseline
+  was frozen, so nothing is poisoned: the client response debounce
+  dropped 1.2 s → 0.6 s (DECISIONS 055 — the acoustic 900 ms VAD tail
+  is untouched; it remains an F-67-blocked lever), and the interviewer
+  now ends the session after its own closing line, with the closing
+  instruction hardened to an exact final sentence (DECISIONS 056).
+- Consequence for this suite: the `response_latency_p90_s` placeholder
+  band ([0.5, 2.5]) was written against a floor ~0.6 s higher than
+  today's; Round 1 measures against the NEW policy and the band gets
+  set from those measurements.
+- Bookkeeping rule going forward: `lever_state` for every case run
+  records the session-room response-policy commit alongside the
+  instructions commit — the debounce is part of turn feel, and a run
+  that ignores it is comparing across policies.

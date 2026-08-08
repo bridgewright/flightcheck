@@ -100,6 +100,34 @@
   page cannot do is stated plainly in the module: no web API opens the
   browser's own site-settings UI or re-shows a denied permission dialog.
 
+### Changed
+
+- **The interviewer answers about 0.6 seconds sooner.** The wait after
+  an answer ends was a stack: a 0.9 s speech-detection tail, then a
+  1.2 s client-side debounce held open in case the candidate was only
+  pausing. Field use called the total visibly too slow, so the debounce
+  drops to 0.6 s — the acoustic tail stays, hesitation is still
+  protected by 1.5 s of required quiet in total, and the change is the
+  documented revisit condition of the decision that set the old value.
+  DECISIONS 055.
+
+- **The interviewer's goodbye ends the session.** The closing line used
+  to be a sentence like any other: the room kept listening, the silence
+  prompts eventually nudged "Take your time." into a finished
+  interview, and the session sat open until the manual button or the
+  25-minute cap. Now the room recognizes the closing line (armed only
+  in the final two minutes, so mid-session small talk cannot trip it),
+  retires the silence prompts the moment it lands, waits for the
+  goodbye to finish playing plus a two-second grace the candidate's own
+  goodbye extends, and then ends the session through the normal path —
+  recording uploaded, scoring started, report page next. If the model
+  paraphrases its goodbye past recognition, everything behaves exactly
+  as before. Known edges, on the record: a room whose microphone keeps
+  tripping speech detection holds the session open to the cap as today,
+  and a connection that genuinely dies inside the two-second grace
+  still reads as a lost connection — a window this change shrinks from
+  minutes to seconds. DECISIONS 056.
+
 ### Fixed
 
 - **A session that already ended can no longer be joined.** The first real
