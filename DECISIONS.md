@@ -2213,3 +2213,96 @@ us: WHAT went wrong with a suggestion.
   screens (then the popup question reopens with measurements), or a
   second interaction reversal lands on this surface inside a release
   (then stop iterating live and run a proper design pass).
+
+## 058 — Sessions stop repeating: variety from the bank, aim from the history (2026-08-08)
+
+**Context.** The product one-liner promises repeat sessions with fresh
+topics until the candidate can pass; every session has run the identical
+baseline plan since v0.1, and the repo says so honestly in four enforced
+places (the PRD note, README, the landing copy register's FORBIDDEN
+"fresh topic" entry, llms.txt). The material to fix it already exists
+and is discarded: the compiler builds a question bank the planner
+truncates to one question per dimension — a test even pins the second
+bank entry as "must not be picked" — and prior sessions' plans and
+reports are in hand at plan time with no new query.
+
+- **Chosen — deterministic variety, pure function of (rubric, index,
+  history).** `plan_baseline_session` grows keyword-defaulted
+  parameters (existing call sites and ~15 test fixtures keep working):
+  per dimension, the question rotates through that dimension's bank
+  entries, skipping any question text a prior session's stored plan
+  already asked; the compiler is asked for 2-4 bank entries per content
+  dimension so the bank can carry six sessions; the pressure probe
+  rotates through a small set and targets the WEAKEST scored content
+  dimension from history (heaviest-weight fallback for session 1); from
+  session 2 with scored history, the question sequence orders weakest
+  dimensions first and `focus` widens to "targeted" (schema Literal
+  widened additively; web mirror follows). No model call, no
+  randomness, no clock — same inputs, same plan, exactly as the module
+  contract already demands.
+- **Rejected — generating fresh questions per session with a model
+  call:** cost and nondeterminism at session-start, a new injection
+  surface, and the bank already carries research-grounded material the
+  planner throws away today. Revisit if six sessions exhaust a thin
+  bank in practice.
+- **Rejected — mining prior transcripts for asked topics (v1):**
+  transcript reads are deliberately excluded from the list projection
+  (25-60KB per row); the stored plans' question texts are sufficient to
+  avoid verbatim repeats.
+- **Unchanged on purpose:** re-armed sessions keep their stored plan;
+  the closing line stays a single literal (the SSOT twins depend on
+  it); the honesty copy flips to "fresh topics" IN THE SAME RELEASE
+  that ships this, never before.
+- **Revisit when:** real packages show the bank exhausted before
+  session 6 (then compiler breadth grows), or targeted ordering makes
+  sessions feel repetitively remedial (then cap how many weakest-first
+  slots lead the sequence).
+
+## 059 — The rubric learns who is sitting in the chair (2026-08-08)
+
+**Context.** Real interviews probe the person, not just the role: why
+this company and not its obvious rival, why product after consulting.
+The product already ingests a resume and LinkedIn PDF, distills a
+structured CandidateProfile (raw documents deliberately not stored),
+and shows it to the rubric compiler as background only — the rules
+forbid anything but the JD from licensing a dimension, and the
+faithfulness gate enforces JD evidence on every content dimension.
+
+- **Chosen — a profile-licensed fit dimension, with its own honest
+  receipt.** `RubricDimension` gains `license: "jd" | "profile"`
+  (optional, default "jd" — stored rubrics revalidate unchanged, the
+  jd_evidence precedent). When and only when a non-minimal profile
+  exists, the compiler adds at most ONE content dimension,
+  role-and-company-fit (motivation, the career story, why this
+  company), licensed by the profile with `jd_evidence` null; the
+  faithfulness check exempts profile-licensed dimensions from JD
+  evidence while still refusing them any JD-boilerplate license. The
+  rubric screen renders a third receipt branch ("this bar comes from
+  your own profile") so the dimension never sits silently unreceipted
+  next to quoted ones. Every downstream surface — scoring split,
+  report, coaching, study, trends — is dimension-list-driven and picks
+  it up unmodified; one more content dimension costs three more judge
+  calls per scored session, accepted.
+- **Chosen — fit questions are templated from the structured profile,
+  not generated.** The planner mines CandidateProfile deterministically
+  (career pivot: latest roles vs the JD's role family; company choice:
+  the JD's company) into one or two personal questions folded into the
+  058 rotation, so repeat sessions challenge different biography
+  angles. Pure, testable, no new model call at session start.
+- **Eval posture:** the faithfulness suite compiles its fixtures with
+  an empty profile by design, so existing fixtures and the 1.0 gate
+  are untouched; a NEW fixture with a profile pins the other side —
+  fit dimension present, profile-licensed, and forbidden from
+  swallowing JD-licensed dimensions. The feature ships eval-gated from
+  day one.
+- **Rejected — persisting raw profile documents for richer mining:**
+  a privacy surface (full resume text at rest) for marginal v1 gain
+  over the structured fields; revisit when templated questions feel
+  thin in real sessions.
+- **Rejected — a third scoring channel for fit:** content-channel
+  judging from the transcript already fits; a channel is a scoring
+  mechanism, not a topic.
+- **Revisit when:** flag/feedback data shows fit questions reading as
+  generic (then raw-text persistence reopens with a privacy design),
+  or the fit dimension's scores prove noisier than its siblings (then
+  its verdict weight gets its own look).

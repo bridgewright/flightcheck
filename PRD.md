@@ -332,6 +332,28 @@ Changes to targets are recorded here with date and reason — never silently.
   sub-tabs lead with Report again, matching the sessions list's own
   "Report" doorway. DECISIONS 057.
 
+- **v0.15 (recorded 2026-08-08, pre-code):** the sessions stop
+  repeating, and the interview learns who is sitting in the chair.
+  **Fresh topics, for real this time:** each of a package's six
+  sessions now draws different questions from the rubric's own bank —
+  no verbatim repeats across the package — the pressure probe rotates
+  and aims at the weakest scored dimension from the candidate's own
+  history, and from the second session onward the sequence leads with
+  what the last report said needs work. Deterministic from the rubric,
+  the session number, and the stored history: no model call at session
+  start. Shipping this retires the standing honesty caveat (PRD,
+  README, landing, llms.txt) that every session runs the same plan —
+  the caveat flips only in the release that ships the fix. **The
+  person, not just the role:** when a profile document was provided,
+  the rubric carries one profile-licensed role-and-company-fit
+  dimension — scored, reported, coached, and trended like every other
+  dimension, with its own honest receipt on the rubric screen ("this
+  bar comes from your own profile") — and the interviewer asks one or
+  two personal questions built from the candidate's actual career
+  story: why this company, why this role after that career. No profile
+  provided means no fit dimension and an unchanged rubric.
+  DECISIONS 058–059.
+
 > 2026-08-02: v0.4 scope added above — accounts move ahead of payments
 > because login-gated interviews protect session integrity and per-session
 > cost, and the dashboard is what makes a 6-session package usable. The
