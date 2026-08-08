@@ -66,6 +66,31 @@ def test_oversize_body_inserts_nothing(monkeypatch):
     assert db.feedback == []
 
 
+def test_limiter_answers_before_the_length_check(monkeypatch):
+    """Guard order, not just guard presence: a caller who is already over the
+    window gets the rate-limit refusal even when the body is also too long.
+    Reversing the two would leak the cheaper 422 to someone being throttled."""
+    api, db = client(monkeypatch, feedback_per_window=1, feedback_text_max_chars=3)
+    assert api.post("/api/feedback", json=payload(body="ok"),
+                    headers=AUTH).status_code == 201
+    refused = api.post("/api/feedback", json=payload(body="far too long"),
+                       headers=AUTH)
+    assert refused.status_code == 429
+    assert refused.json()["code"] == "rate-limited"
+    assert len(db.feedback) == 1
+
+
+def test_cap_answers_before_the_length_check(monkeypatch):
+    db = FakeDatabase()
+    db.insert_feedback(FeedbackRow(user_id="user-1", rating_half_stars=8, body=""))
+    api, _ = client(monkeypatch, db, max_feedback_per_user=1,
+                    feedback_text_max_chars=3)
+    refused = api.post("/api/feedback", json=payload(body="far too long"),
+                       headers=AUTH)
+    assert refused.status_code == 429
+    assert refused.json()["code"] == "feedback-cap"
+
+
 def test_package_must_exist_and_belong_to_submitter(monkeypatch):
     db = FakeDatabase()
     own = ready_package(db, user_id="user-1")
@@ -89,6 +114,20 @@ def test_list_filter_validation_and_limit(monkeypatch):
     assert rows["returned"] == 1 and rows["feedback"][0]["status"] == "seen"
     assert api.get("/api/feedback?status=bad", headers=AUTH).status_code == 422
     assert api.get("/api/feedback?limit=201", headers=AUTH).status_code == 422
+
+
+def test_list_defaults_to_fifty_newest_first(monkeypatch):
+    """The Phase 0 stub defaulted to 100; the contract is 50. Nothing else
+    pins the default, so a silent drift back would ship an unbounded-feeling
+    inbox with no failing test."""
+    db = FakeDatabase()
+    for index in range(60):
+        db.insert_feedback(FeedbackRow(user_id="u", rating_half_stars=2,
+                                       body=str(index)))
+    api, _ = client(monkeypatch, db)
+    rows = api.get("/api/feedback", headers=AUTH).json()
+    assert rows["returned"] == 50
+    assert rows["feedback"][0]["body"] == "59"
 
 
 def test_patch_contract(monkeypatch):
