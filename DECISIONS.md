@@ -2068,3 +2068,79 @@ accents beyond the ivory/brown core.
   enforceable by the existing scans.
 - **Revisit when:** packages exceed ~8 sessions or a multi-package
   comparison view appears — then a library earns its keep.
+
+## 055 — The answer-end gap loses 0.6 seconds, at the debounce, not the VAD (2026-08-08)
+
+**Context.** Second real session: the customer reports the interviewer
+waits noticeably too long after an answer ends. The wait decomposes as
+~900 ms server-VAD tail + up to 250 ms tick quantization + 1,200 ms
+client response debounce + up to 250 ms quantization, roughly 2.1 to
+2.4 s before `response.create` even fires. The generous patience was
+deliberate (hesitant non-native speakers, DECISIONS 009/011); the
+field verdict is that it overshoots. DECISIONS 009's revisit condition
+named exactly this report, so this is the documented unblock, not a
+silent tuning.
+
+- **Chosen — `RESPONSE_DEBOUNCE_S` 1.2 → 0.6.** A 0.6 s cut, inside
+  the 0.5-0.7 s the customer asked for. The debounce keeps existing:
+  0.6 s still catches a resumed sentence after a premature VAD commit,
+  on top of the acoustic layer's own 900 ms of required quiet
+  (total quiet before the interviewer speaks: ~1.5 s, down from ~2.1).
+- **Rejected — shortening `silence_duration_ms` (900):** that is the
+  acoustic hesitation guard; the echo-suppression floor
+  (`ECHO_OUTLIVE_MS = 2400`) is derived from it; and it is one of the
+  F-67-blocked levers awaiting recorded evidence. The latency budget
+  had a cheaper, safer line item.
+- **Rejected — shrinking the 250 ms ticker:** saves at most ~0.25 s
+  average, and the tick quantum also paces the connection guard and
+  silence ladder; retiming three instruments to speed up one is bad
+  surgery.
+- **Eval note:** the naturalness suite has not frozen baselines yet
+  (blocked on operator recordings), so this response-policy change
+  lands BEFORE round 1 measurements and poisons nothing; it must be
+  named in the suite worklog and in `lever_state` going forward.
+- **Revisit when:** field sessions show premature interviewer starts
+  over resumed answers (then 0.6 was too tight), or F-67's evidence
+  unblocks acoustic-layer tuning.
+
+## 056 — The interviewer's goodbye ends the session (2026-08-08)
+
+**Context.** Same session: after the closing line ("That's everything
+from my side…"), the room kept running — the silence ladder, which
+cannot know the interview is over, nudged "Take your time." into a
+finished interview, and the session sat open until the manual button
+or the 25:00 hard cut. The closing phase exists only as a sentence in
+the interviewer's instructions; no plan cursor reaches the browser.
+
+- **Chosen — transcript-sentinel auto-end with an arming window.** The
+  room already receives the interviewer's speech transcripts
+  (`response.output_audio_transcript.done`) and already knows when his
+  audio finishes playing (`output_audio_buffer.stopped`). The planner
+  pins the exact closing line; the web matches its tail ("good luck
+  out there") in transcripts, armed only inside the wrap-up window
+  (elapsed ≥ budget − 2 min). On detection: the silence ladder and
+  response debounce shut off immediately (no more nudges, ever), and
+  once the interviewer is quiet and the room stays fully quiet for a
+  short linger (the candidate may say goodbye — their speech defers
+  the end), the session ends through the NORMAL completion path:
+  recorder stop, upload, complete, scoring, redirect to the report.
+  The closing sentence is a cross-language contract now: twin SSOT
+  tests pin the web marker as a substring of the planner's line.
+- **Failure posture:** a missed detection (model paraphrased the
+  goodbye) degrades to exactly today's behavior — manual end or hard
+  cut still work; nothing new can strand a session. A false positive
+  is fenced by the arming window plus the hardened instruction that
+  the closing line is the final sentence, spoken word for word.
+- **Rejected — an end_interview function/tool call:** the more
+  machine-honest signal, but it adds a tool surface to the minted
+  session and a new event family to the room for a case the sentinel
+  covers with benign failure. Revisit if field trails show missed
+  closings.
+- **Rejected — shipping the plan cursor to the browser:** the plan is
+  deliberately stripped from client responses (question bank
+  confidentiality); a closing bit alone does not justify reopening
+  that boundary.
+- **Eligibility note:** closing normally fires at ≥18 min, far above
+  the 10-minute scoring floor; an interviewer who somehow closes
+  earlier produces the same insufficient outcome a manual early end
+  would — unchanged policy.
