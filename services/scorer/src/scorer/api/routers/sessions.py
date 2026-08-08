@@ -5,6 +5,7 @@ Every quota and attempt guard the product sells sits on this surface, so the
 route bodies are moved from create_app unchanged -- the v0.6 split may not
 alter a single refusal.
 """
+
 from __future__ import annotations
 
 import logging
@@ -13,7 +14,7 @@ from datetime import UTC, datetime, timedelta
 
 from fastapi import APIRouter, BackgroundTasks, HTTPException
 from fastapi.responses import JSONResponse
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, Field
 
 from scorer.api.db import PackageRow, SessionRow
 from scorer.api.deps import Deps
@@ -26,9 +27,15 @@ from scorer.api.quota import (
     is_expired,
     sessions_used,
 )
-from scorer.api.responses import NotImplementedBody, rate_limited
+from scorer.api.responses import rate_limited
 from scorer.config import load_product_config
-from scorer.schemas import CandidateProfile
+from scorer.schemas import (
+    CandidateProfile,
+    ParaphraseMark,
+    ParaphraseMarks,
+    SessionInsights,
+    SessionParaphrases,
+)
 from scorer.sessionplan.planner import (
     build_interviewer_instructions,
     plan_baseline_session,
@@ -56,9 +63,25 @@ class ReclaimSessionRequest(BaseModel):
     package_id: str
 
 
-def live_session(rows: Iterable[SessionRow],
-                 hard_cut_minutes: float,
-                 heartbeat_stale_after_s: float | None = None) -> SessionRow | None:
+class CoachingResponse(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    session_id: str
+    paraphrases: SessionParaphrases | None
+    insights: SessionInsights | None
+    marks: ParaphraseMarks
+
+
+class SetCoachingMarkRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    turn_index: int = Field(ge=0)
+    mark: ParaphraseMark
+
+
+def live_session(
+    rows: Iterable[SessionRow],
+    hard_cut_minutes: float,
+    heartbeat_stale_after_s: float | None = None,
+) -> SessionRow | None:
     """The session somebody is in RIGHT NOW, or None (F-38).
 
     Three conditions, all derived from state that already exists:
@@ -85,25 +108,26 @@ def live_session(rows: Iterable[SessionRow],
         if datetime.fromisoformat(row.updated_at) < cutoff:
             continue
         if row.last_heartbeat_at is not None and heartbeat_stale_after_s is not None:
-            heartbeat_cutoff = datetime.now(UTC) - timedelta(
-                seconds=heartbeat_stale_after_s
-            )
+            heartbeat_cutoff = datetime.now(UTC) - timedelta(seconds=heartbeat_stale_after_s)
             if datetime.fromisoformat(row.last_heartbeat_at) < heartbeat_cutoff:
                 continue
         return row
     return None
 
 
-def stopped_reporting(row: SessionRow, hard_cut_minutes: float,
-                      heartbeat_stale_after_s: float) -> bool:
+def stopped_reporting(
+    row: SessionRow, hard_cut_minutes: float, heartbeat_stale_after_s: float
+) -> bool:
     """Whether a heartbeat-aware live row may be reclaimed now."""
-    if (row.status != "planned" or row.secret_mints < 1
-            or row.updated_at is None or row.last_heartbeat_at is None):
+    if (
+        row.status != "planned"
+        or row.secret_mints < 1
+        or row.updated_at is None
+        or row.last_heartbeat_at is None
+    ):
         return False
     hard_cut = datetime.now(UTC) - timedelta(minutes=hard_cut_minutes)
-    heartbeat_cut = datetime.now(UTC) - timedelta(
-        seconds=heartbeat_stale_after_s
-    )
+    heartbeat_cut = datetime.now(UTC) - timedelta(seconds=heartbeat_stale_after_s)
     return (
         datetime.fromisoformat(row.updated_at) >= hard_cut
         and datetime.fromisoformat(row.last_heartbeat_at) < heartbeat_cut
@@ -113,8 +137,12 @@ def stopped_reporting(row: SessionRow, hard_cut_minutes: float,
 def _empty_profile() -> CandidateProfile:
     """Fallback when the package has no stored candidate profile."""
     return CandidateProfile(
-        name=None, headline=None, years_experience=None,
-        roles=[], skills=[], achievements=[],
+        name=None,
+        headline=None,
+        years_experience=None,
+        roles=[],
+        skills=[],
+        achievements=[],
     )
 
 
@@ -127,9 +155,7 @@ def _session_response(row: SessionRow, package: PackageRow) -> dict:
     profile = package.candidate_profile
     if profile is None:
         profile = _empty_profile()
-    instructions = build_interviewer_instructions(
-        row.session_plan, package.rubric, profile
-    )
+    instructions = build_interviewer_instructions(row.session_plan, package.rubric, profile)
     return {
         "session_id": row.id,
         "index": row.index,
@@ -141,17 +167,6 @@ def _session_response(row: SessionRow, package: PackageRow) -> dict:
 def build_router(deps: Deps) -> APIRouter:
     router = APIRouter()
 
-    @router.get("/sessions/{session_id}/coaching", status_code=501,
-                response_model=NotImplementedBody)
-    def get_coaching(session_id: str):
-        del session_id
-        return NotImplementedBody(error="session coaching is not implemented yet")
-
-    @router.patch("/sessions/{session_id}/coaching/marks", status_code=501,
-                  response_model=NotImplementedBody)
-    def set_coaching_marks(session_id: str):
-        del session_id
-        return NotImplementedBody(error="session coaching is not implemented yet")
     # Unpacked once so the route bodies below stay exactly what they were
     # inside the create_app closure -- this split must not change behaviour.
     db = deps.db
@@ -162,13 +177,31 @@ def build_router(deps: Deps) -> APIRouter:
     complete_limiter = deps.complete_limiter
     resume_attempts = deps.resume_attempts
     score_attempts = deps.score_attempts
+
+    @router.get("/sessions/{session_id}/coaching", response_model=CoachingResponse)
+    def get_coaching(session_id: str):
+        try:
+            return CoachingResponse(
+                session_id=session_id,
+                paraphrases=db.get_session_paraphrases(session_id),
+                insights=db.get_session_insights(session_id),
+                marks=db.get_paraphrase_marks(session_id),
+            )
+        except KeyError as exc:
+            raise HTTPException(status_code=404, detail="session not found") from exc
+
+    @router.patch("/sessions/{session_id}/coaching/marks", response_model=ParaphraseMarks)
+    def set_coaching_marks(session_id: str, body: SetCoachingMarkRequest):
+        try:
+            return db.set_paraphrase_mark(session_id, body.turn_index, body.mark)
+        except KeyError as exc:
+            raise HTTPException(status_code=404, detail="session not found") from exc
+
     # The concurrent-session lock's window (F-38). Sourced from the
     # session's own hard cut rather than a new knob: an interview cannot
     # run longer than that, so neither can the lock.
     session_hard_cut_minutes = load_product_config().session.hard_cut_minutes
-    heartbeat_stale_after_s = (
-        load_product_config().session.heartbeat_stale_after_s
-    )
+    heartbeat_stale_after_s = load_product_config().session.heartbeat_stale_after_s
 
     @router.post("/sessions")
     def create_session(body: CreateSessionRequest):
@@ -192,8 +225,10 @@ def build_router(deps: Deps) -> APIRouter:
             return JSONResponse(
                 status_code=410,
                 content={
-                    "error": ("package expired: the 30-day session window has "
-                              "ended — reports and replays stay available"),
+                    "error": (
+                        "package expired: the 30-day session window has "
+                        "ended — reports and replays stay available"
+                    ),
                     "code": "package-expired",
                 },
             )
@@ -202,16 +237,16 @@ def build_router(deps: Deps) -> APIRouter:
         # session and both record, and the recording key is derived from the
         # session index -- so one upload silently overwrites the other and
         # the report is scored against whichever audio survived.
-        in_progress = live_session(
-            existing, session_hard_cut_minutes, heartbeat_stale_after_s
-        )
+        in_progress = live_session(existing, session_hard_cut_minutes, heartbeat_stale_after_s)
         if in_progress is not None:
             return JSONResponse(
                 status_code=409,
                 content={
-                    "error": ("a session for this package is already in "
-                              "progress — finish it, or wait for it to time "
-                              "out before starting another"),
+                    "error": (
+                        "a session for this package is already in "
+                        "progress — finish it, or wait for it to time "
+                        "out before starting another"
+                    ),
                     "code": "session-in-progress",
                     "session_id": in_progress.id,
                 },
@@ -251,15 +286,15 @@ def build_router(deps: Deps) -> APIRouter:
             db.touch_updated_at("session", row.id)
             logger.info(
                 "session %s retired after %d resume attempts",
-                row.id, limits.resume_attempt_cap,
+                row.id,
+                limits.resume_attempt_cap,
             )
         if retriable:
             existing = db.list_sessions(body.package_id)
         total = effective_total_sessions(package)
         if sessions_used(existing) >= total:
             used_line = (
-                "the included session is used" if total == 1
-                else f"all {total} sessions used"
+                "the included session is used" if total == 1 else f"all {total} sessions used"
             )
             return JSONResponse(
                 status_code=409,
@@ -272,8 +307,7 @@ def build_router(deps: Deps) -> APIRouter:
             return JSONResponse(
                 status_code=409,
                 content={
-                    "error": (f"package status is {package.status!r}; "
-                              "sessions need 'ready'"),
+                    "error": (f"package status is {package.status!r}; sessions need 'ready'"),
                     "code": "package-not-ready",
                 },
             )
@@ -296,16 +330,16 @@ def build_router(deps: Deps) -> APIRouter:
             # most once. "planned" starts a run and "failed" allows a retry.
             return JSONResponse(
                 status_code=409,
-                content={
-                    "error": f"session is already {row.status}; it cannot be re-scored"
-                },
+                content={"error": f"session is already {row.status}; it cannot be re-scored"},
             )
         if row.status == TERMINAL_STATUS:
             return JSONResponse(
                 status_code=409,
                 content={
-                    "error": ("this session was retired after repeated "
-                              "attempts and cannot be scored again"),
+                    "error": (
+                        "this session was retired after repeated "
+                        "attempts and cannot be scored again"
+                    ),
                     "code": "session-terminal",
                 },
             )
@@ -320,13 +354,15 @@ def build_router(deps: Deps) -> APIRouter:
             db.touch_updated_at("session", session_id)
             logger.info(
                 "session %s retired after %d scoring attempts",
-                session_id, limits.score_attempt_cap,
+                session_id,
+                limits.score_attempt_cap,
             )
             return JSONResponse(
                 status_code=429,
                 content={
-                    "error": ("scoring attempt limit reached for this "
-                              "session — the slot is closed"),
+                    "error": (
+                        "scoring attempt limit reached for this session — the slot is closed"
+                    ),
                     "code": "score-attempt-cap",
                 },
             )
@@ -367,8 +403,7 @@ def build_router(deps: Deps) -> APIRouter:
             return JSONResponse(
                 status_code=429,
                 content={
-                    "error": ("this session has reached its live-interview "
-                              "connection limit"),
+                    "error": ("this session has reached its live-interview connection limit"),
                     "code": "mint-cap",
                     "secret_mints": count,
                 },
@@ -400,9 +435,7 @@ def build_router(deps: Deps) -> APIRouter:
             raise HTTPException(status_code=404, detail="session not found")
         if row.status == "abandoned":
             return {"session_id": session_id, "status": "abandoned"}
-        if not stopped_reporting(
-            row, session_hard_cut_minutes, heartbeat_stale_after_s
-        ):
+        if not stopped_reporting(row, session_hard_cut_minutes, heartbeat_stale_after_s):
             return JSONResponse(
                 status_code=409,
                 content={
@@ -435,8 +468,7 @@ def build_router(deps: Deps) -> APIRouter:
         return {
             "session_id": session_id,
             "segments": (
-                None if segments is None
-                else [seg.model_dump(mode="json") for seg in segments]
+                None if segments is None else [seg.model_dump(mode="json") for seg in segments]
             ),
         }
 
@@ -459,9 +491,7 @@ def build_router(deps: Deps) -> APIRouter:
             profile = package.candidate_profile
             if profile is None:
                 profile = _empty_profile()
-            instructions = build_interviewer_instructions(
-                row.session_plan, package.rubric, profile
-            )
+            instructions = build_interviewer_instructions(row.session_plan, package.rubric, profile)
         payload = row.model_dump(mode="json")
         payload["interviewer_instructions"] = instructions
         return payload

@@ -1,0 +1,35 @@
+import type { TimelineEntry, TranscriptTurn } from "@/lib/transcript";
+import type { ParaphraseItem, ParaphraseMark, ParaphraseMarks, SessionParaphrases, TimestampedObservation } from "@/lib/types";
+
+export type TimelineEntryWithCoaching =
+  | { kind: "turn"; turn: TranscriptTurn; candidateOrdinal: number | null; item: ParaphraseItem | null }
+  | { kind: "observation"; observation: TimestampedObservation };
+
+export function attachCoaching(timeline: TimelineEntry[], paraphrases: SessionParaphrases | null | undefined, derivedCandidateTurnCount: number): TimelineEntryWithCoaching[] {
+  const usable = paraphrases !== null && paraphrases !== undefined && paraphrases.turn_count === derivedCandidateTurnCount;
+  const byOrdinal = new Map<number, ParaphraseItem>();
+  if (usable) {
+    for (const item of paraphrases.items) {
+      if (item.turn_index >= 0 && item.turn_index < derivedCandidateTurnCount && !byOrdinal.has(item.turn_index)) byOrdinal.set(item.turn_index, item);
+    }
+  }
+  let ordinal = 0;
+  return timeline.map((entry) => {
+    if (entry.kind === "observation") return entry;
+    const candidateOrdinal = entry.turn.speaker === "candidate" ? ordinal++ : null;
+    return { ...entry, candidateOrdinal, item: candidateOrdinal === null ? null : (byOrdinal.get(candidateOrdinal) ?? null) };
+  });
+}
+
+export function markFor(marks: ParaphraseMarks | null | undefined, ordinal: number): ParaphraseMark {
+  return marks?.marks[String(ordinal)] ?? { reaction: null, bookmarked: false };
+}
+
+export function bookmarkedItems(paraphrases: SessionParaphrases | null | undefined, marks: ParaphraseMarks | null | undefined): { ordinal: number; item: ParaphraseItem }[] {
+  if (!paraphrases) return [];
+  return paraphrases.items.filter((item) => markFor(marks, item.turn_index).bookmarked).map((item) => ({ ordinal: item.turn_index, item }));
+}
+
+export function sourceQuoteIfVerbatim(turn: TranscriptTurn, quote: string): string | null {
+  return quote.length > 0 && turn.text.includes(quote) ? quote : null;
+}

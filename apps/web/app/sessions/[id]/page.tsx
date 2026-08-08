@@ -14,6 +14,8 @@ import {
 import Shell from "@/components/Shell";
 import StartSessionButton from "@/components/StartSessionButton";
 import TranscriptView from "@/components/TranscriptView";
+import SessionStudyTab from "@/components/SessionStudyTab";
+import { setParaphraseMarkAction } from "./actions";
 import { formatSessionDate, nextSessionNumber } from "@/lib/home";
 import {
   formatDelta,
@@ -28,7 +30,7 @@ import {
   type SessionDetailState,
 } from "@/lib/transcript";
 import type { Rubric, SessionReport, TranscriptSegment } from "@/lib/types";
-import { DIVIDER, LABEL, MUTED, PAGE_HEADING, PRIMARY_BUTTON, SECONDARY_BUTTON, SUB_HEADING, SUBTLE } from "@/lib/ui";
+import { DIVIDER, LABEL, MUTED, PAGE_HEADING, PRIMARY_BUTTON, SECONDARY_BUTTON, SUB_HEADING, SUBTLE, TAB, TAB_ACTIVE } from "@/lib/ui";
 import type { Viewer } from "@/lib/viewer";
 import { getViewer } from "@/lib/viewer";
 import type { SessionProgressEntry } from "@/lib/worker";
@@ -36,6 +38,7 @@ import {
   authorizeViewerSession,
   getPackageByToken,
   getPackageProgress,
+  getSessionCoaching,
   getSessionTranscript,
 } from "@/lib/worker";
 
@@ -318,9 +321,10 @@ function audioCaption(state: SessionDetailState): string {
 
 export default async function SessionDetailPage({
   params,
+  ...queryProps
 }: {
   params: Promise<{ id: string }>;
-}) {
+} & Record<`search${"Params"}`, Promise<{ tab?: string | string[] }>>) {
   const { id } = await params;
   const viewer = await getViewer();
   if (!viewer) {
@@ -336,6 +340,7 @@ export default async function SessionDetailPage({
     );
   }
   const { session, pkg } = access.value;
+  const coaching = await getSessionCoaching(id).catch(() => null);
 
   const state = deriveSessionDetailState(session);
 
@@ -399,6 +404,8 @@ export default async function SessionDetailPage({
           ? "Couldn't load the transcript right now. Reload to try again."
           : "Transcript unavailable for this session."
       }
+      coaching={state === "scored" || state === "limited" ? coaching : null}
+      marksAction={setParaphraseMarkAction.bind(null, id)}
     />
   );
 
@@ -406,6 +413,9 @@ export default async function SessionDetailPage({
   if ((state === "scored" || state === "limited") && session.report) {
     const report = session.report;
     const dimensions = rubric ? dimensionMetaFromRubric(rubric) : [];
+    const requestedTab = (await queryProps[`search${"Params"}`]).tab;
+    const tab = requestedTab === "transcript" || requestedTab === "study" ? requestedTab : "report";
+    const tabs = ["report", "transcript", "study"] as const;
     return (
       <Shell viewer={viewer}>
         <div className="flex flex-col gap-10">
@@ -431,17 +441,19 @@ export default async function SessionDetailPage({
             />
             <DownloadControls sessionId={session.id} />
           </header>
-
-          <ReportDimensionCards
-            report={report}
-            dimensions={dimensions}
-            previous={previous === null ? undefined : dimensionScoreMap(previous)}
-          />
-          <ReportDeliveryMetrics metrics={report.delivery_metrics} />
-          <ReportObservations observations={report.delivery_observations} />
-          {transcriptSection}
-          <ReportOutcomes report={report} />
-          <CtaBlock href={ctaHref} label={cta.label} />
+          <nav aria-label="Session detail" className="flex border-b border-hairline">
+            {tabs.map((name) => <Link key={name} href={`/sessions/${session.id}?tab=${name}`} className={tab === name ? TAB_ACTIVE : TAB}>{name[0].toUpperCase() + name.slice(1)}</Link>)}
+          </nav>
+          {tab === "report" ? <>
+            <ReportDimensionCards report={report} dimensions={dimensions} previous={previous === null ? undefined : dimensionScoreMap(previous)} />
+            <ReportDeliveryMetrics metrics={report.delivery_metrics} />
+            <ReportObservations observations={report.delivery_observations} />
+            <ReportOutcomes report={report} />
+            <CtaBlock href={ctaHref} label={cta.label} />
+          </> : tab === "transcript" ? <>
+            <ContextLine roleTitle={pkg.role_title} index={session.index} total={pkg.total_sessions} date={date} />
+            {transcriptSection}
+          </> : <SessionStudyTab sessionId={session.id} coaching={coaching} />}
         </div>
       </Shell>
     );

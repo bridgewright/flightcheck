@@ -5,6 +5,7 @@ recording must surface to the user as status "failed", never as a hung
 "compiling"/"scoring" row and never as a crashed worker. Logging carries
 ids and tracebacks only -- never secrets.
 """
+
 from __future__ import annotations
 
 import logging
@@ -20,6 +21,7 @@ from scorer.api.db import Database
 from scorer.api.deadletter import default_log, reason_for
 from scorer.api.storage import Storage
 from scorer.audio_utils import ensure_wav
+from scorer.coaching.generate import generate_insights, generate_paraphrases
 from scorer.config import load_product_config
 from scorer.content.judge import score_content
 from scorer.content.transcribe import transcribe_verbatim
@@ -38,8 +40,9 @@ from scorer.schemas import CandidateProfile, GenAIClientLike, SessionReport
 logger = logging.getLogger(__name__)
 
 
-def _set_session_status(db: Database, session_id: str, status: str,
-                        audio_path: str | None = None) -> None:
+def _set_session_status(
+    db: Database, session_id: str, status: str, audio_path: str | None = None
+) -> None:
     """Status write + updated_at touch: every transition refreshes the clock
     so the stuck-state reaper only ever sees truly abandoned rows."""
     db.set_session_status(session_id, status, audio_path=audio_path)
@@ -170,8 +173,7 @@ def compile_package(
         # wrapper never sees the exception, so without this a failed compile
         # would set the row to "failed" and show up in no operator view.
         logger.exception("package compile failed: package_id=%s", package_id)
-        default_log().record("compile", package_id, exc,
-                             reason=reason_for(exc))
+        default_log().record("compile", package_id, exc, reason=reason_for(exc))
         db.set_package_rubric(package_id, None, status="failed")
         db.touch_updated_at("package", package_id)
 
@@ -220,7 +222,8 @@ def score_session(
                 logger.warning(
                     "recording for session %s runs %.1f minutes, over the "
                     "%.0f-minute scoring ceiling; marking the session failed",
-                    session_id, duration_s / 60.0,
+                    session_id,
+                    duration_s / 60.0,
                     product.limits.recording_max_minutes,
                 )
                 _set_session_status(db, session_id, "failed")
@@ -235,14 +238,13 @@ def score_session(
             # spend: a verdict from a few minutes of speech would be noise
             # sold as signal. The wav (not the transcript) is the duration
             # ground truth; duration_s was measured off it above.
-            eligibility = check_eligibility(
-                segments, duration_s, product.eligibility
-            )
+            eligibility = check_eligibility(segments, duration_s, product.eligibility)
             if eligibility == "insufficient":
                 logger.info(
                     "session %s below scoring floors (duration_s=%.1f); "
                     "ending insufficient with zero judge calls",
-                    session_id, duration_s,
+                    session_id,
+                    duration_s,
                 )
                 _set_session_status(db, session_id, "insufficient")
                 return None
@@ -252,9 +254,7 @@ def score_session(
             content_scores = score_content(rubric, segments, client)
             delivery_dims = [d for d in rubric.dimensions if d.channel == "delivery"]
             _set_scoring_stage(db, session_id, "delivery-judge")
-            delivery_scores, observations = judge_delivery(
-                wav, metrics, delivery_dims, client
-            )
+            delivery_scores, observations = judge_delivery(wav, metrics, delivery_dims, client)
         _set_scoring_stage(db, session_id, "compile")
         report = compile_report(
             session_id,
@@ -266,6 +266,18 @@ def score_session(
         )
         db.save_report(session_id, report)
         _set_session_status(db, session_id, "scored")
+        try:
+            doc = generate_paraphrases(
+                segments, client, max_items=product.limits.paraphrase_max_items
+            )
+            db.save_session_paraphrases(session_id, doc)
+        except Exception:
+            logger.exception("paraphrase generation failed: session_id=%s", session_id)
+        try:
+            insights = generate_insights(segments, report, rubric, client)
+            db.save_session_insights(session_id, insights)
+        except Exception:
+            logger.exception("insights generation failed: session_id=%s", session_id)
         return report
     except Exception:
         # Worker boundary: record the failure, then let the caller decide.

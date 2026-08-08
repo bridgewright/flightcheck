@@ -1,11 +1,13 @@
 "use client";
 
-import { useRef } from "react";
+import { useRef, useState } from "react";
+import { BookmarkSimpleIcon, ThumbsDownIcon, ThumbsUpIcon } from "@phosphor-icons/react";
 
 import { DspConflictBadge } from "@/components/ReportView";
 import { formatTimestamp } from "@/lib/report-format";
-import { transcriptTimeline } from "@/lib/transcript";
-import type { TimestampedObservation, TranscriptSegment } from "@/lib/types";
+import { candidateTurns, transcriptTimeline } from "@/lib/transcript";
+import { attachCoaching, markFor, sourceQuoteIfVerbatim } from "@/lib/paraphrase";
+import type { ParaphraseMark, ParaphraseMarks, SessionCoaching, TimestampedObservation, TranscriptSegment } from "@/lib/types";
 import {
   FINE_PRINT,
   MUTED,
@@ -13,7 +15,19 @@ import {
   PROSE_WIDTH,
   LINK,
   SECTION_HEADING,
+  CHIP_ALARM, CHIP_READY, EVIDENCE_QUOTE, LABEL, SUBTLE,
 } from "@/lib/ui";
+
+function MarkActions({ ordinal, initial, action }: { ordinal: number; initial: ParaphraseMark; action?: (ordinal: number, mark: ParaphraseMark) => Promise<ParaphraseMarks> }) {
+  const [mark, setMark] = useState(initial);
+  async function update(next: ParaphraseMark) { setMark(next); if (action) { const saved = await action(ordinal, next); setMark(markFor(saved, ordinal)); } }
+  const button = (pressed: boolean) => `p-1 ${pressed ? "text-ink" : "text-ink-faint"}`;
+  return <div className="flex gap-2">
+    <button type="button" aria-label="Helpful" aria-pressed={mark.reaction === "up"} className={button(mark.reaction === "up")} onClick={() => void update({ ...mark, reaction: mark.reaction === "up" ? null : "up" })}><ThumbsUpIcon className="size-5" /></button>
+    <button type="button" aria-label="Not helpful" aria-pressed={mark.reaction === "down"} className={button(mark.reaction === "down")} onClick={() => void update({ ...mark, reaction: mark.reaction === "down" ? null : "down" })}><ThumbsDownIcon className="size-5" /></button>
+    <button type="button" aria-label="Bookmark" aria-pressed={mark.bookmarked} className={button(mark.bookmarked)} onClick={() => void update({ ...mark, bookmarked: !mark.bookmarked })}><BookmarkSimpleIcon className="size-5" /></button>
+  </div>;
+}
 
 // The session transcript with the judge's delivery observations inlined at
 // their timestamps, plus the recording itself in a sticky native <audio>
@@ -60,6 +74,8 @@ export default function TranscriptView({
   audioUrl,
   audioCaption,
   unavailableNote = "Transcript unavailable for this session.",
+  coaching = null,
+  marksAction,
 }: {
   /** Null = no transcript is stored (sessions scored before transcripts were
    * persisted, or the fetch failed, and the page words the note accordingly). */
@@ -69,6 +85,8 @@ export default function TranscriptView({
   audioUrl: string | null;
   audioCaption: string;
   unavailableNote?: string;
+  coaching?: SessionCoaching | null;
+  marksAction?: (ordinal: number, mark: ParaphraseMark) => Promise<ParaphraseMarks>;
 }) {
   const audioRef = useRef<HTMLAudioElement>(null);
 
@@ -85,12 +103,15 @@ export default function TranscriptView({
           void audio.play().catch(() => {});
         };
 
-  const timeline =
+  const timelineBase =
     segments === null ? [] : transcriptTimeline(segments, observations);
+  const timeline = attachCoaching(timelineBase, coaching?.paraphrases, segments === null ? 0 : candidateTurns(segments).length);
+  const attachedCount = timeline.filter((entry) => entry.kind === "turn" && entry.item !== null).length;
 
   return (
     <section className="flex flex-col gap-4">
       <h2 className={SECTION_HEADING}>Transcript</h2>
+      {attachedCount > 0 ? <p className={SUBTLE}>Suggested phrasings appear under your answers. The transcript itself is untouched.</p> : null}
       {segments === null ? (
         <p className={MUTED}>{unavailableNote}</p>
       ) : timeline.length === 0 ? (
@@ -113,6 +134,17 @@ export default function TranscriptView({
                   </span>
                 </div>
                 <p className={`${MUTED} ${PROSE_WIDTH}`}>{entry.turn.text}</p>
+                {entry.item !== null && entry.candidateOrdinal !== null ? <details className="mt-1">
+                  <summary className={`${entry.item.verdict === "good" ? CHIP_READY : CHIP_ALARM} cursor-pointer w-fit`}>✓ {entry.item.verdict === "good" ? "Strong" : "Needs work"}</summary>
+                  <div className={`${PANEL} mt-2 flex flex-col gap-2 p-4`}>
+                    <p className={LABEL}>{entry.item.verdict === "good" ? "Even stronger" : "Stronger phrasing"}</p>
+                    {sourceQuoteIfVerbatim(entry.turn, entry.item.source_quote) ? <blockquote className={EVIDENCE_QUOTE}>{entry.item.source_quote}</blockquote> : null}
+                    <p className={`text-ink ${PROSE_WIDTH}`}>{entry.item.suggestion}</p>
+                    <p className={SUBTLE}>{entry.item.why}</p>
+                    <p className={FINE_PRINT}>A suggested rewrite &mdash; your transcript is unchanged.</p>
+                    <MarkActions ordinal={entry.candidateOrdinal} initial={markFor(coaching?.marks, entry.candidateOrdinal)} action={marksAction} />
+                  </div>
+                </details> : null}
               </li>
             ) : (
               // A delivery observation, annotating the turn it sits beside.
