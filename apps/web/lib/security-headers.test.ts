@@ -3,7 +3,6 @@ import { describe, expect, it } from "vitest";
 import { SENTRY_INGEST_ORIGINS } from "./observability";
 import {
   POLAR_FORM_ACTION_ORIGINS,
-  ROOM_PATH_SOURCE,
   contentSecurityPolicy,
   permissionsPolicy,
   securityHeaderRules,
@@ -136,23 +135,23 @@ describe("contentSecurityPolicy", () => {
 });
 
 describe("permissionsPolicy", () => {
-  it("denies the microphone by default", () => {
-    expect(permissionsPolicy({ microphone: false })).toContain("microphone=()");
-  });
-
-  it("permits the microphone where the interview happens", () => {
-    expect(permissionsPolicy({ microphone: true })).toContain(
-      "microphone=(self)",
-    );
+  it("grants the microphone to this origin only, everywhere", () => {
+    // Global self on purpose: Permissions-Policy binds to the DOCUMENT,
+    // and a client-side route transition never fetches a new one — a
+    // room-path grant only held on hard loads, so entering the room
+    // through the app's own navigation inherited the entry route's
+    // microphone=() and getUserMedia refused as if the customer had
+    // blocked the site (2026-08-08: first entry failed, refresh worked).
+    expect(permissionsPolicy()).toContain("microphone=(self)");
+    expect(permissionsPolicy()).not.toContain("microphone=()");
   });
 
   it("denies the camera everywhere: this product never records video", () => {
-    expect(permissionsPolicy({ microphone: true })).toContain("camera=()");
-    expect(permissionsPolicy({ microphone: false })).toContain("camera=()");
+    expect(permissionsPolicy()).toContain("camera=()");
   });
 
   it("keeps autoplay for self, or the interviewer's voice never plays", () => {
-    expect(permissionsPolicy({ microphone: true })).toContain("autoplay=(self)");
+    expect(permissionsPolicy()).toContain("autoplay=(self)");
   });
 });
 
@@ -164,17 +163,21 @@ describe("securityHeaderRules", () => {
     );
   });
 
-  it("(d) overrides the microphone denial on the room path only", () => {
-    expect(headerValue("/(.*)", "Permissions-Policy")).toContain("microphone=()");
-    expect(headerValue(ROOM_PATH_SOURCE, "Permissions-Policy")).toContain(
+  it("(d) grants the microphone globally — no per-path override remains", () => {
+    expect(headerValue("/(.*)", "Permissions-Policy")).toContain(
       "microphone=(self)",
     );
-    // Next applies matching rules in order and the last wins, so the room
-    // rule must come after the global one.
+    // The per-path room override is GONE on purpose: under client-side
+    // navigation it never governed the document that actually asked for
+    // the microphone. No rule may reintroduce a path-scoped
+    // Permissions-Policy while this app is an SPA.
     const rules = securityHeaderRules(options);
-    expect(rules.findIndex((rule) => rule.source === ROOM_PATH_SOURCE)).toBe(
-      rules.length - 1,
-    );
+    for (const rule of rules) {
+      if (rule.source === "/(.*)") continue;
+      expect(
+        rule.headers.some((h) => h.key === "Permissions-Policy"),
+      ).toBe(false);
+    }
   });
 
   it("sends no referrer at all from the token-bearing share links", () => {

@@ -551,7 +551,15 @@ export default function SessionRoom({
       pcRef.current = pc;
       pc.onconnectionstatechange = () => {
         connStateRef.current = pc.connectionState;
+        // In the trail, not just the console: the 2026-08-08 silent death
+        // (dc-open, greeting-sent, then nothing) left a Diagnostics trail
+        // with no transport state at all — the one thing that would have
+        // named the failure.
+        diag("conn-state", pc.connectionState);
         console.debug("[guard] conn-state", pc.connectionState);
+      };
+      pc.oniceconnectionstatechange = () => {
+        diag("ice-state", pc.iceConnectionState);
       };
       pc.ontrack = (e) => {
         if (remoteAudioRef.current) {
@@ -581,6 +589,8 @@ export default function SessionRoom({
 
       const dc = pc.createDataChannel("oai-events");
       dcRef.current = dc;
+      dc.addEventListener("close", () => diag("dc-close"));
+      dc.addEventListener("error", () => diag("dc-error"));
       dc.addEventListener("open", () => {
         diag("dc-open");
         // The whole handler is guarded: a throw in a data-channel event

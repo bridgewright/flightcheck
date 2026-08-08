@@ -47,9 +47,6 @@ export interface SecurityHeaderOptions {
   sentryOrigins: readonly string[];
 }
 
-/** The interview room — the one page allowed to ask for a microphone. */
-export const ROOM_PATH_SOURCE = "/sessions/:id/room";
-
 /** The legacy share links, which carry a capability token in the path. */
 export const TOKEN_LINK_SOURCE = "/p/:path*";
 
@@ -120,16 +117,18 @@ export function contentSecurityPolicy(options: SecurityHeaderOptions): string {
  * Permissions-Policy. Only features worth denying are named; anything absent
  * keeps its browser default.
  *
- * `microphone` is the whole reason this is per-path: denying it globally is
- * the correct posture for a product that asks for a microphone on exactly
- * one page, and permitting it on that page is not optional — without it the
- * interview cannot start.
+ * `microphone=(self)` is GLOBAL, not per-path, and that is a lesson, not a
+ * loosening: Permissions-Policy binds to the DOCUMENT, and this app is a
+ * single-page application — a client-side route transition never fetches a
+ * new document, so a microphone grant scoped to the room's path only held
+ * on hard loads of that URL. Entering the room through the app's own
+ * navigation left the page governed by the entry route's `microphone=()`
+ * and getUserMedia refused as if the customer had blocked the site
+ * (2026-08-08, reproduced: first entry fails, refresh works). `self` still
+ * refuses every cross-origin context, and frame-ancestors 'none' above
+ * means nothing embeds this app at all — the threat model is unchanged.
  */
-export function permissionsPolicy({
-  microphone,
-}: {
-  microphone: boolean;
-}): string {
+export function permissionsPolicy(): string {
   return [
     "accelerometer=()",
     // The room autoplays the interviewer's voice into an <audio> element.
@@ -140,7 +139,7 @@ export function permissionsPolicy({
     "geolocation=()",
     "gyroscope=()",
     "magnetometer=()",
-    `microphone=(${microphone ? "self" : ""})`,
+    "microphone=(self)",
     "midi=()",
     "payment=()",
     "usb=()",
@@ -171,7 +170,7 @@ export function securityHeaderRules(
         // allow-popups deliberately: a popup-based OAuth sign-in must keep
         // working. Full isolation would be same-origin.
         { key: "Cross-Origin-Opener-Policy", value: "same-origin-allow-popups" },
-        { key: "Permissions-Policy", value: permissionsPolicy({ microphone: false }) },
+        { key: "Permissions-Policy", value: permissionsPolicy() },
       ],
     },
     {
@@ -186,12 +185,6 @@ export function securityHeaderRules(
         // is the one signal that survives being fetched by a crawler that
         // ignored robots.txt.
         { key: "X-Robots-Tag", value: "noindex, nofollow, noarchive" },
-      ],
-    },
-    {
-      source: ROOM_PATH_SOURCE,
-      headers: [
-        { key: "Permissions-Policy", value: permissionsPolicy({ microphone: true }) },
       ],
     },
   ];
