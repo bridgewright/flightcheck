@@ -1,6 +1,6 @@
 {
-  "status": "unmeasured",
-  "measurement_note": "Pause boundaries and the speech total are ACOUSTIC: measured from a real make_golden.sh clip (17.16 s) with the delivery/dsp.py silence detector at its committed constants, not from a transcription run. The remaining unknown is how Gemini segmentation lands relative to those acoustic edges, so status stays 'unmeasured' and test_segmentation_golden.py skips until a transcription pass confirms these numbers and flips it to 'measured'. total_speech_s is centred above the 11.24 s of non-silent audio because transcript segment spans run slightly wider than the acoustic edges.",
+  "status": "measured",
+  "measurement_note": "Acoustic pins from delivery/dsp.py on a real make_golden.sh clip (17.16 s, 11.24 s non-silent), CONFIRMED by a live Gemini transcription pass at merge (2026-08-08): segmentation landed within every tolerance. total_speech_s is centred above the acoustic non-silent total because transcript segment spans run slightly wider than acoustic edges. Re-run this test whenever transcription config changes.",
   "segment_count": {
     "expected": 4,
     "tolerance": 1
@@ -10,8 +10,20 @@
     "tolerance_fraction": 0.15
   },
   "pause_boundaries": [
-    {"start_s": 2.75, "end_s": 4.67, "tolerance_s": 0.75},
-    {"start_s": 7.68, "end_s": 9.82, "tolerance_s": 0.75},
-    {"start_s": 11.55, "end_s": 13.41, "tolerance_s": 0.75}
+    {
+      "start_s": 2.75,
+      "end_s": 4.67,
+      "tolerance_s": 0.75
+    },
+    {
+      "start_s": 7.68,
+      "end_s": 9.82,
+      "tolerance_s": 0.75
+    },
+    {
+      "start_s": 11.55,
+      "end_s": 13.41,
+      "tolerance_s": 0.75
+    }
   ]
 }
