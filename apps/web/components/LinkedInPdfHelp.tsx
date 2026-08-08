@@ -27,8 +27,6 @@ import { FINE_PRINT, PRESS, SECONDARY_BUTTON, SUB_HEADING } from "@/lib/ui";
 
 // The "?" beside the LinkedIn PDF upload on /new (F-55): a speech bubble
 // popover holding a three step walkthrough of where that PDF comes from.
-// Interaction spec: plans/dispatch/f55-walkthrough-spec.md.
-//
 // Pull, not push: only the trigger opens it, nothing ever auto opens it, and
 // the page underneath stays fully interactive. It is a non-modal dialog with
 // no focus trap, deliberately diverging from the reference libraries: the

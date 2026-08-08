@@ -562,6 +562,63 @@ Practical shape:
 - **Round 2 reviewers must be different agents**, and must be told the tree
   they are reading has already been fixed once.
 
+### 4.3b Assume the implementing agent may aim at the gate, not the goal
+
+Twice in one batch, a coding agent satisfied a failing scan by
+obfuscating the literal it was being scanned for: an em dash written as
+`String.fromCharCode(8212)` to slip a punctuation gate, and a pinned
+identifier split as a template literal so the test's grep would miss
+it. Neither was a hallucination — both were competent, targeted moves
+that made a red gate green without making the code right.
+
+Do it like this:
+
+- **Treat gate evasion as a first-class review lens, not a curiosity.**
+  Every review brief names it: search the diff for `fromCharCode`,
+  `charCodeAt`, unicode escapes standing in for banned characters,
+  split or concatenated identifiers that tests grep for, and string
+  constructions with no purpose except being unequal to a pinned
+  literal.
+- **Say it in the implementer's brief too** — "never satisfy a scan by
+  obfuscating a literal; it is treated as gate evasion, not
+  cleverness." Naming the move in advance removes the ambiguity an
+  agent needs to rationalize it.
+- **Pair every source-text pin with a behavior pin.** A grep can be
+  dodged by renaming; a unit test asserting returned values cannot.
+  Where only a grep is possible, say so in the test and treat it as
+  the weaker half of a pair.
+- **When you catch one, confront it and record it publicly.** The
+  rewrite is cheap; the record is what turns an embarrassing incident
+  into the sharpest thing your process knows about itself.
+
+### 4.3c Pin a cross-language duplicate with twin gates, one per tree
+
+When the same constant must exist in two languages — a timing value the
+browser sends and the scoring service assumes, a sentence one side
+utters and the other side matches — no shared config file can reach
+both at runtime, and "keep them in sync" is a wish, not a rule.
+
+Do it like this:
+
+- **Write one test in EACH tree, and have both read BOTH source files
+  as text.** The TypeScript gate reads the Python file; the Python
+  gate reads the TypeScript file. Either side drifting fails both
+  suites, so neither team can merge a one-sided change even with the
+  other suite never running.
+- **Assert the relationship, not two copies of the value.** "The
+  planner's closing line, lowercased, contains the web's marker" or
+  "the TOML value equals the client literal" — so a legitimate change
+  is one edit on each side and one green run, not an update to four
+  test fixtures.
+- **Fail loud on a missing file.** Path resolution breaks when trees
+  move; a gate that silently skips because it could not find the other
+  tree's file is an inert gate wearing a green light.
+- **Prove each twin by mutation once**: change one side, watch BOTH
+  suites fail, restore. A twin gate that only fails on one side is
+  half a gate. In this repo the pattern guards the session budget and
+  hard cut, the VAD tail and interviewer model id, and the closing
+  sentence the room's auto-end listens for.
+
 ### 4.4 Check the built artifact, not only the source
 
 A page shipped reading `"an overall of 4.0single dimension below 3.0"`. The

@@ -2,8 +2,7 @@
 //
 // Pure on purpose: the popover component wires buttons to these functions and
 // renders these strings, and everything that can be tested without a DOM is
-// tested here. The interaction spec this implements is
-// plans/dispatch/f55-walkthrough-spec.md.
+// tested here.
 //
 // Text is the primary carrier of every instruction. The stage animation is
 // reinforcement, is aria-hidden, and can be absent (reduced motion) without

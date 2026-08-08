@@ -43,8 +43,8 @@ flowchart LR
     A[Supabase Auth<br/>Google sign-in — cookie session]
     P[Polar<br/>merchant of record — hosted checkout]
     OAI[OpenAI Realtime<br/>gpt-realtime interviewer]
-    G[Gemini 2.5 Flash<br/>research / rubric / transcribe / judge]
-    OP[Operator<br/>usage report script / dead-letter reads]
+    G[Gemini 2.5 Flash<br/>research / rubric / transcribe / judge / coaching + study notes]
+    OP[Operator<br/>usage report script / dead-letter reads / feedback inbox]
 
     B -->|JSON| W
     B -->|magic-link sign-in| A
@@ -89,12 +89,12 @@ services. There is no root `package.json`, so the `npm` commands run from
 git clone https://github.com/bridgewright/flightcheck.git
 cd flightcheck/apps/web
 npm ci
-npm test              # 1863 tests, 71 files — 7 skip on a fresh clone
+npm test              # 2687 tests, 114 files — 8 skip on a fresh clone
 npm run dev           # http://localhost:3000
 ```
 
-The seven that skip check that six user-visible sentences survive the production
-bundler, so they need a build to read: `npm run gates` runs `build`, `test`,
+The eight that skip check that seven user-visible sentences survive the
+production bundler, so they need a build to read: `npm run gates` runs `build`, `test`,
 `typecheck` and `lint` in that order and skips nothing. The order is the point —
 a bundler destroyed shipped text once, and only the built output shows it.
 
@@ -110,7 +110,7 @@ The scoring worker and the eval harness are Python, from `services/scorer`:
 
 ```bash
 cd flightcheck/services/scorer
-uv run pytest -q      # 862 tests
+uv run pytest -q      # 1117 tests
 ```
 
 The rest of the release gate, each from the directory named: `npm run
@@ -118,7 +118,10 @@ typecheck`, `npm run lint` and `npm run build` in `apps/web`; `make test` and
 `make lint` from the repo root; and `uv run scorer-evals` from
 `services/scorer`, which is the only one of them that needs a model API key.
 
-Release notes: [v0.7](docs/releases/v0.7.md) · [v0.6](docs/releases/v0.6.md) ·
+Release notes: [v0.12](docs/releases/v0.12.md) ·
+[v0.11](docs/releases/v0.11.md) · [v0.10](docs/releases/v0.10.md) ·
+[v0.9](docs/releases/v0.9.md) · [v0.8](docs/releases/v0.8.md) ·
+[v0.7](docs/releases/v0.7.md) · [v0.6](docs/releases/v0.6.md) ·
 [v0.5](docs/releases/v0.5.md) · [v0.2](docs/releases/v0.2.md) ·
 [v0.1](docs/releases/v0.1.md) — one per tag, also published on the
 [releases page](https://github.com/bridgewright/flightcheck/releases). Each
@@ -129,7 +132,7 @@ other, on 2026-08-03.
 Architecture detail (data flow, storage layout): [docs/architecture.md](docs/architecture.md).
 Deploy runbook: [docs/deploy.md](docs/deploy.md).
 
-> **Status: v0.7.** Built in public. PRD was committed before the first line of code — [read it](PRD.md); the chronology is checkable below rather than asserted. The S2S provider bake-off that picked the interviewer and scoring models is measured, not guessed ([report](evals/reports/2026-08-02-provider-bakeoff.md)); the release-gate eval numbers are committed verbatim, including the runs that failed ([2026-08-03 v0.5 gate](evals/reports/2026-08-03-v05-gate.md), [2026-08-01 gate record](evals/reports/2026-08-01-v02-gate.md), [2026-07-26 gate run](evals/reports/2026-07-26-v01-gate.md)). Sample sizes in those gates are tiny and each report says so.
+> **Status: v0.12.** Built in public. PRD was committed before the first line of code — [read it](PRD.md); the chronology is checkable below rather than asserted. The S2S provider bake-off that picked the interviewer and scoring models is measured, not guessed ([report](evals/reports/2026-08-02-provider-bakeoff.md)); the release-gate eval numbers are committed verbatim, including the runs that failed ([2026-08-03 v0.5 gate](evals/reports/2026-08-03-v05-gate.md), [2026-08-01 gate record](evals/reports/2026-08-01-v02-gate.md), [2026-07-26 gate run](evals/reports/2026-07-26-v01-gate.md)). Sample sizes in those gates are tiny and each report says so.
 
 ### Verify the PRD-before-code claim yourself
 
@@ -179,6 +182,11 @@ curl -s "https://api.github.com/repos/bridgewright/flightcheck/events?per_page=1
 - **v0.5** — payments. Polar hosted checkout, a signature-verified `order.paid` webhook, the $49 trial-then-unlock package. Shipped 2026-08-03, tag `v0.5.0`.
 - **v0.6** — operating at scale: a real-usage metrics endpoint and report script, self-serve account deletion, a dead-letter record for permanently failed jobs, backoff on every model call, a scoring concurrency limit and an overall job deadline, security headers, request-id propagation and Sentry, and an adversarial prompt-injection suite added to the release gate. Shipped 2026-08-03, tag `v0.6.0`. [Release notes](docs/releases/v0.6.md).
 - **v0.7** — the design pass: one design system enforced by a test rather than described in a document, light only, a landing cut to four blocks, and a report that draws why its verdict is what it is. Shipped 2026-08-04, tag `v0.7.0`. [Release notes](docs/releases/v0.7.md).
+- **v0.8** — one door in, and two ways out: honest session exits and the report as a downloadable artifact (Markdown and PDF). Shipped 2026-08-04, tag `v0.8.0`. [Release notes](docs/releases/v0.8.md).
+- **v0.9** — the product learned some manners: first-sign-in navigation, room recovery from a denied microphone, and the session archive behaving like one. Shipped 2026-08-05, tag `v0.9.0`. [Release notes](docs/releases/v0.9.md).
+- **v0.10** — the judge speaks for itself: report rationale quality, a feedback door in the footer, and the room refusing doomed sessions instead of blaming the connection. Shipped 2026-08-05, tag `v0.10.0`. [Release notes](docs/releases/v0.10.md).
+- **v0.11** — the rubric proves itself: every content dimension carries verbatim JD evidence, enforced by a fourth eval suite in the release gate. Shipped 2026-08-05, tag `v0.11.0`. [Release notes](docs/releases/v0.11.md).
+- **v0.12** — the after-the-session product, and the session itself gets out of your way: per-answer coaching with study notes inside each session, a dashboard that draws trends as lines, structured feedback with an operator inbox, measurement provenance for the naturalness loop, a 0.6 s faster interviewer, and a goodbye that ends the session on its own. Shipped 2026-08-08, tag `v0.12.0`. [Release notes](docs/releases/v0.12.md).
 
 Both of those tags were cut on 2026-08-04, after the work was already in
 production: `v0.6.0` sits on `da254e3`, exactly the commit that deployed on
