@@ -2,6 +2,7 @@ import {
   overallNet,
   overallTrend,
 } from "@/components/home-dashboard";
+import TrendLine from "@/components/TrendLine";
 import { formatSigned, SCORE_MAX } from "@/components/progress-view";
 import {
   DIVIDER,
@@ -12,16 +13,25 @@ import {
 } from "@/lib/ui";
 import type { SessionProgressEntry } from "@/lib/worker";
 
-function spoken(points: ReturnType<typeof overallTrend>): string {
-  const first = points[0];
-  const latest = points[points.length - 1];
-  return `Overall score trend from ${first.score.toFixed(1)} out of ${SCORE_MAX} in session ${first.index} to ${latest.score.toFixed(1)} out of ${SCORE_MAX} in session ${latest.index}, a net change of ${formatSigned(overallNet(points))}.`;
+function spoken(
+  points: ReturnType<typeof overallTrend>,
+  totalSlots: number,
+): string {
+  const readings = points
+    .map(
+      (point) =>
+        `session ${point.index}, ${point.score.toFixed(1)} out of ${SCORE_MAX}`,
+    )
+    .join("; ");
+  return `Overall score trend: ${readings}; a net change of ${formatSigned(overallNet(points))}, of ${totalSlots} planned sessions.`;
 }
 
 export default function OverallTrend({
   entries,
+  totalSlots,
 }: {
   entries: SessionProgressEntry[];
+  totalSlots: number;
 }) {
   const points = overallTrend(entries);
   if (points.length === 0) {
@@ -31,28 +41,9 @@ export default function OverallTrend({
   const net = overallNet(points);
 
   return (
-    <div role="img" aria-label={spoken(points)} className={`border-b pb-5 ${DIVIDER}`}>
+    <div className={`border-b pb-5 ${DIVIDER}`}>
       <div className={`${LABEL} mb-2.5`}>Overall trend</div>
-      <div className="flex items-end justify-between gap-5">
-        <span className="flex items-end gap-1.5">
-          {points.map((point, position) => {
-            const pct = Math.min(Math.max(point.score / SCORE_MAX, 0), 1) * 100;
-            const latestPoint = position === points.length - 1;
-            return (
-              <span
-                key={point.index}
-                className="flex h-12 w-3 items-end overflow-hidden rounded-full bg-paper-sunk"
-                title={`Session ${point.index}: ${point.score.toFixed(1)}`}
-              >
-                <span
-                  aria-hidden="true"
-                  className={`w-full rounded-full ${latestPoint ? "bg-ink" : "bg-ink-muted"}`}
-                  style={{ height: `${pct}%` }}
-                />
-              </span>
-            );
-          })}
-        </span>
+      <div className="mb-3 flex items-baseline justify-between gap-5">
         <span className="flex items-baseline gap-3">
           <span className={SCORE_NUMBER}>
             {latest.score.toFixed(1)}
@@ -61,6 +52,12 @@ export default function OverallTrend({
           <span className={MUTED}>{formatSigned(net)}</span>
         </span>
       </div>
+      <TrendLine
+        points={points.map((point) => ({ slot: point.index, score: point.score }))}
+        totalSlots={totalSlots}
+        variant="hero"
+        ariaLabel={spoken(points, totalSlots)}
+      />
     </div>
   );
 }

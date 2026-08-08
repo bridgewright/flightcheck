@@ -251,7 +251,11 @@ export default async function ProgressPage({
         </div>
       ) : (
         <div className="mt-8 flex flex-col gap-8">
-          <ProgressDimensionTable trends={dimensionTrends(entries)} meta={meta} />
+          <ProgressDimensionTable
+            trends={dimensionTrends(entries)}
+            meta={meta}
+            totalSlots={active.total_sessions}
+          />
           <ProgressDeliveryTable scored={scored} />
           <ProgressFocus
             entries={entries}

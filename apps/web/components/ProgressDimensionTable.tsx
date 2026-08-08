@@ -4,41 +4,22 @@ import {
   humanizeDimensionKey,
   SCORE_MAX,
 } from "@/components/progress-view";
-import type { DimensionTrend, TrendPoint } from "@/lib/progress";
+import TrendLine from "@/components/TrendLine";
+import type { DimensionTrend } from "@/lib/progress";
 import { EMPTY_RULE, LABEL, SCORE_NUMBER, SUB_HEADING, TABLE_ROW } from "@/lib/ui";
-
-// One bar per scored session: height is the score normalized to the 1..5
-// rubric scale, drawn with plain CSS on a fixed track. The number itself is
-// in the title and the sr-only text — the bars are the shape, not the data.
-function BarDot({ point }: { point: TrendPoint }) {
-  const pct = Math.min(Math.max(point.score / SCORE_MAX, 0), 1) * 100;
-  return (
-    <span
-      className="flex h-8 w-2 items-end overflow-hidden rounded-full bg-paper-sunk"
-      title={`Session ${point.index}: ${point.score.toFixed(1)}`}
-    >
-      <span
-        aria-hidden="true"
-        className="w-full rounded-full bg-ink-muted"
-        style={{ height: `${pct}%` }}
-      />
-      <span className="sr-only">
-        Session {point.index}: {point.score.toFixed(1)}.
-      </span>
-    </span>
-  );
-}
 
 const CHANNEL_TAGS = { content: "Content", delivery: "Delivery" } as const;
 
-/** Per-dimension score trend: name, channel, one bar per scored session,
- * the latest score, and net movement since the first scored session. */
+/** Per-dimension score trend: name, channel, sparkline, latest score, and net
+ * movement since the first scored session. */
 export default function ProgressDimensionTable({
   trends,
   meta,
+  totalSlots,
 }: {
   trends: DimensionTrend[];
   meta: Record<string, DimensionMeta>;
+  totalSlots: number;
 }) {
   if (trends.length === 0) {
     return null;
@@ -86,9 +67,20 @@ export default function ProgressDimensionTable({
                     ) : null}
                   </th>
                   <td className="py-2.5 pr-3">
-                    <span className="flex items-end gap-1">
+                    <TrendLine
+                      points={trend.points.map((point) => ({
+                        slot: point.index,
+                        score: point.score,
+                      }))}
+                      totalSlots={totalSlots}
+                      variant="spark"
+                      ariaLabel={`${dimension?.name ?? humanizeDimensionKey(trend.dimension_key)} score trend across ${totalSlots} planned sessions.`}
+                    />
+                    <span className="sr-only">
                       {trend.points.map((point) => (
-                        <BarDot key={point.session_id} point={point} />
+                        <span key={point.session_id}>
+                          Session {point.index}: {point.score.toFixed(1)}. {" "}
+                        </span>
                       ))}
                     </span>
                   </td>

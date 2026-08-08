@@ -321,10 +321,11 @@ export default async function HomePage({
       {progress !== null && trendSectionVisible(progress.sessions) ? (
         <section className="mt-8 flex flex-col gap-5">
           <h2 className={LABEL}>Progress so far</h2>
-          <OverallTrend entries={progress.sessions} />
+          <OverallTrend entries={progress.sessions} totalSlots={total} />
           <ProgressDimensionTable
             trends={dimensionTrends(progress.sessions)}
             meta={dimensionMeta(outcome.rubric)}
+            totalSlots={total}
           />
           {(() => {
             // On the glance dashboard the recurring-focus block earns its
