@@ -455,7 +455,10 @@ describe("round finding: one tick, one thing to say", () => {
   it("a scaffold and a debounced response never fire on the same tick", () => {
     const run = runScenario(
       [commitTick(), ...quietTicks(0.6, 0.05)],
-      { ...INITIAL_SILENCE_STATE, quietS: 7.4 },
+      // 7.16 + the commit tick's 0.25 + twelve 0.05 ticks = 8.01: the
+      // stage crosses 8 s on exactly the tick the 0.6 s debounce hits
+      // zero, with float headroom (7.15 lands at 7.999... and misses).
+      { ...INITIAL_SILENCE_STATE, quietS: 7.16 },
     );
     const both = run.steps.filter(
       (s) => s.effects.stage !== null && s.effects.triggerResponse,

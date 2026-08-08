@@ -57,6 +57,7 @@ import {
 } from "../lib/session-media";
 import {
   CONNECTION_LOST_MESSAGE,
+  CLOSING_MARKER,
   ECHO_OUTLIVE_MS,
   ECHO_START_WINDOW_MS,
   HARD_CUT_S,
@@ -659,7 +660,12 @@ export default function SessionRoom({
       dc.addEventListener("message", (ev) => {
         messageArrivedRef.current = true;
         const finishedTranscript = finishedTranscriptForEvent(String(ev.data));
-        if (finishedTranscript !== null) {
+        if (
+          finishedTranscript !== null &&
+          !finishedTranscriptRef.current
+            ?.toLowerCase()
+            .includes(CLOSING_MARKER)
+        ) {
           finishedTranscriptRef.current = finishedTranscript;
         }
         const speech = speechStateForEvent(String(ev.data));

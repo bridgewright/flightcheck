@@ -554,7 +554,10 @@ const soup: Generator = (rng, length) => {
     commitFlagNoise,
     overlapPatterns,
     dtSpikes,
-    closingPhases,
+    // closingPhases is deliberately absent: closingSeen is terminal, and
+    // folding it into the soup let one early latch skip the invariants
+    // for every remaining tick (measured: 85% of a 5,000-tick run).
+    // The standalone closingPhases rounds cover the closing state.
   ];
   while (parts.length < length) {
     const maker = pick(rng, makers);

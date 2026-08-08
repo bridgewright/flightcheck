@@ -100,6 +100,14 @@ describe("closing auto-end trail", () => {
   it.each([["closing-detected"], ["auto-end"]])("records %s", (tag) => {
     expect(sessionRoom).toContain(`"${tag}"`);
   });
+
+  it("never overwrites a marker-bearing transcript within a tick", () => {
+    // Two transcript-done events can land inside one 250 ms tick; the
+    // second must not clobber a closing marker the first carried.
+    expect(sessionRoom).toMatch(
+      /finishedTranscript !== null &&\s*\n\s*!finishedTranscriptRef\.current\s*\n?\s*\?\.toLowerCase\(\)\s*\n?\s*\.includes\(CLOSING_MARKER\)/,
+    );
+  });
 });
 
 describe("the disclosure is honest chrome, silent until opened", () => {
