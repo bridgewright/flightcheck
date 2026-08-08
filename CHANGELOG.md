@@ -2,6 +2,11 @@
 
 ## [Unreleased]
 
+> Disclosure, so rule ⑦ stays checkable: every "customer", "field use",
+> and "real session" in this cycle's notes is the OPERATOR running the
+> product as a customer. flightcheck still has no external users; these
+> are real sessions, not real usage.
+
 ### Added
 
 - **Every answer gets a coach.** After a session is scored, each of the
@@ -12,17 +17,21 @@
   and every quoted anchor stay verbatim, the same contract the report
   already enforces, and an anchor that cannot be located drops its
   suggestion rather than shipping a misquote. Each suggestion can be
-  rated up or down and bookmarked, and those marks are stored — they
-  are the raw material for judging the coaching itself later. Coaching
+  bookmarked, and a flag control reports what went wrong — misheard
+  speech, inappropriate content, an inaccurate paraphrase, a missing
+  explanation, or the reader's own words — and those marks are stored;
+  they are the raw material for judging the coaching itself later. Coaching
   is generated right after scoring, never delays or fails a report,
   and is not produced for sessions the eligibility gate refused to
-  score. The session page grew sub-tabs to hold it, and a session now
-  opens on the conversation itself: Transcript is the first tab, the
-  verdict and report keep their own tab, and the transcript reads as
-  chat bubbles with each answer's check sitting under it — opening a
-  check is a card that leads with the better answer, then the why,
-  then what was actually said. Very short answers are left alone.
-  Requires migration 010.
+  score. The session page grew sub-tabs to hold it — Report,
+  Transcript, Study — and the transcript reads as chat bubbles with
+  each answer's check sitting under it: opening a check expands an
+  in-flow card that leads with the better answer, then the why, then
+  what was actually said, with unmistakably pressed controls. Very
+  short answers are left alone. (Two in-development shapes — thumbs
+  ratings with a popup card, then a transcript-first tab order — were
+  superseded by the operator's own field passes before any release
+  carried them; DECISIONS 057.) Requires migration 010.
 
 - **Study notes live inside each session.** Bookmarking a suggestion
   builds the session's study notes: every saved item becomes an
@@ -46,9 +55,9 @@
   draws as a line chart: a tall overall line with all six package
   sessions on the axis (scored ones plotted, future ones visibly
   waiting) and per-dimension sparklines, the data line in ink over a
-  pastel wash, because the first shape — fixed-width bars — collapsed
-  into an unreadable smear the moment the column narrowed
-  (DECISIONS 054).
+  translucent pastel wash the grid reads through, because the first
+  shape — fixed-width bars — collapsed into an unreadable smear the
+  moment the column narrowed (DECISIONS 054).
 
 - **Feedback becomes a form that remembers.** The footer's Feedback
   door stops being a mailto: a five-star rating in half-star steps
@@ -102,22 +111,6 @@
 
 ### Changed
 
-- **Coaching opens in place, and distrust becomes data.** The check
-  under each answer now expands an in-flow card (better answer, why,
-  what you said — same order) instead of a popup, so the reading
-  position never jumps. The thumbs pair on suggestions is gone: each
-  suggestion carries a bookmark and a flag — a reader who distrusts a
-  suggestion says why in one tap (misheard speech, inappropriate
-  content, inaccurate paraphrase, missing explanation, or their own
-  words), and those structured reports are stored, which is exactly
-  the shape the coaching-quality evaluation needs. Pressed controls
-  now look unmistakably pressed. Stored thumb reactions are preserved;
-  only the buttons retired. DECISIONS 057.
-
-- **The dashboard's pastel wash turned translucent** so the grid lines
-  read through it, and the session sub-tabs lead with Report again —
-  the sessions list's own "Report" door now lands on what it says.
-
 - **The interviewer answers about 0.6 seconds sooner.** The wait after
   an answer ends was a stack: a 0.9 s speech-detection tail, then a
   1.2 s client-side debounce held open in case the candidate was only
@@ -145,6 +138,20 @@
   minutes to seconds. DECISIONS 056.
 
 ### Fixed
+
+- **A long answer is no longer a dead connection.** Live sessions were
+  dying with "Connection lost" about twenty seconds into the first
+  substantial answer: the connection guard counted candidate-audible
+  silence as evidence of a dead transport, but server-side speech
+  detection only speaks at speech boundaries, so a candidate mid-answer
+  legitimately produces no traffic. Candidate speech now expects
+  nothing; a genuinely dead transport is still caught four independent
+  ways. In the same incident: the microphone permission now survives
+  client-side navigation into the room (the per-path grant never
+  governed the document under SPA navigation, so first entries read
+  "blocked" until a refresh), and the room's Diagnostics disclosure
+  opens scrolled to its newest entries — its scroll box hiding the
+  trail's tail cost the diagnosis a full round. DECISIONS 052.
 
 - **The session replay actually plays.** The recording strip under the
   transcript had never worked in production: the security policy's

@@ -2007,7 +2007,10 @@ window.
 
 ## 053 — Study lives inside the session; the package guide retires (2026-08-08)
 
-**Context.** First real two-session use of the v0.12 surfaces. The
+**Context.** First two-session use of the v0.12 surfaces — the
+operator in the customer seat, with session two a SYNTHETIC insert the
+operator requested so the two-session surfaces would light up (marked
+never-to-count for usage metrics; amended same day for precision). The
 customer's verdict on the Study tab reversed 050's shape: study
 material belongs inside each session, a session should open on the
 conversation itself rather than a verdict, and nothing a customer
@@ -2083,7 +2086,8 @@ accents beyond the ivory/brown core.
 
 ## 055 — The answer-end gap loses 0.6 seconds, at the debounce, not the VAD (2026-08-08)
 
-**Context.** Second real session: the customer reports the interviewer
+**Context.** Second live session (the operator in the customer seat,
+as throughout this cycle): the customer reports the interviewer
 waits noticeably too long after an answer ends. The wait decomposes as
 ~900 ms server-VAD tail + up to 250 ms tick quantization + 1,200 ms
 client response debounce + up to 250 ms quantization, roughly 2.1 to
@@ -2146,8 +2150,11 @@ the interviewer's instructions; no plan cursor reaches the browser.
 - **Rejected — an end_interview function/tool call:** the more
   machine-honest signal, but it adds a tool surface to the minted
   session and a new event family to the room for a case the sentinel
-  covers with benign failure. Revisit if field trails show missed
-  closings.
+  covers with benign failure.
+- **Revisit when:** field trails show missed closings (the model
+  paraphrased past the sentinel — then the tool call earns its
+  surface), or a session ends early against the customer's intent
+  (then the arming window or the linger was wrong).
 - **Rejected — shipping the plan cursor to the browser:** the plan is
   deliberately stripped from client responses (question bank
   confidentiality); a closing bit alone does not justify reopening
@@ -2198,3 +2205,9 @@ us: WHAT went wrong with a suggestion.
   "Report" affordance, and landing it on Transcript contradicted the
   label (revisits the transcript-first half of 053 by the same voice
   that asked for it).
+- **Revisit when:** flag volume is large enough to rank failure modes
+  (then the enumerated reasons get re-derived from the data instead of
+  from this guess), or the inline card proves too tall on small
+  screens (then the popup question reopens with measurements), or a
+  second interaction reversal lands on this surface inside a release
+  (then stop iterating live and run a proper design pass).

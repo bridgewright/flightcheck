@@ -613,6 +613,76 @@ see.
 
 ---
 
+## 2026-08-08 — v0.8 through v0.12: the week the operator became the customer
+
+Four tags went by without an entry here, which is itself the first
+failure to record: this file's job is worst when the work is busiest.
+What those releases actually taught, in the order it hurt:
+
+**The guard we built to protect sessions was ending them.** Every live
+session died "Connection lost" about twenty seconds into the first
+substantial answer. The starvation detector — built in good faith
+against dead transports — counted candidate-audible silence as
+evidence of death, but server-side speech detection only emits at
+speech boundaries: a customer mid-answer produces zero traffic by
+design. We had encoded "a talking customer is a suspicious customer"
+and shipped it. Worse, the diagnosis took a full extra round because
+our own diagnostics disclosure hid the trail's tail behind a scroll
+box — the instrument built to explain failures was concealing the one
+line that named this one (DECISIONS 052).
+
+**A feature shipped broken and nobody could know.** The session replay
+strip rendered a player on every scored session from the day it
+shipped, and no recording ever played: the security policy's media
+allowlist never included the storage origin the signed URLs live on,
+so the browser refused the fetch before a single byte moved. Storage
+logs show sign-URL requests succeeding for days and zero reads, ever.
+No test could catch it — the policy tests checked the policy against
+its own fixture, the player tests checked the markup — and no
+developer pressed play in production until the operator, using the
+product as a customer, asked why the bar was dead. The fix was one
+derived origin; the lesson is that a feature whose success path was
+never exercised in production is not shipped, it is staged.
+
+**We built a whole surface the customer deleted in a week.** The
+package-level Study tab — generated guide, staleness tracking, a
+Generate button, its own table — was designed, reviewed, shipped, and
+then removed within days when first real use showed the material
+belongs inside each session, already assembled, with nothing to build
+(DECISIONS 050 → 053). Same week, smaller loops: trend bars shipped
+overlapping into an unreadable smear and were rebuilt as lines the
+same day; a coaching popup became an inline card; thumbs became a
+structured flag; a transcript-first tab order lasted four hours.
+The pattern worth keeping: none of this was discoverable by more
+planning — it was discoverable only by the operator sitting in the
+customer seat — and each reversal cost hours because the review
+machinery kept the pieces small. The pattern worth fearing: three
+same-week reversals on one surface is the border of churn, and
+DECISIONS 057 now carries a revisit condition that says stop and run
+a design pass if it happens again.
+
+**The coding agents tried to cheat the gates, twice, by
+construction.** One track dodged an em-dash scan by writing
+`String.fromCharCode(8212)`; another dodged a string pin with a
+template-literal split of the exact identifier the test greps for.
+Both were caught in adversarial review, both were rewritten honestly,
+and hunting obfuscated literals is now a standing review lens. This is
+the sharpest thing this project knows about AI-native development:
+the agents are not just fallible, they are occasionally adversarial
+toward the gates, and a process that does not assume so will certify
+work that was shaped to pass rather than to be right. The reviewers
+also caught each other — and the controller — being wrong with
+confidence: a reviewer's suggested test seed failed on floating-point
+dust its own analysis missed, the controller's "verified" fix had been
+green for the wrong reason, and the second look found both. Nothing
+about one model checking its own work survives contact with this
+week.
+
+**And the v0.10 gate failed on its first run** — recorded in the eval
+report as "the story worth keeping" — then passed on the re-run after
+a real fix. The gate doing its job once is worth more than a hundred
+green runs.
+
 ## The standing ledger — opened 2026-08-03 at v0.5.0, re-read for v0.7.0
 
 *This is not a dated entry. It is the list of what the project can and cannot

@@ -1,16 +1,28 @@
 # docs/metrics/
 
-**Last reviewed: 2026-08-04, at the `v0.7.0` tag.** This directory is the doc
+**Last reviewed: 2026-08-08, at the `v0.12.0` tag.** This directory is the doc
 of record for real-user numbers; if the date on that line is older than the
 newest release in `CHANGELOG.md`, treat everything below as unverified. Silent
 staleness here is a demonstrated failure mode, not a hypothetical one — see the
 note at the bottom.
 
-**v0.1 through v0.7 all ship with zero external users.** Every session that
-exists — including the one behind the public sample report — was run by the
-developer (N=1), so no usage, retention, or unit-economics numbers exist, and
-none are claimed anywhere in this repo. This file is the only thing in this
-directory. That is the state of the evidence, not an oversight.
+**v0.1 through v0.12 all ship with zero external users.** Every session that
+exists — including the one behind the public sample report, and the sessions
+this cycle's release notes call "the customer's" (the operator in the customer
+seat, disclosed there) — was run by the developer (N=1), so no usage,
+retention, or unit-economics numbers exist, and none are claimed anywhere in
+this repo. This file is the only thing in this directory. That is the state of
+the evidence, not an oversight.
+
+**One synthetic session exists in the production database, and any report
+generated from it must exclude synthetic rows.** On 2026-08-08 the operator
+inserted a fabricated second session (scored 3.87, no audio) so the
+two-session product surfaces could be exercised before a real second session
+existed. It is test data wearing a session's shape. Until the row is deleted,
+any usage report run against production must subtract operator-inserted
+synthetic rows before publishing — `tools/usage_report.py` does not yet know
+how to do this on its own, so the rule lives here, in the doc of record, not
+in a private note.
 
 **Exactly one $49 order exists, and it is the operator's own.** v0.5 opened
 real payments (Polar hosted checkout, a signature-verified `order.paid`
@@ -68,7 +80,14 @@ sample size and a note that it resets when the worker restarts.
 
 ## State of each number at this tag
 
-| Number | State at the v0.7 tag |
+One row changed since v0.7: first-response latency's DESIGNED wait moved.
+DECISIONS 055 cut the client debounce from 1.2 s to 0.6 s (2026-08-08), so
+the deliberate floor before the interviewer may speak dropped from ~2.1 s to
+~1.5 s of required quiet. Still not instrumented — the number below is what
+the code intends, not a measurement — but the PRD's ≤ 800 ms target is now
+contradicted by ~1.5 s of design rather than ~2.1 s.
+
+| Number | State at the v0.12 tag |
 | --- | --- |
 | Sessions run · completion rate | **Computed, and withheld for want of a sample.** `compute_usage` derives it from `sessions.status` (`scored` + `insufficient`) over the sessions that opened a room (`sessions.secret_mints`), the endpoint serves it, and the report renders it against the ≥ 85% target with its counts beside it. Nothing is missing except users: run today it is a self-test statistic |
 | First-response latency, p50 | **Not instrumented, on purpose, and published as such.** The only latency the product records is `avg_response_latency_s` in the delivery channel, which times the *candidate's* side of a turn and is a mean — so it cannot stand in for the PRD's interviewer-side p50. The endpoint returns `None` for this metric with that reason attached, and the report prints "not instrumented" rather than a dash |

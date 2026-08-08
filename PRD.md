@@ -41,7 +41,7 @@ One JD = one package: **$49 · 30 days · 6 sessions × 20 min · per-session re
 | --- | --- | --- | --- |
 | Judge–human scoring agreement (Cohen's κ) | ≥ 0.8 | v1.0 | not built — no suite computes κ. Interim proxy only: on the three golden triplets, the human blind rankings (`evals/suites/rubric_discrimination/manual/`) and the judge each match the key 3/3 — ordering agreement at N=3, not κ |
 | "This feedback was actually useful" (post-session) | ≥ 80% | v1.0 | not built — nothing in the product asks the question: no prompt, no route, no column. F-13 instrumented session completion, package burn-through and scoring latency; this was not among them, and no release currently carries it |
-| First-response latency, user stops → interviewer speaks (p50) | ≤ 800 ms | v0.2 | not built — nothing times the interviewer side, in the web app or the worker. The scorer's `avg_response_latency_s` is the opposite direction (interviewer end → candidate start) and a mean, so it cannot stand in; F-13 publishes this figure as `None` with that reason attached rather than a substitute |
+| First-response latency, user stops → interviewer speaks (p50) | ≤ 800 ms | v0.2 | unmeasured in production. Since 2026-08-07 the worker DOES time this direction on evals recordings (`morgan_response_latencies`: candidate-end → interviewer-start, mean and p90, stamped into every Morgan metrics document) — but it runs over eval clips, not production sessions, and reports p90, not the p50 this row names. The scorer's `avg_response_latency_s` remains the opposite direction and cannot stand in; F-13 publishes this figure as `None` with that reason attached |
 | Session completion rate (no mid-session abandonment) | ≥ 85% | v0.2 | session status (`scored` + `insufficient`) against sessions that opened a room (`secret_mints`) — computed by F-13: `GET /api/metrics/usage`, rendered by `services/scorer/tools/usage_report.py`. Unreported for want of external users, not for want of an instrument |
 | Package utilization (sessions actually used, of 6) | ≥ 4 | v1.0 | package burn-through, off the same F-13 endpoint and report. Unreported for the same reason: every package that exists is the operator's |
 | Paid packages, external customer only (operator verification orders excluded) | ≥ 1 | 2026-08-23 | Polar orders (the `orders` table; receipts in settings) placed by an account other than the operator's |
@@ -66,11 +66,12 @@ Changes to targets are recorded here with date and reason — never silently.
 > - **First-response latency ≤ 800 ms (p50) — unmeasured, and now known to
 >   contradict a later decision.** Nothing instruments the interviewer side
 >   of a turn. DECISIONS 009 then made the wait deliberate: a 900 ms
->   server-VAD tail plus a 1.2 s client debounce (`RESPONSE_DEBOUNCE_S`)
->   before the interviewer may answer, so at least ~2.1 s of quiet passes
->   before the request to speak is even sent — chosen from the measured
->   bake-off precisely so a thinking pause is not cut off. 800 ms is
->   unreachable as specified. The number stays as written until there is an
+>   server-VAD tail plus a client debounce (`RESPONSE_DEBOUNCE_S`)
+>   before the interviewer may answer — 1.2 s until 2026-08-08, cut to
+>   0.6 s by DECISIONS 055 on the operator's field report, so ~1.5 s of
+>   quiet (down from ~2.1 s) passes before the request to speak is even
+>   sent — chosen so a thinking pause is not cut off. 800 ms remains
+>   unreachable as specified even after the cut. The number stays as written until there is an
 >   instrument to replace it from data; instrument and replacement both
 >   belong to F-13 in v0.6.
 > - **Session completion rate ≥ 85% — unmeasured for want of users.** The
@@ -285,7 +286,12 @@ Changes to targets are recorded here with date and reason — never silently.
   channel:** the footer's Feedback door stops being a mailto (v0.10)
   and becomes a form — a five-star rating in half-star steps plus free
   text, stored, with an operator-only inbox to read and manage what
-  arrives. DECISIONS 048–051.
+  arrives. DECISIONS 048–051. (Also in this release, governed by its
+  DECISIONS entries rather than product scope: the Morgan naturalness
+  measurement stack — a version-stamped provenance block in every
+  metrics document, a synthetic golden clip pinning segmentation, and
+  cross-language gates on the interview timing constants. Eval
+  infrastructure, DECISIONS 047 and 051.)
 
 - **v0.13 (recorded 2026-08-08, pre-code):** first real use of v0.12
   reshapes it, both changes straight from field feedback. **Study folds
