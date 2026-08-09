@@ -2,6 +2,7 @@ import { cookies } from "next/headers";
 import Link from "next/link";
 
 import JourneyStrip from "@/components/JourneyStrip";
+import HomeTour from "@/components/HomeTour";
 import { packageIdentityDecision } from "@/components/package-identity";
 import PackageIdentity from "@/components/PackageIdentity";
 import PollRefresh from "@/components/PollRefresh";
@@ -86,6 +87,7 @@ function Unreachable({ viewer }: { viewer: Viewer }) {
 function NoPackages({ viewer }: { viewer: Viewer }) {
   return (
     <Shell viewer={viewer} path="/home" packages={[]}>
+      <HomeTour />
       <div className="flex flex-col items-center gap-5 py-14 text-center">
         <h1 className={`${PAGE_HEADING} text-balance`}>
           {greetingName(viewer.email)}
@@ -250,6 +252,7 @@ export default async function HomePage({
 
   return (
     <Shell viewer={viewer} path="/home" packages={packages} activePackageId={active.id}>
+      <HomeTour />
       {/* While a session is being scored the stage line advances on its own. */}
       {stageLine !== null ? <PollRefresh intervalMs={5000} /> : null}
       <h1 className={`${PAGE_HEADING} text-center text-balance`}>
@@ -288,38 +291,40 @@ export default async function HomePage({
         <JourneyStrip legs={legs} />
       </div>
 
-      <SessionTicket
-        sessionNumber={next}
-        totalSessions={total}
-        verdict={outcome.line}
-        stageLine={stageLine}
-        trial={unpaid}
-        action={
-          next === null ? (
-            unpaid ? (
-              // The unlock moment: same package, same JD — the payment only
-              // lifts the session quota.
-              <Link href={checkoutHref(active.id)} className={PRIMARY_BUTTON}>
-                {unlockCtaLabel()}
-              </Link>
+      <div data-tour="primary-action">
+        <SessionTicket
+          sessionNumber={next}
+          totalSessions={total}
+          verdict={outcome.line}
+          stageLine={stageLine}
+          trial={unpaid}
+          action={
+            next === null ? (
+              unpaid ? (
+                // The unlock moment: same package, same JD — the payment only
+                // lifts the session quota.
+                <Link href={checkoutHref(active.id)} className={PRIMARY_BUTTON}>
+                  {unlockCtaLabel()}
+                </Link>
+              ) : (
+                <Link href="/pricing" className={PRIMARY_BUTTON}>
+                  See pricing
+                </Link>
+              )
+            ) : dropped ? (
+              <ReclaimSessionButton sessionId={dropped.id} packageId={active.id} />
             ) : (
-              <Link href="/pricing" className={PRIMARY_BUTTON}>
-                See pricing
-              </Link>
+              <StartSessionButton
+                packageId={active.id}
+                label={`Start session ${next}`}
+              />
             )
-          ) : dropped ? (
-            <ReclaimSessionButton sessionId={dropped.id} packageId={active.id} />
-          ) : (
-            <StartSessionButton
-              packageId={active.id}
-              label={`Start session ${next}`}
-            />
-          )
-        }
-      />
+          }
+        />
+      </div>
 
       {progress !== null && trendSectionVisible(progress.sessions) ? (
-        <section className="mt-8 flex flex-col gap-5">
+        <section data-tour="progress" className="mt-8 flex flex-col gap-5">
           <h2 className={LABEL}>Progress so far</h2>
           <OverallTrend entries={progress.sessions} totalSlots={total} />
           <ProgressDimensionTable

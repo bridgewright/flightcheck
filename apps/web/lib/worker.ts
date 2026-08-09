@@ -161,6 +161,19 @@ export async function createPackage(
   return workerJson("POST /api/packages", response);
 }
 
+export async function createQuickPackage(
+  userId: string,
+  company: string,
+  role: string,
+): Promise<{ package_id: string; access_token: string }> {
+  const path = "/packages/quick";
+  const response = await workerFetch(path, {
+    method: "POST",
+    body: JSON.stringify({ user_id: userId, company, role }),
+  });
+  return workerJson(`POST ${path}`, response);
+}
+
 export async function getPackageByToken(token: string): Promise<PackageRow> {
   const path = `/api/packages/by-token/${encodeURIComponent(token)}`;
   return workerJson(`GET ${path}`, await workerFetch(path));

@@ -111,6 +111,9 @@ export function deriveSessionDetailState(session: {
       return "failed";
     case "insufficient":
       return "insufficient";
+    // Quick interviews intentionally produce no transcript or score.
+    case "quick_done":
+      return "insufficient";
     // An abandoned attempt ended before there was anything to score and
     // kept its slot — the insufficient framing exactly, and the state
     // whose CTA offers the resume door the worker will actually honor.

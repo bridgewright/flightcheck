@@ -109,6 +109,7 @@ class TestTheConverterKeepsEveryColumn:
             "jd_text": "jd", "jd_url": "https://example.com/jobs/1",
             "candidate_profile": None, "rubric": None,
             "user_id": "user-1", "total_sessions": 6, "is_trial": False,
+            "kind": "standard", "quick_company": None, "quick_role": None,
             "paid_at": "2026-08-01T00:00:00+00:00",
             "comped_at": "2026-08-04T00:00:00+00:00",
             "expires_at": "2026-08-31T00:00:00+00:00",

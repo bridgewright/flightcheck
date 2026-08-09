@@ -142,6 +142,9 @@ export interface PackageRow {
   jd_text: string;
   candidate_profile: CandidateProfile | null;
   rubric: Rubric | null;
+  kind?: "standard" | "quick";
+  quick_company?: string | null;
+  quick_role?: string | null;
   // v0.5 payments fields (migration 005). Optional because rows serialized
   // by a pre-v0.5 worker omit them; render helpers must treat absence like
   // the defaults (not trial, unpaid). is_trial marks the first package per
@@ -178,6 +181,7 @@ export type SessionStatus =
   | "scored"
   | "failed"
   | "insufficient"
+  | "quick_done"
   // Written by the worker's heartbeat reclaim (v0.8): the room stopped
   // reporting and the customer took the slot back. Retriable — the next
   // resume re-arms the row — and emitted by the progress feed, so every
@@ -197,6 +201,7 @@ export interface SessionRow {
   session_plan: SessionPlan | null;
   audio_path: string | null;
   report: SessionReport | null;
+  package_kind?: "standard" | "quick";
   // Rows created before the column existed omit it; render without a date
   // rather than inventing one.
   created_at?: string | null;

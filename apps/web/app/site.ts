@@ -75,6 +75,7 @@ export const DISALLOWED_PREFIXES = [
   "/p/",
   "/packages",
   "/progress",
+  "/quick/report",
   "/rubric",
   "/sessions",
   "/settings",

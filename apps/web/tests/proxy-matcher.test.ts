@@ -30,6 +30,7 @@ describe("proxy matcher", () => {
     expect(proxyConfig.matcher).toEqual([
       "/feedback",
       "/home/:path*",
+      "/quick/report/:path*",
       "/p/:path*",
       "/sessions/:path*",
       "/progress/:path*",

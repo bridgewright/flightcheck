@@ -190,6 +190,7 @@ function SectionTabs({ path }: { path: string | undefined }) {
           <Link
             key={tab.href}
             href={tab.href}
+            data-tour={tab.tour}
             aria-current={current ? "page" : undefined}
             className={current ? TAB_ACTIVE : TAB}
           >

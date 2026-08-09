@@ -211,14 +211,15 @@ export const ACTIVE_PACKAGE_COOKIE = "fc_pkg";
 export interface NavTab {
   href: "/home" | "/sessions" | "/progress" | "/rubric";
   label: string;
+  tour: string;
 }
 
 /** The signed-in sections, in display order. */
 export const NAV_TABS: readonly NavTab[] = [
-  { href: "/home", label: "Home" },
-  { href: "/sessions", label: "Sessions" },
-  { href: "/progress", label: "Progress" },
-  { href: "/rubric", label: "Role & Rubric" },
+  { href: "/home", label: "Home", tour: "nav-home" },
+  { href: "/sessions", label: "Sessions", tour: "nav-sessions" },
+  { href: "/progress", label: "Progress", tour: "nav-progress" },
+  { href: "/rubric", label: "Role & Rubric", tour: "nav-rubric" },
 ];
 
 /**

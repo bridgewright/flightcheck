@@ -149,6 +149,7 @@ describe("the AI-crawler policy in robots.txt", () => {
       const disallow = [rule.disallow ?? []].flat();
       expect(disallow).toEqual(DISALLOWED_PREFIXES);
       expect(disallow).toContain("/p/");
+      expect(disallow).toContain("/quick/report");
     }
   });
 
