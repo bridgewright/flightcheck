@@ -324,15 +324,35 @@ def _quick_phrases(company: str | None, role: str | None) -> tuple[str, str]:
     at this company" the moment the pair is missing, and the interviewer
     says that out loud.
 
+    The words the template supplies are stripped off a typed role before it
+    is wrapped, for the same reason: a customer copying a title out of a
+    posting types "Staff AI Engineer role", or "the Staff AI Engineer role",
+    as often as the bare title -- and the wrapper turned those into "the the
+    Staff AI Engineer role role at ACME Labs".
+
     Both values are visitor-typed and land verbatim in a system prompt, so
     they go through the same inline() flattening the candidate profile uses:
     a newline here would otherwise close the question and open a fresh
     instruction line inside the question list.
     """
     company_phrase = inline(company) or "this company"
-    flat_role = inline(role)
+    flat_role = _unwrapped_role(inline(role))
     role_phrase = f"the {flat_role} role" if flat_role else "this role"
     return company_phrase, role_phrase
+
+
+def _unwrapped_role(flat_role: str) -> str:
+    """A typed role with the template's own "the ..." and "... role" removed.
+
+    Case is the customer's, not ours: only the words the sentence is about
+    to supply are taken off, and what is left is spoken exactly as typed.
+    """
+    lowered = flat_role.lower()
+    if lowered.startswith("the "):
+        flat_role, lowered = flat_role[4:], lowered[4:]
+    if lowered.endswith(" role"):
+        flat_role = flat_role[:-len(" role")]
+    return flat_role.strip()
 
 
 def plan_quick_session(

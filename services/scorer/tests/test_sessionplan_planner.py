@@ -450,6 +450,30 @@ def test_quick_instructions_degrade_without_company_or_role():
     assert "this role role" not in text
 
 
+def test_a_role_typed_with_its_own_the_and_role_is_not_said_twice():
+    # The template wraps the typed role as "the ... role", which is right
+    # for "Staff AI Engineer" and a stutter for the two ways a customer
+    # copies a title out of a posting: the interviewer said "the the Staff
+    # AI Engineer role role at ACME Labs" out loud. Same F-85 lesson as the
+    # degraded sentences -- read the output as speech, not as a template.
+    for typed, spoken in [
+        ("Staff AI Engineer", "the Staff AI Engineer role"),
+        ("Staff AI Engineer role", "the Staff AI Engineer role"),
+        ("the Staff AI Engineer role", "the Staff AI Engineer role"),
+        # The title keeps the customer's capitals; the two words the
+        # sentence supplies are spoken in the sentence's own case.
+        ("The Staff AI Engineer Role", "the Staff AI Engineer role"),
+    ]:
+        plan = plan_quick_session("ACME Labs", typed)
+        assert plan.question_sequence[0].question == (
+            f"What interests you about {spoken} at ACME Labs?"
+        ), typed
+        text = build_interviewer_instructions(
+            plan, None, _make_profile(), company="ACME Labs", role=typed)
+        assert f"5-minute quick interview about {spoken} at ACME Labs" in text, typed
+        assert "role role" not in text, typed
+
+
 def test_quick_instructions_read_company_and_role_from_arguments():
     # They used to be recovered by regex from the first question's text, so a
     # company or role containing the template's own words re-split it and the
