@@ -5,14 +5,20 @@ import { redirect } from "next/navigation";
 
 import { getViewer } from "@/lib/viewer";
 import { createQuickPackage, createSession, WorkerError } from "@/lib/worker";
-
-const QUICK_STASH_COOKIE = "fc_quick_stash";
-const MAX_AGE_SECONDS = 10 * 60;
+import {
+  QUICK_FIELD_MAX_CHARS,
+  QUICK_STASH_COOKIE,
+  QUICK_STASH_MAX_AGE_S,
+  QUICK_STASH_PATH,
+  encodeStash,
+} from "./stash";
 
 function clean(value: FormDataEntryValue | null): string | null {
   if (typeof value !== "string") return null;
   const trimmed = value.trim();
-  return trimmed.length > 0 && trimmed.length <= 120 ? trimmed : null;
+  return trimmed.length > 0 && trimmed.length <= QUICK_FIELD_MAX_CHARS
+    ? trimmed
+    : null;
 }
 
 export async function quickStart(formData: FormData): Promise<never> {
@@ -23,12 +29,12 @@ export async function quickStart(formData: FormData): Promise<never> {
   const viewer = await getViewer();
   const store = await cookies();
   if (viewer === null) {
-    store.set(QUICK_STASH_COOKIE, encodeURIComponent(JSON.stringify({ company, role })), {
+    store.set(QUICK_STASH_COOKIE, encodeStash({ company, role }), {
       httpOnly: true,
       sameSite: "lax",
       secure: process.env.NODE_ENV === "production",
-      path: "/quick",
-      maxAge: MAX_AGE_SECONDS,
+      path: QUICK_STASH_PATH,
+      maxAge: QUICK_STASH_MAX_AGE_S,
     });
     redirect("/login?next=/quick");
   }
@@ -36,14 +42,19 @@ export async function quickStart(formData: FormData): Promise<never> {
   try {
     const pkg = await createQuickPackage(viewer.id, company, role);
     const session = await createSession(pkg.package_id);
-    store.delete(QUICK_STASH_COOKIE);
+    // Same path it was set with. A bare delete(name) serializes without one,
+    // which expires a cookie at the default path and leaves this one alone.
+    store.delete({ name: QUICK_STASH_COOKIE, path: QUICK_STASH_PATH });
     redirect(`/sessions/${encodeURIComponent(session.session_id)}/room`);
   } catch (error) {
+    // The worker's two honest refusals. `package-locked` is deliberately NOT
+    // among them: it guards sessions on an unpaid STANDARD package, and quick
+    // packages skip that check, so a quick start cannot raise it. Copy for it
+    // told the visitor to unlock or remove their package first — a rule the
+    // product does not have, an action it does not offer, and a dead end for
+    // the one visitor most worth converting.
     if (error instanceof WorkerError && error.code === "quick-cap") {
       redirect("/quick?error=quick-cap");
-    }
-    if (error instanceof WorkerError && error.code === "package-locked") {
-      redirect("/quick?error=package-locked");
     }
     if (error instanceof WorkerError && error.status === 429) {
       redirect("/quick?error=rate-limit");
