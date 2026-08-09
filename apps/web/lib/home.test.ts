@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { PACKAGE_SESSIONS, PRICE_DISPLAY, TRIAL_SESSIONS } from "@/lib/pricing";
+import { PACKAGE_SESSIONS, PRICE_DISPLAY } from "@/lib/pricing";
 
 import {
   NAV_TABS,
@@ -523,10 +523,10 @@ describe("exhaustedSessionsLine", () => {
 // --- v0.5 payments: effective quota, expiry, receipts --------------------
 
 describe("effectiveTotalSessions", () => {
-  it("caps an unpaid trial at the trial quota", () => {
+  it("locks an unpaid standard package", () => {
     expect(
       effectiveTotalSessions({ is_trial: true, paid_at: null, total_sessions: 6 }),
-    ).toBe(1);
+    ).toBe(0);
   });
 
   it("returns the full quota once the trial is paid", () => {
@@ -539,10 +539,10 @@ describe("effectiveTotalSessions", () => {
     ).toBe(6);
   });
 
-  it("caps ANY unpaid package at the trial quota — the worker grants 1 until payment regardless of is_trial", () => {
+  it("locks any unpaid standard package", () => {
     expect(
       effectiveTotalSessions({ is_trial: false, paid_at: null, total_sessions: 4 }),
-    ).toBe(1);
+    ).toBe(0);
   });
 
   it("returns the package's own quota for a paid non-trial", () => {
@@ -556,7 +556,7 @@ describe("effectiveTotalSessions", () => {
   });
 
   it("treats rows from a pre-v0.5 worker (fields absent) as unpaid — under-promising is the safe skew", () => {
-    expect(effectiveTotalSessions({ total_sessions: 6 })).toBe(1);
+    expect(effectiveTotalSessions({ total_sessions: 6 })).toBe(0);
   });
 });
 
@@ -571,22 +571,21 @@ describe("isUnpaid", () => {
 });
 
 describe("unlockCtaLabel", () => {
-  it("offers what is actually left, not the whole package", () => {
+  it("offers the full paid package", () => {
     // This assertion used to pin "Unlock all 6 sessions for $49", and the
     // label was false at the only moment it renders: the button appears once
     // the trial session is spent, so one of the six is already gone. It also
     // contradicted the sentence directly above it in the same card and the
     // landing's own description of the offer.
-    expect(unlockCtaLabel()).toBe("Unlock the remaining 5 sessions for $49");
+    expect(unlockCtaLabel()).toBe("Unlock 6 sessions for $49");
   });
 
   it("derives every number rather than carrying one", () => {
     // The count and the price both come from lib/pricing, so a price change
     // or a package resize cannot leave this button quoting the old offer.
     const label = unlockCtaLabel();
-    expect(label).toContain(String(PACKAGE_SESSIONS - TRIAL_SESSIONS));
+    expect(label).toContain(String(PACKAGE_SESSIONS));
     expect(label).toContain(PRICE_DISPLAY);
-    expect(label).not.toContain(String(PACKAGE_SESSIONS));
   });
 });
 

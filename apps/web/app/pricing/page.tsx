@@ -17,7 +17,7 @@ export const metadata: Metadata = publicMetadata({
   title: "Pricing: flightcheck",
   description:
     "One package per job description: six scored sessions, per-session " +
-    "reports, and a final verdict. The first session is a free trial.",
+    "reports, and a final verdict. A five-minute unscored quick interview is free.",
 });
 
 export default async function PricingPage() {

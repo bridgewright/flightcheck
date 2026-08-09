@@ -52,7 +52,6 @@ describe("legal pages", () => {
     for (const identifier of [
       "PRICE_DISPLAY",
       "PACKAGE_SESSIONS",
-      "TRIAL_SESSIONS",
       "EXPIRY_DAYS",
     ]) {
       expect(source).toContain(identifier);

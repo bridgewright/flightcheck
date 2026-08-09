@@ -1,6 +1,6 @@
 import { REFUND_WINDOW_DAYS } from "@/app/legal/policy";
-import { EXPIRY_DAYS, PACKAGE_SESSIONS, PRICE_DISPLAY, TRIAL_SESSIONS } from "@/lib/pricing";
-import { SESSION_BUDGET_S } from "@/lib/session-room";
+import { EXPIRY_DAYS, PACKAGE_SESSIONS, PRICE_DISPLAY } from "@/lib/pricing";
+import { QUICK_SESSION_BUDGET_S, SESSION_BUDGET_S } from "@/lib/session-room";
 
 // Every sentence the landing page says, in one file.
 //
@@ -21,9 +21,10 @@ import { SESSION_BUDGET_S } from "@/lib/session-room";
 
 /** Minutes a session runs, from the module that owns the session clock. */
 export const SESSION_MINUTES = Math.round(SESSION_BUDGET_S / 60);
+export const QUICK_SESSION_MINUTES = Math.round(QUICK_SESSION_BUDGET_S / 60);
 
 /** Under every primary CTA. The single most load-bearing line on the page. */
-export const TRIAL_MICROCOPY = "First session free. No card.";
+export const TRIAL_MICROCOPY = `${QUICK_SESSION_MINUTES} minutes, free, no card — a company name and a role is all it takes.`;
 
 /**
  * What the CTA says to someone who is already signed in.
@@ -53,7 +54,7 @@ export const HERO = {
   body:
     "Paste the job description. An interviewer holds you to that role's bar, " +
     "in English, out loud, and says what's missing.",
-  primaryCta: "Sign in and start",
+  primaryCta: "Try a five-minute interview",
   secondaryCta: "See a real report",
 } as const;
 
@@ -140,7 +141,7 @@ export const PRICING = {
   price: PRICE_DISPLAY,
   priceNote: "per job description",
   trialNote:
-    `Your first package starts as a free trial: ${TRIAL_SESSIONS} full session, scored. The ${PRICE_DISPLAY} unlock opens the rest of that same package for ${EXPIRY_DAYS} days.`,
+    `The ${QUICK_SESSION_MINUTES}-minute quick interview is free. Registering a job description and seeing your rubric is free. ${PRICE_DISPLAY} buys ${PACKAGE_SESSIONS} full ${SESSION_MINUTES}-minute scored sessions for ${EXPIRY_DAYS} days.`,
   refundLine:
     `If a technical failure on our side keeps you from using what you paid for, tell us within ${REFUND_WINDOW_DAYS} days and we will fix it or refund you.`,
   cta: "Continue to payment",
@@ -165,6 +166,11 @@ export interface FaqEntry {
  * words.
  */
 export const FAQ: FaqEntry[] = [
+  {
+    question: "What can I try for free?",
+    answer:
+      `The ${QUICK_SESSION_MINUTES}-minute quick interview is free and unscored. Registering a real job description and seeing the rubric is also free. The ${PACKAGE_SESSIONS} full scored sessions cost ${PRICE_DISPLAY}.`,
+  },
   {
     question: "Is this a real interview?",
     answer:

@@ -5,7 +5,6 @@ import {
   EXPIRY_DAYS,
   PACKAGE_SESSIONS,
   PRICE_DISPLAY,
-  TRIAL_SESSIONS,
 } from "@/lib/pricing";
 import { getViewer } from "@/lib/viewer";
 import { REFUND_WINDOW_DAYS, SUPPORT_EMAIL, supportMailto } from "../policy";
@@ -40,10 +39,10 @@ export default async function TermsPage() {
         </LegalSection>
         <LegalSection heading="What you are buying">
           <p>
-            One package is tied to one job description. Your first package
-            starts as a trial with {TRIAL_SESSIONS} full session so you can
-            judge the product before paying. Paying {PRICE_DISPLAY} unlocks
-            that same package to {PACKAGE_SESSIONS} sessions of about 20
+            A five-minute quick interview from a company and role is free and
+            unscored. Registering a job description and seeing its rubric is
+            also free. Paying {PRICE_DISPLAY} unlocks a package tied to that
+            job description with {PACKAGE_SESSIONS} sessions of about 20
             minutes each, usable for {EXPIRY_DAYS} days from payment. After
             those {EXPIRY_DAYS} days you can no longer start new sessions on
             the package, but every report, transcript, and recording you

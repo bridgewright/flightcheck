@@ -201,13 +201,13 @@ describe("the landing copy register", () => {
     expect(all).not.toContain("every judgment is quoted");
   });
 
-  it("says what the trial is under the CTAs", () => {
+  it("says what the quick interview costs under the CTAs", () => {
     expect(TRIAL_MICROCOPY).toContain("free");
     expect(TRIAL_MICROCOPY.toLowerCase()).toContain("no card");
   });
 
-  it("answers the six questions people ask before paying", () => {
-    expect(FAQ).toHaveLength(6);
+  it("answers the questions people ask before paying", () => {
+    expect(FAQ).toHaveLength(7);
     const questions = FAQ.map((entry) => entry.question.toLowerCase()).join(" | ");
     for (const topic of ["real interview", "verdict", "recording", "refund"]) {
       expect(questions).toContain(topic);

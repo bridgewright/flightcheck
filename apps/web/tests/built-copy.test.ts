@@ -108,7 +108,7 @@ const CANONICAL = [
   // components/landing/copy.ts, both merged chains
   "minutes, out loud, in English. Speech both ways, so pace and hesitation",
   "sessions on one job description, with no repeated questions within the",
-  "unlock opens the rest of that same package for",
+  "minute quick interview is free. Registering a job description",
   // app/legal/policy.ts
   "and all data attached to it.",
   // lib/rubric-format.ts, the delivery receipt line on /rubric

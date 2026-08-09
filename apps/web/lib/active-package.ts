@@ -1,5 +1,7 @@
 // Which package a cross-package screen (home, sessions, progress, rubric)
-// is currently "about". Pure resolution over the viewer's own packages —
+// is currently "about". Quick packages are funnel artifacts and are filtered
+// out here, so home, sessions, progress, rubric, package overview, and the
+// switch menu never surface them. Pure resolution over standard packages —
 // the caller supplies the ?pkg= query value and the fc_pkg cookie value;
 // the /switch route owns writing that cookie.
 import type { PackageSummary } from "@/lib/worker";
@@ -18,13 +20,14 @@ export function resolveActivePackage(
   pkgQueryParam: string | null | undefined,
   cookieValue: string | null | undefined,
 ): PackageSummary | null {
+  const standard = packages.filter((pkg) => pkg.kind !== "quick");
   for (const hint of [pkgQueryParam, cookieValue]) {
     if (typeof hint === "string" && hint !== "") {
-      const match = packages.find((pkg) => pkg.id === hint);
+      const match = standard.find((pkg) => pkg.id === hint);
       if (match !== undefined) {
         return match;
       }
     }
   }
-  return packages[0] ?? null;
+  return standard[0] ?? null;
 }

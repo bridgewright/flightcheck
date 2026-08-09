@@ -47,4 +47,9 @@ describe("resolveActivePackage", () => {
   it("returns null when the viewer owns no packages", () => {
     expect(resolveActivePackage([], "pkg-new", "pkg-new")).toBeNull();
   });
+
+  it("never resolves a quick funnel package as active", () => {
+    const packages = [pkg("quick", { kind: "quick" }), ...owned];
+    expect(resolveActivePackage(packages, "quick", "quick")?.id).toBe("pkg-new");
+  });
 });

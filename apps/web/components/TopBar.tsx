@@ -260,6 +260,9 @@ export default async function TopBar({
           </>
         ) : (
           <nav className="order-2 ml-auto flex items-center gap-5 py-3 text-fine">
+            <Link href="/quick" className="underline underline-offset-4">
+              Quick interview
+            </Link>
             <Link href="/sample-report" className="underline underline-offset-4">
               Sample report
             </Link>

@@ -297,7 +297,7 @@ export default async function HomePage({
           totalSessions={total}
           verdict={outcome.line}
           stageLine={stageLine}
-          trial={unpaid}
+          locked={unpaid}
           action={
             next === null ? (
               unpaid ? (

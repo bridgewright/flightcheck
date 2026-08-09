@@ -43,7 +43,7 @@ export default function Hero({ signedIn = false }: { signedIn?: boolean }) {
         <p className={`${MUTED} ${PROSE_WIDTH}`}>{HERO.body}</p>
         <CtaRow
           label={signedIn ? SIGNED_IN_CTA : HERO.primaryCta}
-          href={signedIn ? "/home" : undefined}
+          href={signedIn ? "/home" : "/quick"}
           secondary={{ label: HERO.secondaryCta, href: "/sample-report" }}
           microcopy={false}
         />

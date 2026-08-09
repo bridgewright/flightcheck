@@ -82,7 +82,7 @@ export default async function LandingPage() {
           <h2 className={PAGE_HEADING}>{CLOSING.heading}</h2>
           <CtaRow
             label={viewer ? SIGNED_IN_CTA : CLOSING.cta}
-            href={viewer ? "/home" : undefined}
+            href={viewer ? "/home" : "/quick"}
             align="center"
             microcopy={viewer === null}
           />

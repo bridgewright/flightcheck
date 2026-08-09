@@ -1,7 +1,7 @@
 // Pure helpers behind the home dashboard and the package page. JSX-free and
 // free of any server-only import, so vitest exercises them directly and both
 // screens compose the same logic instead of each deriving its own.
-import { PACKAGE_SESSIONS, PRICE_DISPLAY, TRIAL_SESSIONS } from "@/lib/pricing";
+import { PACKAGE_SESSIONS, PRICE_DISPLAY } from "@/lib/pricing";
 import type {
   PackageStatus,
   SessionReport,
@@ -380,6 +380,7 @@ export function exhaustedSessionsLine(totalSessions: number): string {
  * satisfy it structurally; the fields are optional because rows serialized
  * by a pre-v0.5 worker omit them (absence = not trial, unpaid). */
 export interface PaywallState {
+  kind?: "standard" | "quick";
   is_trial?: boolean;
   paid_at?: string | null;
   /** Comped access (DECISIONS 037): unlocked without an order. */
@@ -419,7 +420,8 @@ export function isUnlocked(pkg: PaywallState): boolean {
 export function effectiveTotalSessions(
   pkg: PaywallState & { total_sessions: number },
 ): number {
-  return isUnlocked(pkg) ? pkg.total_sessions : TRIAL_SESSIONS;
+  if (pkg.kind === "quick") return 1;
+  return isUnlocked(pkg) ? pkg.total_sessions : 0;
 }
 
 /**
@@ -437,7 +439,7 @@ export function effectiveTotalSessions(
  * whether $49 is worth it needs to know how many sessions they are buying.
  */
 export function unlockCtaLabel(): string {
-  return `Unlock the remaining ${PACKAGE_SESSIONS - TRIAL_SESSIONS} sessions for ${PRICE_DISPLAY}`;
+  return `Unlock ${PACKAGE_SESSIONS} sessions for ${PRICE_DISPLAY}`;
 }
 
 /** Where the unlock CTA sends the user: checkout for this exact package. */

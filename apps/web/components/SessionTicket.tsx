@@ -30,7 +30,7 @@ export default function SessionTicket({
   verdict = null,
   stageLine = null,
   action = null,
-  trial = false,
+  locked = false,
 }: {
   /** null once every session in the package has been used. */
   sessionNumber: number | null;
@@ -43,7 +43,7 @@ export default function SessionTicket({
    * moment on the SAME package, not the end of it. (The worker grants the
    * trial quota to every unpaid package, so the copy holds beyond the
    * account's first one.) */
-  trial?: boolean;
+  locked?: boolean;
 }) {
   const exhausted = sessionNumber === null;
   return (
@@ -52,16 +52,15 @@ export default function SessionTicket({
         {exhausted ? (
           <>
             <div>
-              <div className={LABEL}>{trial ? "Trial complete" : "Package complete"}</div>
+              <div className={LABEL}>{locked ? "Package locked" : "Package complete"}</div>
               <div className={`${SCORE_NUMBER} text-section`}>
                 {totalSessions} of {totalSessions} used
               </div>
             </div>
-            {trial ? (
+            {locked ? (
               <Rule live>
-                Your trial session is used. The rest of this package (same JD,
-                same rubric, same bar) unlocks with payment, so you can watch the
-                score move.
+                Your rubric is ready. Unlock the scored sessions to start practicing
+                against this job description.
               </Rule>
             ) : (
               <Rule live={false}>

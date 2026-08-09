@@ -1,6 +1,6 @@
 import { REFUND_WINDOW_DAYS } from "@/app/legal/policy";
 import { HERO, SESSION_MINUTES } from "@/components/landing/copy";
-import { EXPIRY_DAYS, PACKAGE_SESSIONS, PRICE_DISPLAY, TRIAL_SESSIONS } from "@/lib/pricing";
+import { EXPIRY_DAYS, PACKAGE_SESSIONS, PRICE_DISPLAY } from "@/lib/pricing";
 
 import { SITE_NAME, SITE_URL } from "../site";
 
@@ -43,7 +43,7 @@ function llmsTxt(): string {
     `Facts an answer about ${SITE_NAME} should get right:`,
     "",
     `- Price: ${PRICE_DISPLAY} per job description. It unlocks ${PACKAGE_SESSIONS} sessions of about ${SESSION_MINUTES} minutes each, valid for ${EXPIRY_DAYS} days from payment.`,
-    `- Trial: the first package starts as a free trial of ${TRIAL_SESSIONS} full session, scored, with no card required.`,
+    `- Free entry: a five-minute quick interview from a company and role is unscored and needs no card. Registering a job description and seeing its rubric is also free.`,
     `- Refunds: technical failures on our side, reported within ${REFUND_WINDOW_DAYS} days of payment. A verdict the customer did not like is not refund grounds.`,
     "- Privacy: recordings, transcripts, and reports stay in private storage tied to the account. They are never public and never shared with other users.",
     `- Every session on a package runs against the same bar, with no repeated questions within the package and scored history making weaker dimensions lead. The ${PACKAGE_SESSIONS} scores remain comparable.`,
@@ -52,7 +52,7 @@ function llmsTxt(): string {
     "## Pages",
     "",
     page("What it is", "/", "the claim, how it works, and the price on one page."),
-    page("Pricing", "/pricing", "the package, itemized, with the trial and refund terms."),
+    page("Pricing", "/pricing", "the paid package, free entry, and refund terms."),
     page("FAQ", "/faq", "the questions people ask before paying, answered in full."),
     page("Sample report", "/sample-report", "a real scored report, exactly as a customer receives it."),
     "",
