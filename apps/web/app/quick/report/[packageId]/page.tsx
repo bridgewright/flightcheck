@@ -4,9 +4,10 @@ import { notFound, redirect } from "next/navigation";
 
 import { loadSampleReport } from "@/app/sample-report/sample-data";
 import { publicMetadata } from "@/app/site";
+import PollRefresh from "@/components/PollRefresh";
 import ReportView from "@/components/ReportView";
 import Shell from "@/components/Shell";
-import { DIVIDER, NOTICE, PAGE_HEADING, PRIMARY_BUTTON, SECONDARY_BUTTON, SUB_HEADING } from "@/lib/ui";
+import { DIVIDER, NOTICE, PAGE_HEADING, PRIMARY_BUTTON, SECONDARY_BUTTON, SUBTLE, SUB_HEADING } from "@/lib/ui";
 import { getViewer } from "@/lib/viewer";
 import { listPackagesForUser } from "@/lib/worker";
 import sampleJson from "@/public/sample-report.json";
@@ -23,7 +24,30 @@ export default async function QuickReportPage({ params }: { params: Promise<{ pa
   const { packageId } = await params;
   const viewer = await getViewer();
   if (viewer === null) redirect(`/login?next=${encodeURIComponent(`/quick/report/${packageId}`)}`);
-  const packages = await listPackagesForUser(viewer.id);
+  // Every screen that lists packages catches this: the worker is briefly
+  // unreachable during a restart, and an unhandled throw here would put the
+  // crash boundary on the one page the whole funnel converges on, straight
+  // after a visitor finished their interview.
+  let packages;
+  try {
+    packages = await listPackagesForUser(viewer.id);
+  } catch {
+    return (
+      <Shell viewer={viewer}>
+        <PollRefresh intervalMs={5000} />
+        <div className="flex flex-col items-center gap-3 py-16 text-center">
+          <h1 className={`${PAGE_HEADING} text-balance`}>
+            Can&apos;t reach your interview right now.
+          </h1>
+          <p className={`${SUBTLE} max-w-md`}>
+            Your account is fine and your interview is finished. The service
+            that holds it is briefly unreachable, most often during a restart.
+            This page retries by itself; leave it open.
+          </p>
+        </div>
+      </Shell>
+    );
+  }
   const pkg = packages.find((item) => item.id === packageId);
   if (pkg === undefined || pkg.kind !== "quick") notFound();
 
