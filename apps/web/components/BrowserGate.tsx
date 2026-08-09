@@ -71,7 +71,10 @@ export default function BrowserGate({
         This browser cannot run a live interview
       </h2>
       <p className="mt-2">
-        {unsupportedBrowserMessage(missing)}
+        {/* The same flag the probe used. Naming a requirement the probe did
+            not check is how the unscored room came to tell a visitor that a
+            live interview needs recording. */}
+        {unsupportedBrowserMessage(missing, requireRecorder)}
       </p>
       <p className="mt-2">
         {SUPPORTED_BROWSERS_LINE}

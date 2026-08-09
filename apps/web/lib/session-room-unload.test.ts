@@ -24,6 +24,15 @@ describe("unloadWarningFor", () => {
     expect(unloadWarningFor("connection-lost")).toBeNull();
   });
 
+  it("stays silent while an unscored session closes", () => {
+    // "completing" is the unscored quick ending. It records nothing and holds
+    // nothing this tab could lose, so the dialog that says a recording is
+    // about to be lost would be a fresh lie on the room that just promised it
+    // does not record. It shared the "uploading" phase until 7824f3f, which
+    // is exactly the dialog it showed.
+    expect(unloadWarningFor("completing")).toBeNull();
+  });
+
   it("covers every room phase, so a new phase cannot be forgotten", () => {
     for (const phase of ROOM_PHASES) {
       expect(() => unloadWarningFor(phase)).not.toThrow();

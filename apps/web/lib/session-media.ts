@@ -28,12 +28,25 @@ export function missingCapabilities(caps: MediaCapabilities): string[] {
   return missing;
 }
 
-/** One sentence naming exactly what this browser lacks. */
-export function unsupportedBrowserMessage(missing: string[]): string {
-  return (
-    "A live interview needs microphone access, a real-time audio " +
-    `connection, and in-browser recording. This browser is missing: ${missing.join(", ")}.`
-  );
+/**
+ * One sentence naming exactly what this browser lacks — and, before it, what
+ * this interview actually needs.
+ *
+ * `requireRecorder` false is the unscored quick interview, which records
+ * nothing. The requirement half used to be a fixed sentence, so the quick
+ * room's gate told a visitor that a live interview needs in-browser recording
+ * — on the one surface that had just been rewritten end to end to stop
+ * claiming it records anything. Probing the right capabilities and then
+ * naming the wrong ones is the same lie arriving one screen later.
+ */
+export function unsupportedBrowserMessage(
+  missing: string[],
+  requireRecorder = true,
+): string {
+  const needs = requireRecorder
+    ? "microphone access, a real-time audio connection, and in-browser recording"
+    : "microphone access and a real-time audio connection";
+  return `A live interview needs ${needs}. This browser is missing: ${missing.join(", ")}.`;
 }
 
 export const SUPPORTED_BROWSERS_LINE =

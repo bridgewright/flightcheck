@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
   useCallback,
@@ -85,6 +86,8 @@ import {
   tickDeltaS,
   timeStatusEvent,
   unloadWarningFor,
+  unscoredEndingOutcome,
+  UNSCORED_ENDING_FAILURE_MESSAGE,
   type GuardEndReason,
   type RoomPhase,
 } from "../lib/session-room";
@@ -390,21 +393,25 @@ export default function SessionRoom({
   const completeUnscored = useCallback(async () => {
     setPhase("completing");
     setError(null);
-    const response = await fetch(`/api/sessions/${sessionId}`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ action: "complete" }),
-    });
-    // 409 = the worker already ended this session. The state we wanted
-    // exists, so go where a success would have gone.
-    if (response.ok || response.status === 409) {
+    // Null status = no response at all: offline, dropped connection, DNS.
+    // fetch rejects there, and an uncaught rejection would leave this room
+    // on "Ending the interview…" with no error and no retry.
+    let status: number | null = null;
+    try {
+      const response = await fetch(`/api/sessions/${sessionId}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "complete" }),
+      });
+      status = response.status;
+    } catch {
+      status = null;
+    }
+    if (unscoredEndingOutcome(status) === "done") {
       router.push(donePath);
       return;
     }
-    setError({
-      kind: "complete",
-      message: "The interview could not be completed. Try again in a moment.",
-    });
+    setError({ kind: "complete", message: UNSCORED_ENDING_FAILURE_MESSAGE });
   }, [donePath, router, sessionId]);
 
   const endSession = useCallback(async () => {
@@ -1153,13 +1160,27 @@ export default function SessionRoom({
         <div className={ALARM_NOTICE}>
           <p className={SUB_HEADING}>The interview did not close cleanly</p>
           <p className="mt-1 text-fine">{error.message}</p>
-          <button
-            type="button"
-            className={`${PRIMARY_BUTTON} mt-4`}
-            onClick={() => void completeUnscored()}
-          >
-            Try again
-          </button>
+          <p className="mt-1 text-fine text-ink-faint">
+            Nothing was recorded and nothing is waiting in this tab, so you can
+            go on either way.
+          </p>
+          {/* A retry AND a door onward. The retry is the honest first offer,
+              but a worker that stays down would otherwise end the funnel on a
+              screen with one button that keeps failing — and donePath reads a
+              package, not a session status, so it renders regardless of
+              whether this call ever lands. */}
+          <div className="mt-4 flex flex-wrap gap-3">
+            <button
+              type="button"
+              className={PRIMARY_BUTTON}
+              onClick={() => void completeUnscored()}
+            >
+              Try again
+            </button>
+            <Link href={donePath} className={SECONDARY_BUTTON}>
+              Continue anyway
+            </Link>
+          </div>
         </div>
       )}
 

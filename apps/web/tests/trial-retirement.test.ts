@@ -15,8 +15,23 @@ import { describe, expect, it } from "vitest";
 // empty states. Each one was true of a product that no longer exists, and the
 // landing's was directly above a CTA that now opens the unscored interview.
 //
-// So the claim gets a gate rather than a proofread. What this cannot check is
-// tone; what it can check is that nobody promises a free scored session again.
+// So the claim gets a gate rather than a proofread.
+//
+// What it catches: any of the retired sentences written as prose in a source
+// file under app, components or lib — including the two shapes that defeated
+// the first version of this gate, which matched raw source text. Prettier
+// wraps JSX prose at 80 columns, so "The first\n  session is free" is what
+// half these sentences would actually look like on disk; and inline markup
+// ("your first session is <strong>free</strong>") splits the same phrase with
+// a tag. Both read as the claim and neither matched. The source is flattened
+// before matching now: tags to a space, JSX whitespace expressions to a
+// space, every whitespace run to one space.
+//
+// What it cannot catch, and must not be described as catching: a claim
+// assembled at runtime. `"Your first session is " + verdict`, a sentence in a
+// data module read through a variable, or copy pulled from a template with
+// the noun interpolated are all invisible here, as is tone. This gate closes
+// the way the sentence gets written, not every way it could be produced.
 
 const webRoot = fileURLToPath(new URL("..", import.meta.url));
 
@@ -36,11 +51,26 @@ function sourceFiles(): string[] {
   return out;
 }
 
-/** Prose only: comments carry the history of the retired model on purpose. */
-function withoutComments(source: string): string {
+/**
+ * Source down to the sentences a reader would see, on one line.
+ *
+ * Comments go first: they carry the history of the retired model on purpose.
+ * Then the two things that sit inside a sentence without being part of it —
+ * a JSX tag, and the `{" "}` prettier leaves at a wrapped line's end — become
+ * a space, and every whitespace run collapses to one. A phrase split by a
+ * line break or a `<strong>` is the same phrase to whoever reads the page.
+ *
+ * The tag pattern requires a letter after the bracket and allows no bracket
+ * inside, so `a < b` and `=>` are left alone; a generic like `Record<string,
+ * X>` is eaten, which costs nothing here.
+ */
+function flattenProse(source: string): string {
   return source
     .replace(/\/\*[\s\S]*?\*\//g, " ")
-    .replace(/^[ \t]*\/\/.*$/gm, " ");
+    .replace(/^[ \t]*\/\/.*$/gm, " ")
+    .replace(/<\/?[A-Za-z][^<>]*>/g, " ")
+    .replace(/\{\s*["'`]\s*["'`]\s*\}/g, " ")
+    .replace(/\s+/g, " ");
 }
 
 /**
@@ -64,19 +94,54 @@ const RETIRED_CLAIMS: [RegExp, string][] = [
   ],
 ];
 
+function retiredClaimIn(source: string): string | null {
+  const prose = flattenProse(source);
+  for (const [pattern, why] of RETIRED_CLAIMS) {
+    const hit = prose.match(pattern);
+    if (hit) return `"${hit[0]}" — ${why}`;
+  }
+  return null;
+}
+
 describe("the retired trial", () => {
   it("is promised on no screen", () => {
     const offenders: string[] = [];
     for (const file of sourceFiles()) {
-      const prose = withoutComments(readFileSync(file, "utf8"));
-      for (const [pattern, why] of RETIRED_CLAIMS) {
-        const hit = prose.match(pattern);
-        if (hit) {
-          offenders.push(`${file.slice(webRoot.length)}: "${hit[0]}" — ${why}`);
-        }
-      }
+      const claim = retiredClaimIn(readFileSync(file, "utf8"));
+      if (claim !== null) offenders.push(`${file.slice(webRoot.length)}: ${claim}`);
     }
     expect(offenders).toEqual([]);
+  });
+
+  it("is not answered by a line break or an inline tag", () => {
+    // Every one of these reads as the retired promise on the rendered page,
+    // and none of them matched the first version of this gate. The first two
+    // are not adversarial: they are what prettier does to JSX prose at 80
+    // columns and what anyone emphasising a word writes.
+    const evasions = [
+      'return (\n  <p>\n    The first\n    session is free.\n  </p>\n);',
+      "<p>Your first session is <strong>free</strong>.</p>",
+      "<p>Your <em>trial</em> session is used.</p>",
+      '<p>Start your free{" "}\ntrial today.</p>',
+      "<li>\n  Your first\n  session is scored in full\n</li>",
+    ];
+    for (const evasion of evasions) {
+      expect(retiredClaimIn(evasion), evasion).not.toBeNull();
+    }
+  });
+
+  it("still reads comments as history rather than as claims", () => {
+    // The retirement's own record lives in comments across this repo, and a
+    // gate that failed on them would be answered by deleting the history.
+    expect(retiredClaimIn("// Your first session is free.\n")).toBeNull();
+    expect(retiredClaimIn("/* the old free trial */\n")).toBeNull();
+  });
+
+  it("says plainly what it cannot see", () => {
+    // The honest limit, pinned so the comment above cannot quietly grow into
+    // a promise this gate does not keep: a sentence assembled at runtime is
+    // invisible here.
+    expect(retiredClaimIn('const line = "Your first session is " + word;')).toBeNull();
   });
 
   it("keeps its data, which is a different thing", () => {

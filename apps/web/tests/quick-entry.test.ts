@@ -43,6 +43,14 @@ describe("the quick stash", () => {
         company: hostile,
         role: hostile,
       });
+      // A round trip through our own two functions cannot prove the value
+      // survives a Set-Cookie header, because it never builds one. What makes
+      // it survive is that the encoding is total: percent-encoding leaves
+      // nothing a cookie header treats as structure. Assert that directly,
+      // or "round-trips input written to break the transport" is a claim
+      // about a transport this test does not use.
+      const encoded = encodeStash({ company: hostile, role: hostile });
+      expect(encoded, hostile).toMatch(/^[A-Za-z0-9\-_.!~*'()%]*$/);
     }
   });
 

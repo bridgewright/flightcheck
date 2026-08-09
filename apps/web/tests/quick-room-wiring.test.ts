@@ -99,6 +99,40 @@ describe("quick room wiring", () => {
     expect(ROOM).toContain('phase === "completing"');
   });
 
+  it("survives an ending the server never answers", () => {
+    // The unscored ending is a single fetch, so a rejected one — offline,
+    // dropped connection, DNS — is the whole failure surface of the funnel's
+    // exit. Uncaught, it left the room on "Ending the interview…" with no
+    // error and no retry, permanently. The catch is what makes the status
+    // null, and unscoredEndingOutcome is where null is decided; both halves
+    // are pinned here because either alone restores the dead screen.
+    const ending = ROOM.slice(
+      ROOM.indexOf("const completeUnscored"),
+      ROOM.indexOf("const endSession"),
+    );
+    expect(ending).toContain("try {");
+    expect(ending).toContain("} catch {");
+    expect(ending).toContain("status = null;");
+    expect(ending).toContain('unscoredEndingOutcome(status) === "done"');
+    // The decision itself is not re-implemented here: lib/session-room.test.ts
+    // holds it, including 409 and the null case.
+    expect(ending).not.toMatch(/status === 409|response\.ok/);
+  });
+
+  it("leaves a door onward when the ending keeps failing", () => {
+    // donePath reads a package, not a session status, so the pitch page
+    // renders whether or not complete ever lands. A retry button alone ends
+    // the funnel on a screen that keeps failing, one click from the page the
+    // whole quick interview exists to reach.
+    const failed = ROOM.slice(
+      ROOM.indexOf('phase === "completing" && error?.kind === "complete"'),
+      ROOM.indexOf('phase === "uploading" && !error'),
+    );
+    expect(failed).toContain("void completeUnscored()");
+    expect(failed).toContain("<Link href={donePath}");
+    expect(failed).not.toContain("recording");
+  });
+
   it("gates an unscored room on the capabilities it actually needs", () => {
     // Not on MediaRecorder, which it does not use — but still on the mic and
     // the real-time connection, which it does. The quick interview is the
@@ -111,5 +145,9 @@ describe("quick room wiring", () => {
     expect(gate).toContain(
       "hasMediaRecorder: !requireRecorder || typeof MediaRecorder !== \"undefined\"",
     );
+    // And says only what it probed. The message names the requirements, and a
+    // fixed sentence named in-browser recording to a visitor of a room that
+    // records nothing — the probe was honest and the copy was not.
+    expect(gate).toContain("unsupportedBrowserMessage(missing, requireRecorder)");
   });
 });

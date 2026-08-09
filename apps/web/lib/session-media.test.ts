@@ -158,6 +158,22 @@ describe("gate and disclosure copy", () => {
     expect(message).toContain("microphone access, in-browser recording");
   });
 
+  it("names only the capabilities this interview actually needs", () => {
+    // The unscored quick interview records nothing, and its gate probes
+    // accordingly. The requirement half of this sentence was fixed, so a
+    // visitor whose browser lacks a microphone was told, on the funnel's
+    // front door, that a live interview needs in-browser recording — the
+    // exact claim that room had just been rewritten to stop making.
+    const quick = unsupportedBrowserMessage(["microphone access"], false);
+    expect(quick).not.toContain("recording");
+    expect(quick).toContain("microphone access and a real-time audio connection");
+    expect(quick).toContain("This browser is missing: microphone access.");
+    const scored = unsupportedBrowserMessage(["microphone access"], true);
+    expect(scored).toContain("in-browser recording");
+    // The scored room is the default, and its sentence is unchanged.
+    expect(unsupportedBrowserMessage(["microphone access"])).toBe(scored);
+  });
+
   it("names the supported browsers", () => {
     for (const browser of ["Chrome", "Edge", "Safari", "Firefox"]) {
       expect(SUPPORTED_BROWSERS_LINE).toContain(browser);
@@ -178,6 +194,7 @@ describe("gate and disclosure copy", () => {
       RECORDING_DISCLOSURE,
       SUPPORTED_BROWSERS_LINE,
       unsupportedBrowserMessage(["microphone access"]),
+      unsupportedBrowserMessage(["microphone access"], false),
       ...Object.values(MIC_FAILURE_LINES),
     ];
     for (const line of copy) {

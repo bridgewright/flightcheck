@@ -29,6 +29,8 @@ import {
   speechStateForEvent,
   timeStatusCheckpoints,
   timeStatusEvent,
+  unscoredEndingOutcome,
+  UNSCORED_ENDING_FAILURE_MESSAGE,
   type SilenceClockState,
   type SilenceTick,
 } from "./session-room";
@@ -484,5 +486,50 @@ describe("endedRoomNotice", () => {
       const notice = endedRoomNotice(status);
       expect(`${notice?.headline} ${notice?.detail}`).not.toMatch(/[–—]/);
     }
+  });
+});
+
+describe("unscoredEndingOutcome", () => {
+  // The quick interview's whole ending is one complete call: nothing was
+  // recorded, so there is no upload to retry and no blob to protect. That
+  // makes this one decision the entire failure surface of the funnel's exit.
+
+  it("treats the worker's 202 as done", () => {
+    expect(unscoredEndingOutcome(202)).toBe("done");
+    expect(unscoredEndingOutcome(200)).toBe("done");
+  });
+
+  it("treats 409 as done, because the state the visitor wanted exists", () => {
+    // A replayed end, a second tab, or a retry after a lost response: the
+    // worker already closed this session. Erroring here would tell someone
+    // their finished interview failed.
+    expect(unscoredEndingOutcome(409)).toBe("done");
+  });
+
+  it("fails on a refusal the visitor can retry past", () => {
+    // 429 from the complete limiter, 502 from a restarting worker, 401 from
+    // an expired cookie. All different problems, all the same offer: retry,
+    // or go on to the pitch page.
+    for (const status of [400, 401, 403, 413, 429, 500, 502, 503]) {
+      expect(unscoredEndingOutcome(status), `status ${status}`).toBe("failed");
+    }
+  });
+
+  it("fails when there was no response at all", () => {
+    // The hole this helper exists to close. fetch REJECTS when the request
+    // never reaches a server — offline, dropped connection, DNS — and the
+    // ending had no catch, so the rejection escaped and left the room on
+    // "Ending the interview…" with no error, no retry and no way out.
+    expect(unscoredEndingOutcome(null)).toBe("failed");
+  });
+
+  it("keeps the failure line calm and short", () => {
+    expect(UNSCORED_ENDING_FAILURE_MESSAGE).not.toContain("!");
+    expect(UNSCORED_ENDING_FAILURE_MESSAGE).not.toMatch(/[–—]/);
+    expect(UNSCORED_ENDING_FAILURE_MESSAGE.length).toBeLessThan(160);
+    // It never mentions a recording: this room has none.
+    expect(UNSCORED_ENDING_FAILURE_MESSAGE.toLowerCase()).not.toContain(
+      "recording",
+    );
   });
 });

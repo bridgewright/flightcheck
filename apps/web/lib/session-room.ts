@@ -521,6 +521,35 @@ export const ROOM_PHASES = [
 export type RoomPhase = (typeof ROOM_PHASES)[number];
 
 /**
+ * What the unscored ending should conclude from its complete call.
+ *
+ * `status` is the HTTP status, or null when the request produced no response
+ * at all — an offline tab, a dropped connection, a name-resolution failure.
+ * That third case is the one this helper exists for. `fetch` REJECTS there
+ * rather than resolving, and an ending with no catch let the rejection escape
+ * into an unhandled promise: the room stayed on "Ending the interview…" with
+ * no error, no retry, and no way out, forever. A response the server never
+ * sent is a failure like any status it could have sent.
+ *
+ * 409 is success. The worker already ended this session — a replayed end, a
+ * second tab, a retry after a lost response — so the state the visitor wanted
+ * exists and the pitch page is where they should land.
+ */
+export function unscoredEndingOutcome(
+  status: number | null,
+): "done" | "failed" {
+  if (status === null) return "failed";
+  if (status === 409) return "done";
+  return status >= 200 && status < 300 ? "done" : "failed";
+}
+
+/** Shown when the unscored ending cannot reach the server. It is followed by
+ * a retry AND a door onward: the pitch page reads a package, not a session
+ * status, so it renders whether or not this call ever lands. */
+export const UNSCORED_ENDING_FAILURE_MESSAGE =
+  "The interview could not be completed. Try again in a moment.";
+
+/**
  * The warning to show if the tab is closed right now, or null when leaving
  * costs nothing.
  *
