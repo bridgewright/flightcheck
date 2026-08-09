@@ -2,7 +2,6 @@
 
 import { useRouter } from "next/navigation";
 import {
-  Fragment,
   useCallback,
   useEffect,
   useRef,
@@ -102,7 +101,7 @@ interface RoomError {
   // vanishing at SessionRoom.tsx:338: MediaRecorder cannot be built or
   // started in this browser. It must never again present as a permanent
   // "Connecting…".
-  kind: "mic" | "connect" | "upload" | "recorder";
+  kind: "mic" | "connect" | "upload" | "recorder" | "complete";
   message: string;
   // Which mic failure this is, carried only when kind is "mic". "denied"
   // is the one the room acts on: it renders the recovery steps and arms
@@ -182,7 +181,6 @@ export default function SessionRoom({
   unscored = false,
   donePath = reportHref,
 }: SessionRoomProps) {
-  const CapabilityGate = unscored ? Fragment : BrowserGate;
   const router = useRouter();
   const [phase, setPhase] = useState<Phase>("ready");
   const [error, setError] = useState<RoomError | null>(null);
@@ -381,32 +379,49 @@ export default function SessionRoom({
     [reportHref, router, sessionId],
   );
 
+  // --- Close an unscored quick session ------------------------------------
+  // Nothing was recorded, so there is nothing to upload and nothing this tab
+  // could lose: the whole ending is one complete call. It gets its own phase
+  // rather than borrowing "uploading", whose screen promises a recording is
+  // being saved and scored, whose unload dialog says the recording is about
+  // to be lost, and whose retry button would mint an upload URL and PUT an
+  // empty blob — three claims the quick room has already told the visitor
+  // are untrue.
+  const completeUnscored = useCallback(async () => {
+    setPhase("completing");
+    setError(null);
+    const response = await fetch(`/api/sessions/${sessionId}`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ action: "complete" }),
+    });
+    // 409 = the worker already ended this session. The state we wanted
+    // exists, so go where a success would have gone.
+    if (response.ok || response.status === 409) {
+      router.push(donePath);
+      return;
+    }
+    setError({
+      kind: "complete",
+      message: "The interview could not be completed. Try again in a moment.",
+    });
+  }, [donePath, router, sessionId]);
+
   const endSession = useCallback(async () => {
     if (endingRef.current) return;
     endingRef.current = true;
     setConfirmingEnd(false);
     if (tickerRef.current) clearInterval(tickerRef.current);
     const blob = await stopRecorder();
-    blobRef.current = blob;
     pcRef.current?.close();
     micStreamRef.current?.getTracks().forEach((t) => t.stop());
     if (unscored) {
-      setPhase("uploading");
-      const response = await fetch(`/api/sessions/${sessionId}`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ action: "complete" }),
-      });
-      if (response.ok || response.status === 409) {
-        setPhase("done");
-        router.push(donePath);
-      } else {
-        setError({ kind: "upload", message: "The interview could not be completed. Try again in a moment." });
-      }
+      await completeUnscored();
       return;
     }
+    blobRef.current = blob;
     await uploadAndComplete(blob);
-  }, [donePath, router, sessionId, stopRecorder, unscored, uploadAndComplete]);
+  }, [completeUnscored, stopRecorder, unscored, uploadAndComplete]);
 
   const endForConnectionLoss = useCallback(
     async (reason: GuardEndReason) => {
@@ -1010,7 +1025,7 @@ export default function SessionRoom({
           {/* Capability gate BEFORE the mic check: a browser missing
               getUserMedia, WebRTC, or MediaRecorder gets honest copy naming
               supported browsers instead of a check that cannot succeed. */}
-          <CapabilityGate>
+          <BrowserGate requireRecorder={!unscored}>
             {/* Device check (shared MicCheck): confirm the mic picks you up
                 before committing to a 20-minute session. It holds its own
                 stream; the session acquires its own in start(). */}
@@ -1061,7 +1076,7 @@ export default function SessionRoom({
                 <DiagTrail entriesRef={diagRef} />
               </div>
             )}
-          </CapabilityGate>
+          </BrowserGate>
         </section>
       )}
 
@@ -1128,6 +1143,24 @@ export default function SessionRoom({
           )}
           <DiagTrail entriesRef={diagRef} />
         </section>
+      )}
+
+      {phase === "completing" && !error && (
+        <p className="text-ink-faint">Ending the interview…</p>
+      )}
+
+      {phase === "completing" && error?.kind === "complete" && (
+        <div className={ALARM_NOTICE}>
+          <p className={SUB_HEADING}>The interview did not close cleanly</p>
+          <p className="mt-1 text-fine">{error.message}</p>
+          <button
+            type="button"
+            className={`${PRIMARY_BUTTON} mt-4`}
+            onClick={() => void completeUnscored()}
+          >
+            Try again
+          </button>
+        </div>
       )}
 
       {phase === "uploading" && !error && (

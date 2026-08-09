@@ -83,29 +83,49 @@ export interface TimeStatusCheckpoint {
   text: string;
 }
 
+/** "1 minute remains" / "4 minutes remain" — the interviewer reads these
+ * notes and speaks from them, so the number and the verb have to agree.
+ *
+ * Exported for its own test. No budget the product ships reaches the singular
+ * today (the ordering rule below drops the only checkpoint that could produce
+ * it), so this is the one place the singular can be held to English at all. */
+export function minutesRemaining(seconds: number): string {
+  const minutes = Math.round(seconds / 60);
+  return minutes === 1 ? "1 minute remains" : `${minutes} minutes remain`;
+}
+
 /**
  * Clock notes injected into the interviewer's context — the model has no
  * clock, so the client is the clock. At 75% elapsed: steer toward wrap-up.
  * At the wrap-up margin (budget minus two minutes, the planner's "ask no
  * new questions" point): close out.
+ *
+ * The wrap-up margin is a fixed two minutes while the steer point is a
+ * fraction, so on a short budget the fraction lands at or after the margin:
+ * at the five-minute quick budget it is 225s against a 180s margin. Emitting
+ * both in that order told the interviewer one minute remained and then, a
+ * quarter-second later, that two did — contradictory, and the weaker
+ * instruction arriving last. There is nothing left to steer toward once the
+ * closing note is due, so the steer note is emitted only while it precedes
+ * it, and the list is always in the order it fires.
  */
 export function timeStatusCheckpoints(
   budgetS: number = SESSION_BUDGET_S,
 ): TimeStatusCheckpoint[] {
   const threeQuartersAt = Math.round(budgetS * 0.75);
   const wrapUpAt = closingArmedAt(budgetS);
-  const threeQuartersMin = Math.round((budgetS - threeQuartersAt) / 60);
-  const wrapUpMin = Math.round((budgetS - wrapUpAt) / 60);
-  return [
-    {
+  const checkpoints: TimeStatusCheckpoint[] = [];
+  if (threeQuartersAt < wrapUpAt) {
+    checkpoints.push({
       atS: threeQuartersAt,
-      text: `${TIME_STATUS_PREFIX} About ${threeQuartersMin} minutes remain — start steering toward wrap-up.`,
-    },
-    {
-      atS: wrapUpAt,
-      text: `${TIME_STATUS_PREFIX} About ${wrapUpMin} minutes remain — ask at most one short final question, then close the interview.`,
-    },
-  ];
+      text: `${TIME_STATUS_PREFIX} About ${minutesRemaining(budgetS - threeQuartersAt)} — start steering toward wrap-up.`,
+    });
+  }
+  checkpoints.push({
+    atS: wrapUpAt,
+    text: `${TIME_STATUS_PREFIX} About ${minutesRemaining(budgetS - wrapUpAt)} — ask at most one short final question, then close the interview.`,
+  });
+  return checkpoints;
 }
 
 /** The next unsent checkpoint if elapsed time has reached it, else null. */
@@ -493,6 +513,7 @@ export const ROOM_PHASES = [
   "connecting",
   "live",
   "uploading",
+  "completing",
   "done",
   "connection-lost",
 ] as const;
@@ -513,7 +534,9 @@ export type RoomPhase = (typeof ROOM_PHASES)[number];
  * Everything else is safe to leave: nothing is recorded yet ("ready",
  * "connecting"), or the recording is already with the server ("done"), or
  * the attempt was explicitly abandoned with the slot preserved
- * ("connection-lost").
+ * ("connection-lost"). "completing" closes an unscored quick session, which
+ * records nothing and holds nothing this tab could lose — a warning there
+ * would be the recording dialog on a room that just said it does not record.
  */
 export function unloadWarningFor(phase: RoomPhase): string | null {
   switch (phase) {
@@ -523,6 +546,7 @@ export function unloadWarningFor(phase: RoomPhase): string | null {
       return "Your interview is still running. If you leave now it ends without being scored.";
     case "ready":
     case "connecting":
+    case "completing":
     case "done":
     case "connection-lost":
       return null;

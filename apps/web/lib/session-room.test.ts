@@ -10,6 +10,7 @@ import {
   SESSION_BUDGET_S,
   SILENCE_STAGES,
   SILENCE_STATUS_PREFIX,
+  QUICK_SESSION_BUDGET_S,
   STALL_BLIP_MAX_S,
   TIME_STATUS_PREFIX,
   committedItemId,
@@ -21,6 +22,7 @@ import {
   indicatorForEvent,
   interviewerStateForEvent,
   isHardCut,
+  minutesRemaining,
   nextSilenceState,
   responseTriggerEvent,
   silenceStatusEvent,
@@ -115,6 +117,50 @@ describe("timeStatusCheckpoints", () => {
     const [threeQ, wrap] = timeStatusCheckpoints();
     expect(threeQ.text).toContain("About 5 minutes remain");
     expect(wrap.text).toContain("About 2 minutes remain");
+  });
+
+  it("drops the steer note when it would land after the closing note", () => {
+    // The 5:00 quick budget. The wrap-up margin is a fixed two minutes and
+    // the steer point is a fraction, so here the fraction (225s) falls AFTER
+    // the margin (180s). Emitted in list order, dueTimeStatus sent the steer
+    // note at 225s and then the closing note on the very next 250ms tick —
+    // the interviewer told about one minute remaining, then about two.
+    const checkpoints = timeStatusCheckpoints(QUICK_SESSION_BUDGET_S);
+    expect(checkpoints).toHaveLength(1);
+    expect(checkpoints[0].atS).toBe(180);
+    expect(checkpoints[0].text).toBe(
+      `${TIME_STATUS_PREFIX} About 2 minutes remain — ask at most one short final question, then close the interview.`,
+    );
+  });
+
+  it("fires in the order it is listed, at every budget", () => {
+    for (const budgetS of [300, 480, 600, 900, SESSION_BUDGET_S, 1800]) {
+      const ats = timeStatusCheckpoints(budgetS).map((cp) => cp.atS);
+      expect(
+        [...ats].sort((a, b) => a - b),
+        `checkpoints for a ${budgetS}s budget are out of order: dueTimeStatus walks the list by index, so a later note at an earlier second fires immediately after the one before it`,
+      ).toEqual(ats);
+    }
+  });
+
+  it("makes the number and the verb agree", () => {
+    expect(minutesRemaining(60)).toBe("1 minute remains");
+    expect(minutesRemaining(90)).toBe("2 minutes remain");
+    expect(minutesRemaining(120)).toBe("2 minutes remain");
+    expect(minutesRemaining(300)).toBe("5 minutes remain");
+  });
+
+  it("agrees with itself about number and verb", () => {
+    // These notes are read by the interviewer and spoken from. "About 1
+    // minutes remain" is what the 5:00 budget used to produce.
+    for (let budgetS = 180; budgetS <= 1800; budgetS += 15) {
+      for (const cp of timeStatusCheckpoints(budgetS)) {
+        expect(cp.text, `at budget ${budgetS}s`).not.toMatch(/\b1 minutes\b/);
+        expect(cp.text, `at budget ${budgetS}s`).not.toMatch(
+          /\b(?!1\b)\d+ minute remains\b/,
+        );
+      }
+    }
   });
 });
 

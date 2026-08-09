@@ -22,21 +22,41 @@ import { NOTICE, SUB_HEADING } from "@/lib/ui";
 
 const subscribe = () => () => {};
 
-let probed: string[] | null = null;
+const probed: Record<"withRecorder" | "withoutRecorder", string[] | null> = {
+  withRecorder: null,
+  withoutRecorder: null,
+};
 
-function probeMissing(): string[] {
-  probed ??= missingCapabilities({
+function probe(requireRecorder: boolean): string[] {
+  const key = requireRecorder ? "withRecorder" : "withoutRecorder";
+  probed[key] ??= missingCapabilities({
     hasGetUserMedia:
       typeof navigator !== "undefined" &&
       typeof navigator.mediaDevices?.getUserMedia === "function",
     hasRTCPeerConnection: typeof RTCPeerConnection !== "undefined",
-    hasMediaRecorder: typeof MediaRecorder !== "undefined",
+    // An unscored quick interview records nothing, so a browser without
+    // MediaRecorder can run it. Microphone access and a real-time audio
+    // connection are needed either way, and a browser missing those must
+    // still get the honest copy rather than a mic check that cannot pass —
+    // the quick interview is the front door, and in-app browsers (the ones
+    // most likely to lack these) are exactly what a landing CTA sends here.
+    hasMediaRecorder: !requireRecorder || typeof MediaRecorder !== "undefined",
   });
-  return probed;
+  return probed[key];
 }
 
-export default function BrowserGate({ children }: { children: ReactNode }) {
-  const missing = useSyncExternalStore(subscribe, probeMissing, () => null);
+export default function BrowserGate({
+  children,
+  requireRecorder = true,
+}: {
+  children: ReactNode;
+  requireRecorder?: boolean;
+}) {
+  const missing = useSyncExternalStore(
+    subscribe,
+    () => probe(requireRecorder),
+    () => null,
+  );
 
   if (missing === null || missing.length === 0) {
     return <>{children}</>;
