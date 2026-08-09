@@ -60,16 +60,58 @@ describe("home tour wiring", () => {
     // The property this protects: no path other than an ended tour can write
     // the flag. A second call site is how the no-anchor render would come to
     // spend an arrival it never showed.
-    const writes = source.match(/markTourDone\(/g) ?? [];
+    const writes = emitted.match(/markTourDone\(/g) ?? [];
     expect(writes.length, "the once flag is written from more than one place").toBe(1);
-    expect(source).toContain("if (outcome.markDone) markTourDone();");
+    expect(emitted).toContain("if (outcome.markDone) markTourDone();");
+    // That count is a spelling, not the rule, and the spelling is trivial to
+    // step around: `const spendArrival = markTourDone;` with the no-anchor
+    // path ending `return spendArrival();` leaves one `markTourDone(`, one
+    // `setTour(null)`, the no-anchor line still reading `if (steps.length ===
+    // 0) return`, and the whole suite green — while a home with nothing to
+    // point at spends the arrival it never showed. Reaching `localStorage`
+    // directly gets there too. So count every mention of the identifier, the
+    // import and that one call and nothing else, and deny the component any
+    // name for the storage surface itself.
+    const mentions = emitted.match(/\bmarkTourDone\b/g) ?? [];
+    expect(mentions.length, "markTourDone is aliased, re-exported, or called again").toBe(2);
+    expect(emitted, "the component writes the flag past its storage module").not.toMatch(
+      /localStorage|sessionStorage|fc-tour-done/,
+    );
   });
 
   it("ends the tour from exactly one place, so every ending writes the flag", () => {
     // Each dismissal used to close the tour itself, which meant any one of
     // them could stop writing the flag without another one noticing.
-    const closes = source.match(/setTour\(null\)/g) ?? [];
+    const closes = emitted.match(/setTour\(null\)/g) ?? [];
     expect(closes.length, "a dismissal closes the tour outside apply()").toBe(1);
+    // And the close has to sit in the branch that just wrote the flag. The
+    // count alone does not say where: lifting the close out of apply() and
+    // hanging it off the Skip handler keeps it at one, and then Escape and
+    // Done write the flag onto a tour that stays on screen with no way out.
+    expect(emitted, "the ending closes outside apply()'s null branch").toMatch(
+      /if \(outcome\.state === null\) \{\s*setTour\(null\);/,
+    );
+    // Three places move the tour state: the arrival, that close, and the step
+    // change. A fourth is a path the decisions in tour/decide.ts do not govern.
+    const setters = emitted.match(/setTour\(/g) ?? [];
+    expect(setters.length, "the tour state is set outside the arrival and apply()").toBe(3);
+  });
+
+  it("hands the measured geometry to the elements that draw it", () => {
+    // tour/geometry.ts is tested hard and was wired to nothing any test could
+    // see, which let two mutations through every gate: freezing the card on
+    // its pre-measure fallback while the panes tracked the target, and giving
+    // the panes a data attribute instead of a style, which erases the dim
+    // entirely. Both are one defect — a computed box that reaches no element.
+    expect(emitted, "the card's box is not the measured placement").toMatch(
+      /const cardStyle = \{\s*\.\.\.\(placement\?\.card \?\? FALLBACK_CARD\),\s*margin: 0,?\s*\}/,
+    );
+    expect(emitted, "the card is positioned by something other than cardStyle").toMatch(
+      /ref=\{cardRef\}[\s\S]*?style=\{cardStyle\}/,
+    );
+    expect(emitted, "a dimming pane is drawn without its computed box").toMatch(
+      /placement\?\.panes\.map\([\s\S]*?style=\{pane\}/,
+    );
   });
 
   it("routes every button and key through the tested decisions", () => {
