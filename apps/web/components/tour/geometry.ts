@@ -30,14 +30,14 @@ export function tourGeometry(target: Rect, viewport: Size, card: Size) {
 
   return {
     panes: [
-      { top: 0, left: 0, width: viewport.width, height: target.top },
+      { top: 0, left: 0, width: viewport.width, height: Math.max(0, target.top) },
       {
         top: target.bottom,
         left: 0,
         width: viewport.width,
         height: Math.max(0, viewport.height - target.bottom),
       },
-      { top: target.top, left: 0, width: target.left, height: target.height },
+      { top: target.top, left: 0, width: Math.max(0, target.left), height: target.height },
       {
         top: target.top,
         left: target.right,
