@@ -5,6 +5,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import {
   WorkerError,
+  createQuickPackage,
   incrementSecretMint,
   listOrders,
   listPackagesForUser,
@@ -111,6 +112,25 @@ describe("markPackagePaid", () => {
     expect((err as WorkerError).message).toBe(
       "worker POST /api/packages/pkg-9/paid failed: 404",
     );
+  });
+});
+
+describe("createQuickPackage", () => {
+  // Every worker route lives under the /api prefix (app.py mounts the whole
+  // router there); a bare "/packages/quick" would 404 against the real
+  // worker while every fetch-stubbed test stayed green.
+  it("posts company and role to the /api-prefixed quick endpoint", async () => {
+    nextResponse = jsonResponse({ package_id: "pkg-1", access_token: "tok-1" });
+    await createQuickPackage("user-1", "ExampleCo", "Product Manager");
+    expect(calls[0].url).toBe(
+      "https://worker.example.test/api/packages/quick",
+    );
+    expect(calls[0].init?.method).toBe("POST");
+    expect(JSON.parse(String(calls[0].init?.body))).toEqual({
+      user_id: "user-1",
+      company: "ExampleCo",
+      role: "Product Manager",
+    });
   });
 });
 

@@ -166,7 +166,7 @@ export async function createQuickPackage(
   company: string,
   role: string,
 ): Promise<{ package_id: string; access_token: string }> {
-  const path = "/packages/quick";
+  const path = "/api/packages/quick";
   const response = await workerFetch(path, {
     method: "POST",
     body: JSON.stringify({ user_id: userId, company, role }),
