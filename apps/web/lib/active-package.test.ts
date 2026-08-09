@@ -1,7 +1,11 @@
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
+import { fileURLToPath } from "node:url";
+
 import { describe, expect, it } from "vitest";
 
 import type { PackageSummary } from "@/lib/worker";
-import { resolveActivePackage } from "@/lib/active-package";
+import { resolveActivePackage, standardPackages } from "@/lib/active-package";
 
 function pkg(id: string, overrides: Partial<PackageSummary> = {}): PackageSummary {
   return {
@@ -51,5 +55,72 @@ describe("resolveActivePackage", () => {
   it("never resolves a quick funnel package as active", () => {
     const packages = [pkg("quick", { kind: "quick" }), ...owned];
     expect(resolveActivePackage(packages, "quick", "quick")?.id).toBe("pkg-new");
+  });
+
+  it("resolves nothing when every package is a quick one", () => {
+    const packages = [pkg("quick", { kind: "quick" })];
+    expect(resolveActivePackage(packages, null, null)).toBeNull();
+  });
+});
+
+describe("standardPackages", () => {
+  it("drops quick packages and keeps the order of the rest", () => {
+    const packages = [
+      pkg("quick-a", { kind: "quick" }),
+      ...owned,
+      pkg("quick-b", { kind: "quick" }),
+    ];
+    expect(standardPackages(packages).map((p) => p.id)).toEqual([
+      "pkg-new",
+      "pkg-mid",
+      "pkg-old",
+    ]);
+  });
+
+  it("keeps a package a pre-quick worker serialized without a kind", () => {
+    // kind is optional on PackageSummary: an older worker omits it, and
+    // absence must read as "standard", never as "hide this customer's work".
+    expect(standardPackages(owned)).toHaveLength(3);
+    expect(standardPackages([pkg("explicit", { kind: "standard" })])).toHaveLength(1);
+  });
+});
+
+describe("every screen that lists packages goes through the filter", () => {
+  // A quick package on /packages rendered as a card with a blank role,
+  // "0 of 1 sessions used", an Open button onto a screen that resolves a
+  // different package, and a Delete button. Two of the three callers filtered;
+  // the overview was written before the filter existed and nothing pointed at
+  // it, which is why the filter is now shared and this list is a test.
+  const read = (path: string) =>
+    readFileSync(join(fileURLToPath(new URL("..", import.meta.url)), path), "utf8");
+
+  it.each(["app/packages/page.tsx", "components/TopBar.tsx"])("%s", (file) => {
+    const source = read(file);
+    expect(source).toContain("standardPackages(");
+    for (const line of source.split("\n")) {
+      if (!line.includes("listPackagesForUser(")) continue;
+      expect(
+        line.includes("standardPackages("),
+        `${file}: this list is the raw worker response, so it includes quick funnel packages`,
+      ).toBe(true);
+    }
+  });
+
+  it("TopBar's switcher list is filtered on both of its paths", () => {
+    // It takes the list as a prop when the page already fetched one, and
+    // fetches its own otherwise. Only the fetching path was checked above,
+    // and the prop path is the one every signed-in screen actually uses.
+    const source = read("components/TopBar.tsx");
+    const assignments = source
+      .split("\n")
+      .map((line) => line.trim())
+      .filter((line) => /^owned = /.test(line));
+    expect(assignments).not.toHaveLength(0);
+    for (const line of assignments) {
+      expect(
+        /^owned = (standardPackages\(|\[\];)/.test(line),
+        `the switcher would list quick funnel packages: ${line}`,
+      ).toBe(true);
+    }
   });
 });

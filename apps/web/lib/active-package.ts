@@ -7,6 +7,26 @@
 import type { PackageSummary } from "@/lib/worker";
 
 /**
+ * The viewer's real packages: one job description each, a compiled rubric,
+ * sessions worth listing.
+ *
+ * A quick package holds a company name, a role title, and one unscored
+ * five-minute conversation that was never even processed. It exists so the
+ * funnel has something to hang a session on, and it belongs on exactly one
+ * screen: the pitch page that quick interview ends at.
+ *
+ * Shared rather than repeated, because it was repeated: /packages listed the
+ * raw worker response, so the overview showed quick packages as cards with a
+ * blank role, "0 of 1 sessions used", an Open button onto a screen that
+ * resolves a different package, and a Delete button. The switcher and the
+ * active-package resolution each filtered separately and the third caller was
+ * simply forgotten.
+ */
+export function standardPackages(packages: PackageSummary[]): PackageSummary[] {
+  return packages.filter((pkg) => pkg.kind !== "quick");
+}
+
+/**
  * Precedence: ?pkg= query > fc_pkg cookie > newest owned package.
  *
  * Ids that do not appear in the viewer's own list are ignored (a stale
@@ -20,7 +40,7 @@ export function resolveActivePackage(
   pkgQueryParam: string | null | undefined,
   cookieValue: string | null | undefined,
 ): PackageSummary | null {
-  const standard = packages.filter((pkg) => pkg.kind !== "quick");
+  const standard = standardPackages(packages);
   for (const hint of [pkgQueryParam, cookieValue]) {
     if (typeof hint === "string" && hint !== "") {
       const match = standard.find((pkg) => pkg.id === hint);

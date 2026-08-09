@@ -10,7 +10,7 @@ import {
   packageDisplayTitle,
   switchHref,
 } from "@/lib/home";
-import { resolveActivePackage } from "@/lib/active-package";
+import { resolveActivePackage, standardPackages } from "@/lib/active-package";
 import type { Viewer } from "@/lib/viewer";
 import type { PackageSummary } from "@/lib/worker";
 import { listPackagesForUser } from "@/lib/worker";
@@ -223,10 +223,10 @@ export default async function TopBar({
   let activeId: string | null = activePackageId ?? null;
   if (viewer) {
     if (packages !== undefined) {
-      owned = packages.filter((pkg) => pkg.kind !== "quick");
+      owned = standardPackages(packages);
     } else {
       try {
-        owned = (await listPackagesForUser(viewer.id)).filter((pkg) => pkg.kind !== "quick");
+        owned = standardPackages(await listPackagesForUser(viewer.id));
       } catch {
         owned = [];
       }

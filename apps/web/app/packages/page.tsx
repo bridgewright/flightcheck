@@ -6,6 +6,7 @@ import DeletePackageButton from "@/components/DeletePackageButton";
 import RetryCompileButton from "@/components/RetryCompileButton";
 import Shell from "@/components/Shell";
 import { deletePackageAction, retryCompileAction } from "@/app/packages/actions";
+import { standardPackages } from "@/lib/active-package";
 import { companyMarkHost } from "@/lib/company-mark";
 import type { PillTone } from "@/lib/home";
 import {
@@ -168,7 +169,11 @@ export default async function PackagesPage() {
   let packages: PackageSummary[];
   let verdicts: (Verdict | null)[];
   try {
-    packages = await listPackagesForUser(viewer.id);
+    // Quick packages are funnel artifacts, not packages a customer owns and
+    // manages: a card for one would show a blank role, "0 of 1 sessions
+    // used", an Open button onto a screen that resolves a different package,
+    // and a Delete button.
+    packages = standardPackages(await listPackagesForUser(viewer.id));
     // The card's verdict word comes from the same session summaries /home
     // reads. A package whose sessions cannot be listed shows no verdict
     // rather than sinking the whole overview.
