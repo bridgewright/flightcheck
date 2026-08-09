@@ -105,6 +105,9 @@ describe("the llms.txt document", () => {
     const paths = PUBLIC_ROUTES.map((route) => route.path);
     expect(paths).toContain("/pricing");
     expect(paths).toContain("/faq");
+    // The quick interview is the product's free front door (F-84) — a funnel
+    // entry a crawler cannot find through the sitemap is a door with no sign.
+    expect(paths).toContain("/quick");
   });
 });
 

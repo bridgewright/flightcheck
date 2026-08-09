@@ -52,6 +52,7 @@ function llmsTxt(): string {
     "## Pages",
     "",
     page("What it is", "/", "the claim, how it works, and the price on one page."),
+    page("Quick interview", "/quick", "the free five-minute unscored interview from a company and role."),
     page("Pricing", "/pricing", "the paid package, free entry, and refund terms."),
     page("FAQ", "/faq", "the questions people ask before paying, answered in full."),
     page("Sample report", "/sample-report", "a real scored report, exactly as a customer receives it."),

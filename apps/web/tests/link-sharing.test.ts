@@ -122,6 +122,7 @@ describe("sitemap.xml", () => {
 describe("every public page ships a card", () => {
   const PAGE_FOR: Record<string, string> = {
     "/": "app/page.tsx",
+    "/quick": "app/quick/page.tsx",
     "/pricing": "app/pricing/page.tsx",
     "/faq": "app/faq/page.tsx",
     "/sample-report": "app/sample-report/page.tsx",
