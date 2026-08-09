@@ -13,6 +13,7 @@ from __future__ import annotations
 import base64
 import binascii
 import logging
+import re
 from datetime import UTC, datetime
 
 import httpx
@@ -92,6 +93,26 @@ class MarkPaidRequest(BaseModel):
     paid_at: str
 
 
+# C0/C1 control characters, tab and newline included. A quick package's
+# company and role are single-line labels, and line structure is not theirs
+# to write (see _quick_field).
+_CONTROL_CHARS_RE = re.compile(r"[\x00-\x1f\x7f-\x9f]")
+
+
+def _quick_field(value: str) -> str:
+    """One visitor-typed quick-interview label, flattened to a clean line.
+
+    Same chokepoint reasoning as jd_text above (F-11a): the STORED value is
+    the cleaned one, so the session plan, the interviewer instructions and
+    the dashboard all read the same version. strip_hidden_text removes the
+    zero-width and bidi carriers; the control-character pass and the
+    whitespace collapse remove the line structure that otherwise lets a
+    company name close the question it is rendered into and open its own
+    "# CONFIDENTIALITY" section inside the interviewer's system prompt.
+    """
+    return " ".join(_CONTROL_CHARS_RE.sub(" ", strip_hidden_text(value)).split())
+
+
 def _extract_pdf_upload(pdf_b64: str, label: str) -> str:
     """b64 -> PDF text with every failure a clean 422 (the cap on the
     encoded LENGTH ran earlier, before this decode)."""
@@ -129,8 +150,8 @@ def build_router(deps: Deps) -> APIRouter:
 
     @router.post("/packages/quick")
     def create_quick_package(body: CreateQuickPackageRequest):
-        company = body.company.strip()
-        role = body.role.strip()
+        company = _quick_field(body.company)
+        role = _quick_field(body.role)
         if not company or len(company) > limits.quick_company_max_chars:
             return JSONResponse(
                 status_code=422,
@@ -164,7 +185,11 @@ def build_router(deps: Deps) -> APIRouter:
         # Checked before any JD fetch or PDF decode: a request that cannot
         # produce a package must not first spend an outbound HTTP call on it.
         # Unowned requests have no account to count against the absolute cap.
-        owned = (db.list_packages_by_user(body.user_id)
+        # Quick packages are exempt in BOTH directions (DECISIONS 060): they
+        # are bounded by their own lifetime cap, and a free five-minute taste
+        # must never eat a slot meant for a real job description.
+        owned = ([package for package in db.list_packages_by_user(body.user_id)
+                  if package.kind != "quick"]
                  if body.user_id is not None else [])
         if body.user_id is not None and len(owned) >= limits.max_packages_per_user:
             return JSONResponse(
@@ -476,6 +501,23 @@ def build_router(deps: Deps) -> APIRouter:
             # exists to somebody who cannot see it.
             raise HTTPException(status_code=404,
                                 detail="package not found") from None
+        # Refused only after the plan proved ownership, so this answer never
+        # tells a stranger the id exists. A quick package is the account's
+        # lifetime allowance made visible (DECISIONS 060): deleting the row
+        # drops it out of list_packages_by_user, which is where the cap is
+        # counted, so delete-and-recreate would buy unlimited five-minute
+        # realtime interviews. Account deletion still removes everything.
+        if db.get_package(package_id).kind == "quick":
+            return JSONResponse(
+                status_code=409,
+                content={
+                    "error": ("a quick interview cannot be deleted on its own — "
+                              "free quick interviews are counted for the life of "
+                              "the account. Deleting your account removes it with "
+                              "everything else."),
+                    "code": "quick-not-deletable",
+                },
+            )
         try:
             outcome = execute_deletion(db, deps.storage, plan)
         except RecordingsNotDeleted:
