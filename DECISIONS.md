@@ -2356,6 +2356,18 @@ session — one free door, not two.
   up at the rubric wall without paying (then a priced single-session
   step reopens), or quick-interview abandonment shows five minutes is
   the wrong length.
+- **Amendment (2026-08-10, review round):** a reviewer proved the
+  lifetime allowance was fiction — deleting a quick package and
+  creating another reset the count, so the cap was a delete button
+  away from unlimited free realtime minutes. Per-package deletion of a
+  quick row is now refused (after ownership is proven, so nothing is
+  disclosed to strangers); account deletion still removes everything,
+  which keeps the privacy right whole and honestly resets the
+  allowance at the price of every paid package and receipt. Quick
+  packages never appear on the packages overview, so no customer
+  meets the refusal in normal use. Rejected: absorbing the hole for a
+  cleaner surface — a bound that private deletion can reopen is not a
+  bound.
 
 ## 061 — The home screen introduces itself, once (2026-08-09)
 

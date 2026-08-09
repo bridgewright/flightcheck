@@ -39,6 +39,40 @@
   the with-profile side while the original three still compile with
   an empty profile, untouched. DECISIONS 059.
 
+- **A five-minute quick interview is the new front door.** Type a
+  target company and a role — no job description — sign in, and talk
+  to the interviewer for five minutes. The questions are templated
+  from those two fields alone and say so; nothing is recorded, scored,
+  or researched, and the screen after the interview shows the public
+  sample report framed with the visitor's own company and role under a
+  banner that says exactly what it is: a sample, personal only when a
+  package is bought. Quick sessions ride the same room, closing
+  auto-end, and session machinery, at a 5-minute budget with an
+  8-minute hard cut pinned by the same cross-language timing gates as
+  the 20-minute pair. Each account gets a small lifetime allowance of
+  quick interviews; they cost real realtime-API money. DECISIONS 060.
+
+- **The home screen introduces itself, once.** The first-ever arrival
+  on home dims the page and walks the features one by one — Sessions,
+  Progress, the rubric, the start button — skippable at every step,
+  Escape ends it, shown once per browser. The product's only
+  auto-opening surface, on purpose. DECISIONS 061.
+
+### Changed
+
+- **The free trial session retires.** The first package no longer
+  carries a free scored session: the quick interview is the one free
+  door, registering a job description stays free up to the rubric —
+  the bar made visible before any payment — and every full 20-minute
+  scored session is paid. Historical trial rows keep their data; the
+  flag is never granted again, and every surface that sold the trial
+  (landing, pricing, FAQ, terms, refund, checkout, llms.txt) now
+  describes the real model, held by a copy gate that fails if the
+  retired claims return. Locked packages expose zero sessions at the
+  quota chokepoint, and the realtime-secret mint refuses locked and
+  expired packages outright — the door a pre-existing session row
+  used to hold open. DECISIONS 060.
+
 ## [0.12.0] — 2026-08-08
 
 > Disclosure, so rule ⑦ stays checkable: every "customer", "field use",
