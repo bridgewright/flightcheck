@@ -35,6 +35,23 @@ describe("coach-mark geometry", () => {
     }
   });
 
+  it("keeps the card inside a 360px phone, against a target at the right edge", () => {
+    // The narrowest screen the product is read on. The card is
+    // `min(18rem, 100vw - 1.5rem)` wide, so it measures 288 here and the only
+    // thing keeping it on screen is the clamp.
+    const viewport = { width: 360, height: 640 };
+    const card = { width: 288, height: 180 };
+    const result = tourGeometry(
+      { top: 40, left: 300, right: 352, bottom: 76, width: 52, height: 36 },
+      viewport,
+      card,
+    );
+    expect(result.card.left).toBeGreaterThanOrEqual(12);
+    expect(result.card.left + card.width).toBeLessThanOrEqual(viewport.width - 12);
+    expect(result.card.top).toBeGreaterThanOrEqual(12);
+    expect(result.card.top + card.height).toBeLessThanOrEqual(viewport.height - 12);
+  });
+
   it("places above when needed and clamps to the viewport", () => {
     const result = tourGeometry(
       { top: 560, left: 760, right: 800, bottom: 600, width: 40, height: 40 },
