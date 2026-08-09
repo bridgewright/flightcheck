@@ -18,8 +18,8 @@ import { publicMetadata } from "./site";
 // The order is the argument: the hero states the claim and asks for nothing,
 // how-it-works explains the loop, the price is itemized inline rather than
 // hidden behind a click, and the close re-offers the one CTA. Two blocks carry
-// a CTA at all: pricing, whose trial line is PRICING.trialNote, and the close,
-// whose TRIAL_MICROCOPY comes through CtaRow. How-it-works is four steps and
+// a CTA at all: pricing, whose free-entry line is PRICING.freeEntryNote, and
+// the close, whose FREE_ENTRY_MICROCOPY comes through CtaRow. How-it-works is four steps and
 // asks for nothing, which is deliberate and was described here for a while as
 // carrying microcopy it has never had.
 //

@@ -1,7 +1,11 @@
 import type { Metadata } from "next";
 
+import {
+  QUICK_SESSION_MINUTES,
+  SESSION_MINUTES,
+} from "@/components/landing/copy";
 import Shell from "@/components/Shell";
-import { PRICE_DISPLAY } from "@/lib/pricing";
+import { PACKAGE_SESSIONS, PRICE_DISPLAY } from "@/lib/pricing";
 import { getViewer } from "@/lib/viewer";
 import { REFUND_WINDOW_DAYS, SUPPORT_EMAIL, supportMailto } from "../policy";
 import { LegalPage, LegalSection } from "../shared";
@@ -25,10 +29,14 @@ export default async function RefundPage() {
       <LegalPage title="Refund Policy" updated="August 3, 2026">
         <LegalSection heading="Try before you pay">
           <p>
-            Your first package starts as a trial with a full session: real
-            interviewer, real scoring, real report. That trial exists so that
-            by the time you pay {PRICE_DISPLAY}, you already know exactly what
-            you are buying.
+            A {QUICK_SESSION_MINUTES}-minute quick interview from a company
+            name and a role is free: a real interviewer, a real conversation,
+            no card. It is not scored. Registering the job description you are
+            applying to and reading the rubric it compiles is also free, and
+            that rubric is the bar you would be held to. What {PRICE_DISPLAY}
+            buys is the {PACKAGE_SESSIONS} scored {SESSION_MINUTES}-minute
+            sessions, so by the time you pay you have heard the interviewer
+            and seen the bar.
           </p>
         </LegalSection>
         <LegalSection heading="What we refund">

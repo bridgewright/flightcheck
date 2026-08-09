@@ -190,8 +190,8 @@ export default async function CheckoutPage({
           </h1>
           <p className={`${MUTED} mt-3`}>
             The {PRICE_DISPLAY} unlock applies to an existing package. Start
-            with the job description you&apos;re applying to. Your first
-            session is a free trial.
+            with the job description you&apos;re applying to. Registering it
+            and reading the rubric it compiles costs nothing.
           </p>
           <div className="mt-7">
             <Link href="/new" className={PRIMARY_BUTTON}>

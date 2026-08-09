@@ -7,8 +7,8 @@ import { HERO, SIGNED_IN_CTA } from "./copy";
 // The claim, the offer, and the two ways in. Nothing else.
 //
 // Three text elements and no more: heading, a twenty-word subtext, and the CTA
-// pair. The trial microcopy used to sit under the buttons and now sits under
-// every other CTA on the page instead (see CtaRow).
+// pair. The free-entry microcopy used to sit under the buttons and now sits
+// under every other CTA on the page instead (see CtaRow).
 //
 // **Nothing goes in the right of this hero.** That space is the point: the
 // reference this design follows opens on a claim in a very large amount of

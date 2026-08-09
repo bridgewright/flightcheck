@@ -93,7 +93,7 @@ function NoPackages({ viewer }: { viewer: Viewer }) {
           {greetingName(viewer.email)}
         </h1>
         <p className="max-w-md text-ink-muted">
-          Paste the job description you&apos;re applying to and your first session is
+          Paste the job description you&apos;re applying to and your rubric is
           ready in about two minutes.
         </p>
         <Link href="/new" className={PRIMARY_BUTTON}>

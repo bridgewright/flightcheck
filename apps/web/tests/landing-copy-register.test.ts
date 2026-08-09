@@ -13,7 +13,7 @@ import {
   PRICING_LINES,
   SIGNED_IN_CTA,
   SESSION_MINUTES,
-  TRIAL_MICROCOPY,
+  FREE_ENTRY_MICROCOPY,
 } from "@/components/landing/copy";
 import { EXPIRY_DAYS, PACKAGE_SESSIONS, PRICE_DISPLAY } from "@/lib/pricing";
 
@@ -48,11 +48,11 @@ const PROSE: string[] = [
   HERO.body,
   HERO.primaryCta,
   HERO.secondaryCta,
-  TRIAL_MICROCOPY,
+  FREE_ENTRY_MICROCOPY,
   SIGNED_IN_CTA,
   PRICING.heading,
   PRICING.priceNote,
-  PRICING.trialNote,
+  PRICING.freeEntryNote,
   PRICING.refundLine,
   PRICING.cta,
   CLOSING.heading,
@@ -202,8 +202,8 @@ describe("the landing copy register", () => {
   });
 
   it("says what the quick interview costs under the CTAs", () => {
-    expect(TRIAL_MICROCOPY).toContain("free");
-    expect(TRIAL_MICROCOPY.toLowerCase()).toContain("no card");
+    expect(FREE_ENTRY_MICROCOPY).toContain("free");
+    expect(FREE_ENTRY_MICROCOPY.toLowerCase()).toContain("no card");
   });
 
   it("answers the questions people ask before paying", () => {

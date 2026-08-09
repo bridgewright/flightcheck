@@ -6,7 +6,7 @@ import { describe, expect, it } from "vitest";
 
 import { STEP_NUMERAL } from "@/lib/ui";
 
-import { HERO, TRIAL_MICROCOPY } from "@/components/landing/copy";
+import { HERO, FREE_ENTRY_MICROCOPY } from "@/components/landing/copy";
 
 // The three F-21 landing rules that are measurable, kept as a gate rather than
 // as a paragraph in a plan.
@@ -91,15 +91,15 @@ describe("the hero is one moment", () => {
     const hero = read("components/landing/Hero.tsx");
     // A named ban (taste-skill 4.7). The microcopy is not deleted, it moves.
     expect(hero).toContain("microcopy={false}");
-    expect(hero).not.toContain("TRIAL_MICROCOPY");
+    expect(hero).not.toContain("FREE_ENTRY_MICROCOPY");
   });
 
   it("still offers the trial under every other call to action", () => {
     // The trade is first-viewport trial terms, not the trial terms. If this
     // stops being true the trade has quietly become a deletion.
     const cta = read("components/landing/CtaRow.tsx");
-    expect(cta).toContain("TRIAL_MICROCOPY");
-    expect(TRIAL_MICROCOPY).toContain("free");
+    expect(cta).toContain("FREE_ENTRY_MICROCOPY");
+    expect(FREE_ENTRY_MICROCOPY).toContain("free");
   });
 
   it("carries the claim alone, and asks the visitor for nothing", () => {

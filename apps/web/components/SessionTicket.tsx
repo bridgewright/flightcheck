@@ -40,9 +40,8 @@ export default function SessionTicket({
   stageLine?: string | null;
   action?: ReactNode;
   /** lib/home.isUnpaid: an unpaid package's exhausted state is an unlock
-   * moment on the SAME package, not the end of it. (The worker grants the
-   * trial quota to every unpaid package, so the copy holds beyond the
-   * account's first one.) */
+   * moment on the SAME package, not the end of it — the rubric is compiled
+   * and the sessions are waiting behind the price. */
   locked?: boolean;
 }) {
   const exhausted = sessionNumber === null;

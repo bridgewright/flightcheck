@@ -150,7 +150,7 @@ export default async function RubricPage({
   // employer a package is for is decided in exactly one place. The
   // no-company branch keeps the plain line byte for byte.
   const identity = packageIdentityDecision(active.company, active.jd_url);
-  // Effective quota (lib/home): an unpaid package owes 1 session here too.
+  // Effective quota (lib/home): an unpaid package offers none here either.
   const total = effectiveTotalSessions({
     is_trial: pkg.is_trial,
     paid_at: pkg.paid_at,
@@ -158,7 +158,7 @@ export default async function RubricPage({
   });
   const sessions = await listSessions(pkg.id).catch(() => [] as SessionSummary[]);
   const next = nextSessionNumber(sessions, total);
-  const trial = isUnpaid(pkg);
+  const locked = isUnpaid(pkg);
 
   return (
     <Shell viewer={viewer}>
@@ -198,11 +198,10 @@ export default async function RubricPage({
 
       <div className={`mt-10 flex flex-col gap-2 border-t pt-8 ${DIVIDER}`}>
         {next === null ? (
-          trial ? (
+          locked ? (
             <>
               <p className={SUBTLE}>
-                Your trial session is used. The rest of this package scores
-                against this same rubric.
+                This is the bar. Unlock the scored sessions to be held to it.
               </p>
               <Link
                 href={checkoutHref(pkg.id)}

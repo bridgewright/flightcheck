@@ -2,7 +2,7 @@ import Link from "next/link";
 
 import { CTA_BUTTON, CTA_SECONDARY_BUTTON, FINE_PRINT } from "@/lib/ui";
 
-import { TRIAL_MICROCOPY } from "./copy";
+import { FREE_ENTRY_MICROCOPY } from "./copy";
 
 // The primary call to action, plus the one sentence that answers "what does
 // this cost me to find out". Every scroll block re-offers this rather than
@@ -53,7 +53,7 @@ export default function CtaRow({
           </Link>
         ) : null}
       </div>
-      {microcopy ? <p className={FINE_PRINT}>{TRIAL_MICROCOPY}</p> : null}
+      {microcopy ? <p className={FINE_PRINT}>{FREE_ENTRY_MICROCOPY}</p> : null}
     </div>
   );
 }

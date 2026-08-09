@@ -56,7 +56,7 @@ export default function PricingBlock({
         <Link href={ctaHref} className={`${PRIMARY_BUTTON} self-start`}>
           {ctaLabel}
         </Link>
-        <p className={FINE_PRINT}>{PRICING.trialNote}</p>
+        <p className={FINE_PRINT}>{PRICING.freeEntryNote}</p>
       </div>
     </article>
   );

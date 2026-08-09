@@ -1,5 +1,5 @@
 // The trust-policy constants and helpers for the legal surfaces. lib/pricing.ts
-// owns the commercial numbers ($49 / 6 sessions / 30 days / 1 trial session);
+// owns the commercial numbers ($49 / 6 sessions / 30 days);
 // this module owns the legal ones — refund window, deletion timeline, support
 // address — plus the mailto builders the footer and settings intake share.
 // REFUND_WINDOW_DAYS lives here rather than in lib/pricing.ts because Phase 0

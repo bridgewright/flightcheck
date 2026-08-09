@@ -11,7 +11,7 @@ import { SITE_NAME, SITE_URL } from "../site";
 // "what is flightcheck" or "how much does interview practice cost". A search
 // engine quotes a title; an answer engine quotes claims, so the claims here
 // are the product's own, drawn from the same modules the visible pages render
-// from. The price, session count, expiry, trial size, and refund window are
+// from. The price, session count, expiry, free entry, and refund window are
 // all imports; a policy change lands here on the next deploy without anyone
 // remembering this file exists.
 //

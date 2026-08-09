@@ -9,13 +9,13 @@ import { QUICK_SESSION_BUDGET_S, SESSION_BUDGET_S } from "@/lib/session-room";
 // personas, no celebrity framing, no "undetectable", no scarcity, no
 // exclamation marks. tests/landing-copy-register.test.ts fails the build on
 // any of those, and it can only do that if the prose is reachable as data.
-// Second, the numbers. Price, session count, trial size, validity window, and
+// Second, the numbers. Price, session count, quick-interview length, validity window, and
 // refund window all come from the modules that own them, so the landing can
 // never quote a policy the checkout does not honour.
 //
 // The competitive read behind this page (Final Round, Yoodli, Himalayas) said
 // the market's polish bar is: hero carries the product rather than a slogan,
-// every scroll block re-offers one CTA with trial microcopy under it, framed
+// every scroll block re-offers one CTA with free-entry microcopy under it, framed
 // real screenshots as the proof layer, a three-or-four item explainer row, and
 // inline pricing plus an FAQ closing the page so objections die here.
 
@@ -24,7 +24,7 @@ export const SESSION_MINUTES = Math.round(SESSION_BUDGET_S / 60);
 export const QUICK_SESSION_MINUTES = Math.round(QUICK_SESSION_BUDGET_S / 60);
 
 /** Under every primary CTA. The single most load-bearing line on the page. */
-export const TRIAL_MICROCOPY = `${QUICK_SESSION_MINUTES} minutes, free, no card. A company name and a role is all it takes.`;
+export const FREE_ENTRY_MICROCOPY = `${QUICK_SESSION_MINUTES} minutes, free, no card. A company name and a role is all it takes.`;
 
 /**
  * What the CTA says to someone who is already signed in.
@@ -33,8 +33,8 @@ export const TRIAL_MICROCOPY = `${QUICK_SESSION_MINUTES} minutes, free, no card.
  * bookmark or the logo. It was offering them "Sign in and start" while a
  * separate line underneath told them they were signed in already, so one
  * screen said both things at once. The offer is not the same offer for them:
- * there is nothing to sign up for and no first session to promise free, so the
- * button changes and the trial microcopy comes off.
+ * there is nothing to sign up for and no free door left to point at, so the
+ * button changes and the free-entry microcopy comes off.
  */
 export const SIGNED_IN_CTA = "Go to your home";
 
@@ -140,7 +140,7 @@ export const PRICING = {
   heading: "One package per job description.",
   price: PRICE_DISPLAY,
   priceNote: "per job description",
-  trialNote:
+  freeEntryNote:
     `The ${QUICK_SESSION_MINUTES}-minute quick interview is free. Registering a job description and seeing your rubric is free. ${PRICE_DISPLAY} buys ${PACKAGE_SESSIONS} full ${SESSION_MINUTES}-minute scored sessions for ${EXPIRY_DAYS} days.`,
   refundLine:
     `If a technical failure on our side keeps you from using what you paid for, tell us within ${REFUND_WINDOW_DAYS} days and we will fix it or refund you.`,
@@ -225,7 +225,8 @@ export const FAQ: FaqEntry[] = [
 export const CLOSING = {
   heading: "Find out where you actually stand.",
   body:
-    "The first session is scored in full, and the report is the same one you " +
-    "would get on session six. Read it, then decide.",
-  cta: "Sign in and start",
+    "Five minutes with the interviewer, from a company name and a role. It " +
+    "is not scored, because the scoring needs the job description you are " +
+    "actually applying to. Hear it first, then decide.",
+  cta: "Try a five-minute interview",
 } as const;

@@ -81,7 +81,7 @@ function Empty({ viewer }: { viewer: Viewer }) {
           No packages yet.
         </h1>
         <p className="max-w-md text-ink-muted">
-          Paste the job description you&apos;re applying to and your first session is
+          Paste the job description you&apos;re applying to and your rubric is
           ready in about two minutes.
         </p>
         <Link href="/new" className={PRIMARY_BUTTON}>
@@ -99,7 +99,7 @@ function PackageCard({
   pkg: PackageSummary;
   verdict: Verdict | null;
 }) {
-  // Effective quota (lib/home): an unpaid trial reads "of 1", never "of 6".
+  // Effective quota (lib/home): an unpaid package reads "of 0", never "of 6".
   const total = effectiveTotalSessions(pkg);
   const company = packageCompanyLine(pkg.company);
   // The mark is only rendered when a domain we would actually fetch exists,

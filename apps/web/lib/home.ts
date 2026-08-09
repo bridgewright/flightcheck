@@ -370,15 +370,21 @@ export function exhaustedSessionsLine(totalSessions: number): string {
 
 // --- Payments (v0.5): effective quota, expiry, receipts ------------------
 //
-// The trial model: the FIRST package per account starts as a 1-session
-// trial; $49 unlocks the SAME package to its full quota. These helpers are
-// the single UI chokepoint for that policy — every surface that renders a
-// session count or an expiry line derives it here, mirroring the worker's
-// quota chokepoint, so the two cannot drift screen by screen.
+// The model (DECISIONS 060): registering a job description and reading the
+// rubric it compiles is free, and every scored session is paid — $49 unlocks
+// the package to its full quota. The free full session the first package used
+// to carry retired with the trial; the free door is now the unscored
+// five-minute quick interview, whose package is a funnel artifact and carries
+// its own single slot. These helpers are the single UI chokepoint for that
+// policy — every surface that renders a session count or an expiry line
+// derives it here, mirroring the worker's quota chokepoint, so the two cannot
+// drift screen by screen.
 
 /** The paid-state slice of a package. PackageSummary and PackageRow both
  * satisfy it structurally; the fields are optional because rows serialized
- * by a pre-v0.5 worker omit them (absence = not trial, unpaid). */
+ * by a pre-v0.5 worker omit them (absence = not trial, unpaid). is_trial is
+ * read-only history now: it is never granted again, and it changes nothing
+ * here. */
 export interface PaywallState {
   kind?: "standard" | "quick";
   is_trial?: boolean;
@@ -389,10 +395,9 @@ export interface PaywallState {
 }
 
 /** A package whose unlock has not been bought yet — the state every unlock
- * CTA and session count keys on. The worker's quota chokepoint grants the
- * trial quota to EVERY unpaid package, not just the account's first one
- * (is_trial marks records and copy, and never flips on payment) — so the
- * UI mirrors paid_at alone, or the two would disagree screen by screen. */
+ * CTA and session count keys on. It mirrors the worker's quota chokepoint,
+ * which keys on payment alone (is_trial marks records, and never flips on
+ * payment), or the two would disagree screen by screen. */
 export function isUnpaid(pkg: PaywallState): boolean {
   return !pkg.paid_at;
 }
@@ -412,10 +417,13 @@ export function isUnlocked(pkg: PaywallState): boolean {
 }
 
 /**
- * How many sessions the package offers RIGHT NOW: the trial quota until the
- * package is paid, its own quota afterwards. Every rendered session count
- * goes through here — a "1 of 6" on an unpaid package would promise five
- * sessions the user has not bought.
+ * How many sessions the package offers RIGHT NOW: none until it is paid, its
+ * own quota afterwards. Every rendered session count goes through here — a
+ * "1 of 6" on an unpaid package would promise five sessions the user has not
+ * bought, and until DECISIONS 060 it promised the sixth for free.
+ *
+ * A quick package is the exception and always offers exactly one: it is the
+ * funnel's free door, it is unscored, and one is all it ever gets.
  */
 export function effectiveTotalSessions(
   pkg: PaywallState & { total_sessions: number },
@@ -428,12 +436,10 @@ export function effectiveTotalSessions(
  * The one unlock sentence, derived from lib/pricing so the button can never
  * disagree with the price page.
  *
- * It says "the rest", not "all six". This button renders in exactly one state,
- * trial spent, so at the moment a reader sees it one of the six sessions is
- * already gone. "Unlock all 6 sessions" read as a purchase promise the product
- * would not keep, and it contradicted the sentence directly above it in the
- * same card (SessionTicket: "The rest of this package unlocks with payment")
- * and the landing ("The $49 unlock opens the rest of that same package").
+ * It said "the rest of the 5 sessions" while the first package carried a free
+ * scored one, because at the moment this button rendered that one was already
+ * spent. DECISIONS 060 retired it, so an unpaid package now has all six ahead
+ * of it and "the rest" would undercount what the reader is buying.
  *
  * The count stays derived rather than dropped, because a reader deciding
  * whether $49 is worth it needs to know how many sessions they are buying.
@@ -453,7 +459,7 @@ const DAY_MS = 24 * 60 * 60 * 1000;
  * Whole days until the package expires, rounding partial days up (a window
  * with 25 hours left is honestly "2 days", not a surprise cutoff), or null
  * when no expiry applies: the 30-day window starts at payment, so unpaid
- * packages — trials above all — carry no countdown.
+ * packages carry no countdown.
  */
 export function expiryRemainingDays(pkg: PaywallState, now: Date): number | null {
   if (!pkg.paid_at || !pkg.expires_at) {

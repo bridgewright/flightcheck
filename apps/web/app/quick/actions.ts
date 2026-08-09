@@ -50,9 +50,10 @@ export async function quickStart(formData: FormData): Promise<never> {
     // The worker's two honest refusals. `package-locked` is deliberately NOT
     // among them: it guards sessions on an unpaid STANDARD package, and quick
     // packages skip that check, so a quick start cannot raise it. Copy for it
-    // told the visitor to unlock or remove their package first — a rule the
-    // product does not have, an action it does not offer, and a dead end for
-    // the one visitor most worth converting.
+    // told the visitor to unlock or remove their package before trying the
+    // free interview — a rule the product does not have, telling someone one
+    // step from paying to pay first, or to delete a compiled package, to see
+    // a five-minute demo.
     if (error instanceof WorkerError && error.code === "quick-cap") {
       redirect("/quick?error=quick-cap");
     }

@@ -24,8 +24,8 @@ export default async function CheckoutCancelPage() {
         </h1>
         <p className="mt-3 text-ink-muted">
           Nothing was charged. Your package is exactly as you left it: the
-          trial session and every report stay available, and you can unlock
-          the full package whenever it suits you.
+          job description, its rubric, and every report you already have stay
+          available, and you can unlock the sessions whenever it suits you.
         </p>
         <div className="mt-7 flex flex-wrap items-center gap-4">
           <Link href="/pricing" className={PRIMARY_BUTTON}>
