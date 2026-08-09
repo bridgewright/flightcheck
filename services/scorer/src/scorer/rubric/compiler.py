@@ -196,7 +196,8 @@ def _check_faithfulness(
             if dim.key != "role-and-company-fit" or dim.channel != "content":
                 problems.append(
                     f'dimension "{dim.key}": only the role-and-company-fit '
-                    "dimension may be profile-licensed"
+                    "CONTENT dimension may be profile-licensed (wrong key, "
+                    "wrong channel, or both)"
                 )
             if dim.jd_evidence is not None:
                 problems.append(

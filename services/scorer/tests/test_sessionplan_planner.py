@@ -661,3 +661,20 @@ def test_generated_fallback_never_returns_an_asked_text_even_when_exhausted():
         seen.append(question.question)
         asked.add(question.question)
     assert len(seen) == len(set(seen))
+
+
+def test_fit_probes_rotate_across_a_six_session_package():
+    rubric = _rubric_with_fit_dimension()
+    profile = _pivot_profile()
+    history = []
+    fit_probes = []
+    for index in range(1, 7):
+        plan = plan_baseline_session(
+            rubric, session_index=index, history=history, profile=profile)
+        fit_probes.extend(
+            probe for question in plan.question_sequence
+            if question.dimension_key == "role-and-company-fit"
+            for probe in question.probes)
+        history.append(SimpleNamespace(session_plan=plan, report=None))
+    assert len(fit_probes) == 6
+    assert len(set(fit_probes)) == 6

@@ -251,7 +251,8 @@ def test_profile_license_on_values_dimension_is_a_faithfulness_problem():
     ])
     fake = FakeGenAI([json.dumps(invalid), json.dumps(_good_rubric())])
     _compile(fake)
-    assert "only the role-and-company-fit dimension may be profile-licensed" in _appended(fake)
+    assert ("only the role-and-company-fit CONTENT dimension may be "
+            "profile-licensed") in _appended(fake)
 
 
 def test_profile_licensed_dimension_with_jd_quote_is_a_problem():
