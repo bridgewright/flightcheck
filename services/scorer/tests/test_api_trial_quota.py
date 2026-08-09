@@ -39,14 +39,14 @@ def _client(db: FakeDatabase | None = None,
 # --- trial marking at create ---------------------------------------------
 
 
-def test_first_package_for_a_user_is_trial():
+def test_new_standard_package_is_not_a_trial():
     client, db = _client(fake=FakeGenAI([]))   # compile fails; row still lands
     response = client.post(
         "/api/packages", json={"jd_text": JD_TEXT, "user_id": "user-1"},
         headers=AUTH,
     )
     assert response.status_code == 202
-    assert db.get_package(response.json()["package_id"]).is_trial is True
+    assert db.get_package(response.json()["package_id"]).is_trial is False
 
 
 def test_second_package_for_the_same_user_is_not_trial():

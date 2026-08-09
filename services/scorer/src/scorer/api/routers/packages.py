@@ -60,6 +60,14 @@ class CreatePackageRequest(BaseModel):
     user_id: str | None = None
 
 
+class CreateQuickPackageRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    user_id: str
+    company: str
+    role: str
+
+
 class DeletePackageRequest(BaseModel):
     """Who is asking. The web layer proves identity; this proves ownership."""
 
@@ -118,6 +126,38 @@ def build_router(deps: Deps) -> APIRouter:
     package_create_limiter = deps.package_create_limiter
     compile_retry_attempts = deps.compile_retry_attempts
     fetch_jd = deps.fetch_jd
+
+    @router.post("/packages/quick")
+    def create_quick_package(body: CreateQuickPackageRequest):
+        company = body.company.strip()
+        role = body.role.strip()
+        if not company or len(company) > limits.quick_company_max_chars:
+            return JSONResponse(
+                status_code=422,
+                content={"error": "company must be nonempty and within the character limit"},
+            )
+        if not role or len(role) > limits.quick_role_max_chars:
+            return JSONResponse(
+                status_code=422,
+                content={"error": "role must be nonempty and within the character limit"},
+            )
+        if not package_create_limiter.hit(body.user_id):
+            return rate_limited("package-create")
+        owned = db.list_packages_by_user(body.user_id)
+        quick_count = sum(package.kind == "quick" for package in owned)
+        if quick_count >= limits.quick_package_cap:
+            return JSONResponse(
+                status_code=409,
+                content={
+                    "error": (
+                        "quick interviews are capped per account — register a job "
+                        "description for the full product"
+                    ),
+                    "code": "quick-cap",
+                },
+            )
+        row = db.create_quick_package(body.user_id, company, role)
+        return {"package_id": row.id, "access_token": row.access_token}
 
     @router.post("/packages", status_code=202)
     def create_package(body: CreatePackageRequest, background_tasks: BackgroundTasks):
@@ -237,11 +277,8 @@ def build_router(deps: Deps) -> APIRouter:
                     content={"error": profile_refusal_message(label),
                              "code": "profile-not-a-document"},
                 )
-        # Trial model (F-24): the account's FIRST package is the trial. The
-        # flag is cosmetic-plus-records -- the money chokepoint is paid_at
-        # (effective_total_sessions) -- but the web renders trial state from
-        # it, so it is set exactly once, at birth.
-        is_trial = body.user_id is not None and not owned
+        # DECISIONS 060 retires new trial grants; historical rows keep the flag.
+        is_trial = False
         row = db.create_package(jd_text, body.jd_url, user_id=body.user_id,
                                 is_trial=is_trial)
         # Born touched: if the compile dies before its first status write the
