@@ -146,6 +146,21 @@ def test_create_package_returns_compiling_row_with_deterministic_ids():
     assert (row.id, row.access_token) == ("pkg-1", "tok-1")
 
 
+def test_create_quick_package_returns_ready_single_session_row():
+    db = FakeDatabase()
+    row = db.create_quick_package("user-1", "ExampleCo", "Product Manager")
+    assert isinstance(row, PackageRow)
+    assert (row.id, row.access_token) == ("pkg-1", "tok-1")
+    assert row.status == "ready"
+    assert row.jd_text == ""
+    assert row.kind == "quick"
+    assert row.quick_company == "ExampleCo"
+    assert row.quick_role == "Product Manager"
+    assert row.user_id == "user-1"
+    assert row.total_sessions == 1
+    assert row.is_trial is False
+
+
 def test_ids_and_tokens_increment_deterministically():
     db = FakeDatabase()
     a = db.create_package("jd a", None)

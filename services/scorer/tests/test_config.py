@@ -16,6 +16,8 @@ def test_session_limits():
     assert config.session.heartbeat_interval_s == 15
     assert config.session.heartbeat_stale_after_s == 60
     assert config.session.silence_duration_ms == 900
+    assert config.session.quick_budget_minutes == 5
+    assert config.session.quick_hard_cut_minutes == 8
 
 
 def test_delivery_filler_lexicon_exact():
@@ -58,6 +60,9 @@ def test_limits_guard_caps_and_windows():
     assert limits.study_per_window == 6
     assert limits.study_generating_stale_after_s == 600
     assert limits.paraphrase_max_items == 40
+    assert limits.quick_package_cap == 2
+    assert limits.quick_company_max_chars == 120
+    assert limits.quick_role_max_chars == 120
 
 
 def test_limits_input_and_lifecycle_bounds():

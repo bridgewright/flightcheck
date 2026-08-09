@@ -114,10 +114,10 @@ class SessionPlan(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     session_index: int                # real one-based index within the package
-    focus: Literal["baseline", "targeted"]
+    focus: Literal["baseline", "targeted", "quick"]
     question_sequence: list[QuestionSpec]  # covers every dimension at least shallowly
     pressure_probe: QuestionSpec      # exactly one challenge moment
-    time_budget_minutes: int          # 20
+    time_budget_minutes: int          # 20, or 5 for quick sessions
 
 
 class TranscriptSegment(BaseModel):

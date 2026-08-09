@@ -31,6 +31,8 @@ class SessionConfig(BaseModel):
     heartbeat_interval_s: int
     heartbeat_stale_after_s: int
     silence_duration_ms: int
+    quick_budget_minutes: int
+    quick_hard_cut_minutes: int
 
 
 class DeliveryConfig(BaseModel):
@@ -93,6 +95,9 @@ class LimitsConfig(BaseModel):
     study_per_window: int
     study_generating_stale_after_s: float
     paraphrase_max_items: int
+    quick_package_cap: int
+    quick_company_max_chars: int
+    quick_role_max_chars: int
 
 
 class ReportConfig(BaseModel):

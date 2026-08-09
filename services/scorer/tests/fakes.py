@@ -234,6 +234,27 @@ class FakeDatabase:
         self.jd_urls[row.id] = jd_url
         return row
 
+    def create_quick_package(self, user_id: str, company: str,
+                             role: str) -> PackageRow:
+        self._package_seq += 1
+        row = PackageRow(
+            id=f"pkg-{self._package_seq}",
+            access_token=f"tok-{self._package_seq}",
+            status="ready",
+            jd_text="",
+            candidate_profile=None,
+            rubric=None,
+            user_id=user_id,
+            kind="quick",
+            quick_company=company,
+            quick_role=role,
+            total_sessions=1,
+            is_trial=False,
+        )
+        self.packages[row.id] = row
+        self.jd_urls[row.id] = None
+        return row
+
     def get_package(self, package_id: str) -> PackageRow:
         return self.packages[package_id]
 

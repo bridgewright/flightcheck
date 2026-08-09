@@ -117,6 +117,9 @@ class PackageRow(BaseModel):
     # It is the only domain this product can honestly associate with the
     # employer (F-54), and it is null far more often than not.
     jd_url: str | None = None
+    kind: str = "standard"
+    quick_company: str | None = None
+    quick_role: str | None = None
     candidate_profile: CandidateProfile | None
     rubric: Rubric | None
     user_id: str | None = None
@@ -226,6 +229,10 @@ class Database(Protocol):
         shape for callers that still claim by token. is_trial marks the
         account's FIRST package (Track C computes it at the create
         chokepoint; it never flips later -- paid state is paid_at)."""
+        ...
+
+    def create_quick_package(self, user_id: str, company: str,
+                             role: str) -> PackageRow:
         ...
 
     def get_package(self, package_id: str) -> PackageRow:
@@ -464,6 +471,9 @@ def _to_package_row(data: dict) -> PackageRow:
         status=data["status"],
         jd_text=data["jd_text"] or "",
         jd_url=data.get("jd_url"),
+        kind=data.get("kind", "standard"),
+        quick_company=data.get("quick_company"),
+        quick_role=data.get("quick_role"),
         candidate_profile=(
             CandidateProfile.model_validate(data["candidate_profile"])
             if data.get("candidate_profile") is not None
@@ -548,6 +558,22 @@ class SupabaseDatabase:
             "jd_url": jd_url,
             "user_id": user_id,
             "is_trial": is_trial,
+        }
+        data = self._client.table("packages").insert(payload).execute().data
+        return _to_package_row(data[0])
+
+    def create_quick_package(self, user_id: str, company: str,
+                             role: str) -> PackageRow:
+        payload = {
+            "access_token": secrets.token_urlsafe(24),
+            "status": "ready",
+            "jd_text": "",
+            "user_id": user_id,
+            "kind": "quick",
+            "quick_company": company,
+            "quick_role": role,
+            "total_sessions": 1,
+            "is_trial": False,
         }
         data = self._client.table("packages").insert(payload).execute().data
         return _to_package_row(data[0])
