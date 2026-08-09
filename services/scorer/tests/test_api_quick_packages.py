@@ -199,3 +199,23 @@ def test_quick_inputs_drop_invisible_and_control_characters():
     assert response.status_code == 200
     package = db.get_package(response.json()["package_id"])
     assert package.quick_company == "Acme Labs"
+
+
+def test_the_package_list_labels_quick_rows_so_the_web_can_filter_them():
+    """The dashboard feed is where the web decides a quick package is a
+    funnel artifact, never the active package -- without kind on the wire
+    that filter reads undefined and every quick row masquerades as a
+    one-session standard package."""
+    client, _ = _client()
+    quick = {"user_id": "user-1", "company": "Acme", "role": "Engineer"}
+    assert client.post("/api/packages/quick", json=quick, headers=AUTH).status_code == 200
+    standard = {"jd_text": "jd text long enough to compile", "user_id": "user-1"}
+    assert client.post("/api/packages", json=standard, headers=AUTH).status_code == 202
+
+    rows = client.get("/api/users/user-1/packages", headers=AUTH).json()["packages"]
+    by_kind = {row["kind"]: row for row in rows}
+    assert set(by_kind) == {"quick", "standard"}
+    assert by_kind["quick"]["quick_company"] == "Acme"
+    assert by_kind["quick"]["quick_role"] == "Engineer"
+    assert by_kind["standard"]["quick_company"] is None
+    assert by_kind["standard"]["quick_role"] is None

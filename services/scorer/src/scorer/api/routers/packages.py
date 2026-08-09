@@ -673,6 +673,13 @@ def build_router(deps: Deps) -> APIRouter:
                 # The pasted JD URL, so the web can decide whether a company
                 # mark is even possible before it renders an image element.
                 "jd_url": package.jd_url,
+                # F-84: the web's active-package resolution filters quick rows
+                # out of every dashboard surface, and the pitch screen needs
+                # the typed company and role -- without kind on the wire a
+                # quick row masquerades as a one-session standard package.
+                "kind": package.kind,
+                "quick_company": package.quick_company,
+                "quick_role": package.quick_role,
                 "is_trial": package.is_trial,
                 "paid_at": package.paid_at,
                 "comped_at": package.comped_at,
