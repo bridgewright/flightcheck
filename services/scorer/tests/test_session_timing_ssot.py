@@ -60,6 +60,15 @@ def test_the_room_mirrors_the_configured_hard_cut(session_config, room_source):
     )
 
 
+def test_the_room_mirrors_the_quick_timing_pair(session_config, room_source):
+    assert _ts_int_const(room_source, "QUICK_SESSION_BUDGET_MINUTES") == (
+        session_config["quick_budget_minutes"]
+    )
+    assert _ts_int_const(room_source, "QUICK_HARD_CUT_MINUTES") == (
+        session_config["quick_hard_cut_minutes"]
+    )
+
+
 def test_the_room_mirrors_the_configured_heartbeat_interval(
     session_config, room_source
 ):
@@ -74,7 +83,16 @@ def test_the_room_derives_seconds_from_minutes(room_source):
     # above while disagreeing with them.
     assert "export const SESSION_BUDGET_S = SESSION_BUDGET_MINUTES * 60;" in room_source
     assert "export const HARD_CUT_S = SESSION_HARD_CUT_MINUTES * 60;" in room_source
+    assert (
+        "export const QUICK_SESSION_BUDGET_S = QUICK_SESSION_BUDGET_MINUTES * 60;"
+        in room_source
+    )
+    assert (
+        "export const QUICK_HARD_CUT_S = QUICK_HARD_CUT_MINUTES * 60;"
+        in room_source
+    )
 
 
 def test_the_hard_cut_leaves_room_after_the_budget(session_config):
     assert session_config["hard_cut_minutes"] > session_config["budget_minutes"]
+    assert session_config["quick_hard_cut_minutes"] > session_config["quick_budget_minutes"]

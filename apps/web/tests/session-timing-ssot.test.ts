@@ -6,6 +6,10 @@ import { describe, expect, it } from "vitest";
 import {
   HARD_CUT_S,
   HEARTBEAT_INTERVAL_S,
+  QUICK_HARD_CUT_MINUTES,
+  QUICK_HARD_CUT_S,
+  QUICK_SESSION_BUDGET_MINUTES,
+  QUICK_SESSION_BUDGET_S,
   SESSION_BUDGET_MINUTES,
   SESSION_BUDGET_S,
   SESSION_HARD_CUT_MINUTES,
@@ -50,6 +54,15 @@ describe("session timing single source", () => {
   it("reads the two timings the room enforces out of product.toml", () => {
     expect(session.budget_minutes).toBeTypeOf("number");
     expect(session.hard_cut_minutes).toBeTypeOf("number");
+    expect(session.quick_budget_minutes).toBeTypeOf("number");
+    expect(session.quick_hard_cut_minutes).toBeTypeOf("number");
+  });
+
+  it("matches the quick-session timing pair", () => {
+    expect(QUICK_SESSION_BUDGET_MINUTES).toBe(session.quick_budget_minutes);
+    expect(QUICK_SESSION_BUDGET_S).toBe(session.quick_budget_minutes * 60);
+    expect(QUICK_HARD_CUT_MINUTES).toBe(session.quick_hard_cut_minutes);
+    expect(QUICK_HARD_CUT_S).toBe(session.quick_hard_cut_minutes * 60);
   });
 
   it("matches the budget the room shows and paces against", () => {

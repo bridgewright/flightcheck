@@ -10,13 +10,21 @@
 // its own unit (minutes), and two gates fail if they ever disagree:
 // apps/web/tests/session-timing-ssot.test.ts and
 // services/scorer/tests/test_session_timing_ssot.py.
-// Change product.toml first; these follow.
+// The standard keys are budget_minutes / hard_cut_minutes; the quick twins
+// are quick_budget_minutes / quick_hard_cut_minutes. Change product.toml
+// first; these follow.
 
 /** [session] budget_minutes. */
 export const SESSION_BUDGET_MINUTES = 20;
 
 /** [session] hard_cut_minutes. */
 export const SESSION_HARD_CUT_MINUTES = 25;
+
+/** [session] quick_budget_minutes. */
+export const QUICK_SESSION_BUDGET_MINUTES = 5;
+
+/** [session] quick_hard_cut_minutes. */
+export const QUICK_HARD_CUT_MINUTES = 8;
 
 /** [session] heartbeat_interval_s. */
 export const HEARTBEAT_INTERVAL_S = 15;
@@ -26,6 +34,12 @@ export const SESSION_BUDGET_S = SESSION_BUDGET_MINUTES * 60;
 
 /** Hard cut — the client auto-ends here. */
 export const HARD_CUT_S = SESSION_HARD_CUT_MINUTES * 60;
+
+/** Quick-session budget shown to the candidate. */
+export const QUICK_SESSION_BUDGET_S = QUICK_SESSION_BUDGET_MINUTES * 60;
+
+/** Quick-session hard cut. */
+export const QUICK_HARD_CUT_S = QUICK_HARD_CUT_MINUTES * 60;
 
 /** Format elapsed seconds as MM:SS with zero padding. */
 export function formatTimer(totalSeconds: number): string {
