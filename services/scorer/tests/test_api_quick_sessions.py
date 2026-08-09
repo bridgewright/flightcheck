@@ -77,6 +77,22 @@ def test_a_real_quick_room_run_reaches_quick_done():
     assert db.get_session(session_id).status == "quick_done"
 
 
+def test_the_locked_package_guard_does_not_brick_a_quick_room():
+    # A quick package is unpaid by design and has no comped_at either, so a
+    # guard that reads "nobody has paid for this" without reading the kind
+    # would refuse every quick mint -- the whole funnel, closed by the fix
+    # meant to close the trial's door.
+    client, db, package = _seed()
+    assert package.paid_at is None and package.comped_at is None
+    session_id = client.post(
+        "/api/sessions", json={"package_id": package.id}, headers=AUTH
+    ).json()["session_id"]
+
+    response = client.post(f"/api/sessions/{session_id}/secret-mint", headers=AUTH)
+    assert response.status_code == 200
+    assert db.get_session(session_id).secret_mints == 1
+
+
 def test_a_reclaimed_quick_session_resumes_and_still_completes():
     # The room died mid-interview and the customer took the slot back. The
     # re-armed row is the same row, so complete must still land on it.

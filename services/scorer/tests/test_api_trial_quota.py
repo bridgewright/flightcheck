@@ -237,6 +237,62 @@ def test_a_paid_package_still_mints_normally():
     assert response.json()["secret_mints"] == 1
 
 
+def test_an_expired_package_cannot_mint_a_realtime_secret():
+    # The same door, the other way through it. create_session answers 410
+    # for an expired window -- resumes included -- but a "planned" row
+    # created just before the window closed outlives it, and minting on
+    # that row is what actually buys the OpenAI minutes. Left open, the
+    # locked-package refusal above closes the front door on an unpaid
+    # package while a paid-and-lapsed one still opens rooms (up to the mint
+    # cap, per surviving row) outside the window it was paid for.
+    db = FakeDatabase()
+    package = ready_package(db, paid_at="2026-06-01T00:00:00+00:00",
+                            expires_at="2026-07-01T00:00:00+00:00")
+    row = db.create_session(package.id, 1, None)
+    client, _ = _client(db=db)
+
+    assert client.post("/api/sessions", json={"package_id": package.id},
+                       headers=AUTH).status_code == 410
+    response = client.post(f"/api/sessions/{row.id}/secret-mint", headers=AUTH)
+    assert response.status_code == 409
+    assert response.json()["code"] == "session-not-live"
+    assert db.get_session(row.id).secret_mints == 0
+
+
+def test_a_comped_package_mints_like_a_paid_one():
+    # comped_at is access granted without money (migration 008). The room
+    # door must read the same two columns effective_total_sessions does, or
+    # the operator's own comped runs cannot start.
+    db = FakeDatabase()
+    package = ready_package(db)
+    db.packages[package.id] = package.model_copy(
+        update={"comped_at": "2026-08-03T00:00:00+00:00"})
+    row = db.create_session(package.id, 1, None)
+    client, _ = _client(db=db)
+
+    response = client.post(f"/api/sessions/{row.id}/secret-mint", headers=AUTH)
+    assert response.status_code == 200
+    assert response.json()["secret_mints"] == 1
+
+
+def test_a_session_whose_package_is_gone_refuses_instead_of_crashing():
+    # The mint reads the package row now, so a session that outlives its
+    # package (a deletion run that died between its two writes) turns a
+    # refusal into a 500 -- and the web treats anything that is not a 429 or
+    # a session-not-live 409 as a counter outage and MINTS ANYWAY. Failing
+    # closed here is what keeps that path from being the widest door of all.
+    db = FakeDatabase()
+    package = ready_package(db, paid_at="2026-08-03T00:00:00+00:00")
+    row = db.create_session(package.id, 1, None)
+    client, _ = _client(db=db)
+    del db.packages[package.id]
+
+    response = client.post(f"/api/sessions/{row.id}/secret-mint", headers=AUTH)
+    assert response.status_code == 409
+    assert response.json()["code"] == "session-not-live"
+    assert db.get_session(row.id).secret_mints == 0
+
+
 # --- summaries expose trial/paid/expiry state -----------------------------
 
 

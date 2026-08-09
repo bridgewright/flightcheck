@@ -159,6 +159,24 @@ def _is_locked_standard(package: PackageRow) -> bool:
             and package.comped_at is None)
 
 
+def _room_is_closed(package: PackageRow) -> bool:
+    """No live room may open on this package, whatever a session row says.
+
+    The two states create_session refuses at the front door, read together
+    because the mint is the same door: locked (409 package-locked) and past
+    the paid window (410 package-expired, resumes included). A "planned" row
+    created minutes before the window closed outlives it, and the mint is
+    what actually buys the OpenAI minutes -- so an expiry the front door
+    enforces and this one does not is a paid-and-lapsed package still
+    opening rooms, up to the mint cap, on every surviving row.
+
+    The cost is a reconnect lost when a window closes mid-interview. That
+    session's upload and complete stay open (finishing is never gated), and
+    create_session would refuse a fresh start at the same instant anyway.
+    """
+    return _is_locked_standard(package) or is_expired(package)
+
+
 def _session_response(row: SessionRow, package: PackageRow) -> dict:
     """The POST /api/sessions payload for a session row (new or existing).
 
@@ -464,13 +482,21 @@ def build_router(deps: Deps) -> APIRouter:
         # close by itself. Every account that ever started a trial session
         # still owns a "planned" row, and the room reaches OpenAI through the
         # mint -- a reloaded room tab would keep buying realtime minutes on a
-        # package that will never be paid for.
+        # package that will never be paid for. An expired window is the same
+        # door from the other side (_room_is_closed).
         #
         # "session-not-live" deliberately, not a new code: the web blocks the
         # room on 429 and on THIS 409 code, and lets every other 409 fall
         # through to its counter-outage path, which mints anyway
-        # (apps/web/app/api/realtime-secret/route.ts).
-        if _is_locked_standard(db.get_package(row.package_id)):
+        # (apps/web/app/api/realtime-secret/route.ts). A missing package row
+        # takes the same answer for the same reason: raising here would be a
+        # 500, and the web reads a 500 as a counter outage and mints too.
+        try:
+            package = db.get_package(row.package_id)
+        except KeyError:
+            logger.warning("session %s has no package row; mint refused", session_id)
+            package = None
+        if package is None or _room_is_closed(package):
             return JSONResponse(
                 status_code=409,
                 content={"error": "session is not running", "code": "session-not-live"},
