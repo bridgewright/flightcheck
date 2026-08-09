@@ -1,5 +1,44 @@
 # Changelog
 
+## [Unreleased]
+
+### Added
+
+- **The six sessions stop repeating.** Each session in a package now
+  draws different questions: per-dimension rotation through the
+  rubric's own question bank with every previously asked question text
+  excluded, a pressure moment that rotates through six distinct
+  challenges and aims at the weakest scored dimension from the
+  candidate's own history, follow-up probes that rotate with their
+  questions, and — from the second session with a scored report — a
+  sequence that leads with what the last report said needs work. All
+  deterministic from the rubric, the session number, and stored
+  history: no model call at session start, and a committed golden
+  fixture pins that session one is byte-identical to what it always
+  was. A structural guarantee, not a promise: within a package's six
+  sessions no question text can repeat, and a test drives all six
+  sessions to prove it. This retires the standing honesty caveat (PRD,
+  README, landing, llms.txt) that every session ran the same plan —
+  the caveat's ledger entries record their own closure rather than
+  disappearing. DECISIONS 058.
+
+- **The interview learns who is sitting in the chair.** When a resume
+  or LinkedIn profile was provided, the rubric carries one
+  profile-licensed "Role & company fit" dimension — scored from the
+  transcript, reported, coached, and trended like every other
+  dimension, with its own honest receipt on the rubric screen ("this
+  bar comes from your own profile") instead of a JD quote it does not
+  have. The interviewer asks one or two personal questions built from
+  the candidate's actual career story — why this company, why this
+  role after that career — templated deterministically from the
+  structured profile, rotating angles across sessions. No profile
+  means no fit dimension and an unchanged rubric. The JD-evidence
+  contract is not weakened: only this one dimension may carry the
+  profile license — the compiler and the eval suite each refuse every
+  other shape independently, and a fourth faithfulness fixture pins
+  the with-profile side while the original three still compile with
+  an empty profile, untouched. DECISIONS 059.
+
 ## [0.12.0] — 2026-08-08
 
 > Disclosure, so rule ⑦ stays checkable: every "customer", "field use",
