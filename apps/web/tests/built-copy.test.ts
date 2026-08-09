@@ -107,7 +107,7 @@ const CANONICAL = [
   "The Ready bar is 4.0 out of 5 overall, with no dimension below 3.0.",
   // components/landing/copy.ts, both merged chains
   "minutes, out loud, in English. Speech both ways, so pace and hesitation",
-  "sessions on one job description, every one held to the same bar, so the scores",
+  "sessions on one job description, with no repeated questions within the",
   "unlock opens the rest of that same package for",
   // app/legal/policy.ts
   "and all data attached to it.",
