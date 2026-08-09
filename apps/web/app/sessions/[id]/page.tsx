@@ -1,5 +1,6 @@
 import { createClient } from "@supabase/supabase-js";
 import Link from "next/link";
+import { redirect } from "next/navigation";
 
 import PollRefresh from "@/components/PollRefresh";
 import {
@@ -341,6 +342,9 @@ export default async function SessionDetailPage({
     );
   }
   const { session, pkg } = access.value;
+  if (session.status === "quick_done") {
+    redirect(`/quick/report/${session.package_id}`);
+  }
 
   const state = deriveSessionDetailState(session);
 

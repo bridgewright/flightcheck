@@ -93,6 +93,8 @@ describe("hard cut", () => {
   it("triggers at exactly 1500s and after", () => {
     expect(isHardCut(1500)).toBe(true);
     expect(isHardCut(1501)).toBe(true);
+    expect(isHardCut(479, 480)).toBe(false);
+    expect(isHardCut(480, 480)).toBe(true);
   });
 });
 

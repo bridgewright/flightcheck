@@ -69,6 +69,7 @@ import {
   committedItemId,
   closingArmedAt,
   dueTimeStatus,
+  timeStatusCheckpoints,
   formatTimer,
   finishedTranscriptForEvent,
   greetingTriggerEvent,
@@ -114,6 +115,10 @@ interface RoomError {
 interface SessionRoomProps {
   sessionId: string;
   reportHref: string;
+  budgetS?: number;
+  hardCutS?: number;
+  unscored?: boolean;
+  donePath?: string;
 }
 
 // F-67/F-68 instrumentation: the trail the next fix will be chosen from.
@@ -171,6 +176,10 @@ function DiagTrail({ entriesRef }: { entriesRef: RefObject<DiagEntry[]> }) {
 export default function SessionRoom({
   sessionId,
   reportHref,
+  budgetS = SESSION_BUDGET_S,
+  hardCutS = HARD_CUT_S,
+  unscored = false,
+  donePath = reportHref,
 }: SessionRoomProps) {
   const router = useRouter();
   const [phase, setPhase] = useState<Phase>("ready");
@@ -379,8 +388,23 @@ export default function SessionRoom({
     blobRef.current = blob;
     pcRef.current?.close();
     micStreamRef.current?.getTracks().forEach((t) => t.stop());
+    if (unscored) {
+      setPhase("uploading");
+      const response = await fetch(`/api/sessions/${sessionId}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "complete" }),
+      });
+      if (response.ok || response.status === 409) {
+        setPhase("done");
+        router.push(donePath);
+      } else {
+        setError({ kind: "upload", message: "The interview could not be completed. Try again in a moment." });
+      }
+      return;
+    }
     await uploadAndComplete(blob);
-  }, [stopRecorder, uploadAndComplete]);
+  }, [donePath, router, sessionId, stopRecorder, unscored, uploadAndComplete]);
 
   const endForConnectionLoss = useCallback(
     async (reason: GuardEndReason) => {
@@ -501,8 +525,11 @@ export default function SessionRoom({
     // failure vanishing (SessionRoom.tsx:338).
     const dest = audioCtx.createMediaStreamDestination();
     audioCtx.createMediaStreamSource(micStream).connect(dest);
-    let recorder: MediaRecorder;
+    let recorder: MediaRecorder | null = null;
     try {
+      if (unscored) {
+        diag("recorder-skipped", "unscored");
+      } else {
       if (typeof MediaRecorder === "undefined") {
         throw new Error("MediaRecorder is not available");
       }
@@ -517,6 +544,7 @@ export default function SessionRoom({
       recorder = new MediaRecorder(dest.stream, { mimeType });
       recorderContainerRef.current = containerType(mimeType);
       diag("recorder-ok", mimeType);
+      }
     } catch (err) {
       diag("recorder-fail", err instanceof Error ? err.name : "unknown");
       console.error("session room: recorder unavailable", err);
@@ -626,11 +654,13 @@ export default function SessionRoom({
           micLevelDataRef.current = new Uint8Array(
             micAnalyser.frequencyBinCount,
           );
-          chunksRef.current = [];
-          recorder.ondataavailable = (ev) => {
-            if (ev.data.size > 0) chunksRef.current.push(ev.data);
-          };
-          recorder.start(1000); // 1s timeslice: a crash loses <= 1s of audio
+          if (recorder !== null) {
+            chunksRef.current = [];
+            recorder.ondataavailable = (ev) => {
+              if (ev.data.size > 0) chunksRef.current.push(ev.data);
+            };
+            recorder.start(1000); // 1s timeslice: a crash loses <= 1s of audio
+          }
           startedAtRef.current = Date.now();
           setPhase("live");
           // Server-VAD models never speak unprompted: nudge the first
@@ -779,7 +809,7 @@ export default function SessionRoom({
         message: err instanceof Error ? err.message : String(err),
       });
     }
-  }, [diag, sessionId]);
+  }, [diag, sessionId, unscored]);
 
   // --- Timer + 25:00 hard cut -------------------------------------------
   useEffect(() => {
@@ -795,7 +825,11 @@ export default function SessionRoom({
       lastTickAtRef.current = tickAt;
       const elapsed = Math.floor((Date.now() - startedAtRef.current) / 1000);
       setElapsedS(elapsed);
-      const due = dueTimeStatus(elapsed, timeStatusSentRef.current);
+      const due = dueTimeStatus(
+        elapsed,
+        timeStatusSentRef.current,
+        timeStatusCheckpoints(budgetS),
+      );
       if (due && dcRef.current?.readyState === "open") {
         dcRef.current.send(timeStatusEvent(due.text));
         timeStatusSentRef.current += 1;
@@ -858,7 +892,7 @@ export default function SessionRoom({
         finishedTranscriptRef.current = null;
         silenceStateRef.current = state;
         if (!beforeClosing && state.closingSeen) {
-          const fromWrapUpS = elapsed - closingArmedAt(SESSION_BUDGET_S);
+          const fromWrapUpS = elapsed - closingArmedAt(budgetS);
           diag("closing-detected", `${fromWrapUpS >= 0 ? "+" : ""}${fromWrapUpS}s vs wrap-up`);
         }
         if (!due) {
@@ -901,14 +935,14 @@ export default function SessionRoom({
         void endForConnectionLoss(guard.endReason);
         return;
       }
-      if (isHardCut(elapsed)) {
+      if (isHardCut(elapsed, hardCutS)) {
         void endSession(); // auto End; endSession guards re-entry
       }
     }, 250);
     return () => {
       if (tickerRef.current) clearInterval(tickerRef.current);
     };
-  }, [phase, diag, endSession, endForConnectionLoss]);
+  }, [phase, budgetS, hardCutS, diag, endSession, endForConnectionLoss]);
 
   // --- F-38: don't let a tab close throw away an interview ---------------
   // The recording lives only in this tab until the upload lands, and the
@@ -984,7 +1018,9 @@ export default function SessionRoom({
                 <MicCheck />
               </div>
               <p className="mt-3 text-fine text-ink-faint">
-                {RECORDING_DISCLOSURE}
+                {unscored
+                  ? "This quick interview is not recorded or scored."
+                  : RECORDING_DISCLOSURE}
               </p>
             </div>
             <button
@@ -1041,8 +1077,8 @@ export default function SessionRoom({
               {formatTimer(elapsedS)}
             </span>
             <span className="text-fine text-ink-faint">
-              / {formatTimer(SESSION_BUDGET_S)} planned · hard stop at{" "}
-              {formatTimer(HARD_CUT_S)}
+              / {formatTimer(budgetS)} planned · hard stop at{" "}
+              {formatTimer(hardCutS)}
             </span>
             <span
               className={`ml-auto text-fine ${
@@ -1069,7 +1105,7 @@ export default function SessionRoom({
           )}
           {confirmingEnd && (
             <div className={`${CARD} mt-6 p-4`}>
-              <p>End the interview and send it for scoring?</p>
+              <p>{unscored ? "End the quick interview?" : "End the interview and send it for scoring?"}</p>
               <div className="mt-3 flex gap-3">
                 <button
                   type="button"

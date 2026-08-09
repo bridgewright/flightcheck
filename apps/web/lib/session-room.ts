@@ -69,8 +69,8 @@ export function indicatorForEvent(raw: string): "listening" | null {
 }
 
 /** True once elapsed time reaches the 25:00 hard cut. */
-export function isHardCut(elapsedSeconds: number): boolean {
-  return elapsedSeconds >= HARD_CUT_S;
+export function isHardCut(elapsedSeconds: number, hardCutS = HARD_CUT_S): boolean {
+  return elapsedSeconds >= hardCutS;
 }
 
 /** Contract marker for injected clock notes — must match the planner's PACING rule. */
@@ -697,6 +697,12 @@ export function endedRoomNotice(status: string): EndedRoomNotice | null {
         detail:
           "Your report is ready. This room stays closed so the result " +
           "cannot change.",
+        showSessionLink: true,
+      };
+    case "quick_done":
+      return {
+        headline: "This interview is already complete",
+        detail: "The quick interview has ended. Continue to the sample report.",
         showSessionLink: true,
       };
     case "insufficient":

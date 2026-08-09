@@ -6,7 +6,7 @@ import {
   CAPABILITY_ENDED_MESSAGE,
   sessionCapability,
 } from "@/lib/session-capability";
-import { endedRoomNotice } from "@/lib/session-room";
+import { endedRoomNotice, QUICK_HARD_CUT_S, QUICK_SESSION_BUDGET_S } from "@/lib/session-room";
 import {
   MAIN_READING,
   PRIMARY_BUTTON,
@@ -79,6 +79,9 @@ export default async function SessionRoomPage({
   // retired the row as insufficient, the room still offered Start, mint
   // answered 200, and the doomed heartbeat train read as "Connection lost".
   const notice = endedRoomNotice(access.value.session.status);
+  if (access.value.session.status === "quick_done") {
+    redirect(`/quick/report/${access.value.session.package_id}`);
+  }
   if (notice !== null) {
     return (
       <main className={`${MAIN_READING} flex min-h-dvh flex-col justify-center`}>
@@ -112,6 +115,17 @@ export default async function SessionRoomPage({
     );
   }
   return (
-    <SessionRoom sessionId={id} reportHref={`/sessions/${id}`} />
+    <SessionRoom
+      sessionId={id}
+      reportHref={`/sessions/${id}`}
+      {...(access.value.session.package_kind === "quick"
+        ? {
+            budgetS: QUICK_SESSION_BUDGET_S,
+            hardCutS: QUICK_HARD_CUT_S,
+            unscored: true,
+            donePath: `/quick/report/${access.value.session.package_id}`,
+          }
+        : {})}
+    />
   );
 }
