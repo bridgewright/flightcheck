@@ -57,19 +57,28 @@ def _machinery_problems(rubric: Rubric, processed_jd: str) -> list[str]:
     """Every content dimension quotes the JD verbatim, exactly."""
     problems: list[str] = []
     for dim in rubric.dimensions:
+        # License validation runs for EVERY channel: a delivery dimension
+        # claiming a profile license is exactly as wrong as a mis-keyed
+        # content one, and the eval layer must see it independently of
+        # the compiler (which already refuses it). A wrongly-licensed
+        # CONTENT dimension falls through on purpose: it also owes the
+        # JD-evidence problems below, and both are reported.
+        wrongly_licensed = dim.license == "profile" and (
+            dim.key != "role-and-company-fit" or dim.channel != "content"
+        )
+        if wrongly_licensed:
+            problems.append(
+                f"profile license is not allowed for dimension '{dim.key}'; "
+                "only role-and-company-fit content may use it")
         if dim.channel != "content":
             continue  # delivery dimensions are licensed by the product, not the JD
-        if dim.license == "profile":
-            if dim.key != "role-and-company-fit" or dim.channel != "content":
-                problems.append(
-                    f"profile license is not allowed for dimension '{dim.key}'; "
-                    "only role-and-company-fit content may use it")
-            elif dim.jd_evidence is not None:
+        if dim.license == "profile" and not wrongly_licensed:
+            # The legitimate fit dimension: profile-licensed, so it must
+            # carry no JD quote and owes no JD evidence.
+            if dim.jd_evidence is not None:
                 problems.append(
                     f"profile dimension '{dim.key}' must have null jd_evidence")
-                continue
-            else:
-                continue
+            continue
         if not dim.jd_evidence:
             problems.append(f"content dimension '{dim.key}' has no jd_evidence")
         elif dim.jd_evidence not in processed_jd:

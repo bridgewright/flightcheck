@@ -599,3 +599,26 @@ class TestTheGate:
         written = json.loads((tmp_path / "out" / "regression.json").read_text())
         assert written["suites"]["rubric_faithfulness"]["status"] == "SKIPPED"
         assert not (tmp_path / "out" / "rubric_faithfulness.json").exists()
+
+
+def test_delivery_channel_profile_license_is_visible_to_the_eval_layer(monkeypatch):
+    """The compiler refuses this shape; the eval layer must see it on its
+    own rather than skipping every non-content dimension before the
+    license check (the check used to be dead code for delivery dims)."""
+    fdpm = _fdpm_rubric()
+    delivery_index = next(
+        i for i, dim in enumerate(fdpm["dimensions"])
+        if dim["channel"] == "delivery")
+    fdpm["dimensions"][delivery_index] = {
+        **fdpm["dimensions"][delivery_index],
+        "license": "profile",
+    }
+    _regressed_compiler(monkeypatch, fdpm=fdpm)
+
+    result = run_faithfulness_suite(SUITE_DIR, FakeGenAI([]))
+
+    key = fdpm["dimensions"][delivery_index]["key"]
+    assert (
+        f"values-boilerplate-fdpm: profile license is not allowed for dimension "
+        f"'{key}'; only role-and-company-fit content may use it"
+    ) in result["failures"]

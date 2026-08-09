@@ -36,18 +36,40 @@ from scorer.schemas import (
 _TIME_BUDGET_MINUTES = 20
 _WRAP_UP_MARGIN_MINUTES = 2
 
+# Six (question, follow-up) pairs so a six-session package never hears
+# the same pressure moment twice — the probe is the one line the
+# instructions render verbatim. Pair 0 is byte-stable: the committed
+# session-1 golden fixture pins it.
 _PRESSURE_PROBES = (
     (
         "Hm — I'm not sure that would hold up in practice. Help me see why "
-        "you're confident: what makes you sure, specifically?"
+        "you're confident: what makes you sure, specifically?",
+        "Give me one concrete example that backs that up.",
     ),
     (
         "Let me push on that. What concrete evidence tells you this approach "
-        "would work under real constraints?"
+        "would work under real constraints?",
+        "Walk me through the strongest data point behind that.",
     ),
     (
         "I'm not fully convinced yet. Which specific result best supports "
-        "your judgment here?"
+        "your judgment here?",
+        "And what nearly went wrong along the way?",
+    ),
+    (
+        "That sounds cleaner in hindsight than it must have been. Where did "
+        "this actually get hard?",
+        "Who disagreed with you at the time, and what did they say?",
+    ),
+    (
+        "Suppose I told you a peer team tried exactly that approach and it "
+        "failed. What would you check first?",
+        "Which of your assumptions would you test before defending the rest?",
+    ),
+    (
+        "Play devil's advocate against your own answer for a moment. What is "
+        "its weakest point?",
+        "If you had to redo it, what would you change first?",
     ),
 )
 
@@ -79,34 +101,69 @@ def _generated_question(
     asked: set[str] | None = None,
 ) -> QuestionSpec:
     """Fallback question for a dimension with no question_bank entry."""
+    # Each template carries its own probe pair so a package that leans on
+    # the fallback never repeats follow-ups either. Pair 0 is byte-stable:
+    # the committed session-1 golden fixture pins it.
     templates = (
-        "Tell me about a time you demonstrated {name}.",
-        "Walk me through a situation where your {name} made a difference.",
-        "What is a concrete example that best shows your {name}?",
-        "Describe a decision that depended on your {name}.",
-        "When has your {name} been tested most seriously?",
-        "Which experience best demonstrates the depth of your {name}?",
+        ("Tell me about a time you demonstrated {name}.",
+         ("What exactly did you do yourself, step by step?",
+          "What was the measurable outcome?")),
+        ("Walk me through a situation where your {name} made a difference.",
+         ("What was your specific contribution, as opposed to the team's?",
+          "How did you know it worked?")),
+        ("What is a concrete example that best shows your {name}?",
+         ("Why does this example show it better than any other you could pick?",
+          "What would a skeptic say about it?")),
+        ("Describe a decision that depended on your {name}.",
+         ("What were the options you weighed?",
+          "What made the losing option lose?")),
+        ("When has your {name} been tested most seriously?",
+         ("What did that test reveal that you did not expect?",
+          "What did you change afterwards?")),
+        ("Which experience best demonstrates the depth of your {name}?",
+         ("How has that depth grown over the last year?",
+          "Where does it still fall short?")),
     )
     candidates = []
-    for template in templates:
+    for template, probe_pair in templates:
         candidate = template.format(name=dimension.name.lower())
         if dimension.signals:
             candidate += f" I'm especially interested in {dimension.signals[0]}."
-        candidates.append(candidate)
+        candidates.append((candidate, probe_pair))
+    already = asked or set()
     start = (session_index - 1) % len(candidates)
     rotated = candidates[start:] + candidates[:start]
-    question = next((candidate for candidate in rotated
-                     if candidate not in (asked or set())), None)
-    if question is None:
-        base = candidates[start]
-        question = f"Looking again at {dimension.name.lower()}, {base[0].lower()}{base[1:]}"
+    chosen = next(((text, probe_pair) for text, probe_pair in rotated
+                   if text not in already), None)
+    if chosen is None:
+        # Defensive only: unreachable inside a six-session package
+        # (bank >= 1 entry + six templates > six sessions). Revisit
+        # variants keep the guarantee unconditional anyway.
+        base, probe_pair = rotated[0]
+        prefixes = (
+            f"Looking again at {dimension.name.lower()}, ",
+            f"Coming back to {dimension.name.lower()} from another angle, ",
+        )
+        for prefix in prefixes:
+            for text, pair in rotated:
+                variant = f"{prefix}{text[0].lower()}{text[1:]}"
+                if variant not in already:
+                    chosen = (variant, pair)
+                    break
+            if chosen is not None:
+                break
+        take = 2
+        while chosen is None:
+            variant = (f"Looking once more at {dimension.name.lower()} "
+                       f"(pass {take}), {base[0].lower()}{base[1:]}")
+            if variant not in already:
+                chosen = (variant, probe_pair)
+            take += 1
+    question, probe_pair = chosen
     return QuestionSpec(
         dimension_key=dimension.key,
         question=question,
-        probes=[
-            "What exactly did you do yourself, step by step?",
-            "What was the measurable outcome?",
-        ],
+        probes=list(probe_pair),
         source="generated",
     )
 
@@ -149,11 +206,11 @@ def _fit_question(
         match = re.fullmatch(r"\s*(\d+)\s*(?:years?)?\s*", profile.years_experience)
         years = int(match.group(1)) if match else None
     pivot_open = (
-        f"You've spent {years} years as a {latest_title}, why move to "
-        f"{rubric.role_title}, and why {company}?"
+        f"You've spent {years} years as a {latest_title}. Why move into a "
+        f"{rubric.role_title} role, and why {company}?"
         if years is not None
-        else f"You've been a {latest_title}, why move to {rubric.role_title}, "
-        f"and why {company}?"
+        else f"You've been a {latest_title}. Why move into a "
+        f"{rubric.role_title} role, and why {company}?"
     )
     shared = [
         f"Why {company} for this role, rather than another company doing similar work?",
@@ -179,6 +236,16 @@ def _fit_question(
             f"Why not join a competitor doing similar work instead of {company}?",
             f"What worries you most about taking this role at {company}?",
         ]
+    # One probe per candidate, index-aligned, so fit follow-ups rotate
+    # with the questions. Index 0 is byte-stable for the golden fixture.
+    fit_probes = [
+        "What in your own career makes that choice specific?",
+        "Which part of the role made the difference for you?",
+        "What evidence from your track record backs that story?",
+        "How would you keep the best of your current work in the new role?",
+        "What did you learn about them that a job posting would not say?",
+        "How would you know, six months in, that the move was right?",
+    ]
     start = (session_index - 1) % len(candidates)
     rotated = candidates[start:] + candidates[:start]
     question = next((candidate for candidate in rotated if candidate not in asked), None)
@@ -187,10 +254,13 @@ def _fit_question(
             "Looking again at your reasons for this move, "
             f"{candidates[start][0].lower()}{candidates[start][1:]}"
         )
+        probe = fit_probes[start % len(fit_probes)]
+    else:
+        probe = fit_probes[candidates.index(question) % len(fit_probes)]
     return QuestionSpec(
         dimension_key="role-and-company-fit",
         question=question,
-        probes=["What in your own career makes that choice specific?"],
+        probes=[probe],
         source="generated",
     )
 
@@ -233,8 +303,8 @@ def plan_baseline_session(
     ) if scored_content else content_dims[0] if content_dims else ordered[0]
     pressure_probe = QuestionSpec(
         dimension_key=pressure_target.key,
-        question=_PRESSURE_PROBES[(session_index - 1) % len(_PRESSURE_PROBES)],
-        probes=["Give me one concrete example that backs that up."],
+        question=_PRESSURE_PROBES[(session_index - 1) % len(_PRESSURE_PROBES)][0],
+        probes=[_PRESSURE_PROBES[(session_index - 1) % len(_PRESSURE_PROBES)][1]],
         source="generated",
     )
     return SessionPlan(

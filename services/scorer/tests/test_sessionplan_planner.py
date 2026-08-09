@@ -11,7 +11,11 @@ from scorer.schemas import (
     RubricDimension,
     SourceCitation,
 )
-from scorer.sessionplan.planner import build_interviewer_instructions, plan_baseline_session
+from scorer.sessionplan.planner import (
+    _generated_question,
+    build_interviewer_instructions,
+    plan_baseline_session,
+)
 
 PRESSURE_PROBE_TEXT = (
     "Hm — I'm not sure that would hold up in practice. Help me see why "
@@ -251,8 +255,8 @@ def test_fit_dimension_uses_model_authored_bank_before_fallbacks():
 
 def test_all_six_fit_fallbacks_are_exact_and_grammatical_for_pivot_profile():
     expected = [
-        "You've spent 6 years as a Management Consultant, why move to "
-        "Forward Deployed Product Manager, and why ExampleCo?",
+        "You've spent 6 years as a Management Consultant. Why move into a "
+        "Forward Deployed Product Manager role, and why ExampleCo?",
         "Why ExampleCo for this role, rather than another company doing similar work?",
         "How does your career story lead from Management Consultant to "
         "Forward Deployed Product Manager at ExampleCo?",
@@ -303,8 +307,8 @@ def test_free_text_years_are_omitted_from_fit_question():
     fit = next(q.question for q in plan.question_sequence
                if q.dimension_key == "role-and-company-fit")
     assert fit == (
-        "You've been a Management Consultant, why move to Forward Deployed Product Manager, "
-        "and why ExampleCo?"
+        "You've been a Management Consultant. Why move into a "
+        "Forward Deployed Product Manager role, and why ExampleCo?"
     )
 
 
@@ -600,3 +604,60 @@ def test_instructions_lock_interviewer_language_to_english():
     assert "Let's keep it in English" in text
     assert "plainly and without scolding" in text
     assert text.index("# PERSONA") < text.index("# LANGUAGE") < text.index("# OPENING")
+
+
+def test_six_session_package_never_repeats_pressure_questions_or_any_probes():
+    rubric = _make_rubric().model_copy(update={
+        "question_bank": [
+            QuestionSpec(
+                dimension_key=dimension.key,
+                question=f"Banked question for {dimension.name.lower()}?",
+                probes=["Banked probe?"], source="research-sweep",
+            )
+            for dimension in _make_rubric().dimensions
+        ],
+    })
+    history = []
+    pressure_texts, pressure_probes = [], []
+    probes_by_dimension: dict[str, list[tuple[str, ...]]] = {}
+    for index in range(1, 7):
+        plan = plan_baseline_session(rubric, session_index=index, history=history)
+        pressure_texts.append(plan.pressure_probe.question)
+        pressure_probes.extend(plan.pressure_probe.probes)
+        for question in plan.question_sequence:
+            probes_by_dimension.setdefault(question.dimension_key, []).append(
+                tuple(question.probes))
+        history.append(SimpleNamespace(session_plan=plan, report=None))
+    assert len(pressure_texts) == len(set(pressure_texts))
+    assert len(pressure_probes) == len(set(pressure_probes))
+    for dimension_key, probe_lists in probes_by_dimension.items():
+        assert len(probe_lists) == len(set(probe_lists)), dimension_key
+
+
+def test_replanning_the_same_index_never_repeats_fit_or_generated_questions():
+    """The asked-set must reach the fallback generators through the call
+    site: a colliding index (the re-arm shape) with the first plan in
+    history must still produce fresh texts."""
+    rubric = _rubric_with_fit_dimension()
+    profile = _pivot_profile()
+    first = plan_baseline_session(rubric, session_index=1, history=[],
+                                  profile=profile)
+    second = plan_baseline_session(
+        rubric, session_index=1,
+        history=[SimpleNamespace(session_plan=first, report=None)],
+        profile=profile)
+    first_texts = {question.question for question in first.question_sequence}
+    for question in second.question_sequence:
+        assert question.question not in first_texts
+
+
+def test_generated_fallback_never_returns_an_asked_text_even_when_exhausted():
+    dimension = _make_rubric().dimensions[0]
+    asked: set[str] = set()
+    seen = []
+    for _ in range(8):
+        question = _generated_question(dimension, session_index=1, asked=asked)
+        assert question.question not in asked
+        seen.append(question.question)
+        asked.add(question.question)
+    assert len(seen) == len(set(seen))
