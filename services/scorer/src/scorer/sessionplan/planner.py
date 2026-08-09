@@ -316,6 +316,25 @@ def plan_baseline_session(
     )
 
 
+def _quick_phrases(company: str | None, role: str | None) -> tuple[str, str]:
+    """Company and role as they read INSIDE a sentence, degradations included.
+
+    The role carries "the ... role" only when there is a role to name. A
+    template written for the happy path alone produces "the this role role
+    at this company" the moment the pair is missing, and the interviewer
+    says that out loud.
+
+    Both values are visitor-typed and land verbatim in a system prompt, so
+    they go through the same inline() flattening the candidate profile uses:
+    a newline here would otherwise close the question and open a fresh
+    instruction line inside the question list.
+    """
+    company_phrase = inline(company) or "this company"
+    flat_role = inline(role)
+    role_phrase = f"the {flat_role} role" if flat_role else "this role"
+    return company_phrase, role_phrase
+
+
 def plan_quick_session(
     company: str | None,
     role: str | None,
@@ -323,12 +342,12 @@ def plan_quick_session(
     budget_minutes: int = 5,
 ) -> SessionPlan:
     """Build the deterministic, unscored quick-interview plan."""
-    company_name = company or "this company"
-    role_name = role or "this role"
+    company_phrase, role_phrase = _quick_phrases(company, role)
     questions = (
-        f"What interests you about the {role_name} role at {company_name}?",
-        f"Which experience best shows what you would bring to {role_name} at {company_name}?",
-        f"If you joined {company_name} as {role_name}, what would you focus on first?",
+        f"What interests you about {role_phrase} at {company_phrase}?",
+        f"Which experience best shows what you would bring to {role_phrase} "
+        f"at {company_phrase}?",
+        f"If you joined {company_phrase} in {role_phrase}, what would you focus on first?",
     )
     return SessionPlan(
         session_index=1,
@@ -397,16 +416,19 @@ def _question_block(plan: SessionPlan) -> str:
 
 
 def build_interviewer_instructions(plan: SessionPlan, rubric: Rubric | None,
-                                   profile: CandidateProfile) -> str:
-    """Render the plan into system instructions for the realtime interviewer."""
+                                   profile: CandidateProfile, *,
+                                   company: str | None = None,
+                                   role: str | None = None) -> str:
+    """Render the plan into system instructions for the realtime interviewer.
+
+    company/role are the quick package's own columns and are read only when
+    plan.focus is "quick"; the standard render takes both off the rubric.
+    They are passed rather than recovered from the rendered question text --
+    parsing them back out re-split on any company or role containing the
+    template's own words.
+    """
     if plan.focus == "quick":
-        company = "this company"
-        role = "this role"
-        if plan.question_sequence:
-            first = plan.question_sequence[0].question
-            match = re.fullmatch(r"What interests you about the (.+) role at (.+)\?", first)
-            if match:
-                role, company = match.groups()
+        company_phrase, role_phrase = _quick_phrases(company, role)
         wrap_up_at = plan.time_budget_minutes - _WRAP_UP_MARGIN_MINUTES
         return (
             "# PERSONA\nYou are Morgan, a senior hiring manager. You are warm but "
@@ -414,7 +436,8 @@ def build_interviewer_instructions(plan: SessionPlan, rubric: Rubric | None,
             "# LANGUAGE\nThis interview is in English, always.\n\n"
             "# OPENING\nSpeak first with a warm hello and audio check. Frame this "
             f"honestly as a {plan.time_budget_minutes}-minute quick interview about "
-            f"{role} at {company}. Tell the candidate they can pause to think.\n\n"
+            f"{role_phrase} at {company_phrase}. Tell the candidate they can pause "
+            "to think.\n\n"
             "# RULES\nAsk exactly one question at a time, listen, never answer for "
             "the candidate, and probe for concrete examples.\n\n"
             "# ACTIVE LISTENING\nBriefly acknowledge and restate the candidate's key "

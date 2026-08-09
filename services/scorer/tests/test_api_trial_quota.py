@@ -206,6 +206,37 @@ def test_historical_trial_without_paid_at_is_locked_not_expired():
     assert response.json()["code"] == "package-locked"
 
 
+def test_a_locked_package_cannot_mint_a_realtime_secret():
+    # Retiring the free session at create is only half the door. Every
+    # account that ever started a trial session owns a "planned" row, and
+    # the room reaches OpenAI through the mint, not through create_session:
+    # left open, a reloaded room tab still buys realtime minutes on a
+    # package that will never be paid for (DECISIONS 060).
+    db = FakeDatabase()
+    package = ready_package(db, is_trial=True)
+    row = db.create_session(package.id, 1, None)
+    client, _ = _client(db=db)
+
+    response = client.post(f"/api/sessions/{row.id}/secret-mint", headers=AUTH)
+    assert response.status_code == 409
+    # Deliberately the code the web already blocks the room on: every OTHER
+    # 409 falls through its "counter unavailable" path and mints anyway
+    # (apps/web/app/api/realtime-secret/route.ts).
+    assert response.json()["code"] == "session-not-live"
+    assert db.get_session(row.id).secret_mints == 0
+
+
+def test_a_paid_package_still_mints_normally():
+    db = FakeDatabase()
+    package = ready_package(db, paid_at="2026-08-03T00:00:00+00:00")
+    row = db.create_session(package.id, 1, None)
+    client, _ = _client(db=db)
+
+    response = client.post(f"/api/sessions/{row.id}/secret-mint", headers=AUTH)
+    assert response.status_code == 200
+    assert response.json()["secret_mints"] == 1
+
+
 # --- summaries expose trial/paid/expiry state -----------------------------
 
 

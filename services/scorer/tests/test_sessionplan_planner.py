@@ -399,9 +399,10 @@ def test_quick_plan_has_exact_natural_sequence_and_preserves_inputs():
              "source": "generated"}
             for question in [
                 "What interests you about the Staff AI Engineer role at ACME Labs?",
-                "Which experience best shows what you would bring to Staff AI Engineer "
-                "at ACME Labs?",
-                "If you joined ACME Labs as Staff AI Engineer, what would you focus on first?",
+                "Which experience best shows what you would bring to the Staff AI "
+                "Engineer role at ACME Labs?",
+                "If you joined ACME Labs in the Staff AI Engineer role, what would "
+                "you focus on first?",
             ]
         ],
         "pressure_probe": {
@@ -417,20 +418,46 @@ def test_quick_plan_has_exact_natural_sequence_and_preserves_inputs():
     }
 
 
-def test_quick_plan_falls_back_for_missing_inputs():
+def test_quick_plan_degrades_to_sentences_a_human_would_say():
+    # Substring assertions hid this: the degraded template read "the this
+    # role role at this company", which the interviewer would have said out
+    # loud. Every fallback question is pinned verbatim instead.
     plan = plan_quick_session(None, "")
-    assert "this role" in plan.question_sequence[0].question
-    assert "this company" in plan.question_sequence[0].question
+    assert [spec.question for spec in plan.question_sequence] == [
+        "What interests you about this role at this company?",
+        "Which experience best shows what you would bring to this role at this company?",
+        "If you joined this company in this role, what would you focus on first?",
+    ]
 
 
 def test_quick_instructions_are_honest_unscored_and_keep_closing():
     plan = plan_quick_session("ACME Labs", "Staff AI Engineer")
-    text = build_interviewer_instructions(plan, None, _make_profile())
-    assert "5-minute quick interview about Staff AI Engineer at ACME Labs" in text
+    text = build_interviewer_instructions(
+        plan, None, _make_profile(), company="ACME Labs", role="Staff AI Engineer")
+    assert (
+        "5-minute quick interview about the Staff AI Engineer role at ACME Labs"
+    ) in text
     assert "Begin wrapping up at 3 minutes" in text
     assert "Thanks for taking the time today. That's everything from my side." in text
     assert "scor" not in text.lower()
     assert "rubric" not in text.lower()
+
+
+def test_quick_instructions_degrade_without_company_or_role():
+    plan = plan_quick_session(None, None)
+    text = build_interviewer_instructions(plan, None, _make_profile())
+    assert "5-minute quick interview about this role at this company" in text
+    assert "this role role" not in text
+
+
+def test_quick_instructions_read_company_and_role_from_arguments():
+    # They used to be recovered by regex from the first question's text, so a
+    # company or role containing the template's own words re-split it and the
+    # opening addressed the wrong employer.
+    plan = plan_quick_session("The Role At Work Co", "Engineer")
+    text = build_interviewer_instructions(
+        plan, None, _make_profile(), company="The Role At Work Co", role="Engineer")
+    assert "quick interview about the Engineer role at The Role At Work Co" in text
 
 
 def test_standard_twenty_minute_instructions_remain_byte_identical():

@@ -147,16 +147,33 @@ def _empty_profile() -> CandidateProfile:
     )
 
 
+def _is_locked_standard(package: PackageRow) -> bool:
+    """A standard package nobody has paid for or comped (DECISIONS 060).
+
+    It exposes no sessions at all -- the free trial session retired with the
+    quick interview that replaced it -- so every door into a live room reads
+    this, not just create_session.
+    """
+    return (package.kind == "standard"
+            and package.paid_at is None
+            and package.comped_at is None)
+
+
 def _session_response(row: SessionRow, package: PackageRow) -> dict:
     """The POST /api/sessions payload for a session row (new or existing).
 
-    Callers guarantee row.session_plan and package.rubric are present: a
-    session row is only ever created for a "ready" package, with its plan.
+    Callers guarantee row.session_plan is present, and package.rubric for a
+    standard package: a session row is only ever created for a "ready"
+    package, with its plan. A quick package has no rubric by design and
+    carries its company/role instead.
     """
     profile = package.candidate_profile
     if profile is None:
         profile = _empty_profile()
-    instructions = build_interviewer_instructions(row.session_plan, package.rubric, profile)
+    instructions = build_interviewer_instructions(
+        row.session_plan, package.rubric, profile,
+        company=package.quick_company, role=package.quick_role,
+    )
     return {
         "session_id": row.id,
         "index": row.index,
@@ -235,8 +252,7 @@ def build_router(deps: Deps) -> APIRouter:
                     "code": "package-expired",
                 },
             )
-        if (package.kind == "standard" and package.paid_at is None
-                and package.comped_at is None):
+        if _is_locked_standard(package):
             return JSONResponse(
                 status_code=409,
                 content={
@@ -350,7 +366,18 @@ def build_router(deps: Deps) -> APIRouter:
             row = db.get_session(session_id)
         except KeyError as exc:
             raise HTTPException(status_code=404, detail="session not found") from exc
-        if row.status in ("scoring", "scored", "quick_done"):
+        if row.status == "quick_done":
+            # Terminal, and never scored: a replayed End (double tap, or the
+            # browser retrying its own request) must not tell the customer
+            # their unscored five minutes were scored.
+            return JSONResponse(
+                status_code=409,
+                content={
+                    "error": "this quick interview is already finished",
+                    "code": "quick-already-done",
+                },
+            )
+        if row.status in ("scoring", "scored"):
             # Scoring is the expensive paid trigger; a session is scored at
             # most once. "planned" starts a run and "failed" allows a retry.
             return JSONResponse(
@@ -424,6 +451,22 @@ def build_router(deps: Deps) -> APIRouter:
         # session burns no mint-cap headroom and leaves the F-38 lock window
         # untouched.
         if row.status != "planned":
+            return JSONResponse(
+                status_code=409,
+                content={"error": "session is not running", "code": "session-not-live"},
+            )
+        # DECISIONS 060: a locked standard package has no session to spend,
+        # and this is the door create_session's package-locked refusal cannot
+        # close by itself. Every account that ever started a trial session
+        # still owns a "planned" row, and the room reaches OpenAI through the
+        # mint -- a reloaded room tab would keep buying realtime minutes on a
+        # package that will never be paid for.
+        #
+        # "session-not-live" deliberately, not a new code: the web blocks the
+        # room on 429 and on THIS 409 code, and lets every other 409 fall
+        # through to its counter-outage path, which mints anyway
+        # (apps/web/app/api/realtime-secret/route.ts).
+        if _is_locked_standard(db.get_package(row.package_id)):
             return JSONResponse(
                 status_code=409,
                 content={"error": "session is not running", "code": "session-not-live"},
@@ -527,7 +570,10 @@ def build_router(deps: Deps) -> APIRouter:
             profile = package.candidate_profile
             if profile is None:
                 profile = _empty_profile()
-            instructions = build_interviewer_instructions(row.session_plan, package.rubric, profile)
+            instructions = build_interviewer_instructions(
+                row.session_plan, package.rubric, profile,
+                company=package.quick_company, role=package.quick_role,
+            )
         payload = row.model_dump(mode="json")
         payload["package_kind"] = package.kind
         payload["interviewer_instructions"] = instructions
