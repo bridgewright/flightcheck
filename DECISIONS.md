@@ -2306,3 +2306,90 @@ faithfulness gate enforces JD evidence on every content dimension.
   generic (then raw-text persistence reopens with a privacy design),
   or the fit dimension's scores prove noisier than its siblings (then
   its verdict weight gets its own look).
+
+## 060 — The quick interview replaces the trial session (2026-08-09)
+
+**Context.** The current first-touch asks a visitor to hunt down a full
+job description, paste it, and sit a 20-minute session before they know
+whether the product is for them — and the free tier (F-24: first
+package carries one full scored session) gives away the most expensive
+thing the product makes. User direction (2026-08-08, refined
+2026-08-09): the front door becomes a five-minute quick interview from
+just a company name and a role title, and it REPLACES the free full
+session — one free door, not two.
+
+- **Chosen — quick interview as the only free tier.** A visitor types
+  a target company and role (no JD), signs in, and talks to the
+  interviewer for about five minutes. Questions are templated from the
+  company and role alone, labeled ungrounded — no research pass, no
+  rubric, honestly distinct from the paid JD-grounded interview. Five
+  minutes sits below the scoring eligibility floor, so the quick
+  session is never scored and never pretends to be: the post-session
+  screen renders the existing public sample report inside a frame
+  carrying the visitor's company and role, under a banner saying
+  plainly that this is a sample and a real package personalizes all of
+  it (user's own design — the quick result is not processed at all,
+  which also keeps the quick path at zero model cost). Registering the
+  real JD stays free up to the rubric — the "this is the bar" moment —
+  and every full 20-minute scored session is paid. Historical
+  `is_trial` rows keep their data; the flag is simply never granted
+  again, and the trial copy retires across landing, pricing, FAQ,
+  terms, and llms.txt in the same release.
+- **Rejected — coexist (quick taste AND a free full session):** two
+  free doors double the free realtime cost per account, and the pitch
+  collapses — nobody pays for what the trial gives away whole. The
+  trial's conversion value was never measured (no external users yet),
+  so nothing proven is being discarded.
+- **Rejected — no free voice at all (sample report only):** the core
+  claim of the product is the live voice experience; a text artifact
+  cannot carry it.
+- **Rejected — processing the quick session into a real teaser
+  verdict:** scoring five minutes fairly is exactly what the eligibility
+  floor says cannot be done, and a "lite verdict" would be the first
+  dishonest number in the product.
+- **Abuse posture:** quick sessions cost realtime-API money per
+  minute, so OAuth stays in front of the quick interview and each
+  account gets a small lifetime allowance of quick packages (config
+  cap, second slot exists for technical do-overs), on top of the
+  existing create limiters.
+- **Revisit when:** real-usage data shows registered accounts piling
+  up at the rubric wall without paying (then a priced single-session
+  step reopens), or quick-interview abandonment shows five minutes is
+  the wrong length.
+
+## 061 — The home screen introduces itself, once (2026-08-09)
+
+**Context.** After the quick interview a new account lands on a home
+screen it has never seen, built around surfaces (sessions, progress,
+rubric) it has not earned yet. User direction (2026-08-09): on the
+first arrival, dim the screen and walk the features one by one —
+"press this for X" — the classic coach-marks pattern. This is the
+product's first auto-opening surface, a deliberate breach of the
+pull-not-push convention the LinkedIn walkthrough header records; the
+breach is the point (a first-time visitor does not know what they do
+not know) and it is bounded: once ever, skippable at every step.
+
+- **Chosen — first-ever home arrival, localStorage once-flag.** The
+  tour fires when the flag is absent and never again after completion
+  OR skip. "First arrival after the quick test" (the user's phrasing)
+  is satisfied as a superset: in the new funnel the first home arrival
+  IS the post-test arrival, and accounts that skip the quick path get
+  the same one-time introduction. Per-browser is the honest
+  limitation — a new device re-shows the tour once, which is the
+  cheap failure direction.
+- **Rejected — a ?tour=1 route param:** re-fires on bookmarked or
+  shared URLs and vanishes on navigation (the rubric `?reveal=1`
+  lesson).
+- **Rejected — a server-side user-metadata flag:** a server write and
+  a new metadata surface for a cosmetic, per-browser-acceptable flag.
+- **Rejected — pull-only "?" trigger like the LinkedIn walkthrough:**
+  explicitly what the user asked to go beyond; a trigger nobody knows
+  to press introduces nothing.
+- **Constraints carried:** Escape and a visible Skip end it from any
+  step and set the flag; reduced-motion is respected; the overlay
+  traps nothing permanently (the page behind stays the real page); the
+  steps target stable anchors (nav tabs, the primary action), not
+  layout coordinates.
+- **Revisit when:** feedback or session replays show the tour
+  interrupting returning users (flag loss in practice), or steps
+  drifting from the surfaces they point at.

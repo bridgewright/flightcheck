@@ -358,6 +358,27 @@ Changes to targets are recorded here with date and reason — never silently.
   provided means no fit dimension and an unchanged rubric.
   DECISIONS 058–059.
 
+- **v0.16 (recorded 2026-08-09, pre-code):** the front door gets
+  lighter, and the free tier changes shape. **A five-minute taste
+  replaces the free full session:** the first thing a visitor does is
+  type a target company and a role — no job-description hunt — sign
+  in, and talk to the interviewer for about five minutes. The quick
+  questions are templated from the company and role alone and labeled
+  as exactly that: ungrounded, no research pass, honestly distinct
+  from the paid JD-grounded interview. Five minutes sits below the
+  scoring floor, so the quick interview is never scored and never
+  pretends to be — the screen after it shows the public sample report
+  framed with the visitor's own company and role, under a plain
+  banner: this is a sample; a real package makes every part of it
+  personal. This retires the free trial session (the F-24 model):
+  the quick interview is now the one free door, registering the real
+  JD stays free up to the rubric — the "this is the bar" moment — and
+  every full 20-minute scored session is paid. **The home screen
+  introduces itself once:** the first arrival at home dims the page
+  and walks the features one by one — skippable at every step, shown
+  once ever, the product's only auto-opening surface, on purpose.
+  DECISIONS 060–061.
+
 > 2026-08-02: v0.4 scope added above — accounts move ahead of payments
 > because login-gated interviews protect session integrity and per-session
 > cost, and the dashboard is what makes a 6-session package usable. The
