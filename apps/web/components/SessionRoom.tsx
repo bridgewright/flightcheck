@@ -2,6 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import {
+  Fragment,
   useCallback,
   useEffect,
   useRef,
@@ -181,6 +182,7 @@ export default function SessionRoom({
   unscored = false,
   donePath = reportHref,
 }: SessionRoomProps) {
+  const CapabilityGate = unscored ? Fragment : BrowserGate;
   const router = useRouter();
   const [phase, setPhase] = useState<Phase>("ready");
   const [error, setError] = useState<RoomError | null>(null);
@@ -674,7 +676,7 @@ export default function SessionRoom({
           console.error("session room: recorder start failed", err);
           // If the recorder DID start before a later statement threw, stop
           // it — nothing may keep recording after the room tears down.
-          if (recorder.state !== "inactive") recorder.stop();
+          if (recorder !== null && recorder.state !== "inactive") recorder.stop();
           pcRef.current?.close();
           pcRef.current = null;
           micStreamRef.current?.getTracks().forEach((t) => t.stop());
@@ -1008,7 +1010,7 @@ export default function SessionRoom({
           {/* Capability gate BEFORE the mic check: a browser missing
               getUserMedia, WebRTC, or MediaRecorder gets honest copy naming
               supported browsers instead of a check that cannot succeed. */}
-          <BrowserGate>
+          <CapabilityGate>
             {/* Device check (shared MicCheck): confirm the mic picks you up
                 before committing to a 20-minute session. It holds its own
                 stream; the session acquires its own in start(). */}
@@ -1059,7 +1061,7 @@ export default function SessionRoom({
                 <DiagTrail entriesRef={diagRef} />
               </div>
             )}
-          </BrowserGate>
+          </CapabilityGate>
         </section>
       )}
 

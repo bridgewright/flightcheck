@@ -24,7 +24,7 @@ export const SESSION_MINUTES = Math.round(SESSION_BUDGET_S / 60);
 export const QUICK_SESSION_MINUTES = Math.round(QUICK_SESSION_BUDGET_S / 60);
 
 /** Under every primary CTA. The single most load-bearing line on the page. */
-export const TRIAL_MICROCOPY = `${QUICK_SESSION_MINUTES} minutes, free, no card — a company name and a role is all it takes.`;
+export const TRIAL_MICROCOPY = `${QUICK_SESSION_MINUTES} minutes, free, no card. A company name and a role is all it takes.`;
 
 /**
  * What the CTA says to someone who is already signed in.

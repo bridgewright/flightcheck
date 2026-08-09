@@ -6,7 +6,9 @@ import Shell from "@/components/Shell";
 import { ALARM_NOTICE, FIELD, LINK, PAGE_HEADING, PRIMARY_BUTTON, SUBTLE } from "@/lib/ui";
 import { getViewer } from "@/lib/viewer";
 import { publicMetadata } from "../site";
-import { QUICK_STASH_COOKIE, quickStart } from "./actions";
+import { quickStart } from "./actions";
+
+const QUICK_STASH_COOKIE = "fc_quick_stash";
 
 export const metadata: Metadata = publicMetadata({
   path: "/quick",
@@ -33,7 +35,7 @@ const ERRORS: Record<string, React.ReactNode> = {
   "rate-limit": "Too many attempts just now. Try again in a moment.",
   "package-locked": "Unlock or remove your current job-description package before starting a quick interview.",
   "quick-cap": (
-    <>You&apos;ve used your free quick interviews — <Link href="/new" className={LINK}>register a job description to continue</Link>.</>
+    <>You&apos;ve used your free quick interviews. <Link href="/new" className={LINK}>Register a job description to continue</Link>.</>
   ),
 };
 

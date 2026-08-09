@@ -735,8 +735,8 @@ describe("a comped package is unlocked without being paid", () => {
     expect(isUnlocked(comped)).toBe(true);
   });
 
-  it("leaves an ordinary unpaid package on the trial quota", () => {
-    expect(effectiveTotalSessions({ total_sessions: 6 })).toBe(1);
+  it("leaves an ordinary unpaid package locked", () => {
+    expect(effectiveTotalSessions({ total_sessions: 6 })).toBe(0);
     expect(isUnlocked({})).toBe(false);
   });
 });

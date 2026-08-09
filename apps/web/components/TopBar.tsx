@@ -223,10 +223,10 @@ export default async function TopBar({
   let activeId: string | null = activePackageId ?? null;
   if (viewer) {
     if (packages !== undefined) {
-      owned = packages;
+      owned = packages.filter((pkg) => pkg.kind !== "quick");
     } else {
       try {
-        owned = await listPackagesForUser(viewer.id);
+        owned = (await listPackagesForUser(viewer.id)).filter((pkg) => pkg.kind !== "quick");
       } catch {
         owned = [];
       }

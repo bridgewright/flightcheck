@@ -6,7 +6,7 @@ import { redirect } from "next/navigation";
 import { getViewer } from "@/lib/viewer";
 import { createQuickPackage, createSession, WorkerError } from "@/lib/worker";
 
-export const QUICK_STASH_COOKIE = "fc_quick_stash";
+const QUICK_STASH_COOKIE = "fc_quick_stash";
 const MAX_AGE_SECONDS = 10 * 60;
 
 function clean(value: FormDataEntryValue | null): string | null {
