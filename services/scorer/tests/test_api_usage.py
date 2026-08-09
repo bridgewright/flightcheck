@@ -144,13 +144,13 @@ class TestBurnThrough:
         )
         assert usage.package_burn_through_ratio == pytest.approx(2 / 6, abs=1e-4)
 
-    def test_an_unpaid_package_is_measured_against_its_one_session(self):
+    def test_a_locked_package_contributes_no_session_capacity(self):
         packages = [_package(1, paid=False)]
         sessions = [_session(1, "pkg-1", "scored")]
 
         usage = compute_usage(packages, sessions)
 
-        assert usage.package_burn_through_ratio == 1.0
+        assert usage.package_burn_through_ratio == 0.0
         assert usage.paid_packages_sampled == 0
 
     def test_failed_rows_keep_their_slot_and_do_not_count_as_used(self):

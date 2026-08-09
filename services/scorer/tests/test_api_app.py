@@ -300,6 +300,9 @@ def _wav_bytes(duration_s: float = 8.0, sample_rate: int = 16000) -> bytes:
 
 def _seed_ready_package(db: FakeDatabase):
     package = db.create_package(JD_TEXT, None)
+    db.packages[package.id] = package.model_copy(
+        update={"paid_at": "2026-08-03T00:00:00+00:00"}
+    )
     db.set_package_profile(
         package.id,
         CandidateProfile(name="Alex Example", headline=None, years_experience=None,

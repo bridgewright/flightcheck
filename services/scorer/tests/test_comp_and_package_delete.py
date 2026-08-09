@@ -48,8 +48,8 @@ class TestAllowlist:
 
 
 class TestQuota:
-    def test_a_locked_package_still_exposes_one_session(self):
-        assert effective_total_sessions(_package()) == 1
+    def test_a_locked_package_exposes_no_sessions(self):
+        assert effective_total_sessions(_package()) == 0
 
     def test_a_comped_package_exposes_its_full_count(self):
         assert effective_total_sessions(_package(comped_at="2026-08-04T00:00:00+00:00")) == 6

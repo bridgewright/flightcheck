@@ -85,22 +85,17 @@ def test_created_package_rows_carry_a_fresh_updated_at():
 # --- quota chokepoint: 1 until paid --------------------------------------
 
 
-def test_unpaid_package_exposes_exactly_one_session():
+def test_locked_standard_package_has_no_free_session():
     db = FakeDatabase()
     package = ready_package(db, is_trial=True)
     client, _ = _client(db=db)
 
     first = client.post("/api/sessions", json={"package_id": package.id},
                         headers=AUTH)
-    assert first.status_code == 200
-    db.set_session_status(first.json()["session_id"], "scored")
-
-    second = client.post("/api/sessions", json={"package_id": package.id},
-                         headers=AUTH)
-    assert second.status_code == 409
-    assert second.json() == {
-        "error": "package exhausted: the included session is used",
-        "code": "package-exhausted",
+    assert first.status_code == 409
+    assert first.json() == {
+        "error": "this package has no free sessions — unlock it to interview",
+        "code": "package-locked",
     }
 
 
@@ -134,7 +129,8 @@ def test_failed_and_insufficient_rows_do_not_consume_the_quota():
     # The "Complete pill + Start session 6" bug, server half: a failed row
     # keeps its slot, so it must be resumed instead of tripping exhaustion.
     db = FakeDatabase()
-    package = ready_package(db, is_trial=True)
+    package = ready_package(db, is_trial=True,
+                            paid_at="2026-08-03T00:00:00+00:00")
     client, _ = _client(db=db)
     session_id = client.post(
         "/api/sessions", json={"package_id": package.id}, headers=AUTH
@@ -195,7 +191,7 @@ def test_expiry_never_blocks_reads_or_artifacts():
     assert client.get(f"/api/sessions/{row.id}", headers=AUTH).status_code == 200
 
 
-def test_trial_without_paid_at_never_expires():
+def test_historical_trial_without_paid_at_is_locked_not_expired():
     # Trial packages get no expires_at until payment sets one; the quota
     # answer must be exhaustion (buy), never expiry (dead end).
     db = FakeDatabase()
@@ -207,7 +203,7 @@ def test_trial_without_paid_at_never_expires():
     response = client.post("/api/sessions", json={"package_id": package.id},
                            headers=AUTH)
     assert response.status_code == 409
-    assert response.json()["code"] == "package-exhausted"
+    assert response.json()["code"] == "package-locked"
 
 
 # --- summaries expose trial/paid/expiry state -----------------------------

@@ -1,4 +1,5 @@
 """Tests for scorer.sessionplan.planner -- deterministic planning, no LLM."""
+import hashlib
 import json
 from pathlib import Path
 from types import SimpleNamespace
@@ -15,6 +16,7 @@ from scorer.sessionplan.planner import (
     _generated_question,
     build_interviewer_instructions,
     plan_baseline_session,
+    plan_quick_session,
 )
 
 PRESSURE_PROBE_TEXT = (
@@ -384,6 +386,57 @@ def test_plan_fixed_fields():
 def test_plan_accepts_real_session_index_and_history_contract():
     plan = plan_baseline_session(_make_rubric(), session_index=2, history=())
     assert plan.session_index == 2
+
+
+def test_quick_plan_has_exact_natural_sequence_and_preserves_inputs():
+    plan = plan_quick_session("ACME Labs", "Staff AI Engineer")
+    assert plan.model_dump(mode="json") == {
+        "session_index": 1,
+        "focus": "quick",
+        "question_sequence": [
+            {"dimension_key": "quick-general", "question": question,
+             "probes": ["Could you make that concrete with one example?"],
+             "source": "generated"}
+            for question in [
+                "What interests you about the Staff AI Engineer role at ACME Labs?",
+                "Which experience best shows what you would bring to Staff AI Engineer "
+                "at ACME Labs?",
+                "If you joined ACME Labs as Staff AI Engineer, what would you focus on first?",
+            ]
+        ],
+        "pressure_probe": {
+            "dimension_key": "quick-general",
+            "question": (
+                "Let me push lightly on that: what makes you confident this would "
+                "work in practice?"
+            ),
+            "probes": ["What is the clearest evidence for that?"],
+            "source": "generated",
+        },
+        "time_budget_minutes": 5,
+    }
+
+
+def test_quick_plan_falls_back_for_missing_inputs():
+    plan = plan_quick_session(None, "")
+    assert "this role" in plan.question_sequence[0].question
+    assert "this company" in plan.question_sequence[0].question
+
+
+def test_quick_instructions_are_honest_unscored_and_keep_closing():
+    plan = plan_quick_session("ACME Labs", "Staff AI Engineer")
+    text = build_interviewer_instructions(plan, None, _make_profile())
+    assert "5-minute quick interview about Staff AI Engineer at ACME Labs" in text
+    assert "Begin wrapping up at 3 minutes" in text
+    assert "Thanks for taking the time today. That's everything from my side." in text
+    assert "scor" not in text.lower()
+    assert "rubric" not in text.lower()
+
+
+def test_standard_twenty_minute_instructions_remain_byte_identical():
+    assert hashlib.sha256(_instructions().encode()).hexdigest() == (
+        "9c42a2581fc96a8dd18065fb0e5a599bb8492062e3e14d911116c0c8cfe9d667"
+    )
 
 
 def _instructions() -> str:

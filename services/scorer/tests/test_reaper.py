@@ -113,7 +113,7 @@ def test_lifecycle_status_writes_touch_the_session_clock(monkeypatch):
     monkeypatch.setenv("WORKER_API_TOKEN", "test-worker-token")
     db = FakeDatabase()
     db.now_iso = NOW
-    package = ready_package(db)
+    package = ready_package(db, paid_at="2026-08-03T00:00:00+00:00")
     client = TestClient(create_app(db, FakeStorage(), FakeGenAI([])))
     auth = {"Authorization": "Bearer test-worker-token"}
     session_id = client.post(

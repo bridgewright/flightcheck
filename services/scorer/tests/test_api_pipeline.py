@@ -232,6 +232,15 @@ def _seed_scorable_session(db: FakeDatabase, audio_path: str):
     return session
 
 
+def test_quick_session_is_refused_at_scoring_entry_point():
+    db = FakeDatabase()
+    package = db.create_quick_package("user-1", "Acme", "Engineer")
+    session = db.create_session(package.id, 1, None)
+    with pytest.raises(ValueError, match="cannot enter scoring"):
+        score_session(session.id, db, FakeStorage(), FakeGenAI([]))
+    assert db.get_session(session.id).status == "failed"
+
+
 def test_score_session_saves_scored_report(permissive_eligibility):
     db = FakeDatabase()
     session = _seed_scorable_session(db, "packages/pkg-1/session-1.wav")
@@ -568,8 +577,6 @@ API_HEADERS = {"Authorization": "Bearer test-worker-token"}
 
 def _ready_package(db: FakeDatabase, *, total_sessions: int = 6, user_id=None,
                    paid_at: str | None = None):
-    # paid_at unlocks the full total (v0.5: an unpaid package exposes ONE
-    # session); tests exercising multi-session behavior seed a paid package.
     package = db.create_package(JD_TEXT, None)
     db.packages[package.id] = package.model_copy(
         update={"user_id": user_id, "total_sessions": total_sessions,
@@ -620,7 +627,7 @@ def _stored_report(session_id: str, *, verdict: str = "approaching",
 
 def test_create_session_resumes_planned_session_without_creating_row(monkeypatch):
     db = FakeDatabase()
-    package = _ready_package(db)
+    package = _ready_package(db, paid_at="2026-08-03T00:00:00+00:00")
     planned = db.create_session(package.id, 1, plan_baseline_session(package.rubric))
     client = _session_client(monkeypatch, db)
 
@@ -636,7 +643,7 @@ def test_create_session_resumes_planned_session_without_creating_row(monkeypatch
 
 def test_create_session_resume_prefers_lowest_retriable_index(monkeypatch):
     db = FakeDatabase()
-    package = _ready_package(db)
+    package = _ready_package(db, paid_at="2026-08-03T00:00:00+00:00")
     high = db.create_session(package.id, 3, plan_baseline_session(package.rubric))
     low = db.create_session(package.id, 2, plan_baseline_session(package.rubric))
     db.set_session_status(high.id, "failed")

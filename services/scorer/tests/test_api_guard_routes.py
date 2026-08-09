@@ -87,7 +87,7 @@ def test_package_create_rate_limit_is_per_user(monkeypatch):
 def test_session_create_rate_limit_answers_429(monkeypatch):
     _tight_limits(monkeypatch, session_create_per_window=2)
     db = FakeDatabase()
-    package = ready_package(db, user_id="user-1")
+    package = ready_package(db, user_id="user-1", paid_at="2026-08-03T00:00:00+00:00")
     client, _ = _client(db=db)
     for _ in range(2):
         assert client.post("/api/sessions", json={"package_id": package.id},
@@ -102,7 +102,7 @@ def test_session_create_rate_limit_answers_429(monkeypatch):
 def test_complete_rate_limit_answers_429(monkeypatch):
     _tight_limits(monkeypatch, complete_per_window=1, score_attempt_cap=99)
     db = FakeDatabase()
-    package = ready_package(db, user_id="user-1")
+    package = ready_package(db, user_id="user-1", paid_at="2026-08-03T00:00:00+00:00")
     client, _ = _client(db=db)
     session_id = client.post(
         "/api/sessions", json={"package_id": package.id}, headers=AUTH
@@ -192,7 +192,7 @@ def test_garbage_pdf_bytes_are_422_not_500():
 
 def test_secret_mint_counts_up_and_caps_at_429():
     db = FakeDatabase()
-    package = ready_package(db)
+    package = ready_package(db, paid_at="2026-08-03T00:00:00+00:00")
     row = db.create_session(package.id, 1, None)
     client, _ = _client(db=db)
 
@@ -224,7 +224,7 @@ def test_secret_mint_refuses_a_session_that_is_not_planned(status):
     # Mint is the door into the room, so it holds the same status guard the
     # heartbeat route already had.
     db = FakeDatabase()
-    package = ready_package(db)
+    package = ready_package(db, paid_at="2026-08-03T00:00:00+00:00")
     row = db.create_session(package.id, 1, None)
     db.set_session_status(row.id, status)
     client, _ = _client(db=db)
@@ -249,7 +249,7 @@ def test_resume_re_arms_the_row_so_its_room_opens_again(status):
     # above refuses it and the customer bounces between the ended screen and
     # home forever with a slot they paid for and cannot spend.
     db = FakeDatabase()
-    package = ready_package(db)
+    package = ready_package(db, paid_at="2026-08-03T00:00:00+00:00")
     client, _ = _client(db=db)
     session_id = client.post(
         "/api/sessions", json={"package_id": package.id}, headers=AUTH
@@ -277,7 +277,7 @@ def test_rearm_resets_the_dead_attempts_clocks(status):
     # must reset the attempt-scoped clocks in the same write; the resume
     # cap, not the mint cap, is what bounds total spend per row.
     db = FakeDatabase()
-    package = ready_package(db)
+    package = ready_package(db, paid_at="2026-08-03T00:00:00+00:00")
     client, _ = _client(db=db)
     session_id = client.post(
         "/api/sessions", json={"package_id": package.id}, headers=AUTH
@@ -337,7 +337,8 @@ def test_abandoned_resumes_are_counted_not_free(monkeypatch):
 def test_failed_resume_past_the_cap_retires_the_row(monkeypatch):
     _tight_limits(monkeypatch, resume_attempt_cap=1)
     db = FakeDatabase()
-    package = ready_package(db, is_trial=True)   # unpaid: one session total
+    package = ready_package(db, is_trial=True, total_sessions=1,
+                            paid_at="2026-08-03T00:00:00+00:00")
     client, _ = _client(db=db)
     session_id = client.post(
         "/api/sessions", json={"package_id": package.id}, headers=AUTH
@@ -351,8 +352,7 @@ def test_failed_resume_past_the_cap_retires_the_row(monkeypatch):
 
     second_resume = client.post("/api/sessions",
                                 json={"package_id": package.id}, headers=AUTH)
-    # Past the cap: the row is retired, its slot is spent, and the trial
-    # package is honestly exhausted (the web renders the unlock CTA).
+    # Past the cap: the row is retired, its single paid slot is spent.
     assert second_resume.status_code == 409
     assert second_resume.json()["code"] == "package-exhausted"
     assert db.get_session(session_id).status == TERMINAL_STATUS
@@ -361,7 +361,7 @@ def test_failed_resume_past_the_cap_retires_the_row(monkeypatch):
 def test_planned_resumes_are_free(monkeypatch):
     _tight_limits(monkeypatch, resume_attempt_cap=1)
     db = FakeDatabase()
-    package = ready_package(db)
+    package = ready_package(db, paid_at="2026-08-03T00:00:00+00:00")
     client, _ = _client(db=db)
     session_id = client.post(
         "/api/sessions", json={"package_id": package.id}, headers=AUTH
@@ -403,7 +403,7 @@ def test_paid_package_moves_on_after_a_retired_row(monkeypatch):
 def test_complete_past_the_attempt_cap_retires_the_session(monkeypatch):
     _tight_limits(monkeypatch, score_attempt_cap=2, complete_per_window=99)
     db = FakeDatabase()
-    package = ready_package(db, user_id="user-1")
+    package = ready_package(db, user_id="user-1", paid_at="2026-08-03T00:00:00+00:00")
     client, _ = _client(db=db)
     session_id = client.post(
         "/api/sessions", json={"package_id": package.id}, headers=AUTH
@@ -450,7 +450,7 @@ def test_overlong_recording_is_rejected_before_any_model_spend(monkeypatch):
     })
     monkeypatch.setattr("scorer.api.pipeline.load_product_config", lambda: tiny)
     db = FakeDatabase()
-    package = ready_package(db)
+    package = ready_package(db, paid_at="2026-08-03T00:00:00+00:00")
     audio_path = f"packages/{package.id}/session-1.wav"
     storage = FakeStorage(recordings={audio_path: _wav_bytes(8.0)})  # > 3 s cap
     fake = FakeGenAI([])

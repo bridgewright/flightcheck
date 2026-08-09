@@ -202,6 +202,8 @@ def score_session(
         _set_session_status(db, session_id, "scoring")
         row = db.get_session(session_id)
         package = db.get_package(row.package_id)
+        if package.kind == "quick":
+            raise ValueError(f"quick session {session_id} cannot enter scoring")
         rubric = package.rubric
         if row.audio_path is None or rubric is None:
             raise ValueError(

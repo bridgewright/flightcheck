@@ -39,6 +39,7 @@ from scorer.schemas import (
 from scorer.sessionplan.planner import (
     build_interviewer_instructions,
     plan_baseline_session,
+    plan_quick_session,
 )
 
 logger = logging.getLogger(__name__)
@@ -53,7 +54,7 @@ class CreateSessionRequest(BaseModel):
 class CompleteSessionRequest(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
-    audio_path: str
+    audio_path: str | None = None
 
 
 class ReclaimSessionRequest(BaseModel):
@@ -159,6 +160,7 @@ def _session_response(row: SessionRow, package: PackageRow) -> dict:
     return {
         "session_id": row.id,
         "index": row.index,
+        "package_kind": package.kind,
         "session_plan": row.session_plan.model_dump(mode="json"),
         "interviewer_instructions": instructions,
     }
@@ -202,6 +204,7 @@ def build_router(deps: Deps) -> APIRouter:
     # run longer than that, so neither can the lock.
     session_hard_cut_minutes = load_product_config().session.hard_cut_minutes
     heartbeat_stale_after_s = load_product_config().session.heartbeat_stale_after_s
+    quick_budget_minutes = load_product_config().session.quick_budget_minutes
 
     @router.post("/sessions")
     def create_session(body: CreateSessionRequest):
@@ -230,6 +233,15 @@ def build_router(deps: Deps) -> APIRouter:
                         "ended — reports and replays stay available"
                     ),
                     "code": "package-expired",
+                },
+            )
+        if (package.kind == "standard" and package.paid_at is None
+                and package.comped_at is None):
+            return JSONResponse(
+                status_code=409,
+                content={
+                    "error": "this package has no free sessions — unlock it to interview",
+                    "code": "package-locked",
                 },
             )
         existing = db.list_sessions(body.package_id)
@@ -303,7 +315,9 @@ def build_router(deps: Deps) -> APIRouter:
                     "code": "package-exhausted",
                 },
             )
-        if package.status != "ready" or package.rubric is None:
+        if package.status != "ready" or (
+            package.kind == "standard" and package.rubric is None
+        ):
             return JSONResponse(
                 status_code=409,
                 content={
@@ -312,12 +326,18 @@ def build_router(deps: Deps) -> APIRouter:
                 },
             )
         next_index = max((row.index for row in existing), default=0) + 1
-        plan = plan_baseline_session(
-            package.rubric,
-            session_index=next_index,
-            history=existing,
-            profile=package.candidate_profile,
-        )
+        if package.kind == "quick":
+            plan = plan_quick_session(
+                package.quick_company, package.quick_role,
+                budget_minutes=quick_budget_minutes,
+            )
+        else:
+            plan = plan_baseline_session(
+                package.rubric,
+                session_index=next_index,
+                history=existing,
+                profile=package.candidate_profile,
+            )
         row = db.create_session(body.package_id, next_index, plan)
         db.touch_updated_at("session", row.id)
         return _session_response(row, package)
@@ -330,7 +350,7 @@ def build_router(deps: Deps) -> APIRouter:
             row = db.get_session(session_id)
         except KeyError as exc:
             raise HTTPException(status_code=404, detail="session not found") from exc
-        if row.status in ("scoring", "scored"):
+        if row.status in ("scoring", "scored", "quick_done"):
             # Scoring is the expensive paid trigger; a session is scored at
             # most once. "planned" starts a run and "failed" allows a retry.
             return JSONResponse(
@@ -351,6 +371,15 @@ def build_router(deps: Deps) -> APIRouter:
         package = db.get_package(row.package_id)
         if not complete_limiter.hit(package.user_id or row.package_id):
             return rate_limited("scoring")
+        if package.kind == "quick":
+            db.set_session_status(session_id, "quick_done")
+            db.touch_updated_at("session", session_id)
+            return {"session_id": session_id, "status": "quick_done"}
+        if body.audio_path is None:
+            return JSONResponse(
+                status_code=422,
+                content={"error": "audio_path is required for a standard session"},
+            )
         if score_attempts.bump(session_id) > limits.score_attempt_cap:
             # The scoring pipeline keeps dying on this recording: burning
             # more model spend on it will not change the outcome, so the
@@ -492,12 +521,15 @@ def build_router(deps: Deps) -> APIRouter:
             raise HTTPException(status_code=404, detail="session not found") from exc
         package = db.get_package(row.package_id)
         instructions = ""
-        if row.session_plan is not None and package.rubric is not None:
+        if row.session_plan is not None and (
+            package.rubric is not None or package.kind == "quick"
+        ):
             profile = package.candidate_profile
             if profile is None:
                 profile = _empty_profile()
             instructions = build_interviewer_instructions(row.session_plan, package.rubric, profile)
         payload = row.model_dump(mode="json")
+        payload["package_kind"] = package.kind
         payload["interviewer_instructions"] = instructions
         return payload
 
