@@ -5,7 +5,7 @@ import { packageIdentityDecision } from "@/components/package-identity";
 import PackageIdentity from "@/components/PackageIdentity";
 import PollRefresh from "@/components/PollRefresh";
 import Shell from "@/components/Shell";
-import { resolveActivePackage } from "@/lib/active-package";
+import { resolveActivePackage, standardPackages } from "@/lib/active-package";
 import { formatSessionDate } from "@/lib/home";
 import {
   archiveStatusPill,
@@ -284,7 +284,15 @@ export default async function SessionsPage({
 
   let packages: PackageSummary[];
   try {
-    packages = await listPackagesForUser(viewer.id);
+    // The archive groups by package and lists EVERY package's sessions, not
+    // just the active one, so filtering has to happen here rather than in the
+    // active-package resolution: a quick funnel package would otherwise reach
+    // the archive twice over. Once as `others` beside a real package, and
+    // once as `active` itself — the `?? packages[0]` fallback below hands
+    // back the raw head of the list, so a visitor whose only package is the
+    // quick one (the funnel's whole audience) had their unscored five-minute
+    // conversation rendered as their session history.
+    packages = standardPackages(await listPackagesForUser(viewer.id));
   } catch {
     return <Unreachable viewer={viewer} />;
   }

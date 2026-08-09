@@ -80,8 +80,30 @@ describe("standardPackages", () => {
   it("keeps a package a pre-quick worker serialized without a kind", () => {
     // kind is optional on PackageSummary: an older worker omits it, and
     // absence must read as "standard", never as "hide this customer's work".
+    // Every row written before the quick feed existed is in this shape, and
+    // hiding one would hide a package somebody paid for.
     expect(standardPackages(owned)).toHaveLength(3);
     expect(standardPackages([pkg("explicit", { kind: "standard" })])).toHaveLength(1);
+  });
+
+  it("filters a row shaped the way the list feed actually sends it", () => {
+    // The worker's GET /users/{id}/packages feed carries kind, quick_company
+    // and quick_role on every row. The filter reads kind off THAT feed, so a
+    // wire-shaped row is what it has to recognize — if the feed ever stopped
+    // sending kind, every row would read as standard and a quick package
+    // could become somebody's active package.
+    const wire = pkg("quick-wire", {
+      kind: "quick",
+      quick_company: "Acme",
+      quick_role: "Deployment Strategist",
+      total_sessions: 1,
+      role_title: null,
+    });
+    expect(standardPackages([wire])).toEqual([]);
+    expect(resolveActivePackage([wire], null, null)).toBeNull();
+    expect(resolveActivePackage([wire, ...owned], "quick-wire", null)?.id).toBe(
+      "pkg-new",
+    );
   });
 });
 
@@ -94,7 +116,16 @@ describe("every screen that lists packages goes through the filter", () => {
   const read = (path: string) =>
     readFileSync(join(fileURLToPath(new URL("..", import.meta.url)), path), "utf8");
 
-  it.each(["app/packages/page.tsx", "components/TopBar.tsx"])("%s", (file) => {
+  it.each([
+    "app/packages/page.tsx",
+    "components/TopBar.tsx",
+    // The archive lists EVERY package's sessions, not just the active one, so
+    // resolveActivePackage's filter never protected it: a quick package
+    // arrived as `others`, and for the funnel's own audience — someone whose
+    // only package is the quick one — as `active`, via the `?? packages[0]`
+    // fallback that hands back the raw head of the list.
+    "app/sessions/page.tsx",
+  ])("%s", (file) => {
     const source = read(file);
     expect(source).toContain("standardPackages(");
     for (const line of source.split("\n")) {
