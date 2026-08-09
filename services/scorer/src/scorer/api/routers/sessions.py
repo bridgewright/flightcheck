@@ -396,17 +396,21 @@ def build_router(deps: Deps) -> APIRouter:
                 },
             )
         package = db.get_package(row.package_id)
+        # Ahead of the limiter, as it was when pydantic enforced it: the
+        # field became optional so a quick session can complete with an
+        # empty body, and a request that cannot be honoured must not first
+        # spend a slice of the customer's completion budget.
+        if package.kind != "quick" and body.audio_path is None:
+            return JSONResponse(
+                status_code=422,
+                content={"error": "audio_path is required for a standard session"},
+            )
         if not complete_limiter.hit(package.user_id or row.package_id):
             return rate_limited("scoring")
         if package.kind == "quick":
             db.set_session_status(session_id, "quick_done")
             db.touch_updated_at("session", session_id)
             return {"session_id": session_id, "status": "quick_done"}
-        if body.audio_path is None:
-            return JSONResponse(
-                status_code=422,
-                content={"error": "audio_path is required for a standard session"},
-            )
         if score_attempts.bump(session_id) > limits.score_attempt_cap:
             # The scoring pipeline keeps dying on this recording: burning
             # more model spend on it will not change the outcome, so the

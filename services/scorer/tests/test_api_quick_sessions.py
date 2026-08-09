@@ -2,6 +2,7 @@
 import pytest
 from fastapi.testclient import TestClient
 
+from factories import ready_package
 from fakes import FakeDatabase, FakeGenAI, FakeStorage
 from scorer.api.app import create_app
 
@@ -94,6 +95,32 @@ def test_a_reclaimed_quick_session_resumes_and_still_completes():
     response = client.post(f"/api/sessions/{session_id}/complete", json={}, headers=AUTH)
     assert response.status_code == 202
     assert db.get_session(session_id).status == "quick_done"
+
+
+def test_a_standard_complete_without_audio_is_refused_before_the_limiter():
+    # audio_path went optional so a quick session can complete with an empty
+    # body. The standard session's requirement is now the route's to enforce,
+    # and it has to run where pydantic's did: before anything is spent.
+    db = FakeDatabase()
+    package = ready_package(db, user_id="user-1",
+                            paid_at="2026-08-03T00:00:00+00:00")
+    client = TestClient(create_app(db, FakeStorage(), FakeGenAI([])))
+    session_id = client.post(
+        "/api/sessions", json={"package_id": package.id}, headers=AUTH
+    ).json()["session_id"]
+
+    for _ in range(20):
+        refusal = client.post(
+            f"/api/sessions/{session_id}/complete", json={}, headers=AUTH)
+        assert refusal.status_code == 422
+    # The budget the empty bodies would have burned is still there.
+    accepted = client.post(
+        f"/api/sessions/{session_id}/complete",
+        json={"audio_path": f"packages/{package.id}/session-1.webm"},
+        headers=AUTH,
+    )
+    assert accepted.status_code == 202
+    assert accepted.json()["status"] == "scoring"
 
 
 def test_replaying_complete_on_a_quick_session_refuses_without_claiming_scoring():
