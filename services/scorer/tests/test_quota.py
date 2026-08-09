@@ -30,19 +30,23 @@ def test_status_sets_partition_the_session_vocabulary():
     assert "planned" in RETRIABLE_STATUSES
 
 
-def test_effective_total_is_one_until_paid():
-    # The money chokepoint: NO unpaid package ever exposes more than one
-    # session, trial or not -- otherwise a second package would be six free
-    # sessions and the paywall would be fiction.
-    unpaid = _package(total_sessions=6)
-    assert effective_total_sessions(unpaid) == 1
+def test_locked_standard_package_exposes_no_sessions():
+    assert effective_total_sessions(_package(total_sessions=6)) == 0
+
+
+def test_paid_standard_package_exposes_its_total():
     paid = _package(paid_at="2026-08-03T00:00:00+00:00", total_sessions=6)
     assert effective_total_sessions(paid) == 6
 
 
-def test_effective_total_is_one_for_unpaid_trial_too():
-    trial = _package(is_trial=True, total_sessions=6)
-    assert effective_total_sessions(trial) == 1
+def test_comped_standard_package_exposes_its_total():
+    comped = _package(comped_at="2026-08-03T00:00:00+00:00", total_sessions=6)
+    assert effective_total_sessions(comped) == 6
+
+
+def test_quick_package_exposes_exactly_one_session_for_its_lifetime():
+    quick = _package(kind="quick", total_sessions=99)
+    assert effective_total_sessions(quick) == 1
 
 
 def test_is_expired_only_when_expires_at_has_passed():
@@ -66,9 +70,9 @@ def test_sessions_used_counts_slot_consuming_statuses_only():
     # keeps its slot, so it must not count as used anywhere.
     db = FakeDatabase()
     package = db.create_package("jd", None, user_id="user-1")
-    statuses = ["scored", "scoring", "failed", "insufficient", "planned",
-                TERMINAL_STATUS]
+    statuses = ["scored", "scoring", "quick_done", "failed", "insufficient",
+                "planned", TERMINAL_STATUS]
     for index, status in enumerate(statuses, start=1):
         row = db.create_session(package.id, index, None)
         db.sessions[row.id] = row.model_copy(update={"status": status})
-    assert sessions_used(db.list_sessions(package.id)) == 3
+    assert sessions_used(db.list_sessions(package.id)) == 4

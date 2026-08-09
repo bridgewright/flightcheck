@@ -1,8 +1,8 @@
-"""Pure quota logic for the v0.5 paid-package model (F-24/F-25).
+"""Pure quota logic for standard paid packages and quick interviews.
 
 The quota chokepoint reads three facts off a PackageRow: how many sessions
-the package exposes right now (ONE until paid -- no unpaid package, trial
-or not, ever exposes more, or a second package would be six free sessions),
+the package exposes right now (one for a quick package, none for a locked
+standard package, and the purchased total for an unlocked standard package),
 whether the paid window has expired, and how many slots the existing session
 rows have actually consumed. Slot accounting fixes the "Complete pill +
 Start session 6" bug: failed/insufficient/planned rows keep their slot per
@@ -34,11 +34,13 @@ RETRIABLE_STATUSES = frozenset({"planned", "failed", "insufficient", "abandoned"
 RESUME_COUNTED_STATUSES = frozenset({"failed", "insufficient", "abandoned"})
 
 # Rows that consume a session slot.
-SLOT_CONSUMING_STATUSES = frozenset({"scoring", "scored", TERMINAL_STATUS})
+SLOT_CONSUMING_STATUSES = frozenset(
+    {"scoring", "scored", "quick_done", TERMINAL_STATUS}
+)
 
 
 def effective_total_sessions(package: PackageRow) -> int:
-    """Sessions the package exposes right now: 1 until it is unlocked.
+    """Sessions exposed now: one quick slot, or an unlocked standard total.
 
     Two ways to be unlocked, and they are deliberately different columns.
     paid_at is money. comped_at is access granted without money (migration
@@ -47,8 +49,10 @@ def effective_total_sessions(package: PackageRow) -> int:
     session; everything that counts revenue reads paid_at and must never read
     this function.
     """
+    if package.kind == "quick":
+        return 1
     unlocked = package.paid_at is not None or package.comped_at is not None
-    return package.total_sessions if unlocked else 1
+    return package.total_sessions if unlocked else 0
 
 
 def is_expired(package: PackageRow, now: datetime | None = None) -> bool:
