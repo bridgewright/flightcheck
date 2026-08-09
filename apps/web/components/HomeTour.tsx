@@ -134,14 +134,20 @@ export default function HomeTour() {
         <div
           key={index}
           aria-hidden="true"
-          className="pointer-events-auto fixed bg-ink opacity-60"
+          className="pointer-events-auto fixed bg-ink/60"
           style={pane}
         />
       ))}
       <div
         ref={cardRef}
         role="dialog"
-        aria-modal="true"
+        // No modal claim and no focus trap, deliberately — the LinkedIn
+        // walkthrough's recorded stance: announcing this dialog as modal
+        // while Tab can leave it would lie to screen readers, and a trap
+        // would be exactly the untestable dismissal logic round 1 just
+        // extracted. Tabbing out to a dimmed control merely leaves the
+        // once-flag unwritten, so the tour returns next visit — the cheap
+        // failure direction.
         aria-label="Home tour"
         tabIndex={-1}
         className={`${MENU_PANEL} pointer-events-auto fixed z-50 w-[min(18rem,calc(100vw-1.5rem))] p-4 outline-none`}

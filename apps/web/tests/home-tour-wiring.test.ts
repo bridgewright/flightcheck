@@ -42,7 +42,10 @@ describe("home tour wiring", () => {
 
   it("renders an accessible dialog and hides both visible counters from it", () => {
     expect(source).toContain('role="dialog"');
-    expect(source).toContain('aria-modal="true"');
+    // The LinkedIn walkthrough's recorded stance, pinned the same way there:
+    // Tab can leave this dialog, so claiming aria-modal would lie to screen
+    // readers. No modal claim, no trap.
+    expect(source).not.toContain("aria-modal");
     expect(source).toContain('aria-live="polite"');
     // The numeral chip and the "1 / 4" counter both restate the position the
     // live region announces, so both carry aria-hidden. One of them did not,
@@ -91,7 +94,11 @@ describe("home tour wiring", () => {
     expect(source).toContain("MENU_PANEL");
     expect(source).toContain("STEP_NUMERAL");
     expect(source).toContain("pointer-events-auto");
-    expect(source).toContain("bg-ink opacity-60");
+    // The /NN modifier spelling, not `bg-ink opacity-60`: the design-system
+    // COMPOSITES scan only recognises the modifier form, and a colour the
+    // gate cannot see is a colour the gate cannot check.
+    expect(source).toContain("bg-ink/60");
+    expect(source).not.toContain("opacity-60");
     expect(source).not.toMatch(/#[0-9a-f]{3,8}|(?:rgb|hsl)a?\(/i);
   });
 

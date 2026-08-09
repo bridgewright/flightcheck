@@ -214,6 +214,14 @@ const COMPOSITES: {
     kind: "ground",
     note: "a sticky bar's ground, blurred, over arbitrary scrolled content",
   },
+  {
+    utility: "bg-ink/60",
+    ink: "ink",
+    alpha: 0.6,
+    ground: "paper",
+    kind: "ground",
+    note: "the tour's dimming panes over the home page; a ground with no text of its own",
+  },
 ];
 
 /** `ink` composited onto `ground` at `alpha`, as a hex. */
