@@ -14,6 +14,8 @@ import {
 } from "@/lib/request-id";
 import type {
   CreatePackageBody,
+  CbtRedeemSuccess,
+  CbtStatus,
   FeedbackRow,
   FeedbackStatus,
   CreateSessionResponse,
@@ -298,13 +300,33 @@ export async function listSessions(packageId: string): Promise<SessionSummary[]>
   return body.sessions ?? [];
 }
 
-export async function listPackagesForUser(userId: string): Promise<PackageSummary[]> {
+export interface PackagesForUserResponse {
+  packages: PackageSummary[];
+  cbt: CbtStatus | null;
+}
+
+export async function getPackagesForUser(userId: string): Promise<PackagesForUserResponse> {
   const path = `/api/users/${encodeURIComponent(userId)}/packages`;
-  const body = await workerJson<{ packages?: PackageSummary[] }>(
+  const body = await workerJson<{ packages?: PackageSummary[]; cbt?: CbtStatus | null }>(
     `GET ${path}`,
     await workerFetch(path),
   );
-  return body.packages ?? [];
+  return { packages: body.packages ?? [], cbt: body.cbt ?? null };
+}
+
+export async function listPackagesForUser(userId: string): Promise<PackageSummary[]> {
+  return (await getPackagesForUser(userId)).packages;
+}
+
+export async function redeemCbtCode(userId: string, code: string): Promise<CbtRedeemSuccess> {
+  const path = "/cbt/redeem";
+  return workerJson(
+    `POST ${path}`,
+    await workerFetch(path, {
+      method: "POST",
+      body: JSON.stringify({ user_id: userId, code }),
+    }),
+  );
 }
 
 // --- Payments (v0.5) -----------------------------------------------------

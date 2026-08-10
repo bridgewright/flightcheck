@@ -160,6 +160,29 @@ export interface PackageRow {
   order_id?: string | null;
 }
 
+export interface CbtStatus {
+  label: string;
+  packages_granted: number;
+  packages_remaining: number;
+  package_expires_at: string;
+}
+
+export interface CbtRedeemSuccess {
+  label: string;
+  packages_remaining: 3;
+  package_expires_at: string;
+}
+
+export type CbtRefusalCode =
+  | "cbt-code-invalid"
+  | "cbt-already-redeemed"
+  | "cbt-full"
+  | "cbt-closed";
+
+export interface CbtRedeemRefusal {
+  code: CbtRefusalCode;
+}
+
 // Mirror of scorer.api.db.OrderRow: one Polar order, as the worker's
 // GET /api/orders?user_id= serializes it. polar_order_id is the webhook's
 // idempotency key (UNIQUE in the DB).
