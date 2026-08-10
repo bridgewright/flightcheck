@@ -125,3 +125,9 @@ half-updated page is worse, because the fresh half makes the stale half look
 checked. Both halves now carry the same tag, and the state table says which
 numbers have an instrument and which have a sample, because those stopped
 being the same question at v0.6.*
+# Closed-beta usage
+
+CBT participants are real external users. Their sessions count as real usage
+under impression rule ⑦, unlike the operator's comped runs and the disclosed
+synthetic row. Their packages are non-revenue and are counted separately as
+CBT packages in the usage payload.

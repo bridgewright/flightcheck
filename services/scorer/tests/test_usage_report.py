@@ -44,6 +44,7 @@ def _usage(**overrides) -> UsageMetrics:
         "packages_sampled": 2,
         "paid_packages_sampled": 1,
         "comped_packages_sampled": 0,
+        "cbt_packages_sampled": 0,
         "distinct_users": 3,
         "package_burn_through_ratio": 0.75,
         "p50_candidate_response_s": 1.8,

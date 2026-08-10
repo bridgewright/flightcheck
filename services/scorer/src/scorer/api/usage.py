@@ -67,7 +67,8 @@ SELF_TEST_NOTE = (
 )
 NO_DATA_NOTE = "No sessions have been started yet; every rate below is zero."
 COMPED_NOTE = (
-    "{comped} of the {sampled} packages in this sample are comped: full "
+    "{comped} of the {sampled} packages in this sample are comped, including "
+    "{cbt} CBT packages: full "
     "access granted without payment, which is how the operator runs real "
     "sessions. They are counted in the usage rates because the sessions are "
     "real, and they are NOT counted as paid packages, because no money moved."
@@ -116,6 +117,7 @@ class UsageMetrics(BaseModel):
     packages_sampled: int
     paid_packages_sampled: int
     comped_packages_sampled: int
+    cbt_packages_sampled: int
     distinct_users: int
     package_burn_through_ratio: float      # mean used / available
     p50_candidate_response_s: float | None
@@ -228,6 +230,7 @@ def compute_usage(packages: list[PackageRow],
     # Comped packages (F-53) are real sessions and fake revenue. Both facts
     # are stated rather than either being quietly folded in.
     comped = sum(1 for package in packages if package.comped_at is not None)
+    cbt = sum(1 for package in packages if package.cbt_code_id is not None)
 
     notes = [NOT_INSTRUMENTED_NOTE]
     # `>=`, not `==`: a read that comes back over its bound is no more a
@@ -240,7 +243,8 @@ def compute_usage(packages: list[PackageRow],
     if distinct_users <= 1:
         notes.append(SELF_TEST_NOTE)
     if comped:
-        notes.append(COMPED_NOTE.format(comped=comped, sampled=len(packages)))
+        notes.append(COMPED_NOTE.format(comped=comped, cbt=cbt,
+                                        sampled=len(packages)))
     if sampler.sample_size < len(scored):
         notes.append(PROCESS_LOCAL_NOTE)
 
@@ -258,6 +262,7 @@ def compute_usage(packages: list[PackageRow],
         paid_packages_sampled=sum(
             1 for package in packages if package.paid_at is not None),
         comped_packages_sampled=comped,
+        cbt_packages_sampled=cbt,
         distinct_users=distinct_users,
         package_burn_through_ratio=round(burn_ratio, 4),
         p50_candidate_response_s=(
