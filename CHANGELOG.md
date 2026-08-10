@@ -4,6 +4,42 @@
 
 ### Added
 
+- **A closed beta opens on one shared access code.** Sign in, enter
+  the code once, and the account's next three job-description
+  registrations are born unlocked — the full six-session package
+  each, no payment — every one of them expiring on the beta's fixed
+  end date. The grant rides the existing comp machinery: nothing that
+  counts revenue can see it, the code is stored only as a normalized
+  hash with a redemption cap and a kill switch, guessing is
+  rate-limited per account, and the entitlement counter survives
+  package deletion by design (the quick-allowance lesson). Beta
+  participants are the product's first real external users: their
+  sessions count as real usage in the published metrics, and their
+  packages are counted there separately as what they are —
+  non-revenue. DECISIONS 062.
+
+- **Navigating stops feeling like teleporting.** A route change now
+  dissolves the new content in over 0.3 seconds while the chrome
+  around it holds still, so the screen reads as one continuous
+  surface instead of a swap; the landing's hero cloud drifts a
+  twentieth behind the scroll, which reads as depth. Opacity and
+  transform only, inside the established motion budget, with no new
+  dependency; reduced motion lands on the settled state instantly —
+  verified by toggling, and pinned in the suite so it cannot be
+  dropped silently. The session room is deliberately excluded.
+  DECISIONS 063.
+
+## [0.13.0] — 2026-08-10
+
+> Restamped after the tag: v0.13.0 shipped with its release notes in
+> `docs/releases/v0.13.md` and a published GitHub release, but this
+> file's block stayed under [Unreleased] — the next controller found
+> it while preparing the following batch. Recorded rather than
+> backdated, like every gap this repo's ledgers keep finding smaller
+> versions of.
+
+### Added
+
 - **The six sessions stop repeating.** Each session in a package now
   draws different questions: per-dimension rotation through the
   rubric's own question bank with every previously asked question text

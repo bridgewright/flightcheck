@@ -2489,3 +2489,71 @@ the trade-offs spelled out before any of this was built.
   their cost), or a second cohort needs different terms — the table
   already holds multiple rows, so that day needs an operator command
   and no code.
+
+## 063 — Route changes dissolve on the surface that never left (2026-08-10)
+
+**Context.** The user's field read (2026-08-10): clicking into a new
+screen feels choppy — nothing connects, and the product reads less
+finished than it is. F-58 animated the data WITHIN pages; every route
+change still swapped the whole screen in one frame. PRD v0.17→v0.18
+ordering note: the v0.18 entry was recorded pre-code and this feature
+was built by a parallel track alongside the v0.17 batch.
+
+- **Chosen — a CSS enter animation on the content column, addressed
+  by a root `template.tsx`.** The template is a `display: contents`
+  client shell that applies a scope class through a tested predicate;
+  the animation (`opacity 0→1`, 0.3 s, the house FADE_EASE) targets
+  `<main>` inside that scope, and its replay trigger is React
+  recreating `<main>` whenever the page component changes. The chrome
+  around the content — top bar, footer — repaints identical pixels
+  and holds still, so a navigation reads as content resolving onto a
+  surface that never left, which is the continuity the user asked
+  for, not a performance of it.
+- **Rejected — React `<ViewTransition>` / the View Transitions API**
+  (this Next version's blessed story): it requires an experimental
+  flag in a config file outside the track's ownership, carries
+  documented Safari differences, and its real power — shared-element
+  morphs, directional slides — is exactly the showiness the motion
+  budget rules out. Revisit when the flag is stable AND a genuine
+  shared-element need appears (session row → session detail is the
+  candidate).
+- **Rejected — a motion/react wrapper in the template**: it would
+  fade the entire surface including the chrome, and re-fading
+  identical pixels reads as flicker — the opposite of continuity; it
+  also waits for hydration and gives no-JS readers nothing, where
+  CSS plays immediately.
+- **Rejected — keying off the template's own remount**: by the
+  bundled docs' semantics a root template remounts only when the
+  FIRST path segment changes, so `/sessions` → `/sessions/[id]`
+  would never animate. The chosen shape animates every navigation
+  because a page-component change recreates `<main>` regardless of
+  depth.
+- **Supporting choices:** enter-only (the mechanism gives no free
+  exit, and a blocking exit is forbidden); opacity-only with no
+  travel (the screens' content already carries the granted
+  reading-order rise — adding route-level travel would compound into
+  a lurch); no `animation-fill-mode` (a filling animation would hold
+  a stacking context on `<main>` and paint the home tour's fixed
+  panes below the footer). All numbers come from the motion SSOT
+  constants, gated by test.
+- **The hero-cloud drift is scrub-linked, not clocked.** The
+  landing's cloud lags the scroll by a twentieth (24 px over 480 px,
+  unit-tested). It has no duration — the reader's scroll is the
+  timeline — so the 0.3 s clock cap does not apply to it by
+  construction; its budget is spatial. This is recorded as the
+  posture for any future scrub-linked motion, not as an exception.
+- **Accepted behavior, named:** a navigation that crosses a
+  `loading.tsx` boundary settles twice (the skeleton enters, then
+  the real content enters), and the first hard load fades once. CSS
+  cannot distinguish arrival kinds; a consistent settle on every
+  arrival is the coherent reading, and opting skeletons out would
+  reintroduce the one-frame pop this exists to remove.
+- **Unchanged on purpose:** control press scale stays declined
+  (041); the session room receives nothing (F-50, user-excluded) —
+  the exclusion is enforced by a tested predicate and, after review
+  round 1, pinned against fragment-built class names and shadowed
+  keyframe declarations (the standing obfuscated-literal lens, now
+  applied to CSS).
+- **Revisit when:** the View Transitions flag stabilizes and a
+  shared-element need appears, or field feedback reads the
+  double-settle through skeletons as pulsing.
