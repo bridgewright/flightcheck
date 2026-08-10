@@ -714,7 +714,7 @@ def test_list_package_sessions_orders_and_shapes_payload(monkeypatch):
          "created_at": second.created_at, "scoring_stage": None,
          "stopped_reporting": False, "report_available": False,
          "overall": None, "verdict": None},
-    ]}
+        ]}
 
 
 def test_list_package_sessions_carries_verdict_and_scoring_stage(monkeypatch):
@@ -876,7 +876,7 @@ def test_list_user_packages_newest_first_with_usage(monkeypatch):
          "is_trial": False, "paid_at": None,
          "comped_at": None,
          "expires_at": None},
-    ]}
+    ], "cbt": None}
 
 
 def test_list_user_packages_empty_and_requires_auth(monkeypatch):
@@ -887,7 +887,7 @@ def test_list_user_packages_empty_and_requires_auth(monkeypatch):
     unauthorized = client.get("/api/users/unknown/packages")
 
     assert empty.status_code == 200
-    assert empty.json() == {"packages": []}
+    assert empty.json() == {"packages": [], "cbt": None}
     assert unauthorized.status_code == 401
 
 

@@ -319,6 +319,17 @@ def build_router(deps: Deps) -> APIRouter:
             row = db.get_package(row.id)
             logger.info("package %s comped at birth (user_id=%s)",
                         row.id, body.user_id)
+        elif body.user_id is not None:
+            redemption = db.get_cbt_redemption_by_user(body.user_id)
+            if redemption is not None and redemption.packages_granted < 3:
+                code = db.get_cbt_code(redemption.code_id)
+                expires = datetime.fromisoformat(code.package_expires_at)
+                if code.disabled_at is None and expires > datetime.now(UTC):
+                    now_iso = datetime.now(UTC).isoformat()
+                    db.set_package_cbt(row.id, now_iso,
+                                       code.package_expires_at, code.id)
+                    db.increment_cbt_packages_granted(redemption.id)
+                    row = db.get_package(row.id)
         cached = (
             db.find_ready_rubric_by_jd(jd_text, body.user_id)
             if resume_text is None and linkedin_text is None
@@ -649,6 +660,14 @@ def build_router(deps: Deps) -> APIRouter:
 
     @router.get("/users/{user_id}/packages")
     def list_user_packages(user_id: str) -> dict:
+        redemption = db.get_cbt_redemption_by_user(user_id)
+        cbt = None
+        if redemption is not None:
+            code = db.get_cbt_code(redemption.code_id)
+            cbt = {"label": code.label,
+                   "packages_granted": redemption.packages_granted,
+                   "packages_remaining": max(0, 3 - redemption.packages_granted),
+                   "package_expires_at": code.package_expires_at}
         return {"packages": [
             {
                 "id": package.id,
@@ -686,6 +705,6 @@ def build_router(deps: Deps) -> APIRouter:
                 "expires_at": package.expires_at,
             }
             for package in db.list_packages_by_user(user_id)
-        ]}
+        ], "cbt": cbt}
 
     return router
