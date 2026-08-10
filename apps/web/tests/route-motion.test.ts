@@ -51,6 +51,26 @@ describe("the template applies the canvas through the tested decision", () => {
     expect(emitted).not.toMatch(/room/);
   });
 
+  it("is one element carrying one class, built from no literal the imports do not name", () => {
+    // The evasion this closes, demonstrated live in review: a second wrapper
+    // whose className is the canvas name in concatenated fragments
+    // (`"route-" + "canvas"`) grants the room the enter while every mention
+    // count above stays true and the literal scan above stays blind. So the
+    // shape is pinned whole. One element, one className; every double-quoted
+    // string in the emitted code must be on the roster of the four the file
+    // needs, so a new fragment, however it is split, is a new literal and
+    // fails; other quote styles and digits are banned outright, which also
+    // closes the template-literal and fromCharCode routes the repo has seen.
+    expect(emitted.match(/<[a-zA-Z]/g) ?? []).toHaveLength(1);
+    expect(emitted.match(/className=/g) ?? []).toHaveLength(1);
+    const literals = [...emitted.matchAll(/"([^"]*)"/g)].map((m) => m[1]).sort();
+    expect(literals).toEqual(
+      ["@/components/motion/route", "contents", "next/navigation", "use client"].sort(),
+    );
+    expect(emitted).not.toMatch(/[`']/);
+    expect(emitted).not.toMatch(/\d/);
+  });
+
   it("reads the pathname once, from the router", () => {
     const mentions = emitted.match(/\busePathname\b/g) ?? [];
     expect(mentions.length, "usePathname is aliased or called again").toBe(2);
@@ -107,6 +127,16 @@ describe("the stylesheet's route enter speaks the entry vocabulary exactly", () 
     // the moment the enter finishes and the context dissolves.
     const declaration = rule?.[1] ?? "";
     expect(declaration).not.toMatch(/both|forwards|backwards|fill/);
+  });
+
+  it("declares the enter's keyframes exactly once", () => {
+    // The evasion this closes, demonstrated live in review: a second
+    // `@keyframes fc-route-enter` later in the file wins the cascade
+    // wholesale, so it can reintroduce travel while the opacity-only scan
+    // below keeps reading the first, innocent declaration. The name is
+    // matched to its boundary: a differently named block is inert unless the
+    // rule points at it, and the animation pin above holds the rule's target.
+    expect(globals.match(/@keyframes fc-route-enter\b/g) ?? []).toHaveLength(1);
   });
 
   it("dissolves on opacity alone: no travel, no layout property", () => {
