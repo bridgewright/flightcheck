@@ -18,6 +18,10 @@ describe("CBT surface wiring", () => {
     expect(source("components/redeem-code.tsx")).toContain("router.refresh()");
   });
 
+  it("dresses the code input in the house FIELD token, not a hand-rolled copy", () => {
+    expect(source("components/redeem-code.tsx")).toContain("{FIELD}");
+  });
+
   it("renders the redeem field on exactly home and settings", () => {
     const home = source("app/home/page.tsx");
     const settings = source("app/settings/page.tsx");

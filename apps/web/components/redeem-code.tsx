@@ -5,7 +5,7 @@ import { useState } from "react";
 import type { FormEvent } from "react";
 
 import { cbtRedeemCopy, type CbtRedeemResult } from "@/lib/cbt";
-import { SECONDARY_BUTTON, SUBTLE } from "@/lib/ui";
+import { FIELD, SECONDARY_BUTTON, SUBTLE } from "@/lib/ui";
 
 export default function RedeemCode({ compact = false }: { compact?: boolean }) {
   const router = useRouter();
@@ -42,7 +42,7 @@ export default function RedeemCode({ compact = false }: { compact?: boolean }) {
     <form onSubmit={submit} className={`flex ${compact ? "items-end" : "items-center justify-center"} flex-wrap gap-2`}>
       <label className="flex flex-col gap-1 text-left">
         <span className={SUBTLE}>Have a beta access code?</span>
-        <input name="code" maxLength={64} disabled={busy} className="rounded-control border border-field bg-paper px-3 py-2 text-ink" />
+        <input name="code" maxLength={64} disabled={busy} className={FIELD} />
       </label>
       <button type="submit" disabled={busy} className={SECONDARY_BUTTON}>
         {busy ? "Checking..." : "Redeem code"}
