@@ -8,7 +8,7 @@ from fastapi.testclient import TestClient
 from fakes import FakeDatabase, FakeGenAI, FakeStorage
 from scorer.api.app import create_app
 from scorer.api.db import CbtCodeRow
-from scorer.api.quota import is_expired
+from scorer.api.quota import effective_total_sessions, is_expired
 from scorer.api.usage import compute_usage
 
 
@@ -228,10 +228,102 @@ def test_cbt_grant_counter_survives_package_deletion(monkeypatch):
     assert fourth_row.expires_at is None
 
 
-def test_cbt_expiry_uses_existing_package_expiry_guard():
+def test_cbt_expiry_uses_existing_package_expiry_guard(monkeypatch):
+    # No new code at the session door: a CBT package past the beta's end
+    # date is refused by the same is_expired path an expired paid window
+    # uses, with the same 410 shape.
     db = FakeDatabase()
     package = db.create_package("jd", None, user_id="user-1")
     db.set_package_cbt(package.id, datetime.now(UTC).isoformat(),
                        (datetime.now(UTC) - timedelta(seconds=1)).isoformat(),
                        "code-1")
     assert is_expired(db.get_package(package.id)) is True
+    response = _client(monkeypatch, db).post(
+        "/api/sessions", headers={"Authorization": "Bearer test-token"},
+        json={"package_id": package.id})
+    assert response.status_code == 410
+    assert response.json()["code"] == "package-expired"
+
+
+def test_a_cbt_package_is_born_with_the_codes_expiry(monkeypatch):
+    db = FakeDatabase()
+    code = _code(db)
+    db.insert_cbt_redemption(code.id, "user-1")
+    monkeypatch.setattr("scorer.api.routers.packages.compile_package_job",
+                        lambda *args, **kwargs: None)
+    response = _client(monkeypatch, db).post(
+        "/api/packages", headers={"Authorization": "Bearer test-token"},
+        json={"user_id": "user-1", "jd_text": "Software engineer role"})
+    row = db.get_package(response.json()["package_id"])
+    assert row.comped_at is not None
+    assert row.expires_at == code.package_expires_at
+    assert row.cbt_code_id == code.id
+    assert row.updated_at is not None
+    assert effective_total_sessions(row) == 6
+    assert row.paid_at is None and row.order_id is None
+
+
+def test_no_grant_once_the_code_is_closed(monkeypatch):
+    # The seam re-checks the code at every birth: a redemption made while
+    # the beta was open grants nothing after the code expires or is
+    # disabled -- the package is born normal and the counter stays put.
+    monkeypatch.setattr("scorer.api.routers.packages.compile_package_job",
+                        lambda *args, **kwargs: None)
+    headers = {"Authorization": "Bearer test-token"}
+    for closing in ({"package_expires_at":
+                     (datetime.now(UTC) - timedelta(seconds=1)).isoformat()},
+                    {"disabled_at": datetime.now(UTC).isoformat()}):
+        db = FakeDatabase()
+        code = _code(db)
+        redemption = db.insert_cbt_redemption(code.id, "user-1")
+        db.cbt_codes[code.id] = code.model_copy(update=closing)
+        response = _client(monkeypatch, db).post(
+            "/api/packages", headers=headers,
+            json={"user_id": "user-1", "jd_text": "Software engineer role"})
+        row = db.get_package(response.json()["package_id"])
+        assert row.comped_at is None
+        assert row.expires_at is None
+        assert row.cbt_code_id is None
+        assert db.cbt_redemptions[redemption.id].packages_granted == 0
+
+
+def test_allowlist_comp_outranks_cbt_and_burns_no_grant(monkeypatch):
+    # The operator's env-allowlist comp keeps priority: no expiry is
+    # written and the CBT counter is not touched. Turning the seam's elif
+    # into an if would stamp the beta's end date onto the operator's
+    # package and burn a grant; this is the test that would catch it.
+    db = FakeDatabase()
+    code = _code(db)
+    redemption = db.insert_cbt_redemption(code.id, "user-1")
+    monkeypatch.setenv("COMP_ACCOUNT_IDS", "user-1")
+    monkeypatch.setattr("scorer.api.routers.packages.compile_package_job",
+                        lambda *args, **kwargs: None)
+    response = _client(monkeypatch, db).post(
+        "/api/packages", headers={"Authorization": "Bearer test-token"},
+        json={"user_id": "user-1", "jd_text": "Software engineer role"})
+    row = db.get_package(response.json()["package_id"])
+    assert row.comped_at is not None
+    assert row.expires_at is None
+    assert row.cbt_code_id is None
+    assert db.cbt_redemptions[redemption.id].packages_granted == 0
+
+
+def test_the_packages_listing_carries_the_entitlement(monkeypatch):
+    db = FakeDatabase()
+    code = _code(db)
+    redemption = db.insert_cbt_redemption(code.id, "user-1")
+    db.increment_cbt_packages_granted(redemption.id)
+    client = _client(monkeypatch, db)
+    headers = {"Authorization": "Bearer test-token"}
+    listed = client.get("/api/users/user-1/packages", headers=headers)
+    assert listed.json()["cbt"] == {
+        "label": "Founding cohort",
+        "packages_granted": 1,
+        "packages_remaining": 2,
+        "package_expires_at": code.package_expires_at,
+    }
+    # Clamped at zero, never negative, even past the cap.
+    for _ in range(4):
+        db.increment_cbt_packages_granted(redemption.id)
+    over = client.get("/api/users/user-1/packages", headers=headers)
+    assert over.json()["cbt"]["packages_remaining"] == 0
