@@ -337,6 +337,46 @@ select:focus-visible {
 }
 
 
+/* The route enter (F-88, DECISIONS 063). One rule: when a navigation
+ * recreates the page's <main>, the new content column dissolves in over the
+ * entry budget's 0.3s on the vocabulary's fade curve, scoped under the canvas
+ * class app/template.tsx applies (named in components/motion/route.ts, which
+ * also withholds it from the session room — F-50's still surface).
+ *
+ * Its one sentence: a new screen resolves onto a surface that never left —
+ * the chrome outside <main> repaints identical pixels and holds still, so
+ * only the content is seen to change.
+ *
+ * Opacity alone, no travel: the screens' own content already carries the
+ * reading-order rise where F-58 granted it, and travel here would compound
+ * with those entries into a lurch. The numbers are the entry vocabulary's,
+ * not new ones — tests/route-motion.test.ts holds this literal equal to
+ * ENTRY_SECONDS and FADE_EASE in components/motion/entry.ts.
+ *
+ * No fill mode, deliberately. A filling opacity animation keeps a stacking
+ * context on <main> after it finishes, and a fixed overlay rendered inside
+ * main (the home tour's dimming panes) would then stack below the footer.
+ * With no fill the natural opacity: 1 returns at the final frame and the
+ * context dissolves; with a 0s delay the from-state applies from the first
+ * frame, so nothing flashes.
+ *
+ * Reduced motion needs no rule of its own here: the backstop below clamps
+ * every animation to 0.01ms, which is the settled state one frame in. A
+ * reader without JavaScript still gets the dissolve and it still settles —
+ * it is a stylesheet animation, not a script. */
+.route-canvas main {
+  animation: fc-route-enter 0.3s cubic-bezier(0.165, 0.84, 0.44, 1);
+}
+
+@keyframes fc-route-enter {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
 /* The landing's scroll-entry motion ships its hidden state in the server HTML:
    motion renders `initial` into the markup, so elements arrive at opacity 0
    and hydration is what reveals them. Measured on the served HTML rather than
