@@ -194,6 +194,22 @@ def test_operator_purge_removes_the_redemption_row():
     assert db.cbt_redemptions[other.id].user_id == "user-2"
 
 
+def test_the_dry_run_prints_the_redemption_it_would_delete():
+    # purge_user.py's DEFAULT is the dry run, and describe_plan's output is
+    # the plan the operator approves. A plan that deletes the redemption
+    # row but does not print it has the operator approving a smaller blast
+    # radius than the one --execute acts on -- so the print side gets its
+    # own pin, not just the delete side.
+    from scorer.api.deletion import collect_deletion_plan, describe_plan
+
+    db = FakeDatabase()
+    code = _code(db)
+    mine = db.insert_cbt_redemption(code.id, "user-1")
+    text = describe_plan(collect_deletion_plan(db, "user-1"))
+    assert "1 cbt redemption(s)" in text
+    assert mine.id in text
+
+
 def test_usage_counts_cbt_inside_comped_without_changing_other_counts():
     db = FakeDatabase()
     package = db.create_package("jd", None, user_id="user-1")
