@@ -24,6 +24,15 @@ def test_code_offline_helpers():
     assert set(generated.removeprefix("FC-CBT-")) <= set(ALPHABET)
 
 
+def test_the_alphabet_carries_no_ambiguous_characters():
+    # The brief's generation contract: an unambiguous alphabet, no 0/O/1/I.
+    # The subset assertion above compares generate_code against ALPHABET
+    # itself, so it cannot notice ALPHABET regrowing the ambiguous four --
+    # this pin can. Lowercase never appears: codes are stored uppercase.
+    assert not set("0O1Il") & set(ALPHABET)
+    assert set(ALPHABET) == set("ABCDEFGHJKLMNPQRSTUVWXYZ23456789")
+
+
 def test_bare_date_ends_at_utc_day_boundary():
     assert parse_expires("2026-08-31") == datetime(
         2026, 8, 31, 23, 59, 59, tzinfo=UTC).isoformat()
