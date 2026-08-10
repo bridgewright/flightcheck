@@ -3,9 +3,11 @@ import Link from "next/link";
 import { deletionMailto } from "@/app/legal/policy";
 import MicCheck from "@/components/MicCheck";
 import OrderHistory from "@/components/OrderHistory";
+import RedeemCode from "@/components/redeem-code";
 import Shell from "@/components/Shell";
 import { DIVIDER, LABEL, PAGE_HEADING, PRIMARY_BUTTON, SECONDARY_BUTTON, SUB_HEADING, SUBTLE } from "@/lib/ui";
 import { getViewer } from "@/lib/viewer";
+import { getPackagesForUser } from "@/lib/worker";
 
 import DeleteAccountSection from "./delete-account";
 
@@ -60,6 +62,7 @@ function Section({
 export default async function SettingsPage() {
   const viewer = await getViewer();
   if (!viewer) return <SignedOut />;
+  const cbt = await getPackagesForUser(viewer.id).then((response) => response.cbt).catch(() => null);
 
   return (
     <Shell viewer={viewer}>
@@ -80,6 +83,12 @@ export default async function SettingsPage() {
         <Section label="Order history">
           <OrderHistory userId={viewer.id} />
         </Section>
+
+        {cbt === null ? (
+          <Section label="Beta access">
+            <RedeemCode compact />
+          </Section>
+        ) : null}
 
         <Section label="Audio check">
           <p className={SUBTLE}>

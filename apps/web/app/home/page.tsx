@@ -11,6 +11,7 @@ import ProgressDimensionTable from "@/components/ProgressDimensionTable";
 import ProgressFocus from "@/components/ProgressFocus";
 import ReadinessGauge from "@/components/ReadinessGauge";
 import ReclaimSessionButton from "@/components/ReclaimSessionButton";
+import RedeemCode from "@/components/redeem-code";
 import RetryCompileButton from "@/components/RetryCompileButton";
 import SessionList from "@/components/SessionList";
 import SessionTicket from "@/components/SessionTicket";
@@ -20,6 +21,7 @@ import { trendSectionVisible } from "@/components/home-dashboard";
 import { dimensionMeta } from "@/components/progress-view";
 import { retryCompileAction } from "@/app/packages/actions";
 import { resolveActivePackage } from "@/lib/active-package";
+import { cbtEntitlementCopy } from "@/lib/cbt";
 import type { VerdictLine } from "@/lib/home";
 import {
   ACTIVE_PACKAGE_COOKIE,
@@ -36,13 +38,13 @@ import {
   verdictLine,
 } from "@/lib/home";
 import type { Verdict } from "@/lib/types";
-import type { Rubric } from "@/lib/types";
+import type { CbtStatus, Rubric } from "@/lib/types";
 import { dimensionTrends, recurringIssues } from "@/lib/progress";
 import { CARD, DIVIDER, FINE_PRINT, LABEL, PAGE_HEADING, PRIMARY_BUTTON, LINK, SUBTLE } from "@/lib/ui";
 import type { Viewer } from "@/lib/viewer";
 import { getViewer } from "@/lib/viewer";
 import type { PackageSummary, SessionSummary } from "@/lib/worker";
-import { getPackageByToken, getPackageProgress, getSession, listPackagesForUser, listSessions } from "@/lib/worker";
+import { getPackageByToken, getPackageProgress, getPackagesForUser, getSession, listSessions } from "@/lib/worker";
 
 export const dynamic = "force-dynamic";
 
@@ -84,7 +86,8 @@ function Unreachable({ viewer }: { viewer: Viewer }) {
   );
 }
 
-function NoPackages({ viewer }: { viewer: Viewer }) {
+function NoPackages({ viewer, cbt }: { viewer: Viewer; cbt: CbtStatus | null }) {
+  const entitlement = cbt === null ? null : cbtEntitlementCopy(cbt);
   return (
     <Shell viewer={viewer} path="/home" packages={[]}>
       <HomeTour />
@@ -99,6 +102,8 @@ function NoPackages({ viewer }: { viewer: Viewer }) {
         <Link href="/new" className={PRIMARY_BUTTON}>
           Start with a job description
         </Link>
+        {entitlement ? <p className={SUBTLE}>{entitlement}</p> : null}
+        {cbt === null ? <RedeemCode /> : null}
       </div>
     </Shell>
   );
@@ -159,10 +164,13 @@ export default async function HomePage({
   const { pkg: pkgParam } = await searchParams;
   const cookieStore = await cookies();
   let packages: PackageSummary[];
+  let cbt: CbtStatus | null;
   let sessions: SessionSummary[];
   let active: PackageSummary | null;
   try {
-    packages = await listPackagesForUser(viewer.id);
+    const response = await getPackagesForUser(viewer.id);
+    packages = response.packages;
+    cbt = response.cbt;
     active = resolveActivePackage(
       packages,
       typeof pkgParam === "string" ? pkgParam : null,
@@ -173,7 +181,7 @@ export default async function HomePage({
     return <Unreachable viewer={viewer} />;
   }
   if (!active) {
-    return <NoPackages viewer={viewer} />;
+    return <NoPackages viewer={viewer} cbt={cbt} />;
   }
 
   // The employer chip (F-56). When the rubric named a company the subtitle
