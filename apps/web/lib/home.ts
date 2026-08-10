@@ -462,7 +462,7 @@ const DAY_MS = 24 * 60 * 60 * 1000;
  * packages carry no countdown.
  */
 export function expiryRemainingDays(pkg: PaywallState, now: Date): number | null {
-  if (!pkg.paid_at || !pkg.expires_at) {
+  if (!isUnlocked(pkg) || !pkg.expires_at) {
     return null;
   }
   const expiresMs = new Date(pkg.expires_at).getTime();

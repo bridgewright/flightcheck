@@ -616,6 +616,14 @@ describe("expiryRemainingDays", () => {
     ).toBeNull();
   });
 
+  it("counts down comped windows but not open-ended operator comps", () => {
+    expect(expiryRemainingDays({ comped_at: "2026-08-01T00:00:00Z", expires_at: "2026-08-05T12:00:00Z" }, now)).toBe(2);
+    expect(expiryRemainingDays({ comped_at: "2026-08-01T00:00:00Z", expires_at: null }, now)).toBeNull();
+    expect(expiryLine({ comped_at: "2026-07-01T00:00:00Z", expires_at: "2026-08-01T00:00:00Z" }, now)).toBe(
+      "This package has expired. Reports stay available, but new sessions can't start.",
+    );
+  });
+
   it("counts whole days remaining, rounding partial days up", () => {
     expect(
       expiryRemainingDays(
