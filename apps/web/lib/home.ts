@@ -488,6 +488,73 @@ export function expiryLine(pkg: PaywallState, now: Date): string | null {
   return days === 1 ? "1 day left on this package." : `${days} days left on this package.`;
 }
 
+/** Why a room will not open, when the session itself is fine. */
+export type RoomAccessRefusal = "locked" | "expired";
+
+/** What the room page says instead of a start card. The door is the caller's
+ * to draw: it has checkoutHref and the package id, and this module builds no
+ * routes. */
+export interface RoomAccessNotice {
+  reason: RoomAccessRefusal;
+  headline: string;
+  detail: string;
+}
+
+/**
+ * Whether this package can start a NEW session right now, and what to say
+ * when it cannot. Null means the room opens.
+ *
+ * This is the client half of a refusal the worker already makes. The
+ * secret-mint route answers 409 "session-not-live" for a locked or expired
+ * package as well as for a session that has already ended, and the room
+ * RELOADS on that code, expecting the server-rendered page to land on a
+ * terminal screen. But `endedRoomNotice` keys on session STATUS, and these
+ * rows are still "planned" — so the reload rendered the start card again and
+ * the customer got a loop with no explanation: Start, reload, start card,
+ * Start. The page has to refuse for the same reasons the mint does, or the
+ * reload has nowhere honest to land.
+ *
+ * Locked reuses isUnlocked, so "unlocked" cannot come to mean one thing here
+ * and another on home. Expiry is read from expires_at directly rather than
+ * through expiryRemainingDays, which returns null for anything unpaid: a
+ * comped package (DECISIONS 037) carries a window with no payment behind it,
+ * and a comped window that closed is exactly as shut as a bought one. An
+ * unparseable date fails OPEN — a bad timestamp must not be what stands
+ * between a customer and an interview they paid for.
+ *
+ * A quick package is never refused. It is the funnel's free door: it has no
+ * payment and no window by design, so the locked test would catch every one
+ * of them and shut the front door of the product.
+ */
+export function roomAccessNotice(
+  pkg: PaywallState,
+  now: Date,
+): RoomAccessNotice | null {
+  if (pkg.kind === "quick") {
+    return null;
+  }
+  if (!isUnlocked(pkg)) {
+    return {
+      reason: "locked",
+      headline: "This package is not unlocked yet",
+      detail:
+        "Sessions on it cannot start until it is unlocked. Nothing here is " +
+        "lost: the rubric and this session slot are waiting.",
+    };
+  }
+  const expiresMs = pkg.expires_at ? Date.parse(pkg.expires_at) : Number.NaN;
+  if (!Number.isNaN(expiresMs) && expiresMs <= now.getTime()) {
+    return {
+      reason: "expired",
+      headline: "This package's window has ended",
+      detail:
+        "New sessions can't start on it. Your reports and recordings stay " +
+        "available, and your home screen shows where everything stands.",
+    };
+  }
+  return null;
+}
+
 /**
  * A receipt row's amount: minor units rendered in the order's own currency
  * ("$49.00"), a bare decimal when the worker stored no currency, null when it

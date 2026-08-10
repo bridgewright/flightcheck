@@ -80,6 +80,12 @@ const plan: SessionPlan = {
   time_budget_minutes: 20,
 };
 
+// The unscored five-minute funnel session. The worker emits this focus, so
+// the union has to accept it; nothing on this side branches on the value.
+// Pinned here because a widened union is invisible to typecheck until
+// something actually assigns the new member.
+const quickPlan: SessionPlan = { ...plan, focus: "quick", time_budget_minutes: 5 };
+
 const profileLicensedDimension: RubricDimension = {
   ...rubric.dimensions[0],
   license: "profile",
@@ -176,6 +182,7 @@ const createSessionResponse: CreateSessionResponse = {
 export const __checked = [
   rubric,
   plan,
+  quickPlan,
   report,
   pkg,
   session,

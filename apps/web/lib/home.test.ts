@@ -27,7 +27,9 @@ import {
   verdictLine,
   verdictPhrase,
   isUnlocked,
-  packageCompanyLine,} from "@/lib/home";
+  packageCompanyLine,
+  roomAccessNotice,
+} from "@/lib/home";
 import type { JourneySession } from "@/lib/home";
 import type { DimensionScore, SessionReport, Verdict } from "@/lib/types";
 
@@ -757,5 +759,113 @@ describe("the employer line on a package card", () => {
 
   it("trims, because the value comes from a model's free text", () => {
     expect(packageCompanyLine("  Anthropic\n")).toBe("Anthropic");
+  });
+});
+
+describe("roomAccessNotice", () => {
+  const now = new Date("2026-08-10T00:00:00Z");
+  const paid = {
+    paid_at: "2026-08-01T00:00:00Z",
+    expires_at: "2026-08-31T00:00:00Z",
+  };
+
+  // The loop this closes: the secret-mint route answers 409 "session-not-live"
+  // for a locked or expired package as well as for a session that has already
+  // ended, and the room RELOADS on that code — but endedRoomNotice keys on
+  // session STATUS, and these rows are still "planned". The reload rendered
+  // the start card again. Start, reload, start card, with no explanation.
+
+  it("opens the room for a paid package inside its window", () => {
+    expect(roomAccessNotice(paid, now)).toBeNull();
+  });
+
+  it("opens the room for a comped package (DECISIONS 037)", () => {
+    // Comped access has no payment behind it, so a locked test written on
+    // paid_at alone would shut a door the worker leaves open.
+    expect(
+      roomAccessNotice({ paid_at: null, comped_at: "2026-08-01T00:00:00Z" }, now),
+    ).toBeNull();
+  });
+
+  it("refuses a locked package and says so as something to act on", () => {
+    const notice = roomAccessNotice({ paid_at: null, comped_at: null }, now);
+    expect(notice?.reason).toBe("locked");
+    expect(notice?.detail).toContain("cannot start");
+    // The slot is not lost, and the screen has to say that: this is the same
+    // package the customer will come back to after unlocking.
+    expect(notice?.detail).toContain("waiting");
+  });
+
+  it("refuses a package whose window has closed", () => {
+    const notice = roomAccessNotice(
+      { paid_at: "2026-07-01T00:00:00Z", expires_at: "2026-07-31T00:00:00Z" },
+      now,
+    );
+    expect(notice?.reason).toBe("expired");
+    // Expiry blocks NEW sessions only, exactly as expiryLine says elsewhere.
+    expect(notice?.detail).toContain("stay");
+  });
+
+  it("closes the window at the instant it ends, not a day later", () => {
+    const at = "2026-08-10T00:00:00Z";
+    expect(roomAccessNotice({ paid_at: paid.paid_at, expires_at: at }, now)?.reason).toBe(
+      "expired",
+    );
+    expect(
+      roomAccessNotice(
+        { paid_at: paid.paid_at, expires_at: "2026-08-10T00:00:01Z" },
+        now,
+      ),
+    ).toBeNull();
+  });
+
+  it("expires a comped window too", () => {
+    // expiryRemainingDays returns null for anything unpaid, so reading expiry
+    // through it would leave a closed comped window looping forever.
+    expect(
+      roomAccessNotice(
+        { paid_at: null, comped_at: "2026-07-01T00:00:00Z", expires_at: "2026-07-31T00:00:00Z" },
+        now,
+      )?.reason,
+    ).toBe("expired");
+  });
+
+  it("never refuses a quick package", () => {
+    // The funnel's free door has no payment and no window BY DESIGN, so the
+    // locked test would catch every quick room ever opened — the front door
+    // of the product, shut on the visitor it exists for.
+    expect(
+      roomAccessNotice({ kind: "quick", paid_at: null, comped_at: null }, now),
+    ).toBeNull();
+    expect(
+      roomAccessNotice(
+        { kind: "quick", paid_at: null, expires_at: "2026-07-01T00:00:00Z" },
+        now,
+      ),
+    ).toBeNull();
+  });
+
+  it("fails open on a timestamp it cannot read", () => {
+    // A malformed date must never be the thing standing between a customer
+    // and an interview they paid for.
+    expect(
+      roomAccessNotice({ paid_at: paid.paid_at, expires_at: "not a date" }, now),
+    ).toBeNull();
+    expect(
+      roomAccessNotice({ paid_at: paid.paid_at, expires_at: null }, now),
+    ).toBeNull();
+  });
+
+  it("keeps both notices in the room's calm register", () => {
+    for (const pkg of [
+      { paid_at: null, comped_at: null },
+      { paid_at: "2026-07-01T00:00:00Z", expires_at: "2026-07-31T00:00:00Z" },
+    ]) {
+      const notice = roomAccessNotice(pkg, now);
+      expect(notice).not.toBeNull();
+      expect(`${notice?.headline} ${notice?.detail}`).not.toContain("!");
+      // The ended-room notices carry no typographic dashes either.
+      expect(`${notice?.headline} ${notice?.detail}`).not.toMatch(/[–—]/);
+    }
   });
 });

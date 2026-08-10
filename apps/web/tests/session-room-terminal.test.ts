@@ -105,3 +105,48 @@ describe("copy hygiene on the new surfaces", () => {
     expect(roomPage).not.toMatch(/[–—]/);
   });
 });
+
+describe("the room page refuses a package that cannot start a session", () => {
+  // The other half of the same 409. The secret-mint route answers
+  // "session-not-live" for a LOCKED or EXPIRED package as well as for a
+  // session past "planned", and SessionRoom reloads on that code expecting
+  // this page to land somewhere terminal. endedRoomNotice keys on session
+  // status, and these rows are still "planned" — so the reload rendered the
+  // start card again and the customer got a loop with no explanation.
+  it("asks the package, not just the session status", () => {
+    expect(roomPage).toContain("roomAccessNotice(access.value.pkg, new Date())");
+  });
+
+  it("decides after the ended notice and before the capability gate", () => {
+    // After: a scored session's own story is the truer one to tell. Before:
+    // this refusal is the actionable one — it names a door, and the
+    // capability screen does not.
+    const endedAt = roomPage.indexOf("endedRoomNotice(");
+    const accessAt = roomPage.indexOf("roomAccessNotice(");
+    const capabilityAt = roomPage.indexOf("sessionCapability(");
+    expect(accessAt).toBeGreaterThan(endedAt);
+    expect(accessAt).toBeLessThan(capabilityAt);
+  });
+
+  it("renders the copy from the helper, never its own literals", () => {
+    expect(roomPage).toContain("{blocked.headline}");
+    expect(roomPage).toContain("{blocked.detail}");
+  });
+
+  it("offers the unlock door on locked, and home on both", () => {
+    // A refusal a customer cannot act on is the loop with better wording.
+    // The href and the label come from lib/home, so this screen cannot
+    // disagree with every other unlock CTA about the price or the route.
+    expect(roomPage).toContain("checkoutHref(access.value.pkg.id)");
+    expect(roomPage).toContain("unlockCtaLabel()");
+    expect(roomPage).toContain('blocked.reason === "locked"');
+    expect(roomPage).toContain('href="/home"');
+  });
+
+  it("reaches the room for a package that is merely unpaid nowhere else", () => {
+    // The page must not re-derive "locked" or "expired" with its own field
+    // reads: those two predicates live in lib/home beside isUnlocked, and a
+    // second copy here is how the room and home come to disagree.
+    expect(roomPage).not.toMatch(/paid_at|comped_at|expires_at/);
+  });
+});

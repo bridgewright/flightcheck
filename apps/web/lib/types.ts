@@ -60,7 +60,10 @@ export interface Rubric {
 
 export interface SessionPlan {
   session_index: number;
-  focus: "baseline" | "targeted";
+  /** "quick" is the unscored five-minute funnel session. The worker emits it;
+   * nothing on this side branches on it, and the union carries it so the type
+   * does not quietly claim a plan can only be one of the scored two. */
+  focus: "baseline" | "targeted" | "quick";
   question_sequence: QuestionSpec[];
   pressure_probe: QuestionSpec;
   time_budget_minutes: number;

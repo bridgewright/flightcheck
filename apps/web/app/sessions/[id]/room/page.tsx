@@ -2,6 +2,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 
 import SessionRoom from "@/components/SessionRoom";
+import { checkoutHref, roomAccessNotice, unlockCtaLabel } from "@/lib/home";
 import {
   CAPABILITY_ENDED_MESSAGE,
   sessionCapability,
@@ -96,6 +97,42 @@ export default async function SessionRoomPage({
           <Link
             href="/home"
             className={notice.showSessionLink ? SECONDARY_BUTTON : PRIMARY_BUTTON}
+          >
+            Back to your home
+          </Link>
+        </div>
+      </main>
+    );
+  }
+  // The session is fine; the package behind it may not be. The secret-mint
+  // route answers 409 "session-not-live" for a locked or expired package too,
+  // and the room reloads on that code expecting this page to land somewhere
+  // terminal — but these rows are still "planned", so the notice above is
+  // null and the start card came back. Start, reload, start card, forever.
+  //
+  // Placed after the status notice (a scored session's own story is the
+  // truer one) and before the capability window (this refusal is the
+  // actionable one: it names a door, and the capability screen does not).
+  const blocked = roomAccessNotice(access.value.pkg, new Date());
+  if (blocked !== null) {
+    return (
+      <main className={`${MAIN_READING} flex min-h-dvh flex-col justify-center`}>
+        <h1 className={SECTION_HEADING}>{blocked.headline}</h1>
+        <p className="mt-2 text-ink-faint">{blocked.detail}</p>
+        <div className="mt-6 flex gap-3">
+          {blocked.reason === "locked" && (
+            <Link
+              href={checkoutHref(access.value.pkg.id)}
+              className={PRIMARY_BUTTON}
+            >
+              {unlockCtaLabel()}
+            </Link>
+          )}
+          <Link
+            href="/home"
+            className={
+              blocked.reason === "locked" ? SECONDARY_BUTTON : PRIMARY_BUTTON
+            }
           >
             Back to your home
           </Link>
