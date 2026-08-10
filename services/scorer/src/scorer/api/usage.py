@@ -67,11 +67,11 @@ SELF_TEST_NOTE = (
 )
 NO_DATA_NOTE = "No sessions have been started yet; every rate below is zero."
 COMPED_NOTE = (
-    "{comped} of the {sampled} packages in this sample are comped, including "
-    "{cbt} CBT packages: full "
-    "access granted without payment, which is how the operator runs real "
-    "sessions. They are counted in the usage rates because the sessions are "
-    "real, and they are NOT counted as paid packages, because no money moved."
+    "{comped} of the {sampled} packages in this sample are comped: full "
+    "access granted without payment. {cbt} of them are CBT packages, granted "
+    "to closed-beta participants; the rest are how the operator runs real "
+    "sessions. All are counted in the usage rates because the sessions are "
+    "real, and none are counted as paid packages, because no money moved."
 )
 PROCESS_LOCAL_NOTE = (
     "p50_scoring_latency_s is measured in this worker process and resets "

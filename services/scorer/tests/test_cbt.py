@@ -205,6 +205,23 @@ def test_usage_counts_cbt_inside_comped_without_changing_other_counts():
     assert usage.paid_packages_sampled == 0
 
 
+def test_the_comped_note_does_not_hand_cbt_packages_to_the_operator():
+    # DECISIONS 062: CBT participants are real external users, UNLIKE the
+    # operator's comped runs. A note that folds both into "how the operator
+    # runs real sessions" misattributes the first real external users at
+    # the exact moment rule 7 starts to matter.
+    db = FakeDatabase()
+    package = db.create_package("jd", None, user_id="user-1")
+    db.set_package_cbt(package.id, datetime.now(UTC).isoformat(),
+                       (datetime.now(UTC) + timedelta(days=1)).isoformat(),
+                       "code-1")
+    usage = compute_usage([db.get_package(package.id)], [])
+    note = next(n for n in usage.notes if "comped" in n)
+    assert "1 of them are CBT packages" in note
+    assert "closed-beta participants" in note
+    assert "the rest are how the operator runs real sessions" in note
+
+
 def test_cbt_grant_counter_survives_package_deletion(monkeypatch):
     db = FakeDatabase()
     code = _code(db)
