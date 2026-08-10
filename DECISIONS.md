@@ -2405,3 +2405,87 @@ not know) and it is bounded: once ever, skippable at every step.
 - **Revisit when:** feedback or session replays show the tour
   interrupting returning users (flag loss in practice), or steps
   drifting from the surfaces they point at.
+
+## 062 — CBT access codes: the beta rides the comp machinery (2026-08-10)
+
+**Context.** A closed beta is planned (user direction, 2026-08-10):
+participants receive a code, and redeeming it entitles the account to
+three full packages — six scored 20-minute sessions each — without
+payment. Two of the choices were the user's to make, because they are
+distribution and money-shape questions, and both were put to them with
+the trade-offs spelled out before any of this was built.
+
+- **Chosen — one shared code (user decision, 2026-08-10).** The
+  distribution plan is a group announcement, so per-person minting
+  would cost the operator a code-per-participant send and buy only
+  individual revocation. The leak exposure a shared code carries is
+  bounded three separate ways: a redemption cap (`max_redemptions`),
+  a kill switch (`disabled_at`), and the calendar expiry below — and
+  redeemers are still identified, because every redemption row
+  carries the account that made it. The schema holds many code rows,
+  so a second cohort or a per-person pivot needs no rebuild.
+- **Chosen — the beta ends on a calendar date (user decision,
+  2026-08-10).** The code row carries `package_expires_at`; every
+  package born from it gets that date written as its `expires_at` at
+  birth. Existing expiry enforcement applies unchanged — new sessions
+  refuse to start, artifacts stay readable — and usage data for
+  rule ⑦ arrives inside a bounded window instead of trickling.
+  Redeeming after the date is refused: a grant of already-expired
+  packages would be a door painted on a wall.
+- **Chosen — the grant is a comp, not a parallel free path.**
+  `comped_at` is set at birth through the same seam the allowlist
+  uses (the create hook in packages.py), so everything downstream
+  keeps its one meaning: a session is a session, and nothing that
+  counts money reads comp state (037). A new nullable
+  `packages.cbt_code_id` names the code a package was born from, so
+  the usage payload can show a CBT package as what it is.
+- **Chosen — the entitlement counter lives on the redemption row.**
+  `cbt_redemptions.packages_granted` increments at each comp-at-birth
+  and caps at three. It is deliberately NOT a count of the account's
+  live CBT packages: package deletion removes rows (037), so a
+  live-count cap would be a delete button away from unlimited free
+  packages — the exact hole the 060 amendment closed for the quick
+  allowance, rebuilt one feature later. One redemption per account,
+  ever (unique on `user_id`).
+- **Storage and the guessing surface.** `cbt_codes` stores a SHA-256
+  of the normalized code (trimmed, uppercased) — never the code
+  itself; the operator mints through a `tools/` script that prints
+  the plaintext exactly once. Redemption requires a signed-in
+  account and is rate-limited per account (the FixedWindowLimiter
+  primitives). Refusals are uniform toward strangers — a code that
+  matches nothing is "not recognized" — while a caller whose code
+  matched gets the honest state (beta ended, cap reached, already
+  redeemed): whoever holds the code has nothing left to learn from
+  the distinction, and a beta participant deserves a true sentence.
+- **Rejected — per-person codes:** individual revocation is not worth
+  N minted-and-DMed codes while the leak exposure is already bounded
+  by cap, kill switch, and expiry. The revisit condition below names
+  the day this flips.
+- **Rejected — setting `paid_at`:** the same rejection as 037, which
+  is the reason 037 exists — fabricated revenue in every money query,
+  and rule ⑦ becomes unenforceable exactly when the first real
+  external users arrive to test it.
+- **Rejected — no expiry (what comps do today):** a beta that never
+  ends is not a beta; it is a free tier that costs realtime-API money
+  forever and was never priced as one.
+- **Rejected — an entitlement column on accounts:** a second place
+  that must agree with the redemption record. The redemption row
+  already is the durable record of the grant; counting on it adds no
+  new source of truth.
+- **Metrics posture.** CBT participants are the first REAL external
+  users. Their sessions count as real usage under rule ⑦ — unlike
+  the operator's comped runs and the disclosed synthetic row — while
+  their packages remain non-revenue and visibly CBT in the usage
+  payload. `docs/metrics/README.md` states this in the same release
+  this ships in.
+- **Account deletion.** Deleting an account removes its redemption
+  row with everything else (the privacy right stays whole, as the
+  060 amendment set it), which technically lets a re-signup redeem
+  again. Accepted: each redemption burns one of `max_redemptions`,
+  so the shared cap bounds the loop, and the price of a lap around
+  it is every report the participant made.
+- **Revisit when:** the code leaks beyond the beta group and burns
+  the cap (per-person codes and individual revocation then earn
+  their cost), or a second cohort needs different terms — the table
+  already holds multiple rows, so that day needs an operator command
+  and no code.

@@ -387,6 +387,27 @@ Changes to targets are recorded here with date and reason — never silently.
   once ever, the product's only auto-opening surface, on purpose.
   DECISIONS 060–061.
 
+- **v0.17 (recorded 2026-08-10, pre-code):** the closed beta gets a
+  door key. A CBT access code — one shared code, handed out by the
+  operator to the beta group — entered once on a signed-in account
+  entitles it to **three full packages**, each with the normal six
+  scored 20-minute sessions, without payment. The grant rides the
+  existing comp machinery (`comped_at`, DECISIONS 037), never
+  `paid_at`, so no revenue that never happened can appear in any
+  money query. Every CBT package is born carrying the beta's fixed
+  end date as its expiry, so the beta ends on a calendar day instead
+  of trailing off — new sessions stop, reports and recordings stay
+  readable, exactly like an expired paid window. Redemption is one
+  field with honest copy on the signed-in surfaces, rate-limited like
+  every input; the code is stored only as a hash, with a redemption
+  cap and a kill switch, and the entitlement count survives package
+  deletion (the quick-allowance lesson, DECISIONS 060 amendment).
+  The metrics posture flips for the first time: CBT participants are
+  **real external users** — their sessions count as real usage under
+  impression rule ⑦ — while their packages stay visibly non-revenue,
+  and `docs/metrics/README.md` says so in the same release.
+  DECISIONS 062.
+
 > 2026-08-02: v0.4 scope added above — accounts move ahead of payments
 > because login-gated interviews protect session integrity and per-session
 > cost, and the dashboard is what makes a 6-session package usable. The
