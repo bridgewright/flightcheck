@@ -17,6 +17,8 @@ from google.genai import types
 from scorer.api.db import (
     PAID_TOTAL_SESSIONS,
     FeedbackRow,
+    CbtCodeRow,
+    CbtRedemptionRow,
     OrderRow,
     PackageRow,
     SessionRow,
@@ -185,6 +187,8 @@ class FakeDatabase:
         self.packages: dict[str, PackageRow] = {}
         self.sessions: dict[str, SessionRow] = {}
         self.orders: dict[str, OrderRow] = {}
+        self.cbt_codes: dict[str, CbtCodeRow] = {}
+        self.cbt_redemptions: dict[str, CbtRedemptionRow] = {}
         self.jd_urls: dict[str, str | None] = {}
         # Transcript lives OFF the session row (mirrors the real adapter's
         # explicit column lists): session_id -> stored segments.
@@ -209,6 +213,7 @@ class FakeDatabase:
         self._session_seq = 0
         self._order_seq = 0
         self._feedback_seq = 0
+        self._cbt_redemption_seq = 0
 
     def _now(self) -> datetime:
         if self.now_iso is not None:
@@ -484,6 +489,44 @@ class FakeDatabase:
             "updated_at": self._now().isoformat(),
         })
 
+    def find_cbt_code_by_hash(self, code_hash: str) -> CbtCodeRow | None:
+        return next((row for row in self.cbt_codes.values()
+                     if row.code_hash == code_hash), None)
+
+    def get_cbt_code(self, code_id: str) -> CbtCodeRow:
+        return self.cbt_codes[code_id]
+
+    def count_cbt_redemptions(self, code_id: str) -> int:
+        return sum(row.code_id == code_id for row in self.cbt_redemptions.values())
+
+    def get_cbt_redemption_by_user(self, user_id: str) -> CbtRedemptionRow | None:
+        return next((row for row in self.cbt_redemptions.values()
+                     if row.user_id == user_id), None)
+
+    def insert_cbt_redemption(self, code_id: str, user_id: str) -> CbtRedemptionRow:
+        if self.get_cbt_redemption_by_user(user_id) is not None:
+            raise ValueError(user_id)
+        self._cbt_redemption_seq += 1
+        row = CbtRedemptionRow(id=f"cbt-red-{self._cbt_redemption_seq}",
+                               code_id=code_id, user_id=user_id,
+                               redeemed_at=self._now().isoformat())
+        self.cbt_redemptions[row.id] = row
+        return row
+
+    def increment_cbt_packages_granted(self, redemption_id: str) -> None:
+        row = self.cbt_redemptions[redemption_id]
+        self.cbt_redemptions[redemption_id] = row.model_copy(
+            update={"packages_granted": row.packages_granted + 1})
+
+    def set_package_cbt(self, package_id: str, comped_at: str,
+                        expires_at: str, cbt_code_id: str) -> None:
+        row = self.packages[package_id]
+        self.packages[package_id] = row.model_copy(update={
+            "comped_at": comped_at, "expires_at": expires_at,
+            "cbt_code_id": cbt_code_id, "total_sessions": PAID_TOTAL_SESSIONS,
+            "updated_at": self._now().isoformat(),
+        })
+
     def touch_updated_at(self, kind: Literal["package", "session"],
                          id: str) -> None:
         if kind not in ("package", "session"):
@@ -562,7 +605,8 @@ class FakeDatabase:
         # touched, an empty list is a no-op that is not even recorded, and
         # ids that are already gone count as 0 rather than KeyError.
         stores = {"package": self.packages, "session": self.sessions,
-                  "order": self.orders, "study": self.study}
+                  "order": self.orders, "study": self.study,
+                  "cbt_redemption": self.cbt_redemptions}
         if kind == "feedback":
             if not ids:
                 return 0

@@ -94,10 +94,11 @@ def _table_for(kind: Literal["package", "session"]) -> str:
 # delete_rows' kind -> table name. Deliberately a SECOND map rather than a
 # widening of _table_for: touch_updated_at writes an updated_at column that
 # orders does not have, so the two vocabularies are not interchangeable.
-DeletableKind = Literal["package", "session", "order", "feedback", "study"]
+DeletableKind = Literal["package", "session", "order", "feedback", "study", "cbt_redemption"]
 _DELETE_TABLES: dict[str, str] = {
     "package": "packages", "session": "sessions", "order": "orders",
     "feedback": "feedback", "study": "study_materials",
+    "cbt_redemption": "cbt_redemptions",
 }
 
 
@@ -140,6 +141,27 @@ class PackageRow(BaseModel):
     # anchor -- a comp written there would become revenue in every query that
     # counts paid packages, including the published usage metrics.
     comped_at: str | None = None
+    cbt_code_id: str | None = None
+
+
+class CbtCodeRow(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    id: str
+    code_hash: str
+    label: str
+    max_redemptions: int
+    package_expires_at: str
+    disabled_at: str | None = None
+    created_at: str | None = None
+
+
+class CbtRedemptionRow(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    id: str
+    code_id: str
+    user_id: str
+    packages_granted: int = 0
+    redeemed_at: str | None = None
 
 
 class SessionRow(BaseModel):
@@ -363,6 +385,15 @@ class Database(Protocol):
         Unknown ids raise KeyError."""
         ...
 
+    def find_cbt_code_by_hash(self, code_hash: str) -> CbtCodeRow | None: ...
+    def get_cbt_code(self, code_id: str) -> CbtCodeRow: ...
+    def count_cbt_redemptions(self, code_id: str) -> int: ...
+    def get_cbt_redemption_by_user(self, user_id: str) -> CbtRedemptionRow | None: ...
+    def insert_cbt_redemption(self, code_id: str, user_id: str) -> CbtRedemptionRow: ...
+    def increment_cbt_packages_granted(self, redemption_id: str) -> None: ...
+    def set_package_cbt(self, package_id: str, comped_at: str,
+                        expires_at: str, cbt_code_id: str) -> None: ...
+
     def touch_updated_at(self, kind: Literal["package", "session"],
                          id: str) -> None:
         """Stamp updated_at = now (UTC ISO) on a package or session row.
@@ -496,6 +527,7 @@ def _to_package_row(data: dict) -> PackageRow:
         # worked, the DB row was right, both test suites were green, and the
         # screen said "0 of 1" because every read dropped the value here.
         comped_at=data.get("comped_at"),
+        cbt_code_id=data.get("cbt_code_id"),
         expires_at=data.get("expires_at"),
         order_id=data.get("order_id"),
         updated_at=data.get("updated_at"),
@@ -585,6 +617,57 @@ class SupabaseDatabase:
         if not data:
             raise KeyError(package_id)
         return _to_package_row(data[0])
+
+    def find_cbt_code_by_hash(self, code_hash: str) -> CbtCodeRow | None:
+        data = (self._client.table("cbt_codes").select("*")
+                .eq("code_hash", code_hash).execute().data)
+        return CbtCodeRow.model_validate(data[0]) if data else None
+
+    def get_cbt_code(self, code_id: str) -> CbtCodeRow:
+        data = (self._client.table("cbt_codes").select("*")
+                .eq("id", code_id).execute().data)
+        if not data:
+            raise KeyError(code_id)
+        return CbtCodeRow.model_validate(data[0])
+
+    def count_cbt_redemptions(self, code_id: str) -> int:
+        data = (self._client.table("cbt_redemptions").select("id")
+                .eq("code_id", code_id).execute().data)
+        return len(data)
+
+    def get_cbt_redemption_by_user(self, user_id: str) -> CbtRedemptionRow | None:
+        data = (self._client.table("cbt_redemptions").select("*")
+                .eq("user_id", user_id).execute().data)
+        return CbtRedemptionRow.model_validate(data[0]) if data else None
+
+    def insert_cbt_redemption(self, code_id: str, user_id: str) -> CbtRedemptionRow:
+        data = (self._client.table("cbt_redemptions")
+                .insert({"code_id": code_id, "user_id": user_id})
+                .execute().data)
+        return CbtRedemptionRow.model_validate(data[0])
+
+    def increment_cbt_packages_granted(self, redemption_id: str) -> None:
+        # Accepted read-increment-write race: the worker is a single process.
+        data = (self._client.table("cbt_redemptions").select("*")
+                .eq("id", redemption_id).execute().data)
+        if not data:
+            raise KeyError(redemption_id)
+        count = (data[0].get("packages_granted") or 0) + 1
+        updated = (self._client.table("cbt_redemptions")
+                   .update({"packages_granted": count})
+                   .eq("id", redemption_id).execute().data)
+        if not updated:
+            raise KeyError(redemption_id)
+
+    def set_package_cbt(self, package_id: str, comped_at: str,
+                        expires_at: str, cbt_code_id: str) -> None:
+        data = (self._client.table("packages").update({
+            "comped_at": comped_at, "expires_at": expires_at,
+            "cbt_code_id": cbt_code_id, "total_sessions": PAID_TOTAL_SESSIONS,
+            "updated_at": _now_iso(),
+        }).eq("id", package_id).execute().data)
+        if not data:
+            raise KeyError(package_id)
 
     def get_package_by_token(self, access_token: str) -> PackageRow:
         data = (self._client.table("packages").select("*")

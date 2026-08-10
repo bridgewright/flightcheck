@@ -112,6 +112,7 @@ class TestTheConverterKeepsEveryColumn:
             "kind": "standard", "quick_company": None, "quick_role": None,
             "paid_at": "2026-08-01T00:00:00+00:00",
             "comped_at": "2026-08-04T00:00:00+00:00",
+            "cbt_code_id": "cbt-1",
             "expires_at": "2026-08-31T00:00:00+00:00",
             "order_id": "ord-1", "updated_at": "2026-08-04T00:00:00+00:00",
         }
