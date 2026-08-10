@@ -77,6 +77,92 @@ def test_redeem_refusals_do_not_leak_later_state(monkeypatch):
     assert (invalid.status_code, invalid.json()["code"]) == (404, "cbt-code-invalid")
 
 
+def test_redeem_validation_refuses_with_422(monkeypatch):
+    db = FakeDatabase()
+    _code(db)
+    client = _client(monkeypatch, db)
+    headers = {"Authorization": "Bearer test-token"}
+    empty = client.post("/api/cbt/redeem", headers=headers,
+                        json={"user_id": "user-1", "code": "   "})
+    assert (empty.status_code, empty.json()["code"]) == (422, "cbt-code-invalid")
+    oversize = client.post("/api/cbt/redeem", headers=headers,
+                           json={"user_id": "user-1", "code": "x" * 65})
+    assert oversize.status_code == 422
+    blank_user = client.post("/api/cbt/redeem", headers=headers,
+                             json={"user_id": "   ", "code": "FC-CBT-TEST"})
+    assert blank_user.status_code == 422
+
+
+def test_rate_limited_caller_learns_nothing_about_the_code(monkeypatch):
+    # Order pins: validation (422) precedes the limiter; the limiter (429)
+    # precedes every database read, so a rate-limited caller cannot probe
+    # whether a code exists, and the window is per account, not global.
+    db = FakeDatabase()
+    _code(db)
+    client = _client(monkeypatch, db)
+    headers = {"Authorization": "Bearer test-token"}
+    for _ in range(10):  # cbt_redeem_per_window in product.toml
+        wrong = client.post("/api/cbt/redeem", headers=headers,
+                            json={"user_id": "user-1", "code": "WRONG"})
+        assert wrong.status_code == 404
+    limited = client.post("/api/cbt/redeem", headers=headers,
+                          json={"user_id": "user-1", "code": "FC-CBT-TEST"})
+    assert (limited.status_code, limited.json()["code"]) == (429, "rate-limited")
+    still_invalid = client.post("/api/cbt/redeem", headers=headers,
+                                json={"user_id": "user-1", "code": "   "})
+    assert still_invalid.status_code == 422
+    fresh_account = client.post("/api/cbt/redeem", headers=headers,
+                                json={"user_id": "user-2", "code": "FC-CBT-TEST"})
+    assert fresh_account.status_code == 200
+
+
+def test_a_disabled_code_refuses_with_410(monkeypatch):
+    db = FakeDatabase()
+    code = _code(db)
+    db.cbt_codes[code.id] = code.model_copy(
+        update={"disabled_at": datetime.now(UTC).isoformat()})
+    response = _client(monkeypatch, db).post(
+        "/api/cbt/redeem", headers={"Authorization": "Bearer test-token"},
+        json={"user_id": "user-1", "code": "FC-CBT-TEST"})
+    assert (response.status_code, response.json()["code"]) == (410, "cbt-closed")
+
+
+def test_a_past_package_expiry_closes_the_beta(monkeypatch):
+    db = FakeDatabase()
+    code = _code(db)
+    db.cbt_codes[code.id] = code.model_copy(update={
+        "package_expires_at":
+            (datetime.now(UTC) - timedelta(seconds=1)).isoformat()})
+    response = _client(monkeypatch, db).post(
+        "/api/cbt/redeem", headers={"Authorization": "Bearer test-token"},
+        json={"user_id": "user-1", "code": "FC-CBT-TEST"})
+    assert (response.status_code, response.json()["code"]) == (410, "cbt-closed")
+
+
+def test_a_full_beta_refuses_with_409_and_closed_outranks_full(monkeypatch):
+    db = FakeDatabase()
+    code = _code(db)  # max_redemptions=2
+    db.insert_cbt_redemption(code.id, "user-a")
+    db.insert_cbt_redemption(code.id, "user-b")
+    client = _client(monkeypatch, db)
+    headers = {"Authorization": "Bearer test-token"}
+    full = client.post("/api/cbt/redeem", headers=headers,
+                       json={"user_id": "user-c", "code": "FC-CBT-TEST"})
+    assert (full.status_code, full.json()["code"]) == (409, "cbt-full")
+    # A beta both closed and full says closed: the earlier refusal must not
+    # leak the later state (that the cap was reached).
+    db.cbt_codes[code.id] = code.model_copy(
+        update={"disabled_at": datetime.now(UTC).isoformat()})
+    closed = client.post("/api/cbt/redeem", headers=headers,
+                         json={"user_id": "user-d", "code": "FC-CBT-TEST"})
+    assert (closed.status_code, closed.json()["code"]) == (410, "cbt-closed")
+    # And the caller's own account state outranks everything about the code.
+    already = client.post("/api/cbt/redeem", headers=headers,
+                          json={"user_id": "user-a", "code": "FC-CBT-TEST"})
+    assert (already.status_code, already.json()["code"]) == (
+        409, "cbt-already-redeemed")
+
+
 def test_account_deletion_removes_only_its_redemption(monkeypatch):
     db = FakeDatabase()
     code = _code(db)
