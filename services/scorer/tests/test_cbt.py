@@ -41,6 +41,28 @@ def test_redeem_normalizes_and_returns_entitlement(monkeypatch):
     }
 
 
+def test_a_tool_minted_code_redeems_at_the_endpoint(monkeypatch):
+    # The round trip the beta depends on: the hash the mint tool stores is
+    # the hash the endpoint computes, including the normalization of what a
+    # participant actually types (padding, lowercase).
+    from mint_cbt_code import generate_code, hash_code
+
+    db = FakeDatabase()
+    plaintext = generate_code()
+    row = CbtCodeRow(
+        id="code-1", code_hash=hash_code(plaintext), label="Founding cohort",
+        max_redemptions=2,
+        package_expires_at=(datetime.now(UTC) + timedelta(days=2)).isoformat(),
+    )
+    db.cbt_codes[row.id] = row
+    response = _client(monkeypatch, db).post(
+        "/api/cbt/redeem", headers={"Authorization": "Bearer test-token"},
+        json={"user_id": "user-1", "code": f"  {plaintext.lower()}  "},
+    )
+    assert response.status_code == 200
+    assert response.json()["label"] == "Founding cohort"
+
+
 def test_redeem_refusals_do_not_leak_later_state(monkeypatch):
     db = FakeDatabase()
     code = _code(db)

@@ -2,15 +2,14 @@
 from __future__ import annotations
 
 import argparse
-import hashlib
 import secrets
 from datetime import UTC, date, datetime, time
 
+# The one implementation of normalize + hash lives with the redeem endpoint;
+# a local copy here is a minted code that can fail to match at redemption.
+from scorer.api.routers.cbt import hash_code, normalize_code
+
 ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"
-
-
-def normalize_code(code: str) -> str:
-    return code.strip().upper()
 
 
 def generate_code() -> str:
@@ -46,7 +45,7 @@ def main() -> None:
     code = normalize_code(args.code or generate_code())
     if not code or len(code) > 64:
         raise SystemExit("code must be 1-64 characters after normalization")
-    code_hash = hashlib.sha256(code.encode()).hexdigest()
+    code_hash = hash_code(code)
 
     from scorer.api.db import create_supabase_client
     from scorer.env import load_env
