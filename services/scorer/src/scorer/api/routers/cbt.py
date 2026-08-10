@@ -8,6 +8,7 @@ from fastapi import APIRouter
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel, ConfigDict
 
+from scorer.api.db import CBT_PACKAGES_PER_REDEMPTION
 from scorer.api.deps import Deps
 from scorer.api.responses import rate_limited
 
@@ -61,8 +62,12 @@ def build_router(deps: Deps) -> APIRouter:
             return _refusal(409, "cbt-full", "this beta is full")
         # Accepted race: two simultaneous accounts may overshoot the cap by
         # one under the single worker process; the shared cap remains bounded.
-        deps.db.insert_cbt_redemption(code.id, body.user_id)
-        return {"label": code.label, "packages_remaining": 3,
+        redemption = deps.db.insert_cbt_redemption(code.id, body.user_id)
+        # Derived, not hardcoded: a fresh redemption has zero grants, so this
+        # is the full cap -- and stays honest if a row ever arrives non-zero.
+        return {"label": code.label,
+                "packages_remaining": max(0, CBT_PACKAGES_PER_REDEMPTION
+                                          - redemption.packages_granted),
                 "package_expires_at": code.package_expires_at}
 
     return router

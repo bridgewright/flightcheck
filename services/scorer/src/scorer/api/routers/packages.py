@@ -23,7 +23,7 @@ from postgrest.exceptions import APIError as PostgrestAPIError
 from pydantic import BaseModel, ConfigDict
 
 from scorer.api.comp import is_comped_account
-from scorer.api.db import OrderRow, PackageRow
+from scorer.api.db import CBT_PACKAGES_PER_REDEMPTION, OrderRow, PackageRow
 from scorer.api.deletion import (
     RecordingsNotDeleted,
     collect_package_deletion_plan,
@@ -321,7 +321,8 @@ def build_router(deps: Deps) -> APIRouter:
                         row.id, body.user_id)
         elif body.user_id is not None:
             redemption = db.get_cbt_redemption_by_user(body.user_id)
-            if redemption is not None and redemption.packages_granted < 3:
+            if (redemption is not None
+                    and redemption.packages_granted < CBT_PACKAGES_PER_REDEMPTION):
                 code = db.get_cbt_code(redemption.code_id)
                 expires = datetime.fromisoformat(code.package_expires_at)
                 if code.disabled_at is None and expires > datetime.now(UTC):
@@ -666,7 +667,8 @@ def build_router(deps: Deps) -> APIRouter:
             code = db.get_cbt_code(redemption.code_id)
             cbt = {"label": code.label,
                    "packages_granted": redemption.packages_granted,
-                   "packages_remaining": max(0, 3 - redemption.packages_granted),
+                   "packages_remaining": max(0, CBT_PACKAGES_PER_REDEMPTION
+                                             - redemption.packages_granted),
                    "package_expires_at": code.package_expires_at}
         return {"packages": [
             {

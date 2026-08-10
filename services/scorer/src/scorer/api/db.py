@@ -61,6 +61,11 @@ SESSION_COLUMNS = (
 # these in lib/pricing.ts.
 PAID_TOTAL_SESSIONS = 6
 EXPIRY_DAYS = 30
+# One CBT redemption entitles the account to this many comped packages
+# (DECISIONS 062). Read against the durable redemption counter, never a
+# live-package count. One constant on purpose: the birth seam, the redeem
+# response and the packages listing must not be able to disagree about it.
+CBT_PACKAGES_PER_REDEMPTION = 3
 
 
 def _now_iso() -> str:
