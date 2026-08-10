@@ -408,6 +408,23 @@ Changes to targets are recorded here with date and reason — never silently.
   and `docs/metrics/README.md` says so in the same release.
   DECISIONS 062.
 
+- **v0.18 (recorded 2026-08-10, pre-code):** navigating stops feeling
+  like teleporting. Route changes currently swap the whole screen in
+  one frame — click, pop, a new world with no thread back to the one
+  just left — and the product reads less finished than it is (user
+  field report, 2026-08-10). A route-transition layer gives screen
+  changes one continuous surface, inside the established motion
+  budget (0.3 s, transform and opacity only, no infinite loops, one
+  written justification per animation) or as named, justified
+  exceptions recorded in DECISIONS; the landing's pink hero cloud
+  gains a subtle scroll-linked drift, transform-only and passive; and
+  hover/focus feedback appears only where the existing vocabulary
+  already grants it. Reduced motion keeps its whole meaning: every
+  new transition degrades to the settled state. Deliberately
+  untouched: control press scale (declined, DECISIONS 041 — its own
+  revisit condition, not this change), the session room, and ambient
+  loops. DECISIONS 063.
+
 > 2026-08-02: v0.4 scope added above — accounts move ahead of payments
 > because login-gated interviews protect session integrity and per-session
 > cost, and the dashboard is what makes a 6-session package usable. The
