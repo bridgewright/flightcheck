@@ -26,9 +26,9 @@
 
 ![A scored flightcheck report: the verdict "Approaching 4.27 / 5", a gauge showing overall against the 4.0 Ready bar, a second gauge showing the weakest dimension at 2.5 against the 3.0 floor, and a sentence explaining that the second is what holds the verdict down](docs/report.jpg)
 
-*Two stills from the running app at the current design — the landing
-re-captured 2026-08-10 (the v0.13 hero leads with the free five-minute quick
-interview), the report captured 2026-08-04 and still exact.
+*Two stills from the running app, both re-captured 2026-08-10 at the v0.13
+design — the hero leads with the free five-minute quick interview, and the
+signed-out navigation carries its new Quick interview entry on both pages.
 They replace a four-frame GIF recorded at v0.1: it showed a dark interface this
 product no longer has, a verdict rendered as an amber warning badge the design
 system now forbids, and no sign of why 4.27 out of 5 reads as "Approaching".

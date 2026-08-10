@@ -41,10 +41,11 @@ One JD = one package: **$49 · 30 days · 6 sessions × 20 min · per-session re
 
 > 2026-08-10: the free trial session (first session on a package, scored,
 > free) retired with v0.16 — the quick interview replaced it as the one
-> free door. The paragraph above described trial-then-unlock as current
-> for one release after the code changed; corrected here, in the open.
-> Trail: [DECISIONS.md #060](DECISIONS.md) and the v0.16 scope entry
-> below.
+> free door. The paragraph above still described trial-then-unlock as
+> current an hour after the code changed, and would have shipped that way
+> in the tag had the release audit not read it; corrected here, in the
+> open. Trail: [DECISIONS.md #060](DECISIONS.md) and the v0.16 scope
+> entry below.
 
 ## Success metrics (targets set in advance — v1.0 = 2026-08-21)
 
