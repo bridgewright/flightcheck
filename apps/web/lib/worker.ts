@@ -319,7 +319,10 @@ export async function listPackagesForUser(userId: string): Promise<PackageSummar
 }
 
 export async function redeemCbtCode(userId: string, code: string): Promise<CbtRedeemSuccess> {
-  const path = "/cbt/redeem";
+  // The other half of this URL (PLAYBOOK 4.5b) is services/scorer
+  // routers/cbt.py, mounted like every worker route under the /api prefix
+  // that app.py owns; the merged-tree gates exercise both sides together.
+  const path = "/api/cbt/redeem";
   return workerJson(
     `POST ${path}`,
     await workerFetch(path, {

@@ -21,10 +21,14 @@ afterEach(() => {
 });
 
 describe("CBT worker client", () => {
-  it("posts the exact frozen worker path and body", async () => {
+  it("posts the frozen worker path where the worker mounts it: under /api", async () => {
+    // PLAYBOOK 4.5b: the brief's contract writes paths relative to the
+    // worker's /api prefix (scorer routers/__init__.py: "paths RELATIVE to
+    // /api"). /cbt/redeem unprefixed answers 404 in production — the exact
+    // defect /packages/quick shipped with once.
     response = Response.json({ label: "Beta", packages_remaining: 3, package_expires_at: "2026-08-31T00:00:00Z" });
     await redeemCbtCode("user-1", "BETA");
-    expect(calls[0].url).toBe("https://worker.example.test/cbt/redeem");
+    expect(calls[0].url).toBe("https://worker.example.test/api/cbt/redeem");
     expect(calls[0].init?.method).toBe("POST");
     expect(JSON.parse(String(calls[0].init?.body))).toEqual({ user_id: "user-1", code: "BETA" });
   });

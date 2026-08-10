@@ -30,7 +30,7 @@ describe("POST /api/cbt/redeem", () => {
 
   it("passes worker refusal status and code through untranslated", async () => {
     getViewer.mockResolvedValue({ id: "user-1", email: null });
-    redeemCbtCode.mockRejectedValue(new WorkerError("POST /cbt/redeem", 409, "cbt-full", null));
+    redeemCbtCode.mockRejectedValue(new WorkerError("POST /api/cbt/redeem", 409, "cbt-full", null));
     const response = await POST(request({ code: "BETA" }));
     expect(response.status).toBe(409);
     expect(await response.json()).toEqual({ code: "cbt-full" });
