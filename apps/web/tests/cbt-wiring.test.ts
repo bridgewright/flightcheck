@@ -34,8 +34,15 @@ describe("CBT surface wiring", () => {
     expect(source("components/redeem-code.tsx")).toContain("cbtRedeemResult(response.status");
   });
 
-  it("dresses the code input in the house FIELD token, not a hand-rolled copy", () => {
-    expect(source("components/redeem-code.tsx")).toContain("{FIELD}");
+  it("dresses the code input in the house FIELD token, and nothing else", () => {
+    // Exact consumption, not a substring. The round-1 pin was
+    // `toContain("{FIELD}")`, which `${FIELD}` inside any template literal
+    // satisfies — so `` className={`${FIELD} bg-red-` + "500"} `` walked a raw
+    // palette class past this pin, the token-vocabulary scan (the literal is
+    // split across fragments), typecheck, and lint in one move. The input's
+    // className must BE the token: any wrapper or concatenation fails here
+    // and has to argue its case in this file.
+    expect(source("components/redeem-code.tsx")).toContain('className={FIELD} />');
   });
 
   it("renders the redeem field on exactly home and settings", () => {
