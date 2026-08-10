@@ -90,6 +90,24 @@ def test_account_deletion_removes_only_its_redemption(monkeypatch):
     assert db.cbt_redemptions[other.id].user_id == "user-2"
 
 
+def test_operator_purge_removes_the_redemption_row():
+    # tools/purge_user.py calls ONLY the shared deletion module (F-34: the
+    # endpoint and the CLI must never disagree about what "delete my
+    # account" means), so the sweep itself must remove the redemption row --
+    # a bolt-on in the router leaves the operator path incomplete. The user
+    # here owns nothing else, which also pins that a redemption-only
+    # account does not early-return as an empty plan.
+    from scorer.api.deletion import collect_deletion_plan, execute_deletion
+
+    db = FakeDatabase()
+    code = _code(db)
+    mine = db.insert_cbt_redemption(code.id, "user-1")
+    other = db.insert_cbt_redemption(code.id, "user-2")
+    execute_deletion(db, FakeStorage(), collect_deletion_plan(db, "user-1"))
+    assert mine.id not in db.cbt_redemptions
+    assert db.cbt_redemptions[other.id].user_id == "user-2"
+
+
 def test_usage_counts_cbt_inside_comped_without_changing_other_counts():
     db = FakeDatabase()
     package = db.create_package("jd", None, user_id="user-1")

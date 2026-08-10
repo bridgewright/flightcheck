@@ -95,6 +95,7 @@ class DeletionPlan:
     order_ids: list[str] = field(default_factory=list)
     feedback_ids: list[str] = field(default_factory=list)
     study_ids: list[str] = field(default_factory=list)
+    cbt_redemption_ids: list[str] = field(default_factory=list)
     recording_paths: list[str] = field(default_factory=list)
     orphan_recording_paths: list[str] = field(default_factory=list)
 
@@ -107,6 +108,7 @@ class DeletionPlan:
     def is_empty(self) -> bool:
         return not (self.package_ids or self.session_ids or self.order_ids
                     or self.feedback_ids or self.study_ids
+                    or self.cbt_redemption_ids
                     or self.recording_paths or self.orphan_recording_paths)
 
 
@@ -181,6 +183,10 @@ def collect_deletion_plan(db: Database, user_id: str) -> DeletionPlan:
                     if key not in named]
     orders = db.list_orders_for_user(user_id)
     feedback = db.list_feedback_for_user(user_id)
+    # The CBT redemption row carries the account id (DECISIONS 062): the
+    # privacy right stays whole only if BOTH callers of this module remove
+    # it, so it belongs to the shared plan, not to the endpoint.
+    redemption = db.get_cbt_redemption_by_user(user_id)
     return DeletionPlan(
         user_id=user_id,
         package_ids=[package.id for package in packages],
@@ -189,6 +195,7 @@ def collect_deletion_plan(db: Database, user_id: str) -> DeletionPlan:
         feedback_ids=[row.id for row in feedback if row.id is not None],
         # Idempotent sweep: absent rows are already the desired end state.
         study_ids=[package.id for package in packages],
+        cbt_redemption_ids=[redemption.id] if redemption is not None else [],
         recording_paths=recording_paths,
         orphan_recording_paths=orphan_paths,
     )
@@ -248,6 +255,7 @@ def describe_plan(plan: DeletionPlan) -> str:
         ("session", plan.session_ids),
         ("order", plan.order_ids),
         ("feedback", plan.feedback_ids),
+        ("cbt redemption", plan.cbt_redemption_ids),
         ("recording", plan.recording_paths),
     ):
         lines.append(f"  {len(items)} {label}(s)")
@@ -289,6 +297,8 @@ def execute_deletion(db: Database, storage: Storage,
     sessions_deleted = db.delete_rows("session", plan.session_ids)
     feedback_deleted = db.delete_rows("feedback", plan.feedback_ids)
     db.delete_rows("study", plan.study_ids)
+    # Uncounted, like study: the customer-facing number stays what it was.
+    db.delete_rows("cbt_redemption", plan.cbt_redemption_ids)
     packages_deleted = db.delete_rows("package", plan.package_ids)
 
     return DeletionOutcome(

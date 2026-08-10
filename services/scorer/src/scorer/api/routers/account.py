@@ -68,7 +68,6 @@ def build_router(deps: Deps) -> APIRouter:
                          "code": "invalid-user-id"},
             )
         plan = collect_deletion_plan(db, cleaned)
-        redemption = db.get_cbt_redemption_by_user(cleaned)
         try:
             outcome = execute_deletion(db, storage, plan)
         except RecordingsNotDeleted:
@@ -87,8 +86,6 @@ def build_router(deps: Deps) -> APIRouter:
                     "code": "recordings-not-deleted",
                 },
             )
-        if redemption is not None:
-            db.delete_rows("cbt_redemption", [redemption.id])
         # Counts only, never the id: a deletion that leaves the account id
         # sitting in a log aggregator has not deleted much. The request-id
         # middleware is what correlates this line with the rest of the call.
