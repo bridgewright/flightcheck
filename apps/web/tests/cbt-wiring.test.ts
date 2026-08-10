@@ -7,7 +7,15 @@ const source = (path: string) => readFileSync(resolve(process.cwd(), path), "utf
 describe("CBT surface wiring", () => {
   it("pins the client URL to the mounted route", () => {
     expect(source("components/redeem-code.tsx")).toContain('fetch("/api/cbt/redeem"');
-    expect(resolve(process.cwd(), "app/api/cbt/redeem/route.ts")).toMatch(/app\/api\/cbt\/redeem\/route\.ts$/);
+    // The other half of the URL (PLAYBOOK 4.5b): the route file must exist at
+    // the path the fetch names AND export the POST the fetch performs.
+    // (The earlier form of this pin resolved a path and matched it against
+    // itself — an assertion that passed with no route file at all.)
+    expect(source("app/api/cbt/redeem/route.ts")).toContain("export async function POST");
+  });
+
+  it("refreshes the surface after a successful redeem", () => {
+    expect(source("components/redeem-code.tsx")).toContain("router.refresh()");
   });
 
   it("renders the redeem field on exactly home and settings", () => {
