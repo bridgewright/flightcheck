@@ -89,6 +89,8 @@ class LimitsConfig(BaseModel):
     reaper_interval_s: float          # periodic reaper cadence
     feedback_window_s: float
     feedback_per_window: int
+    cbt_redeem_window_s: float
+    cbt_redeem_per_window: int
     feedback_text_max_chars: int
     max_feedback_per_user: int
     study_window_s: float

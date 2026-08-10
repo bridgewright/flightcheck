@@ -19,7 +19,7 @@ from fastapi.testclient import TestClient
 from fakes import FakeDatabase, FakeGenAI, FakeStorage
 from scorer.api.app import create_app
 from scorer.api.deps import Deps
-from scorer.api.routers import account, feedback, ops, orders, packages, sessions, study
+from scorer.api.routers import account, cbt, feedback, ops, orders, packages, sessions, study
 
 TOKEN = "test-worker-token"
 AUTH = {"Authorization": f"Bearer {TOKEN}"}
@@ -39,7 +39,7 @@ def client() -> TestClient:
 # --- the module contract -------------------------------------------------
 
 
-ROUTER_MODULES = (packages, sessions, orders, account, feedback, study, ops)
+ROUTER_MODULES = (packages, sessions, orders, account, cbt, feedback, study, ops)
 
 
 @pytest.mark.parametrize(
@@ -69,6 +69,7 @@ def _deps() -> Deps:
         session_create_limiter=FixedWindowLimiter(60, 10),
         complete_limiter=FixedWindowLimiter(60, 10),
         feedback_limiter=FixedWindowLimiter(60, 10),
+        cbt_redeem_limiter=FixedWindowLimiter(60, 10),
         study_limiter=FixedWindowLimiter(60, 10),
         resume_attempts=AttemptCounter(),
         score_attempts=AttemptCounter(),

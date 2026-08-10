@@ -29,7 +29,7 @@ from scorer.api.deps import Deps
 from scorer.api.guards import AttemptCounter, FixedWindowLimiter
 from scorer.api.reaper import reap_stuck_safely
 from scorer.api.requestid import install_request_id
-from scorer.api.routers import account, feedback, ops, orders, packages, sessions, study
+from scorer.api.routers import account, cbt, feedback, ops, orders, packages, sessions, study
 from scorer.api.storage import Storage
 from scorer.config import load_product_config
 from scorer.intake.jd import fetch_jd
@@ -113,6 +113,8 @@ def create_app(db: Database, storage: Storage, client: GenAIClientLike) -> FastA
             limits.complete_window_s, limits.complete_per_window),
         feedback_limiter=FixedWindowLimiter(
             limits.feedback_window_s, limits.feedback_per_window),
+        cbt_redeem_limiter=FixedWindowLimiter(
+            limits.cbt_redeem_window_s, limits.cbt_redeem_per_window),
         study_limiter=FixedWindowLimiter(
             limits.study_window_s, limits.study_per_window),
         resume_attempts=AttemptCounter(),
@@ -126,7 +128,7 @@ def create_app(db: Database, storage: Storage, client: GenAIClientLike) -> FastA
     # /healthz first and outside the /api router: unprefixed and public, so
     # Railway's health check needs no token.
     app.include_router(ops.build_public_router(deps))
-    for module in (packages, sessions, orders, account, feedback, study, ops):
+    for module in (packages, sessions, orders, account, cbt, feedback, study, ops):
         api.include_router(module.build_router(deps))
     app.include_router(api)
     return app

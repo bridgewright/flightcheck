@@ -46,6 +46,7 @@ class Deps:
     session_create_limiter: FixedWindowLimiter
     complete_limiter: FixedWindowLimiter
     feedback_limiter: FixedWindowLimiter
+    cbt_redeem_limiter: FixedWindowLimiter
     study_limiter: FixedWindowLimiter
 
     # Per-row attempt counters behind the F-30 terminal-state transitions.
