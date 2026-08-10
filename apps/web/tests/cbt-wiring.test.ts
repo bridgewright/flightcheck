@@ -18,6 +18,14 @@ describe("CBT surface wiring", () => {
     expect(source("components/redeem-code.tsx")).toContain("router.refresh()");
   });
 
+  it("derives the rendered result from the response status, not the body's shape", () => {
+    // lib/cbt.test.ts proves cbtRedeemResult; this pin proves the component
+    // consumes it (4.5b one level up: a tested pure function nothing calls
+    // vouches for nothing). Without it, a codeless refusal body read as
+    // success and rendered "Code accepted ... until undefined."
+    expect(source("components/redeem-code.tsx")).toContain("cbtRedeemResult(response.status");
+  });
+
   it("dresses the code input in the house FIELD token, not a hand-rolled copy", () => {
     expect(source("components/redeem-code.tsx")).toContain("{FIELD}");
   });

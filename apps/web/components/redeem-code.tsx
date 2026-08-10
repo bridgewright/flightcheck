@@ -4,7 +4,7 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 import type { FormEvent } from "react";
 
-import { cbtRedeemCopy, type CbtRedeemResult } from "@/lib/cbt";
+import { cbtRedeemCopy, cbtRedeemResult } from "@/lib/cbt";
 import { FIELD, SECONDARY_BUTTON, SUBTLE } from "@/lib/ui";
 
 export default function RedeemCode({ compact = false }: { compact?: boolean }) {
@@ -27,9 +27,8 @@ export default function RedeemCode({ compact = false }: { compact?: boolean }) {
         headers: { "content-type": "application/json" },
         body: JSON.stringify({ code }),
       });
-      const body = (await response.json().catch(() => ({ code: "unknown" }))) as CbtRedeemResult;
-      const result = response.status === 429 ? { code: "rate-limited" as const } : body;
-      setMessage(cbtRedeemCopy(result));
+      const body: unknown = await response.json().catch(() => null);
+      setMessage(cbtRedeemCopy(cbtRedeemResult(response.status, body)));
       if (response.ok) router.refresh();
     } catch {
       setMessage(cbtRedeemCopy({ code: "unknown" }));

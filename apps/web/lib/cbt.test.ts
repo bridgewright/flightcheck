@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { cbtEntitlementCopy, cbtRedeemCopy } from "@/lib/cbt";
+import { cbtEntitlementCopy, cbtRedeemCopy, cbtRedeemResult } from "@/lib/cbt";
 
 describe("CBT copy", () => {
   const expiry = "2026-08-31T23:59:59Z";
@@ -41,5 +41,42 @@ describe("CBT copy", () => {
       "Beta access active: 2 of 3 free registrations left, until Aug 31, 2026.",
     );
     expect(cbtEntitlementCopy({ label: "Founding beta", packages_granted: 3, packages_remaining: 0, package_expires_at: expiry })).toBeNull();
+  });
+});
+
+describe("cbtRedeemResult", () => {
+  it("derives refusal from the status, not from the body's shape", () => {
+    // A refusal body with no `code` key at all must not read as success. The
+    // round-1 discriminator was `"code" in body` over unvalidated network
+    // JSON, so a codeless 409 rendered "Code accepted. Your next three
+    // job-description registrations are free. The beta runs until undefined."
+    expect(cbtRedeemResult(409, {})).toEqual({ code: "unknown" });
+    expect(cbtRedeemCopy(cbtRedeemResult(409, {}))).toBe("We couldn't redeem that code. Try again.");
+  });
+
+  it("treats a non-JSON error body as the generic refusal", () => {
+    // The component parses with `.catch(() => null)`; an HTML error page from
+    // a proxy must land on the generic sentence, not crash the copy path.
+    expect(cbtRedeemResult(502, null)).toEqual({ code: "unknown" });
+    expect(cbtRedeemCopy(cbtRedeemResult(502, null))).toBe("We couldn't redeem that code. Try again.");
+  });
+
+  it("passes known refusal codes through untranslated", () => {
+    expect(cbtRedeemResult(404, { code: "cbt-code-invalid" })).toEqual({ code: "cbt-code-invalid" });
+    expect(cbtRedeemResult(409, { code: "cbt-full" })).toEqual({ code: "cbt-full" });
+    expect(cbtRedeemResult(410, { code: "cbt-closed" })).toEqual({ code: "cbt-closed" });
+  });
+
+  it("maps 429 to the rate-limited sentence whatever the body carries", () => {
+    expect(cbtRedeemResult(429, null)).toEqual({ code: "rate-limited" });
+    expect(cbtRedeemResult(429, { code: "cbt-full" })).toEqual({ code: "rate-limited" });
+  });
+
+  it("announces success only for a 2xx carrying the contract's success shape", () => {
+    const success = { label: "Founding beta", packages_remaining: 3, package_expires_at: "2026-08-31T23:59:59Z" };
+    expect(cbtRedeemResult(200, success)).toEqual(success);
+    // A 2xx with a junk body is a broken deploy, not a success to announce.
+    expect(cbtRedeemResult(200, {})).toEqual({ code: "unknown" });
+    expect(cbtRedeemResult(200, null)).toEqual({ code: "unknown" });
   });
 });
