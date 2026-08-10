@@ -1,4 +1,4 @@
-import { readFileSync } from "node:fs";
+import { readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -71,6 +71,23 @@ describe("the template applies the canvas through the tested decision", () => {
     expect(emitted).not.toMatch(/\d/);
   });
 
+  it("imports exactly its two names, so nothing is laundered in through an owned module", () => {
+    // The evasion this closes, demonstrated live in round 2: createElement
+    // re-exported through components/motion/route and called with a tag and
+    // a class that were also re-exports. No new literal, no second JSX open,
+    // no second className= — every count above stayed true while the room's
+    // children were wrapped in an unconditional canvas element. Whatever
+    // could build a second element or carry a smuggled class has to arrive
+    // by import, so the import clauses are pinned whole (a multi-line clause
+    // breaks the equality too) and the dynamic loaders are banned; a roster
+    // specifier can then bring in nothing but these two names.
+    expect(emitted.match(/^import .*$/gm) ?? []).toEqual([
+      'import { usePathname } from "next/navigation";',
+      'import { routeCanvasClass } from "@/components/motion/route";',
+    ]);
+    expect(emitted).not.toMatch(/\brequire\b|import\s*\(/);
+  });
+
   it("reads the pathname once, from the router", () => {
     const mentions = emitted.match(/\busePathname\b/g) ?? [];
     expect(mentions.length, "usePathname is aliased or called again").toBe(2);
@@ -137,6 +154,38 @@ describe("the stylesheet's route enter speaks the entry vocabulary exactly", () 
     // matched to its boundary: a differently named block is inert unless the
     // rule points at it, and the animation pin above holds the rule's target.
     expect(globals.match(/@keyframes fc-route-enter\b/g) ?? []).toHaveLength(1);
+  });
+
+  it("owns its name: no shadowing declaration in any stylesheet, in any spelling", () => {
+    // The evasions this closes, demonstrated live in round 2, all against
+    // the count above: a second stylesheet bundled after this one (its
+    // same-named declaration wins the cascade), the at-rule spelled
+    // @KeyFrames (CSS reads at-rule names case-insensitively; the count did
+    // not), and the name written fc-route-\65nter (the bundler decodes the
+    // escape and, measured on the built chunk, ships ONLY the shadowing
+    // declaration). So the census is taken the way the platform reads it:
+    // every bundleable stylesheet in the app, comments stripped, at-rules
+    // matched in any case, identifier escapes banned outright, and the name
+    // allowed exactly twice in globals.css — the rule and its declaration —
+    // and nowhere else.
+    const stylesheets = readdirSync(webRoot, { recursive: true })
+      .map(String)
+      .filter((path) => !/^(?:node_modules|\.next|\.turbo|coverage)\//.test(path))
+      .filter((path) => /\.(?:css|scss|sass|pcss|styl)$/.test(path));
+    expect(stylesheets, "the stylesheet census lost globals.css").toContain(
+      "app/globals.css",
+    );
+    for (const sheet of stylesheets) {
+      const bare = read(sheet).replace(/\/\*[\s\S]*?\*\//g, " ");
+      expect(bare, `${sheet} uses identifier escapes`).not.toMatch(/\\/);
+      if (sheet !== "app/globals.css") {
+        expect(bare, `${sheet} speaks the enter's name`).not.toMatch(/fc-route-enter/i);
+      }
+    }
+    const bare = globals.replace(/\/\*[\s\S]*?\*\//g, " ");
+    expect(bare.match(/fc-route-enter/gi) ?? []).toHaveLength(2);
+    const names = [...bare.matchAll(/@keyframes\s+([^\s{]+)/gi)].map((m) => m[1]);
+    expect(names.filter((name) => name === "fc-route-enter")).toHaveLength(1);
   });
 
   it("dissolves on opacity alone: no travel, no layout property", () => {
