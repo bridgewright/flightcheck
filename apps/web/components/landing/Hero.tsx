@@ -1,3 +1,4 @@
+import Drift from "@/components/motion/Drift";
 import MountReveal from "@/components/motion/MountReveal";
 import { DISPLAY_HEADING, HERO_BLOOM, MUTED, PROSE_WIDTH } from "@/lib/ui";
 
@@ -29,8 +30,10 @@ export default function Hero({ signedIn = false }: { signedIn?: boolean }) {
       {/* The pink half of the reference's pastel language: a large soft cloud
           behind the top of the page. Full-bleed and absolute, so it has no
           edges to give itself away and it scrolls off with the hero. The other
-          half, the sky-blue label chip, sits above each section heading. */}
-      <div aria-hidden="true" className={HERO_BLOOM} />
+          half, the sky-blue label chip, sits above each section heading.
+          The Drift leaf lets it lag the scroll a little (F-88); at rest it
+          renders exactly the static div that used to sit here. */}
+      <Drift className={HERO_BLOOM} />
       <MountReveal className="flex flex-col gap-6 py-10 md:py-16">
         <h1 className={`${DISPLAY_HEADING} max-w-3xl`}>{HERO.heading}</h1>
         {/* Was max-w-md, which is 392px. Measured in a browser, that let the
