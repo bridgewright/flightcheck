@@ -71,7 +71,12 @@
   retired claims return. Locked packages expose zero sessions at the
   quota chokepoint, and the realtime-secret mint refuses locked and
   expired packages outright — the door a pre-existing session row
-  used to hold open. DECISIONS 060.
+  used to hold open. A review round also proved the quick allowance
+  was a delete button away from unlimited: deleting a quick package
+  reopened the lifetime cap, so per-package deletion of quick rows is
+  now refused (after ownership is proven; account deletion still
+  removes everything) — the 060 amendment records the trade.
+  DECISIONS 060.
 
 ## [0.12.0] — 2026-08-08
 

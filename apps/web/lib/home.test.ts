@@ -283,7 +283,7 @@ describe("greetingName", () => {
   });
 
   it("stops at the first digit", () => {
-    expect(greetingName("thk119914@gmail.com")).toBe("Welcome back, thk.");
+    expect(greetingName("abc123456@example.com")).toBe("Welcome back, abc.");
   });
 
   it("lowercases the name", () => {

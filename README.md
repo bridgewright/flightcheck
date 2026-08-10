@@ -5,21 +5,30 @@
 ## Live
 
 - **App:** https://flightcheck.vercel.app
+- **Quick interview (free, signed in):** https://flightcheck.vercel.app/quick
+  — type a company and a role, talk to the interviewer for five minutes.
+  Unscored, and labeled as exactly that: the questions come from those two
+  fields alone, no research pass, no rubric
 - **Sample report (no signup):** https://flightcheck.vercel.app/sample-report
   — a real session run by the developer; flightcheck has no external users
   yet, so no customer's session is on display here
-- **Price:** $49 per job description. The first package on an account is a
-  trial with one scored session; $49 unlocks that same package — same JD,
-  same rubric — to six 20-minute sessions, and a 30-day window starts at
-  payment. No subscription, and no card field in the app: Polar is the
+- **Price:** $49 per job description. The five-minute quick interview is
+  free; registering a job description and seeing the rubric it compiles —
+  the bar you would be scored against — is also free; $49 buys the package:
+  six 20-minute scored sessions on that JD, with a 30-day window starting
+  at payment. No subscription, and no card field in the app: Polar is the
   merchant of record and checkout happens on its page
-  ([pricing](https://flightcheck.vercel.app/pricing), DECISIONS #017–#018).
+  ([pricing](https://flightcheck.vercel.app/pricing), DECISIONS #017–#018
+  and #060 — the free scored trial session this file used to describe
+  retired at v0.13).
 
 ![The flightcheck landing page: the claim "Would you pass the interview today?", a two-sentence explanation, and two buttons, on warm off-white with a soft pink cloud behind it](docs/landing.jpg)
 
 ![A scored flightcheck report: the verdict "Approaching 4.27 / 5", a gauge showing overall against the 4.0 Ready bar, a second gauge showing the weakest dimension at 2.5 against the 3.0 floor, and a sentence explaining that the second is what holds the verdict down](docs/report.jpg)
 
-*Two stills from the running app, captured 2026-08-04 at the current design.
+*Two stills from the running app at the current design — the landing
+re-captured 2026-08-10 (the v0.13 hero leads with the free five-minute quick
+interview), the report captured 2026-08-04 and still exact.
 They replace a four-frame GIF recorded at v0.1: it showed a dark interface this
 product no longer has, a verdict rendered as an amber warning badge the design
 system now forbids, and no sign of why 4.27 out of 5 reads as "Approaching".
@@ -65,6 +74,11 @@ flowchart LR
 
 ### Quickstart — the product
 
+0. The free taste: https://flightcheck.vercel.app/quick — type a target
+   company and role, sign in, and talk to the interviewer for five minutes.
+   Unscored by design (five minutes cannot be judged fairly); the screen
+   after it shows the sample report with your company and role in the
+   frame, labeled as the sample it is.
 1. Sign in at https://flightcheck.vercel.app/login — Continue with Google, no password.
    Everything past the landing page is account-scoped: `/new` answers a
    signed-out visitor with a 307 to `/login?next=%2Fnew`. Then open
@@ -73,8 +87,9 @@ flowchart LR
    (no scraping — DECISIONS #003). To read the output without an account, use
    the [sample report](https://flightcheck.vercel.app/sample-report) instead.
 2. Wait for the rubric preview — 5-8 weighted dimensions, every one citing
-   its sources — then press Start session and take the 20-minute voice
-   interview in the browser (25-minute hard cut).
+   its sources. Reading the rubric is free; the sessions are what the $49
+   package buys. Unlock it, then press Start session and take the
+   20-minute voice interview in the browser (25-minute hard cut).
 3. When scoring finishes, the report shows the verdict
    (Not yet ready / Approaching / Ready), per-dimension evidence, delivery
    metrics, and concrete drills — honestly, including "not ready yet".
@@ -89,7 +104,7 @@ services. There is no root `package.json`, so the `npm` commands run from
 git clone https://github.com/bridgewright/flightcheck.git
 cd flightcheck/apps/web
 npm ci
-npm test              # 2687 tests, 114 files — 8 skip on a fresh clone
+npm test              # 2859 tests, 123 files — 8 skip on a fresh clone
 npm run dev           # http://localhost:3000
 ```
 
@@ -110,7 +125,7 @@ The scoring worker and the eval harness are Python, from `services/scorer`:
 
 ```bash
 cd flightcheck/services/scorer
-uv run pytest -q      # 1117 tests
+uv run pytest -q      # 1185 tests
 ```
 
 The rest of the release gate, each from the directory named: `npm run
@@ -132,7 +147,7 @@ other, on 2026-08-03.
 Architecture detail (data flow, storage layout): [docs/architecture.md](docs/architecture.md).
 Deploy runbook: [docs/deploy.md](docs/deploy.md).
 
-> **Status: v0.12.** Built in public. PRD was committed before the first line of code — [read it](PRD.md); the chronology is checkable below rather than asserted. The S2S provider bake-off that picked the interviewer and scoring models is measured, not guessed ([report](evals/reports/2026-08-02-provider-bakeoff.md)); the release-gate eval numbers are committed verbatim, including the runs that failed ([2026-08-03 v0.5 gate](evals/reports/2026-08-03-v05-gate.md), [2026-08-01 gate record](evals/reports/2026-08-01-v02-gate.md), [2026-07-26 gate run](evals/reports/2026-07-26-v01-gate.md)). Sample sizes in those gates are tiny and each report says so.
+> **Status: v0.13.** Built in public. PRD was committed before the first line of code — [read it](PRD.md); the chronology is checkable below rather than asserted. The S2S provider bake-off that picked the interviewer and scoring models is measured, not guessed ([report](evals/reports/2026-08-02-provider-bakeoff.md)); the release-gate eval numbers are committed verbatim, including the runs that failed ([2026-08-03 v0.5 gate](evals/reports/2026-08-03-v05-gate.md), [2026-08-01 gate record](evals/reports/2026-08-01-v02-gate.md), [2026-07-26 gate run](evals/reports/2026-07-26-v01-gate.md)). Sample sizes in those gates are tiny and each report says so.
 
 ### Verify the PRD-before-code claim yourself
 
@@ -187,6 +202,7 @@ curl -s "https://api.github.com/repos/bridgewright/flightcheck/events?per_page=1
 - **v0.10** — the judge speaks for itself: report rationale quality, a feedback door in the footer, and the room refusing doomed sessions instead of blaming the connection. Shipped 2026-08-05, tag `v0.10.0`. [Release notes](docs/releases/v0.10.md).
 - **v0.11** — the rubric proves itself: every content dimension carries verbatim JD evidence, enforced by a fourth eval suite in the release gate. Shipped 2026-08-05, tag `v0.11.0`. [Release notes](docs/releases/v0.11.md).
 - **v0.12** — the after-the-session product, and the session itself gets out of your way: per-answer coaching with study notes inside each session, a dashboard that draws trends as lines, structured feedback with an operator inbox, measurement provenance for the naturalness loop, a 0.6 s faster interviewer, and a goodbye that ends the session on its own. Shipped 2026-08-08, tag `v0.12.0`. [Release notes](docs/releases/v0.12.md).
+- **v0.13** — the sessions stop repeating and the front door gets lighter: fresh questions each session aimed at the weakest scored dimension, a profile-licensed role-and-company-fit dimension when a resume is on the package, the free five-minute quick interview replacing the free trial session as the one free door, and a home screen that introduces itself once. Shipped 2026-08-10, tag `v0.13.0`. [Release notes](docs/releases/v0.13.md).
 
 The `v0.6.0` and `v0.7.0` tags were both cut on 2026-08-04, after the work
 was already in production: `v0.6.0` sits on `da254e3`, exactly the commit that deployed on

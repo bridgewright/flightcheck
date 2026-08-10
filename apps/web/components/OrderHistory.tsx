@@ -4,9 +4,8 @@ import type { OrderRow } from "@/lib/types";
 import { listOrders } from "@/lib/worker";
 
 // The receipts list: one row per Polar order, newest first (the worker's
-// GET /api/orders serializes them in that order already). Standalone by
-// design — the controller wires it into the settings page at integration;
-// nothing in this track imports it.
+// GET /api/orders serializes them in that order already). Rendered by the
+// settings page.
 //
 // Server component: orders ride the same bearer-authenticated worker channel
 // as everything else and never reach the browser as an API.

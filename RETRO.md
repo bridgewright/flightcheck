@@ -312,7 +312,9 @@ worker's quota chokepoint keys on `paid_at` alone, so **every** unpaid package
 grants the one-session trial quota. A second job description gets a free
 session too. The exposure is bounded by the ten-package cap and the per-user
 create limits, and DECISIONS 018 records it openly as an implementation
-consequence rather than as the design.
+consequence rather than as the design. *Closed at v0.13: the trial itself
+retired (DECISIONS 060) — locked packages now expose zero sessions at that
+same chokepoint, so the every-unpaid-package hole closed with the offer.*
 
 Two things triggered the reversal. DECISIONS 008 had rejected a free tier on
 the ground that free usage does not validate willingness to pay and anchors the
@@ -812,3 +814,87 @@ layers 1 and 3 is unchanged since v0.1, κ still has no instrument, and the
 eligibility gate, report field quality and the payment lifecycle are still
 outside every suite. A green gate is a statement about three suites now
 instead of two, which is a wider statement and not a different kind of one.
+*Corrected at v0.13: it has been FOUR suites since v0.11 added
+rubric_faithfulness to the gate — this sentence survived the v0.12 re-read
+of the ledger while being one suite behind, which is the exact failure mode
+the surrounding entry documents.*
+
+## 2026-08-10 — v0.13: the two batches that changed what is sold
+
+The last entry here opened by admitting four tags had gone by without an
+entry; this one nearly repeated that immediately — it was written because
+the v0.13 release audit failed rule ⑫, not because the habit had formed.
+Recording that first, since it is the entry's own best evidence.
+
+**A retirement that shipped still selling the old thing.** DECISIONS 060
+retired the free trial session; the code retired it in an afternoon; the
+copy retired it in three waves. The track rewrote the surfaces its brief
+listed. Review round 1 found the retired claims still live on six more —
+the landing's closing block, the refund policy, checkout and its cancel
+page, the rubric screen, two empty states — including the sentence "The
+first session is scored in full" directly above the CTA that had just been
+repointed at an unscored five-minute interview. The lesson went into a
+gate, not a proofread: `trial-retirement.test.ts` fails if the claims
+return. Then round 2 defeated the gate's first version with a line wrap
+and an inline `<strong>` — Prettier's own formatting, the least
+adversarial thing in the codebase, walked straight past the regexes. The
+gate now flattens source before matching and carries its own evasion
+tests. And after all of that, the release audit found the same retired
+sentence in the README, which no gate reads — the most-read file in the
+repo was the last to learn the product had changed.
+
+**A client posting to a route that did not exist, green the whole way.**
+The quick-package client function posted to `/packages/quick`; every
+worker route lives under `/api`. Its tests stubbed fetch and asserted the
+request body — the caller's shape, never the callee's existence — so the
+suite was green against a route that answered 404 in production. Caught
+by a controller read minutes before the tracks forked. A stub proves the
+caller's half of a contract; something else has to prove there is another
+half.
+
+**The pressure probe repeated after two rounds of fixes** (batch 4, on
+the record here because it is this cycle's cleanest proof of the
+two-round rule). Round 1 fixed question repetition across sessions; the
+fix round widened the bank; the verifier then found the one string the
+interviewer renders verbatim — the pressure probe — still repeating in
+sessions four through six. The second fix was still wrong. The fixes are
+the suspect is not a slogan; it is the observed failure rate of fixes.
+
+**Retiring an offer leaves every enforcement point that keyed on it.**
+Two doors stayed open after the trial retired, both found in review, both
+the fail-open kind nobody lists: the quick-interview allowance was
+resettable from the customer's own delete button (delete a quick package,
+create another, forever — the cap was fiction until per-package deletion
+of quick rows was refused), and the realtime-secret mint still served
+locked and then expired packages, because a pre-existing session row held
+the door open — the mint checked the session's status and never asked the
+package. The second one round 2 found in round 1's own fix: the fix had
+closed "locked" and not "expired".
+
+**A count pin is defeated by an alias.** The tour's once-flag rule was
+pinned by counting call sites of `markTourDone(` — one write site, one
+close site. `const spendArrival = markTourDone` keeps every count intact
+and breaks the rule. Third distinct spelling of the gate-evasion class
+this repo has recorded (after the fromCharCode em-dash and the
+template-literal split); this one was not even adversarial, just a
+refactor away. The pins now count every mention of the identifier and
+deny the component any name for the storage surface itself.
+
+**The reviewer-proven faithfulness bypass** (batch 4). The profile-fit
+dimension needed an exemption from the JD-evidence rule, and the first
+implementation exempted any dimension that *claimed* the profile license
+— a reviewer laundered an arbitrary dimension past the F-62 gate to
+prove it. The exemption is now keyed to exactly one dimension key and
+channel, enforced twice (compiler and eval layer, deliberately
+redundant), and the release gate carries a fourth fixture that compiles
+a real profile live to hold it.
+
+**The meta-failure, named by the audit that forced this entry.** Four
+documents stayed current through both batches — CHANGELOG, DECISIONS,
+PRD, llms.txt — and two went a full release stale: README and this file.
+The four that stayed current are written *during* the work; the two that
+lagged are written *about* it. The fix being tried is structural rather
+than resolutional: the release audit now greps this file's ledger claims
+against the tree (that is how both stale sentences above were caught),
+and the README's pricing block now names the DECISIONS entry that will
+invalidate it, so the next retirement has a pointer to chase.

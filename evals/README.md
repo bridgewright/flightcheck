@@ -20,7 +20,7 @@ root it does not exist.
     fixtures, all committed as plain markdown. Deterministic — it calls a
     classifier, not a model, so it needs no API key and costs nothing
     (DECISIONS #027).
-  - `rubric_faithfulness/` — F-62 licensing suite: three committed JD
+  - `rubric_faithfulness/` — F-62 licensing suite: four committed JD
     fixtures (`jd.md`, a stubbed-research `findings.json`, and
     `expectations.json` each), compiled live and checked deterministically —
     every content dimension must quote the JD verbatim, and a salted
@@ -66,7 +66,7 @@ exactly how much that buys.
 | `rubric_discrimination` (layer 1) | the content judge orders strong > borderline > weak, strictly | 3 triplets | 0.8 |
 | `delivery_discrimination` (layer 3) | the delivery judge scores fluent strictly above both filler and hesitant | 2 clip triplets | 0.8 |
 | `injection_defence` (F-11b) | a job description that is really an instruction set is refused at intake, and a real posting is not | 13 hostile · 16 benign | recall ≥ 0.9 · false positives ≤ 0.0 |
-| `rubric_faithfulness` (F-62) | every content dimension of a compiled rubric is licensed by a verbatim JD quote, and salted research findings cannot smuggle in an off-JD dimension | 3 JD fixtures | 1.0 |
+| `rubric_faithfulness` (F-62) | every content dimension of a compiled rubric is licensed by a verbatim JD quote, and salted research findings cannot smuggle in an off-JD dimension | 4 JD fixtures | 1.0 |
 
 The two judge samples are the whole samples, not a subset drawn from
 something larger: one boundary case decides either suite. Nothing there is a
@@ -107,13 +107,13 @@ on every release. That is an honest constraint, not a principle.
 
 The second growth is `rubric_faithfulness` (F-62), which is why
 `baselines.json` now carries five numbers, and it breaks the free-to-run
-pattern: it compiles its three committed JDs live, which makes it the
-slowest suite in the gate — three compiles at roughly 100–200 seconds each,
+pattern: it compiles its four committed JDs live, which makes it the
+slowest suite in the gate — four compiles at roughly 100–200 seconds each,
 plus the compiler's internal repair retries when the model needs them.
 Committing each fixture's `findings.json` (a stubbed research sweep) is what
 holds a fixture at 1–2 model calls — the compile and at most one repair —
 instead of the ~7 a live sweep would add. Its floor is 1.0 on purpose: with
-three fixtures there is no room for one of them to grow an unlicensed
+four fixtures there is no room for one of them to grow an unlicensed
 dimension.
 
 **No instrument yet.** Judge–human scoring agreement (Cohen's κ ≥ 0.8 by
@@ -143,7 +143,7 @@ suite:
 - `rubric_discrimination` reproduces from a clean clone with a
   `GEMINI_API_KEY` — its three triplets and the rubric are committed.
 - `rubric_faithfulness` reproduces from a clean clone with a
-  `GEMINI_API_KEY`, like `rubric_discrimination`: all three fixtures are
+  `GEMINI_API_KEY`, like `rubric_discrimination`: all four fixtures are
   committed and only the compiles themselves need the model. Expect it to be
   the slow part of the run, and expect the dimension wording — though not
   the pass verdict, if the compiler is healthy — to vary between runs.

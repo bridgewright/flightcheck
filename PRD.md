@@ -32,12 +32,19 @@ Paste the job description you are applying to. flightcheck researches how that c
 
 ## Package (pricing)
 
-One JD = one package: **$49 · 30 days · 6 sessions × 20 min · per-session reports · final Ready verdict.** No subscription. The first session on a package is a free trial; $49 unlocks the same package — same JD, same rubric — to its full six sessions, and the 30-day window starts at payment (new starts only; reports stay readable). Honest-verdict policy: if not ready by session 6, the product says so — never a courtesy pass.
+One JD = one package: **$49 · 30 days · 6 sessions × 20 min · per-session reports · final Ready verdict.** No subscription. The free tier is the five-minute quick interview (a company name and a role, unscored, honestly labeled); registering a real JD is free up to the compiled rubric — the bar made visible — and every full 20-minute scored session is paid. The 30-day window starts at payment (new starts only; reports stay readable). Honest-verdict policy: if not ready by session 6, the product says so — never a courtesy pass.
 
 > 2026-08-03: price restated from ₩89,000 to $49 USD (single global price
 > story) and the trial-then-unlock model added with v0.5 payments — full
 > options-and-rejections trail in [DECISIONS.md #018](DECISIONS.md) and
 > [#019](DECISIONS.md).
+
+> 2026-08-10: the free trial session (first session on a package, scored,
+> free) retired with v0.16 — the quick interview replaced it as the one
+> free door. The paragraph above described trial-then-unlock as current
+> for one release after the code changed; corrected here, in the open.
+> Trail: [DECISIONS.md #060](DECISIONS.md) and the v0.16 scope entry
+> below.
 
 ## Success metrics (targets set in advance — v1.0 = 2026-08-21)
 

@@ -174,7 +174,7 @@ export function verdictLine(
 /**
  * "Welcome back, tae." from an email, "Welcome back." when there is nothing
  * worth using. The local part is cut at the first dot or digit so an address
- * like thk119914@ greets a person, not an account number.
+ * like abc123456@ greets a person, not an account number.
  */
 export function greetingName(email: string | null): string {
   const localPart = (email ?? "").split("@")[0];

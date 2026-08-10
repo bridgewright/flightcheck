@@ -56,8 +56,9 @@ SESSION_COLUMNS = (
     "access_token_expires_at,token_revoked_at"
 )
 
-# Paid-package policy constants (v0.5): $49 unlocks the trial package to 6
-# sessions for 30 days from payment. The web mirrors these in lib/pricing.ts.
+# Paid-package policy constants (v0.5; trial retired by DECISIONS 060): $49
+# unlocks a package to 6 sessions for 30 days from payment. The web mirrors
+# these in lib/pricing.ts.
 PAID_TOTAL_SESSIONS = 6
 EXPIRY_DAYS = 30
 

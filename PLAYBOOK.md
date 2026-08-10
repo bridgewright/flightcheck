@@ -2,13 +2,21 @@
 
 Patterns that survived contact with real APIs, real audio, real money, real
 eval numbers, and an adversarial review of the work that produced them.
-Everything here is written from the shipped implementation through the v0.6
-batch and the F-21 design pass — rubric compilation, raw-audio delivery
+Everything here is written from the shipped implementation through the v0.13
+batch — rubric compilation, raw-audio delivery
 scoring, the paid product, operating it unattended, the parallel process that
 builds them, and what two rounds of review found in that process. File paths
 are real, numbers come from recorded runs, and anything unshipped is labeled
 unshipped rather than planned. See [RETRO.md](RETRO.md) for the failures that
 produced these patterns.
+
+**Update note, 2026-08-10.** Two patterns from the v0.13 batch join chapter 4
+(4.3d, 4.5b), the appendix gains its fourth column, and the scope line above
+is corrected for the FOURTH time — this time in the opposite direction: it
+claimed less currency than the file had (4.3c documents v0.12 work while the
+line stopped at v0.6). Also recorded: the 2026-08-08 pass that added 4.3b and
+4.3c left no update note here, and the v0.12 audit added no appendix column —
+both misses of the kind this file's own history section predicts.
 
 **Update note, 2026-08-04.** Chapters 4 and 5 are new, and the appendix gained
 a third column rather than having its second one overwritten. Chapter 4 landed
@@ -619,6 +627,26 @@ Do it like this:
   hard cut, the VAD tail and interviewer model id, and the closing
   sentence the room's auto-end listens for.
 
+### 4.3d A count pin is defeated by an alias — pin the effect, not the arity
+
+A once-only flag had a rule: exactly one code path may write it. The pin
+counted call sites — one `markTourDone(`, one close site — and a
+verification round satisfied every count while breaking the rule, with
+nothing more adversarial than `const spendArrival = markTourDone;` and a
+call through the alias. A second mutation reached the storage API directly
+and also kept the counts intact. Do it like this:
+
+- **Count every mention of the identifier, not calls.** An alias needs the
+  name once to be created; a mention count of exactly (import + one call)
+  has no room for it.
+- **Deny the component any name for the layer below.** If the rule is
+  "writes go through the storage module", assert the component never says
+  `localStorage`, the key string, or any sibling API — the pin on the
+  bypass, not just the approved path.
+- **Prove the pin with the mutation that beat its predecessor.** A pin
+  written after an evasion should fail on that exact evasion, run once,
+  before it is trusted — the same discipline 4.5 demands of probes.
+
 ### 4.4 Check the built artifact, not only the source
 
 A page shipped reading `"an overall of 4.0single dimension below 3.0"`. The
@@ -690,6 +718,26 @@ verified it" was one sentence from being written about a real defect.
   cannot betray you.** The test covering that branch passed throughout,
   because it regex-matched the component's source. The fix is a CSS backstop
   that does not depend on the client running at all.
+
+### 4.5b A stub proves the caller's shape, not the callee's existence
+
+A client function posted to `/packages/quick`; every route on that worker
+lives under `/api`. Its tests stubbed `fetch`, asserted the method and the
+request body, and stayed green against a path that answered 404 in
+production — the stub validated the caller's half of the contract and
+silently vouched for a half that did not exist. Do it like this:
+
+- **Every stubbed client test asserts the exact URL**, byte for byte,
+  against the convention the server actually mounts — not a substring, not
+  "contains the resource name".
+- **Name the other half.** Somewhere, one test or one gate must know the
+  route exists: a server-side test pinning the path, a shared constant both
+  sides import, or an integration smoke that pays the network cost once.
+  If none of those is possible, the client test carries a comment saying
+  the callee is unverified — so the gap is a statement, not a surprise.
+- This is 4.5's rule one level up: a green suite against a stub is a
+  negative result ("nothing mismatched") and needs the same positive
+  control a probe does.
 
 ### 4.6 Two traps in scaling type and layout to the reader
 
@@ -869,22 +917,23 @@ are.
 ## Appendix — ship-status snapshot (record, not a pattern)
 
 A column per audit, never a column overwritten. The v0.5 audit forced the
-second one; this batch's audit forced the third, because a row that says
+second one; the v0.6 audit forced the third, because a row that says
 "no detection" was true when it was written and had stopped being true by the
-time anyone read it again. Three rows that v0.1 labeled "planned (v0.2)" are
+time anyone read it again. The v0.12 audit added none — a miss, recorded
+rather than backfilled — and the v0.13 audit adds the fourth. Three rows that v0.1 labeled "planned (v0.2)" are
 still open three releases later; they are re-labeled rather than deleted,
 because quietly dropping your own promises is the failure mode this appendix
 exists to catch.
 
-| | At v0.1 (2026-07-26) | At v0.5 (2026-08-03) | At v0.6 + the design pass (2026-08-04) |
-| --- | --- | --- | --- |
-| Grounded sweep + cited BARS compile + validation gate | shipped | shipped | shipped |
-| Golden-triplet L1 gate with human blind-rank calibration | shipped (N=3 triplets) | shipped, still N=3 | still N=3 |
-| DSP + audio-judge dual layer with conflict flagging | shipped | shipped | shipped |
-| L3 controlled-triplet gate | shipped (2 triplets; DSP separability recorded, not yet baselined) | unchanged — judge accuracy gated, DSP separability still not baselined | unchanged — still 2 triplets, separability still not baselined |
-| Few-shot correction as a recurring flywheel | planned (v0.2 — mechanism shipped, loop manual) | **not shipped**; loop still manual, and no longer scheduled | **not shipped**; unchanged |
-| Durable publisher citation URLs (resolve grounding redirects) | planned (v0.2) | **not shipped** | **not shipped**; the sweep still stores the grounding redirect verbatim |
-| Larger eval N, per-trial score recording for passing trials | planned (v0.2) | **not shipped**; failing trials record their scores, passing trials still do not | **not shipped**; unchanged |
-| Scoring-eligibility gate ahead of judge spend (3.2) | — | shipped v0.5; unit-tested, no eval-gate coverage | unchanged — still no eval-gate coverage |
-| Delimiter fencing + hidden-text strip (3.3) | — | shipped v0.5; fencing only, no detection, no adversarial suite | detection shipped v0.6 — refusal classifier at intake, gated by `evals/suites/injection/` against two baselines |
-| Payment webhook verified by a real production delivery (3.1) | — | verified 2026-08-03 on one real order — the owner's own, refunded | unchanged; still no external customer |
+| | At v0.1 (2026-07-26) | At v0.5 (2026-08-03) | At v0.6 + the design pass (2026-08-04) | At v0.13 (2026-08-10) |
+| --- | --- | --- | --- | --- |
+| Grounded sweep + cited BARS compile + validation gate | shipped | shipped | shipped | shipped; since v0.11 the compile is also faithfulness-gated (4 fixtures at v0.13) |
+| Golden-triplet L1 gate with human blind-rank calibration | shipped (N=3 triplets) | shipped, still N=3 | still N=3 | still N=3, seven releases on |
+| DSP + audio-judge dual layer with conflict flagging | shipped | shipped | shipped | shipped |
+| L3 controlled-triplet gate | shipped (2 triplets; DSP separability recorded, not yet baselined) | unchanged — judge accuracy gated, DSP separability still not baselined | unchanged — still 2 triplets, separability still not baselined | unchanged |
+| Few-shot correction as a recurring flywheel | planned (v0.2 — mechanism shipped, loop manual) | **not shipped**; loop still manual, and no longer scheduled | **not shipped**; unchanged | **not shipped**; unchanged |
+| Durable publisher citation URLs (resolve grounding redirects) | planned (v0.2) | **not shipped** | **not shipped**; the sweep still stores the grounding redirect verbatim | **not shipped**; unchanged |
+| Larger eval N, per-trial score recording for passing trials | planned (v0.2) | **not shipped**; failing trials record their scores, passing trials still do not | **not shipped**; unchanged | **not shipped**; unchanged |
+| Scoring-eligibility gate ahead of judge spend (3.2) | — | shipped v0.5; unit-tested, no eval-gate coverage | unchanged — still no eval-gate coverage | unchanged; quick sessions (v0.13) bypass it by design — they never enter scoring |
+| Delimiter fencing + hidden-text strip (3.3) | — | shipped v0.5; fencing only, no detection, no adversarial suite | detection shipped v0.6 — refusal classifier at intake, gated by `evals/suites/injection/` against two baselines | unchanged, and extended: quick-interview company/role fields sanitize at intake like the JD (a review round proved a newline could fabricate an instruction section) |
+| Payment webhook verified by a real production delivery (3.1) | — | verified 2026-08-03 on one real order — the owner's own, refunded | unchanged; still no external customer | unchanged; still no external customer |
