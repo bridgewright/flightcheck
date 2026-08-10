@@ -23,6 +23,19 @@ describe("CBT copy", () => {
     expect(cbtRedeemCopy({ code })).toBe(copy);
   });
 
+  it("falls back to the generic sentence for a code it does not know", () => {
+    // The route's own 401 body is { code: "unauthorized" }, and a future
+    // worker may refuse with codes this table has not caught up with. A
+    // lookup miss must not render silence.
+    expect(cbtRedeemCopy({ code: "unauthorized" })).toBe("We couldn't redeem that code. Try again.");
+  });
+
+  it("keeps an unparseable expiry date as-is instead of crashing", () => {
+    expect(cbtRedeemCopy({ label: "Founding beta", packages_remaining: 3, package_expires_at: "soon" })).toBe(
+      "Code accepted. Your next three job-description registrations are free. The beta runs until soon.",
+    );
+  });
+
   it("shows remaining registrations and hides a spent entitlement", () => {
     expect(cbtEntitlementCopy({ label: "Founding beta", packages_granted: 1, packages_remaining: 2, package_expires_at: expiry })).toBe(
       "Beta access active: 2 of 3 free registrations left, until Aug 31, 2026.",

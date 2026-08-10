@@ -12,24 +12,28 @@ function betaDate(iso: string): string {
   return Number.isNaN(date.getTime()) ? iso : DATE_FORMAT.format(date);
 }
 
-export type CbtRedeemResult =
-  | CbtRedeemSuccess
-  | { code: "cbt-code-invalid" | "cbt-already-redeemed" | "cbt-full" | "cbt-closed" | "rate-limited" | "invalid" | "unknown" };
+// The refusal half is the honest shape of what response.json() actually
+// returns: an unvalidated { code } whose value the web cannot close over —
+// the route's own 401 says "unauthorized", and a future worker may refuse
+// with codes this table has not caught up with.
+export type CbtRedeemResult = CbtRedeemSuccess | { code: string };
+
+const GENERIC_REDEEM_COPY = "We couldn't redeem that code. Try again.";
 
 export function cbtRedeemCopy(result: CbtRedeemResult): string {
   if (!("code" in result)) {
     return `Code accepted. Your next three job-description registrations are free. The beta runs until ${betaDate(result.package_expires_at)}.`;
   }
-  const copy = {
+  const copy: Record<string, string> = {
     "cbt-code-invalid": "That code is not recognized.",
     "cbt-already-redeemed": "This account already has beta access.",
     "cbt-full": "The beta is full.",
     "cbt-closed": "The beta has closed.",
     "rate-limited": "Too many attempts. Try again in a bit.",
     invalid: "Enter a code between 1 and 64 characters.",
-    unknown: "We couldn't redeem that code. Try again.",
-  } as const;
-  return copy[result.code];
+    unknown: GENERIC_REDEEM_COPY,
+  };
+  return copy[result.code] ?? GENERIC_REDEEM_COPY;
 }
 
 export function cbtEntitlementCopy(status: CbtStatus): string | null {
