@@ -14,8 +14,16 @@ describe("CBT surface wiring", () => {
     expect(source("app/api/cbt/redeem/route.ts")).toContain("export async function POST");
   });
 
-  it("refreshes the surface after a successful redeem", () => {
-    expect(source("components/redeem-code.tsx")).toContain("router.refresh()");
+  it("refreshes the surface after a successful redeem, through the real router", () => {
+    const component = source("components/redeem-code.tsx");
+    expect(component).toContain("router.refresh()");
+    // The refresh has to be the Next router's. A round-2 mutation shadowed the
+    // symbol this pin greps for — `const router = { refresh: () => {} }` — and
+    // the pin stayed green over a dead refresh while lint only warned about
+    // the unused import. So the one and only `router` binding must be the
+    // hook's, which also blocks an inner shadow inside submit().
+    expect(component.match(/\bconst router\b/g)).toHaveLength(1);
+    expect(component).toContain("const router = useRouter()");
   });
 
   it("derives the rendered result from the response status, not the body's shape", () => {
