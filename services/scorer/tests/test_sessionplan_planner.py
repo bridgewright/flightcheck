@@ -459,15 +459,33 @@ def test_signal_ending_in_a_period_never_doubles_it_in_the_question():
 
 def test_no_break_space_defeats_neither_the_clause_cut_nor_the_strip():
     # Signals are model-written from a JD the customer pasted, and pasted
-    # JD text carries U+00A0 wherever the posting's HTML had &nbsp;. Both
-    # the clause-cut markers and the trailing-punctuation strip want an
-    # ASCII space, so the helper normalises whitespace before either runs.
+    # JD text carries U+00A0 wherever the posting's HTML had &nbsp;. An
+    # ASCII-only clause-cut marker and an ASCII-only trailing-strip set both
+    # let it through, so each reads whitespace as \s instead.
     # Written as an escape on purpose: a raw U+00A0 in this file is
     # invisible to a reviewer and one reformat away from silently becoming
     # a space, leaving these assertions passing while testing nothing.
     nbsp = "\u00a0"
     assert _spoken_signal(f"Rewarded: Named specifics.{nbsp}") == "named specifics"
     assert _spoken_signal(f"Named specifics,{nbsp}discovery, depth.") == "named specifics"
+    # Whitespace anywhere else in the clause collapses in the closing join.
+    assert _spoken_signal(f"Rewarded: Named{nbsp}specifics{nbsp}.") == "named specifics"
+
+
+def test_a_clause_opening_with_a_parenthesis_is_cut_not_spoken():
+    # DECISIONS 067 numbers the whitespace collapse LAST for a reason: a
+    # signal that opens with whitespace and then "(" loses that space if the
+    # collapse runs first, the " (" cut marker then misses it, and the whole
+    # parenthetical is read aloud as the interest clause -- the exact class
+    # of unspeakable output F-85 exists to remove. The contract cuts at the
+    # boundary, which leaves nothing, which is no interest sentence at all.
+    assert _spoken_signal(" (translating customer reality into direction)") is None
+    assert _spoken_signal(" (") is None
+    dimension = _dim("composure", "Composure", "delivery", 1.0,
+                     signals=[" (under pressure, mostly)"])
+    assert _generated_question(dimension).question == (
+        "Tell me about a time you demonstrated composure."
+    )
 
 
 def test_degenerate_signal_omits_interest_sentence():
@@ -614,9 +632,15 @@ def test_quick_instructions_remain_byte_identical():
 
 
 def test_standard_twenty_minute_instructions_remain_byte_identical():
-    # Moved deliberately by B7-T1 (F-75, DECISIONS 064): the 20-minute render
-    # gained the interviewer-behavior realism sections. The naturalness
-    # suite's worklog records this instructions-lever move.
+    # Moved deliberately twice. B7-T1 (F-75, DECISIONS 064) gave the
+    # 20-minute render the interviewer-behavior realism sections, recorded in
+    # the naturalness suite's worklog. B9-T2 (F-85, DECISIONS 067) moved it
+    # again, and this is the current value: the render embeds the planned
+    # questions, so the two generated fallbacks lost their label prefix
+    # ("...interested in Pacing control: named specifics." became
+    # "...interested in named specifics."). Those two lines are the ENTIRE
+    # delta between the two hashes -- the instructions themselves did not
+    # move a byte, which is the claim this pin exists to keep honest.
     assert hashlib.sha256(_instructions().encode()).hexdigest() == (
         "2e9a2f069891a4b5755a2701908b39148793b9061f575e63c15b82bb6ac7055e"
     )

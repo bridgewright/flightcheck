@@ -112,25 +112,26 @@ def _spoken_name(name: str) -> str:
 
 def _spoken_signal(signal: str) -> str | None:
     """First signal as one speakable interest clause, or None."""
-    # Whitespace collapses FIRST, not last: every step below is sensitive to
-    # the exact space characters. A no-break space -- routine in a signal
-    # derived from a pasted JD -- otherwise defeats the clause cut (its
-    # markers want an ASCII space) and the trailing-punctuation strip,
-    # putting back the doubled period this helper exists to remove.
-    text = " ".join(signal.split())
+    text = signal
     if ":" in text:
         label, remainder = text.split(":", 1)
         if len(label.split()) <= 6 and not any(mark in label for mark in ".!?"):
             text = remainder
 
-    boundaries = [
-        position
-        for marker in (", ", " (")
-        if (position := text.find(marker)) >= 0
-    ]
-    if boundaries:
-        text = text[:min(boundaries)]
-    text = text.rstrip(".!?;:, \t\r\n")
+    # The cut and the strip are the two whitespace-sensitive steps, so both
+    # read whitespace as \s rather than as an ASCII space: a signal written
+    # from a pasted JD carries U+00A0 wherever the posting's HTML had
+    # &nbsp;, and an ASCII-only ", " marker leaves a forty-word clause
+    # uncut while an ASCII-only strip set puts back the doubled period this
+    # helper exists to remove. Collapsing the whitespace up front would fix
+    # those two as well, but it also deletes the space in front of a clause
+    # that OPENS with "(" -- the cut then misses it and the parenthesis is
+    # spoken aloud, where DECISIONS 067 cuts it to nothing. So the collapse
+    # stays the last step, where the closing join does it for free.
+    boundary = re.search(r",\s|\s\(", text)
+    if boundary is not None:
+        text = text[:boundary.start()]
+    text = re.sub(r"[.!?;:,\s]+\Z", "", text)
     words = text.split()
     if not words:
         return None
