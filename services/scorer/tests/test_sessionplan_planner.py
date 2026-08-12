@@ -506,7 +506,7 @@ def test_standard_twenty_minute_instructions_remain_byte_identical():
     # gained the interviewer-behavior realism sections. The naturalness
     # suite's worklog records this instructions-lever move.
     assert hashlib.sha256(_instructions().encode()).hexdigest() == (
-        "63890695a4c18e1f643702afb5748cf85f4bc1d58feeb94f4d6c8eba2542a9ee"
+        "0848f784d791dd8298fe6a9cbbcf64de9f5b2c216873cd92165634b5790efba6"
     )
 
 
@@ -662,6 +662,17 @@ def test_instructions_open_by_speaking_first_with_time_and_areas():
     assert "never recite the job description" in text
     assert "they can pause to think whenever they need" in text
     assert "move into your first question naturally" in text
+
+
+def test_transitions_engage_the_substance_of_the_last_answer():
+    # F-75 behavior (b): before moving on, the interviewer engages what the
+    # candidate actually said — beyond the planned probe, never a stock line.
+    text = _instructions()
+    assert "react to what was said, then ask." in text
+    assert "Make the reaction engage the substance" in text
+    assert ("a genuine follow-through on something the candidate actually "
+            "said") in text
+    assert "A stock transition is not a reaction." in text
 
 
 def test_instructions_forbid_reading_question_numbers_aloud():
