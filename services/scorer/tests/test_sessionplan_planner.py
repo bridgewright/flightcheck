@@ -484,6 +484,23 @@ def test_quick_instructions_read_company_and_role_from_arguments():
     assert "quick interview about the Engineer role at The Role At Work Co" in text
 
 
+def test_quick_instructions_remain_byte_identical():
+    # Pinned before B7-T1 (interviewer-behavior realism, DECISIONS 064):
+    # the realism behaviors are standard-render only, and the quick render
+    # must not move a byte — both the named path and the degraded one.
+    named = build_interviewer_instructions(
+        plan_quick_session("ACME Labs", "Staff AI Engineer"), None,
+        _make_profile(), company="ACME Labs", role="Staff AI Engineer")
+    bare = build_interviewer_instructions(
+        plan_quick_session(None, None), None, _make_profile())
+    assert hashlib.sha256(named.encode()).hexdigest() == (
+        "a4f004474e043aaf3dd7e42637bbb45aba0ebe50e77e1e33fb0c3b16ff0f1b49"
+    )
+    assert hashlib.sha256(bare.encode()).hexdigest() == (
+        "ec4f5f345e733171f16e72864bee9f5ebb9e4de18a7043ea4f3a3a6dfe91f3da"
+    )
+
+
 def test_standard_twenty_minute_instructions_remain_byte_identical():
     assert hashlib.sha256(_instructions().encode()).hexdigest() == (
         "9c42a2581fc96a8dd18065fb0e5a599bb8492062e3e14d911116c0c8cfe9d667"
