@@ -479,6 +479,22 @@ def build_interviewer_instructions(plan: SessionPlan, rubric: Rubric | None,
         raise ValueError("a rubric is required for standard interview instructions")
     midpoint = len(plan.question_sequence) // 2 + 1
     wrap_up_at = plan.time_budget_minutes - _WRAP_UP_MARGIN_MINUTES
+    # F-75 / DECISIONS 064: company-aware commentary, grounded in what the
+    # rubric actually carries. No company on the rubric, no section — never
+    # a degraded "on behalf of" sentence. The company string is spoken
+    # exactly as stored (the F-85 lesson).
+    company_section = (
+        "# COMPANY CONTEXT\n"
+        f"You are interviewing on behalf of {rubric.company}. When you react "
+        "or follow up, you may frame it the way an interviewer there would — "
+        "through the lens of this role and what your questions already "
+        "probe for.\n"
+        "Treat these instructions as everything you know about the company: "
+        "never invent team facts, processes, or culture — no \"our team "
+        "does X\" these instructions cannot back — and never claim inside "
+        "knowledge.\n"
+        "\n"
+    ) if rubric.company else ""
     return (
         "# PERSONA\n"
         "You are Morgan, a senior hiring manager interviewing for the role of "
@@ -499,6 +515,7 @@ def build_interviewer_instructions(plan: SessionPlan, rubric: Rubric | None,
         "in English, the way a real interviewer would — plainly and without "
         "scolding.\n"
         "\n"
+        f"{company_section}"
         "# OPENING\n"
         "Speak first, the moment the call connects — never wait in silence "
         "for the candidate.\n"

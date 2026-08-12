@@ -502,8 +502,11 @@ def test_quick_instructions_remain_byte_identical():
 
 
 def test_standard_twenty_minute_instructions_remain_byte_identical():
+    # Moved deliberately by B7-T1 (F-75, DECISIONS 064): the 20-minute render
+    # gained the interviewer-behavior realism sections. The naturalness
+    # suite's worklog records this instructions-lever move.
     assert hashlib.sha256(_instructions().encode()).hexdigest() == (
-        "9c42a2581fc96a8dd18065fb0e5a599bb8492062e3e14d911116c0c8cfe9d667"
+        "63890695a4c18e1f643702afb5748cf85f4bc1d58feeb94f4d6c8eba2542a9ee"
     )
 
 
@@ -605,6 +608,42 @@ def test_same_input_produces_identical_plan_and_instructions():
     text_a = build_interviewer_instructions(plan_a, rubric, profile)
     text_b = build_interviewer_instructions(plan_b, rubric, profile)
     assert text_a == text_b
+
+
+def test_company_context_frames_reactions_and_draws_the_grounding_line():
+    text = _instructions()
+    assert "# COMPANY CONTEXT" in text
+    assert "You are interviewing on behalf of ExampleCo." in text
+    assert "you may frame it the way an interviewer there would" in text
+    assert "Treat these instructions as everything you know about the company" in text
+    assert "never invent team facts, processes, or culture" in text
+    assert "never claim inside knowledge" in text
+    # The section colors reactions, not the language lock: it renders after
+    # # LANGUAGE and before the opening.
+    assert (text.index("# LANGUAGE") < text.index("# COMPANY CONTEXT")
+            < text.index("# OPENING"))
+
+
+def test_company_context_is_absent_when_the_rubric_carries_no_company():
+    # Graceful absence (the F-80 no-profile rule): a rubric without a company
+    # gets no company section at all — never a degraded "on behalf of None".
+    for company in (None, ""):
+        rubric = _make_rubric().model_copy(update={"company": company})
+        text = build_interviewer_instructions(
+            plan_baseline_session(rubric), rubric, _make_profile())
+        assert "# COMPANY CONTEXT" not in text
+        assert "on behalf of" not in text
+        assert "None" not in text
+
+
+def test_company_context_preserves_the_company_casing_exactly():
+    # The F-85 lesson: the stored string is spoken as stored — no .lower(),
+    # no re-cased fragments.
+    rubric = _make_rubric().model_copy(update={"company": "dbt Labs"})
+    text = build_interviewer_instructions(
+        plan_baseline_session(rubric), rubric, _make_profile())
+    assert "You are interviewing on behalf of dbt Labs." in text
+    assert "Dbt Labs" not in text
 
 
 def test_instructions_open_by_speaking_first_with_time_and_areas():
