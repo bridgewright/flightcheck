@@ -332,13 +332,17 @@ already have.
 Most of this repo is built by dispatching self-contained briefs to parallel
 agent sessions, one worktree and branch each, with a human integrating. It
 works, and the bookkeeping tax is real: the delegated CLI executor set the
-wrong commit identity on its own branch **four separate times**, caught and
-corrected at cherry-pick each time. The public history shows a single author
+wrong commit identity on its own branch **four separate times** when this
+entry was written — **at least seven** by v0.14.0, three of them in that
+release's batches alone — caught and corrected at cherry-pick each time. The
+public history shows a single author
 on every commit only because that check ran every time — it is normalization,
 not evidence of solo work, which is why `CLAUDE.md` now says so outright. Two
 lessons, one general and one specific. Automate the check you catch yourself
 doing by hand more than twice; this one is still a manual line on the merge
-checklist, which is exactly why it had to be run a fourth time. And when
+checklist, which is exactly why it had to be run a fourth time — and a
+fifth, sixth, and seventh, making the "automate it" lesson overdue rather
+than pending. And when
 you delegate, own the metadata as deliberately as the diff — a work-sample
 repository whose commit trail is inconsistent about who wrote it is worth
 less than one with fewer commits.
@@ -898,3 +902,59 @@ than resolutional: the release audit now greps this file's ledger claims
 against the tree (that is how both stale sentences above were caught),
 and the README's pricing block now names the DECISIONS entry that will
 invalidate it, so the next retirement has a pointer to chase.
+
+## 2026-08-13 — v0.14
+
+**The anti-evasion gate shipped with three of its four prescribed
+holes open.** F-89's brief prescribed four weaken-the-scan mutations
+the delivered gate had to survive being weakened by; on the delivered
+tree, three of the four SURVIVED. The NUL placeholder chosen for
+unknown template values hid `"#" + "8b5cf" + shade` from the one rule
+that should have read it — a live hex evasion walking the entire gate,
+per-line pass included. The self-test corpus, the thing DECISIONS 066
+calls "the contract", proved a private copy of the rules rather than
+the rules that scan the tree — so weakening the real scan left the
+corpus green, which is the self-referential-pin defect this repo
+already caught once in the CBT batch, rebuilt by a different agent in
+a different file within three days. And a second review round found
+both prior passes blind to HTML character references (`&mdash;`,
+`&#45;`) that JSX decodes into exactly the characters the rules hunt —
+reachable in practice, because this product's own house style writes
+typography as entities across 23 files. The gate that exists to catch
+agents shaping code to pass gates was itself delivered shaped to pass
+its brief. It is fixed, corpus-first, and the corpus now carries every
+one of these; but the lesson is not "the gate was buggy", it is that a
+verification tool gets the same adversarial review as product code, or
+it becomes the place evasions live.
+
+**Round 1's fix broke the contract it was defending.** In F-85, the
+first review round correctly caught that a no-break space from
+pasted-JD HTML defeated the spoken-clause rules — and fixed it by
+normalizing whitespace FIRST, which deleted the leading space the
+`" ("` cut marker needs, so a parenthetical-headed signal shipped as
+the spoken interest clause: the exact unspeakable-output class the
+card exists to remove, reintroduced by its own fix. Round 2 restored
+the contract order and proved the blast radius with a differential
+harness. This is the sixth consecutive release in which the second
+round found a defect in something the first round had just fixed. The
+pattern is no longer a surprise; treating any fix as reviewed because
+its author was a reviewer is the mistake.
+
+**The domain recommendation was wrong at the moment it was made.**
+rdap.org answered 404 for flightcheck.io and that 404 was read as
+"available" — the domain has been registered since 2020. The
+correction (DECISIONS 065) cost an apology and a re-decision in the
+same conversation; availability now comes only from registrar-grade
+checks. A free aggregator's silence is not a fact about the world.
+
+**This file went stale again, one release after diagnosing why it
+goes stale.** The v0.13 entry above exists, in its own words, "because
+the v0.13 release audit failed rule ⑫, not because the habit had
+formed" — and this entry exists for the same reason one release
+later. The mechanism named there (documents written *about* the work
+lag; documents written *during* it don't) predicted this precisely.
+Meanwhile the executor identity-slip count this file carried as "four"
+had quietly become seven; two files in the same repo disagreed on the
+same fact until the same audit caught both. The structural fix being
+tried this time: the retro entry is now written at merge time as part
+of the release ritual checklist, not recalled at audit time.

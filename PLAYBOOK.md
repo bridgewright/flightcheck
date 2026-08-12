@@ -2,7 +2,7 @@
 
 Patterns that survived contact with real APIs, real audio, real money, real
 eval numbers, and an adversarial review of the work that produced them.
-Everything here is written from the shipped implementation through the v0.13
+Everything here is written from the shipped implementation through the v0.14
 batch — rubric compilation, raw-audio delivery
 scoring, the paid product, operating it unattended, the parallel process that
 builds them, and what two rounds of review found in that process. File paths
