@@ -2669,3 +2669,119 @@ the table.
 - **Revisit when:** checkout metrics ever suggest TLD-trust friction
   (then the .com hedge gets bought), or flightcheck.io returns to a
   sane price (the brand-exact upgrade path stays open).
+
+## 066 — The token gate reads cooked strings, not spellings (2026-08-13)
+
+**Context.** The design-token scans (`tests/token-vocabulary.test.ts`,
+plus the pins in `tests/design-system.test.ts`) match source text
+line by line. B6's second review round proved the same hole twice in
+one day: `` `${FIELD} bg-red-` + "500" `` — a palette class split
+across two string fragments — walks the per-line regex, typecheck,
+and lint, and it is exactly the obfuscated-literal class the standing
+Codex-evasion review lens hunts by hand (`String.fromCharCode(8212)`
+and a template-literal identifier split are both on the record in
+RETRO.md). A rule held by a scan is only as strong as what the scan
+can see (F-89).
+
+- **Chosen: a second pass that reads cooked string values, via the
+  TypeScript compiler already in the repo.** The scan keeps its
+  per-line pass (line-numbered, readable failures) and adds a
+  cooked pass: parse each scanned file with the `typescript` package
+  the typecheck gate already installs, extract every string literal,
+  template literal, and JSX text as its COOKED value (escape
+  sequences decoded by the lexer itself, not by a second regex
+  implementation of it), fold constant concatenations (`"a" + "b"`,
+  adjacent template fragments, `${"..."}` interpolations whose
+  content is itself constant), and resolve
+  `String.fromCharCode`/`fromCodePoint` calls with constant numeric
+  arguments. Rules then run over the folded values. A hit in the
+  cooked pass that the line pass missed fails with the folded value
+  named.
+- **Chosen: the corpus is the contract.** A self-test corpus of known
+  evasions lives beside the scan — fragment concatenation, template
+  splits, `\uXXXX`/`\u{...}`/`\xXX` escapes, `fromCharCode`, an
+  interpolation-split class — and the suite fails unless the scan
+  catches EVERY corpus entry. The corpus is the list of tricks this
+  repo has actually seen plus their obvious neighbors; a new evasion
+  found in review gets added there first, so the gate's coverage is
+  itself gated.
+- **Rejected: regex normalization of the raw source** (collapse
+  quote-plus-quote junctions, hand-decode escapes). It re-implements
+  the JavaScript lexer badly: string boundaries, nested templates,
+  and comment states are exactly the places the last three review
+  rounds found scanner bugs (the comment-blanking history at the top
+  of the scan file is a catalogue of them). The real lexer is already
+  a devDependency; using it is less code and decodes correctly by
+  construction.
+- **Rejected: an external AST/linting dependency** for the same job —
+  nothing new is needed; `typescript` is already there.
+- **Rejected: replacing the per-line pass.** Its failure messages
+  carry line numbers and trimmed source, which is what makes a red
+  gate fixable in seconds. The cooked pass is additive.
+- **Per-component pins stay.** The mutation-verified pins B5/B6 added
+  are defense-in-depth for specific wiring; this entry moves the
+  tree-wide floor so a component without a bespoke pin is still
+  covered.
+- **Revisit when:** the cooked pass measurably slows the suite (it
+  parses ~150 files; budget is a few seconds), or a corpus entry
+  requires evaluating anything beyond constant expressions — the
+  scan must never grow an interpreter.
+
+## 067 — Generated questions are spoken sentences, not data (2026-08-13)
+
+**Context.** `_generated_question` builds the fallback interview
+question when a dimension has no bank entry (F-85, a B4 reviewer
+finding deferred by agreement). Against the committed real rubric its
+output was "Tell me about a time you demonstrated ai product strategy
+& judgment. I'm especially interested in Strong Product Fundamentals:
+Customer empathy, discovery, strategic thinking, prioritization,
+product judgment in the field (translating customer reality into
+product direction, credibly saying no)." — a lowercased acronym, an
+ampersand the voice reads aloud, a colon-delimited label mid-sentence,
+a forty-word interest clause, and a doubled period when the signal
+ends with one. The exact-output tests never saw it because their
+fixtures are tidy.
+
+- **Chosen: three small spoken-language rules, applied only inside
+  the generated fallback.** (a) Casing: a name word keeps its
+  spelling if it carries any uppercase beyond its first letter ("AI",
+  "AI/ML", "R&D"); otherwise it lowercases mid-sentence — so "AI
+  Product Strategy & Judgment" reads "AI product strategy and
+  judgment" while "Communication" still reads "communication".
+  (b) Ampersand: a standalone "&" between words is spoken as "and".
+  (c) Signals: strip a leading label prefix (a short pre-colon run
+  with no sentence punctuation), strip trailing punctuation, cut to
+  the first clause boundary (comma or opening parenthesis) so the
+  interest clause stays speakable, and decase the first word by the
+  same acronym-preserving rule. Doubled periods die with the
+  trailing-punctuation strip.
+- **Chosen: the pin moves to the real strings.** A new exact-output
+  test reads the committed `evals/suites/rubric_discrimination/
+  rubric.json` — the one real rubric in the tree — and asserts the
+  full generated sentences for its dimensions. Tidy synthetic
+  fixtures keep their role in the goldens, but the gate that matters
+  quotes what a customer's rubric actually produces.
+- **Rejected: keeping the label and dropping the elaboration**
+  ("especially interested in strong product fundamentals"). It reads
+  well for signals labeled with noun phrases and collapses for
+  labels like "Rewarded:" — the tail is the content there. The tail
+  is the content in every committed signal; the label is the
+  redundant part.
+- **Rejected: teaching the interviewer prompt to clean it up.** The
+  interviewer already may rephrase sequence questions in her own
+  voice, which is why this stayed deferred as long as it did — but
+  the transcript, the report, and the study export all quote the
+  PLANNED question text verbatim, so the data itself has to be a
+  sentence.
+- **Rejected: touching `_fit_question` or the banked path.** Banked
+  questions are model-authored sentences already; the fit fallback
+  interpolates JD-sourced titles whose casing is the JD's own. Scope
+  follows the finding.
+- **Cost accepted: the session-1 golden fixture regenerates.** Its
+  synthetic signals carry the exact label-prefix shape the rule
+  strips, so its expected strings change once, deliberately, in the
+  same commit as the rule — hand-written expectations, not a blind
+  regeneration.
+- **Revisit when:** a committed rubric arrives whose signals defeat
+  the clause cut (no comma, no parenthesis, 40+ words), or the
+  fallback ever grows a second consumer that needs the raw signal.

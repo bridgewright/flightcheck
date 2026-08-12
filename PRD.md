@@ -462,6 +462,34 @@ Changes to targets are recorded here with date and reason — never silently.
   the move is recorded in that suite's worklog before any baseline
   exists to poison. DECISIONS 064.
 
+- **v0.21 (recorded 2026-08-13, pre-code):** three small debts that
+  this repo's own review rounds put on the books are paid, and each
+  one is a quality floor rather than a feature. **The token gate
+  learns to read what code says, not how it spells it:** the
+  design-token scan matched source lines, so a palette class split
+  across two string fragments walked straight through — proven twice
+  in one review round. The scan gains a second pass that reads the
+  cooked string values the code actually emits (constant
+  concatenations folded, escape sequences decoded, character codes
+  resolved), and it carries a self-test corpus of every evasion this
+  repo has caught by hand; a gate that cannot catch its own corpus
+  fails its own suite. **Fallback interview questions start reading
+  like an interviewer wrote them:** against the real committed
+  rubric, the generated fallback lowercased "AI", spoke an ampersand
+  aloud, and appended a raw signal string — label prefix, full
+  elaboration, doubled period and all. Names now keep their
+  acronyms, "&" is spoken as "and", signals lose their label prefix
+  and trailing punctuation and are cut to one speakable clause, and
+  the exact output is pinned against the committed real rubric's
+  strings instead of tidy fixtures. **A quick interview's ending
+  stops probing a recording that cannot exist:** the complete route
+  asked storage for a recording size on every session, including the
+  quick kind that never records, and logged an error on that happy
+  path — so a real oversize failure looked exactly like a normal
+  quick ending in the logs. The probe now runs only for sessions
+  that can carry a recording, and the error log means something
+  again. DECISIONS 066–067.
+
 > 2026-08-02: v0.4 scope added above — accounts move ahead of payments
 > because login-gated interviews protect session integrity and per-session
 > cost, and the dashboard is what makes a 6-session package usable. The
