@@ -4,6 +4,8 @@ import { fileURLToPath } from "node:url";
 
 import { describe, expect, it } from "vitest";
 
+import { cookedStrings } from "./scan/cooked";
+
 // The gate the F-21 spec asked for, and the one the batch did not actually
 // build until the Phase 4 review caught it.
 //
@@ -306,6 +308,43 @@ describe("every screen speaks the token vocabulary", () => {
     // The root is 87.5%, so the scale multiplies the reader's own browser
     // text-size setting. A px literal opts that reader out silently.
     expect(offenders(source, /\btext-\[\d+(?:\.\d+)?px\]/)).toEqual([]);
+  });
+});
+
+describe("the scans read cooked strings, not spellings", () => {
+  function cookedOffenders(file: string, source: string): string[] {
+    const raw = new RegExp(`\\b(?:${PROP})-(?:${PALETTE})-\\d{2,3}\\b`);
+    const bare = new RegExp(`\\b(?:${PROP})-(?:white|black)\\b`);
+    const colourRules = [
+      raw,
+      bare,
+      /\bdark:/,
+      /^\s*#[0-9a-fA-F]{3,8}\s*$/,
+      /\[#[0-9a-fA-F]{3,8}\]/,
+      /\b(?:rgb|hsl|oklch|oklab)a?\(/,
+    ];
+    const rules = [
+      ...(COLOUR_EXEMPT(file) ? [] : colourRules),
+      /\bbg-(?:gradient|linear|radial|conic)\b/,
+      /-\[(?:[a-z-]+:)?(?:repeating-)?(?:linear|radial|conic)-gradient/,
+      /^(?:backgroundImage|background-image)$/,
+      ...(file in DASH_EXEMPT ? [] : [/[—–]/]),
+      /\btext-\[\d+(?:\.\d+)?px\]/,
+    ];
+
+    return cookedStrings(source, file)
+      .filter(({ value }) => rules.some((rule) => rule.test(value)))
+      .map(({ value, line }) => `${file}:${line}: ${JSON.stringify(value).slice(0, 110)}`);
+  }
+
+  it.each(FILES)("%s has no forbidden cooked value", (file) => {
+    const source = readFileSync(join(webRoot, file), "utf8");
+    expect(cookedOffenders(file, source)).toEqual([]);
+  });
+
+  it("parses a non-trivial set of strings from the real home page", () => {
+    const source = readFileSync(join(webRoot, "app/page.tsx"), "utf8");
+    expect(cookedStrings(source, "app/page.tsx").length).toBeGreaterThan(10);
   });
 });
 
