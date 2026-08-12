@@ -6,7 +6,10 @@
 // pinned pricing.ts to the commercial policy and the refund window is legal
 // policy (DECISIONS 020 records the 14-day choice).
 
-export const SUPPORT_EMAIL = "thk119914@gmail.com";
+// The product's own address (DECISIONS 069): received as DNS-only
+// forwarding on flightcheck.coach, so the mailbox behind it can change
+// without touching this constant or any surface that renders it.
+export const SUPPORT_EMAIL = "support@flightcheck.coach";
 
 // Technical-failure refunds only, within this many days of payment. The
 // verdict itself is never refund grounds — an honest "Not yet ready" is the

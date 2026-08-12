@@ -25,8 +25,10 @@ describe("legal policy constants", () => {
   });
 
   it("pins the support address and its mailto", () => {
-    expect(SUPPORT_EMAIL).toBe("thk119914@gmail.com");
-    expect(supportMailto()).toBe("mailto:thk119914@gmail.com");
+    // The branded address, deliberately (DECISIONS 069). A regression to a
+    // personal mailbox is exactly what this pin exists to refuse.
+    expect(SUPPORT_EMAIL).toBe("support@flightcheck.coach");
+    expect(supportMailto()).toBe("mailto:support@flightcheck.coach");
   });
 
   it("lists exactly the three legal pages the footer links", () => {
