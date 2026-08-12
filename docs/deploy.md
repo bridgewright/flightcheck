@@ -417,7 +417,7 @@ in one:
       `apps/web/public/demo.gif` is the worked example: it shipped from v0.1,
       the README swapped it for the two stills and referenced it nowhere
       afterwards, and it went on answering `200` at
-      `https://flightcheck.vercel.app/demo.gif` with the client-work phrasing
+      `https://flightcheck.coach/demo.gif` with the client-work phrasing
       and the forbidden `(anonymized)` banner still in its pixels — text a
       fixture fix had already removed everywhere a grep could reach. Confirm
       both halves, from `repo/`:

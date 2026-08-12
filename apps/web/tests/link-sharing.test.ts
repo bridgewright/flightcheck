@@ -23,6 +23,10 @@ describe("publicMetadata", () => {
     description: "One package per job description.",
   });
 
+  it("uses the custom domain as the canonical origin", () => {
+    expect(SITE_URL).toBe("https://flightcheck.coach");
+  });
+
   it("builds absolute URLs, not deployment-relative ones", () => {
     // A relative URL here resolves against Next's default base, which on
     // Vercel is the per-deployment hostname — a link nobody shares and a card

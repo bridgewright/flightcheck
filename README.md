@@ -4,12 +4,12 @@
 
 ## Live
 
-- **App:** https://flightcheck.vercel.app
-- **Quick interview (free, signed in):** https://flightcheck.vercel.app/quick
+- **App:** https://flightcheck.coach
+- **Quick interview (free, signed in):** https://flightcheck.coach/quick
   — type a company and a role, talk to the interviewer for five minutes.
   Unscored, and labeled as exactly that: the questions come from those two
   fields alone, no research pass, no rubric
-- **Sample report (no signup):** https://flightcheck.vercel.app/sample-report
+- **Sample report (no signup):** https://flightcheck.coach/sample-report
   — a real session run by the developer; flightcheck has no external users
   yet, so no customer's session is on display here
 - **Price:** $49 per job description. The five-minute quick interview is
@@ -18,7 +18,7 @@
   six 20-minute scored sessions on that JD, with a 30-day window starting
   at payment. No subscription, and no card field in the app: Polar is the
   merchant of record and checkout happens on its page
-  ([pricing](https://flightcheck.vercel.app/pricing), DECISIONS #017–#018
+  ([pricing](https://flightcheck.coach/pricing), DECISIONS #017–#018
   and #060 — the free scored trial session this file used to describe
   retired at v0.13).
 
@@ -74,18 +74,18 @@ flowchart LR
 
 ### Quickstart — the product
 
-0. The free taste: https://flightcheck.vercel.app/quick — type a target
+0. The free taste: https://flightcheck.coach/quick — type a target
    company and role, sign in, and talk to the interviewer for five minutes.
    Unscored by design (five minutes cannot be judged fairly); the screen
    after it shows the sample report with your company and role in the
    frame, labeled as the sample it is.
-1. Sign in at https://flightcheck.vercel.app/login — Continue with Google, no password.
+1. Sign in at https://flightcheck.coach/login — Continue with Google, no password.
    Everything past the landing page is account-scoped: `/new` answers a
    signed-out visitor with a 307 to `/login?next=%2Fnew`. Then open
-   https://flightcheck.vercel.app/new and paste a job description or its URL;
+   https://flightcheck.coach/new and paste a job description or its URL;
    optionally attach a resume PDF and a LinkedIn "Save to PDF" export
    (no scraping — DECISIONS #003). To read the output without an account, use
-   the [sample report](https://flightcheck.vercel.app/sample-report) instead.
+   the [sample report](https://flightcheck.coach/sample-report) instead.
 2. Wait for the rubric preview — 5-8 weighted dimensions, every one citing
    its sources. Reading the rubric is free; the sessions are what the $49
    package buys. Unlock it, then press Start session and take the

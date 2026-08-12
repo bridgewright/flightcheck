@@ -18,7 +18,7 @@ import { PRICE_USD } from "@/lib/pricing";
 /** The canonical origin. Absolute URLs everywhere — a relative OG image
  * resolves against Next's default base, which on Vercel is the per-deployment
  * hostname rather than the address anyone actually shares. */
-export const SITE_URL = "https://flightcheck.vercel.app";
+export const SITE_URL = "https://flightcheck.coach";
 
 export const SITE_NAME = "flightcheck";
 
