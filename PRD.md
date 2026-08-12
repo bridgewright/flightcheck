@@ -490,6 +490,18 @@ Changes to targets are recorded here with date and reason — never silently.
   that can carry a recording, and the error log means something
   again. DECISIONS 066–068.
 
+- **v0.22 (recorded 2026-08-13, pre-code):** support gets the
+  product's own address. `support@flightcheck.coach` replaces the
+  operator's personal mailbox on every support surface — the footer
+  mailto, the settings deletion intake — completing the second half
+  of the F-79 card the domain cutover opened. Receiving is DNS-only
+  email forwarding (no new account, no new vendor credential), the
+  forwarding target is encrypted in the published record rather than
+  world-readable, and the domain simultaneously gains SPF and a
+  reject-policy DMARC so nobody else can speak for it. The code
+  change is one constant; the test pin moves with it deliberately.
+  DECISIONS 069.
+
 > 2026-08-02: v0.4 scope added above — accounts move ahead of payments
 > because login-gated interviews protect session integrity and per-session
 > cost, and the dashboard is what makes a 6-session package usable. The

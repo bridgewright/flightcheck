@@ -2860,3 +2860,45 @@ happy path.
   knowledge.
 - **Revisit when:** quick sessions ever gain a recording path, or a
   third package kind arrives.
+
+## 069 — support@ speaks for the product, received without a new vendor account (2026-08-13)
+
+**Context.** F-79's second half: the operator's personal Gmail sat on
+every support surface (`SUPPORT_EMAIL` in `app/legal/policy.ts`,
+consumed by the footer mailto and the settings deletion intake). The
+domain cutover (065) made a branded address possible; the question was
+how mail to it gets received, by whom, and at what standing cost.
+
+- **Chosen: DNS-only forwarding via Forward Email's free tier, with
+  the forwarding target encrypted in the published record.**
+  `support@flightcheck.coach` forwards to the operator's mailbox
+  through two MX records and one TXT record on the domain the product
+  already owns — no new account, no new credential, no monthly cost.
+  The TXT record is the encrypted form their service documents
+  ("privacy should not be a feature"), so the personal destination
+  address is not world-readable in DNS. Verified live before the code
+  flip: the alias RCPT-accepts at their MX (250 2.1.5), with the
+  first delivery greylisted exactly as their FAQ describes.
+- **Chosen: the domain simultaneously locks down sending.** SPF
+  (`v=spf1 a include:spf.forwardemail.net -all`) and DMARC
+  (`p=reject`) published in the same change: this product sends no
+  mail today, so the honest posture is "nobody may speak for this
+  domain" — which also protects the support address from spoofing
+  the day it starts appearing on legal pages.
+- **Rejected: ImprovMX free tier.** Functionally equivalent
+  forwarding, but configuration lives in their dashboard behind a new
+  account — a standing credential and a vendor relationship for
+  something DNS records express by themselves.
+- **Rejected: Google Workspace.** A real mailbox with sending, ~$7/mo
+  — the right answer the day support needs to SEND branded mail at
+  volume, wrong as a first step for a product whose support load is
+  a trickle into the operator's existing inbox.
+- **Rejected: keeping the personal address.** It leaks the operator's
+  primary mailbox to every visitor and reads as a hobby product on
+  the one page where trust is being asked for (the refund policy).
+- **Replying today** comes from the operator's mailbox (the alias is
+  receive-only), which is honest for a beta: the reply-from address
+  is the same one the old surfaces published anyway.
+- **Revisit when:** support needs to send AS support@ (Forward
+  Email's SMTP or Workspace — SPF/DMARC must change in the same
+  batch), or reply volume makes a shared inbox worth paying for.
