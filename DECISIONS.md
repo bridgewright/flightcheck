@@ -693,7 +693,10 @@ screen in the product.*
   delegated CLI executor set the wrong commit identity **four separate
   times**, each caught and corrected at cherry-pick. That correction is the
   only reason the public history carries one author. It is now a standing
-  step in integration rather than a recurring surprise.
+  step in integration rather than a recurring surprise. (Count updated
+  2026-08-13: at least seven — three more in the v0.14 batches, still
+  caught at cherry-pick every time. The revisit condition below has not
+  fired, but the rate is now roughly one incident per batch.)
 - **Rejected — leaving 007's default in place:** it had already stopped
   being true. A decision log that misstates who writes the code is worse
   than a missing entry, because a reader has no way to tell which of the

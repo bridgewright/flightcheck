@@ -29,7 +29,7 @@ Four phases. The shape matters more than the tooling.
 git log --format='%(trailers:key=Co-Authored-By,valueonly)' | grep -c .
 ```
 
-Every commit also carries a single human author. That is integration normalizing authorship, not evidence of solo work: the delegated CLI executor set the wrong commit identity four separate times, corrected at cherry-pick each time.
+Every commit also carries a single human author. That is integration normalizing authorship, not evidence of solo work: the delegated CLI executor has set the wrong commit identity at least seven separate times — three of them in the v0.14 batches alone (a placeholder `taehyun@example.com` on the CBT track, a `users.noreply.github.com` address on two batch-9 tracks) — corrected at cherry-pick each time. The rate is now roughly one incident per batch; the correction is a standing integration step, not a surprise.
 
 ## Working style
 

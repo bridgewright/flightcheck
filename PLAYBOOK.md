@@ -647,6 +647,51 @@ and also kept the counts intact. Do it like this:
   written after an evasion should fail on that exact evasion, run once,
   before it is trusted — the same discipline 4.5 demands of probes.
 
+### 4.3e A source-text scan is only as strong as what it can see — read cooked strings, and hold the scan to its own corpus
+
+4.3b names the evasion class (a literal split or encoded so a grep reads
+past it) and says to hunt it by hand. This is the pattern that retires
+the hand hunt. A per-line regex scan reads *spellings*; the runtime and
+the compiler read *values* — `"bg-red-" + "500"`, `` `${X} bg-red-`
+`` + `"500"`, `"bg-red-500"`, `String.fromCharCode(8212)`, and the
+HTML character references JSX decodes (`&mdash;`, `&#45;`) are all the
+same value wearing five spellings, and four of the five walked a
+line-anchored scan in production here.
+
+- **Parse with the compiler you already ship.** The `typescript` package
+  is a devDependency wherever `tsc --noEmit` runs. Extract every string
+  literal, template, and JSX text as its COOKED value — the lexer
+  decodes escapes correctly by construction, which a second regex
+  implementation of escape decoding never will. Fold constant
+  concatenations and constant interpolations; resolve
+  `fromCharCode`/`fromCodePoint` with literal arguments; stop there. The
+  scan must never grow an interpreter — an unknown value contributes a
+  join-breaking placeholder, never an empty string (an empty string
+  glues two innocent fragments into a false token; a NUL placeholder
+  hides a real one from any rule that reads `\s`).
+- **The corpus is the contract.** Keep a self-test corpus of every
+  evasion the project has actually caught, plus their obvious neighbors,
+  and fail the scan's own suite unless it catches EVERY entry. A new
+  evasion found in review lands in the corpus first, then the fix — so
+  the gate's coverage is itself gated, and the corpus is the honest
+  changelog of what the scan has learned.
+- **The corpus must prove the rules that scan the tree, not a copy.**
+  The first version here declared its own PALETTE/PROP tables, so
+  weakening the real scan left the corpus green — the 4.3d aliasing
+  defect one layer up. One shared rules module, consumed by both, plus
+  a drift gate against any twin vocabulary and a rule-without-a-positive
+  failure.
+- **A file the parser cannot read is a failure, not a clean file.**
+  `createSourceFile` recovers by dropping nodes; a scan that shrugs at
+  parse diagnostics reads a syntax error as an empty, innocent file.
+  Throw with the file named.
+- **Keep the per-line pass.** Its line-numbered failures are what make a
+  red gate fixable in seconds; the cooked pass is the floor underneath
+  it, not its replacement. Three of four weaken-the-scan mutations
+  survived the first delivered version of this gate — the mutations, the
+  corpus, and the shared-rules drift gate are the reason the second
+  version can be trusted.
+
 ### 4.4 Check the built artifact, not only the source
 
 A page shipped reading `"an overall of 4.0single dimension below 3.0"`. The
@@ -666,13 +711,19 @@ page and reading it.
 - **Add one gate that greps the build output for canonical sentences.** Pick
   fragments that start immediately after an interpolation, because that is
   exactly the text this class of bug removes.
-- **A gate whose precondition is missing must fail, not skip.** This one can
-  only read a build that exists. If the check answers "no build here" by
-  returning early, the runner counts it green and the suite reports the same
-  number of passes it reports when the build was there and clean — a skip is
-  indistinguishable from a pass at the only place anyone looks, and "copy
-  verified" then gets read as "built copy verified". Make the absent
-  precondition the failure, with a message naming what to run.
+- **A gate whose precondition is missing must SAY SO where the runner
+  reports — never pass.** This one can only read a build that exists. If
+  the check answers "no build here" by returning early inside a green
+  test, the suite reports the same number of passes it reports when the
+  build was there and clean — an inert gate and a satisfied one look
+  identical at the only place anyone looks. Two honest designs exist:
+  fail with a message naming what to run, or report the assertions as
+  *skipped* so the summary itself changes shape (`8 passed | 8 skipped`
+  instead of `16 passed`). This repo shipped the second — `it.skipIf` in
+  `apps/web/tests/built-copy.test.ts` — so a fresh clone with no `.next/`
+  is not punished for it, and the release gate makes the skip impossible
+  by running `build` first. What is forbidden is the third design, the
+  one this gate originally had: warn into a log nobody surfaces and pass.
 - **Write the order into the contract, not into the test's header comment.**
   `build` then `test`: the source half of this gate is a lint, the built half
   is the only check that sees what a reader gets, and the built half has
@@ -691,13 +742,16 @@ file. So the built artifact needs its own gate, and the moment that gate
 becomes conditional on something the pipeline might not have done, it is
 back to reading the source.
 
-Here that residual risk is real rather than theoretical, and stating it is
-cheaper than implying it away: `apps/web/tests/built-copy.test.ts` warns on a
-missing build instead of failing, so on a clean checkout its six canonical
-assertions return early and its presence check degenerates into a tautology.
-Six green tests, nothing verified. That is the weaker of the two designs
-above, and it is exactly why the build-then-test order has to be a written
-contract rather than a habit.
+Here that residual risk was real rather than theoretical: the first version
+of `apps/web/tests/built-copy.test.ts` warned on a missing build instead of
+failing, so on a clean checkout its canonical assertions returned early and
+its presence check degenerated into a tautology — green tests, nothing
+verified. The shipped version reports its seven canonical assertions as
+*skipped* when there is no build to read, which makes the inert state
+visible in the runner's own summary, and the release gate runs `build`
+before `test` so the skip cannot occur on the path that matters. That
+order is why build-then-test has to be a written contract (one `gates`
+script) rather than a habit.
 
 ### 4.5 Prove the probe works before you trust a negative
 
@@ -829,9 +883,14 @@ which is the exact way the gap appeared in the first place.
   colour was cashed in as removal from every rule.
 - **Then pin the count, so growth has to be noticed.** A discovery walk
   passes happily on a tree where a call site has vanished into a helper it
-  classifies differently. Asserting the population is exactly eleven — nine
+  classifies differently. Asserting the population is exactly ten — eight
   generation calls and two file uploads — turns drift in either direction
-  into a failing test that says which way it moved.
+  into a failing test that says which way it moved. (The number was eleven
+  and nine when this chapter was written; F-62 merged the rubric
+  compiler's first and repair calls into one shared attempt helper, the
+  pinned test moved with it and said why, and this paragraph did not —
+  two audits read past the mismatch. A pinned cardinality in a patterns
+  document is still prose: the test is the pin, the prose is a claim.)
 - **Count the unit you actually mean.** The audit said seven call sites; the
   discovery walk found eleven. Both were looking at the same code. The audit
   had counted *modules*, and four of the seven modules make two model calls
