@@ -502,6 +502,23 @@ Changes to targets are recorded here with date and reason — never silently.
   change is one constant; the test pin moves with it deliberately.
   DECISIONS 069.
 
+- **v0.23 (recorded 2026-08-13, pre-code):** the dimension-trends
+  table says which way each score moved, at a glance. **Trend
+  direction gets a colour:** every dimension sparkline today wears
+  the same sky wash whether the score climbed or slid; the wash and
+  the net-delta figure now encode direction — rising stays in the
+  sky family, flat goes neutral, falling goes to the blush family —
+  tuned to read at a glance without breaking the page's quiet
+  register. Blush is deliberately not alarm: a falling score is a
+  coaching signal, work still in progress (the meaning blush already
+  carries), not an error. **Each dimension carries a small glyph:**
+  dimension names are rubric-compiled per JD and open-ended, so
+  icons cannot be hand-assigned; a deterministic keyword mapping
+  chooses from a fixed set of hand-drawn pictograms in the product's
+  own icon register, inheriting the surrounding ink, with a
+  per-channel fallback so an unmatched name degrades to its
+  channel's glyph rather than to a blank. DECISIONS 070–071.
+
 > 2026-08-02: v0.4 scope added above — accounts move ahead of payments
 > because login-gated interviews protect session integrity and per-session
 > cost, and the dashboard is what makes a 6-session package usable. The

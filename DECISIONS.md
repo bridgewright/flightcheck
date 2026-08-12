@@ -2902,3 +2902,69 @@ how mail to it gets received, by whom, and at what standing cost.
 - **Revisit when:** support needs to send AS support@ (Forward
   Email's SMTP or Workspace — SPF/DMARC must change in the same
   batch), or reply volume makes a shared inbox worth paying for.
+
+## 070 — Trend direction speaks in the pastel pair, not in alarm (2026-08-13)
+
+**Context.** The dashboard's dimension-trends table (F-72, redrawn by
+F-78) paints every sparkline the same translucent sky and prints the
+net delta in plain ink — direction is deducible but not visible. The
+user asked for colour coding on both (2026-08-13, screenshot
+directive): rise, flat, and fall each legible at a glance, "legible
+but harmonious." The palette has no grey wash and no ink-grade sky or
+blush; `alarm`/`alarm-wash` exist but are declared for destructive
+actions and true errors.
+
+- **Chosen: extend the pastel pair's semantics.** Rising keeps the
+  sky family, flat goes neutral (paper/ink family), falling goes to
+  the blush family — blush's declared role is already "work in
+  progress," which is exactly what a falling coaching score is. The
+  net column gets ink-grade counterparts of the same reading. New
+  tokens are declared in `globals.css`, composed through `lib/ui.ts`,
+  and join `design-system.test.ts`'s lists as their usage honestly
+  requires: a pairing that carries text joins the AA matrix; an
+  SVG-only area fill is not a ground and does not pretend to be one.
+  Exact hex values are the implementing track's design judgment
+  inside those gates.
+- **Rejected: reusing alarm for falling trends.** Alarm means
+  something is broken or destructive. Painting a 0.2-point dip with
+  the error red would false-alarm a customer mid-improvement and
+  make true errors quieter by association.
+- **Rejected: Tailwind opacity modifiers (`fill-sky/45`) for the
+  wash.** The COMPOSITES gate classifies `fill-*` as text (4.5:1
+  bar), which an intentionally quiet wash must fail; the SVG
+  `fillOpacity` attribute (today's shape) or pre-composited wash
+  hexes remain the mechanism.
+- **Revisit when:** a third surface wants direction coding (extract
+  a shared direction-to-tone module if the track has not already),
+  or a "ready"-grade rising semantic (sage) earns its case.
+
+## 071 — Dimension glyphs are drawn by hand and chosen by keyword (2026-08-13)
+
+**Context.** The user asked for a small pictogram before each
+dimension name in the trends table (2026-08-13, same screenshot
+directive) so the area registers at a glance. Dimension names are
+rubric-compiled per JD — open-ended strings — so glyphs cannot be
+hand-assigned per dimension the way F-43's session-state icons were.
+
+- **Chosen: a deterministic keyword-to-glyph mapping over a fixed,
+  hand-authored set.** Roughly eight to twelve inline SVGs drawn in
+  the exact register F-43 established (24-unit viewBox, stroke
+  `currentColor`, width 1.5, `aria-hidden` — the name beside the
+  glyph carries the meaning), chosen by keyword rules over the
+  dimension key and name, with a per-channel (content/delivery)
+  fallback so an unmatched dimension degrades to its channel's
+  glyph, never to a blank or a placeholder. The mapping lives in a
+  JSX-free module unit-tested over the committed real rubric and the
+  sample-report fixture: every known dimension must land a
+  non-fallback glyph, and unknown names must fall back cleanly.
+- **Rejected: @phosphor-icons** (already in the tree for the FAQ
+  toggles). The glyphs sit beside F-43's hand-drawn icons in the
+  signed-in product and should read as one hand; the FAQ's
+  plus/minus are generic controls, not register-bearing pictograms.
+- **Rejected: emoji** (banned by the house register) **and
+  model-chosen icons at compile time** (nondeterministic, a per-JD
+  cost, and a wrong glyph beside a customer's score is worse than an
+  honest fallback).
+- **Revisit when:** the real-rubric corpus grows dimension families
+  the keyword table misses more often than it hits — the mapping
+  test's fixture corpus measures the fallback rate.
