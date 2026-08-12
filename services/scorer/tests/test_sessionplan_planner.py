@@ -15,6 +15,8 @@ from scorer.schemas import (
 )
 from scorer.sessionplan.planner import (
     _generated_question,
+    _spoken_name,
+    _spoken_signal,
     build_interviewer_instructions,
     plan_baseline_session,
     plan_quick_session,
@@ -354,7 +356,7 @@ def test_plan_generates_fallback_question_with_name_and_top_signal():
     assert generated.source == "generated"
     assert generated.question == (
         "Tell me about a time you demonstrated pacing control. "
-        "I'm especially interested in Pacing control: named specifics.")
+        "I'm especially interested in named specifics.")
     assert generated.probes == [
         "What exactly did you do yourself, step by step?",
         "What was the measurable outcome?",
@@ -365,6 +367,88 @@ def test_plan_generated_question_without_signals_stays_one_sentence():
     plan = plan_baseline_session(_make_rubric())
     by_key = {q.dimension_key: q for q in plan.question_sequence}
     assert by_key["composure"].question == "Tell me about a time you demonstrated composure."
+
+
+def test_generated_questions_match_real_rubric_spoken_sentences():
+    rubric_path = (
+        Path(__file__).parents[3]
+        / "evals"
+        / "suites"
+        / "rubric_discrimination"
+        / "rubric.json"
+    )
+    dimensions = {
+        entry["key"]: RubricDimension.model_validate(entry)
+        for entry in json.loads(rubric_path.read_text())["dimensions"]
+    }
+    expected = {
+        "ai-product-strategy-judgment": (
+            "Tell me about a time you demonstrated AI product strategy and judgment. "
+            "I'm especially interested in customer empathy."
+        ),
+        "ai-technical-fluency-implementation": (
+            "Tell me about a time you demonstrated AI technical fluency and "
+            "implementation. I'm especially interested in ability to hold real "
+            "conversations with platform engineers about architectural tradeoffs."
+        ),
+        "end-to-end-ownership": (
+            "Tell me about a time you demonstrated End-to-End ownership and ambiguity "
+            "navigation. I'm especially interested in demonstrated record of shipping "
+            "complete AI/ML or complex software solutions from contract to production "
+            "at scale."
+        ),
+        "stakeholder-collaboration-communication": (
+            "Tell me about a time you demonstrated stakeholder collaboration and "
+            "communication. I'm especially interested in ability to translate super "
+            "technical jargon into simple terms."
+        ),
+        "ai-evaluation-responsible-ai": (
+            "Tell me about a time you demonstrated AI evaluation and responsible AI. "
+            "I'm especially interested in ability to design offline evaluation sets."
+        ),
+        "spoken-clarity-composure": (
+            "Tell me about a time you demonstrated spoken clarity and composure. "
+            "I'm especially interested in live critical thinking under pressure."
+        ),
+    }
+
+    assert {
+        key: _generated_question(dimension, session_index=1, asked=set()).question
+        for key, dimension in dimensions.items()
+    } == expected
+
+
+def test_spoken_name_preserves_acronyms_and_decases_regular_words():
+    assert _spoken_name("AI Product R&D End-to-End Composure") == (
+        "AI product R&D End-to-End composure"
+    )
+    assert _spoken_name("Strategy & Judgment") == "strategy and judgment"
+
+
+def test_spoken_signal_strips_label_clause_and_terminal_punctuation():
+    assert _spoken_signal("Strong Product Fundamentals: Customer empathy, discovery.") == (
+        "customer empathy"
+    )
+    assert _spoken_signal("Strong Label: Customer empathy (with evidence).") == (
+        "customer empathy"
+    )
+
+
+def test_spoken_signal_without_colon_keeps_its_head():
+    assert _spoken_signal("Customer empathy, discovery.") == "customer empathy"
+
+
+def test_spoken_signal_does_not_strip_a_seven_word_pre_colon_run():
+    signal = "One two three four five six seven: Customer empathy."
+    assert _spoken_signal(signal) == "one two three four five six seven: Customer empathy"
+
+
+def test_degenerate_signal_omits_interest_sentence():
+    dimension = _dim("composure", "Composure", "delivery", 1.0, signals=[":"])
+    assert _spoken_signal(":") is None
+    assert _generated_question(dimension).question == (
+        "Tell me about a time you demonstrated composure."
+    )
 
 
 def test_pressure_probe_targets_highest_weight_content_dimension():
@@ -507,7 +591,7 @@ def test_standard_twenty_minute_instructions_remain_byte_identical():
     # gained the interviewer-behavior realism sections. The naturalness
     # suite's worklog records this instructions-lever move.
     assert hashlib.sha256(_instructions().encode()).hexdigest() == (
-        "b8662827901dba6b0fe394178f66f97279590e88d8f7b8865be9f10472f5c558"
+        "2e9a2f069891a4b5755a2701908b39148793b9061f575e63c15b82bb6ac7055e"
     )
 
 

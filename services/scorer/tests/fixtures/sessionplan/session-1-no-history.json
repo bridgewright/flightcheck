@@ -4,7 +4,7 @@
   "question_sequence": [
     {
       "dimension_key": "pacing-control",
-      "question": "Tell me about a time you demonstrated pacing control. I'm especially interested in Pacing control: named specifics.",
+      "question": "Tell me about a time you demonstrated pacing control. I'm especially interested in named specifics.",
       "probes": ["What exactly did you do yourself, step by step?", "What was the measurable outcome?"],
       "source": "generated"
     },
@@ -22,7 +22,7 @@
     },
     {
       "dimension_key": "role-knowledge",
-      "question": "Tell me about a time you demonstrated role knowledge. I'm especially interested in Role knowledge: named specifics.",
+      "question": "Tell me about a time you demonstrated role knowledge. I'm especially interested in named specifics.",
       "probes": ["What exactly did you do yourself, step by step?", "What was the measurable outcome?"],
       "source": "generated"
     },

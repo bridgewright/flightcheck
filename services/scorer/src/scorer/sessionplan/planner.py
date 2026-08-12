@@ -100,6 +100,39 @@ class SessionHistoryRow(Protocol):
     report: SessionReportLike | None
 
 
+def _spoken_name(name: str) -> str:
+    """Dimension name as it should be spoken mid-sentence."""
+    words = re.sub(r"(?<=\s)&(?=\s)", "and", name).split()
+    return " ".join(
+        word if any(char.isupper() for char in word[1:])
+        else word.lower()
+        for word in words
+    )
+
+
+def _spoken_signal(signal: str) -> str | None:
+    """First signal as one speakable interest clause, or None."""
+    text = signal
+    if ":" in text:
+        label, remainder = text.split(":", 1)
+        if len(label.split()) <= 6 and not any(mark in label for mark in ".!?"):
+            text = remainder
+
+    boundaries = [
+        position
+        for marker in (", ", " (")
+        if (position := text.find(marker)) >= 0
+    ]
+    if boundaries:
+        text = text[:min(boundaries)]
+    text = text.rstrip(".!?;:, \t\r\n")
+    words = text.split()
+    if not words:
+        return None
+    words[0] = _spoken_name(words[0])
+    return " ".join(words)
+
+
 def _generated_question(
     dimension: RubricDimension,
     session_index: int = 1,
@@ -131,9 +164,11 @@ def _generated_question(
     )
     candidates = []
     for template, probe_pair in templates:
-        candidate = template.format(name=dimension.name.lower())
+        candidate = template.format(name=_spoken_name(dimension.name))
         if dimension.signals:
-            candidate += f" I'm especially interested in {dimension.signals[0]}."
+            interest = _spoken_signal(dimension.signals[0])
+            if interest is not None:
+                candidate += f" I'm especially interested in {interest}."
         candidates.append((candidate, probe_pair))
     already = asked or set()
     start = (session_index - 1) % len(candidates)
@@ -146,8 +181,8 @@ def _generated_question(
         # variants keep the guarantee unconditional anyway.
         base, probe_pair = rotated[0]
         prefixes = (
-            f"Looking again at {dimension.name.lower()}, ",
-            f"Coming back to {dimension.name.lower()} from another angle, ",
+            f"Looking again at {_spoken_name(dimension.name)}, ",
+            f"Coming back to {_spoken_name(dimension.name)} from another angle, ",
         )
         for prefix in prefixes:
             for text, pair in rotated:
@@ -159,7 +194,7 @@ def _generated_question(
                 break
         take = 2
         while chosen is None:
-            variant = (f"Looking once more at {dimension.name.lower()} "
+            variant = (f"Looking once more at {_spoken_name(dimension.name)} "
                        f"(pass {take}), {base[0].lower()}{base[1:]}")
             if variant not in already:
                 chosen = (variant, probe_pair)
