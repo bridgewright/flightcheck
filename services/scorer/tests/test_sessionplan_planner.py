@@ -443,6 +443,33 @@ def test_spoken_signal_does_not_strip_a_seven_word_pre_colon_run():
     assert _spoken_signal(signal) == "one two three four five six seven: Customer empathy"
 
 
+def test_signal_ending_in_a_period_never_doubles_it_in_the_question():
+    # The doubled period is the user-visible half of F-85, and it survives
+    # the clause cut only when there is no clause boundary to cut at -- so
+    # the pin belongs on the built sentence, not on the helper alone.
+    dimension = _dim("composure", "Composure", "delivery", 1.0,
+                     signals=["Rewarded: Named specifics under pressure."])
+    question = _generated_question(dimension).question
+    assert question == (
+        "Tell me about a time you demonstrated composure. "
+        "I'm especially interested in named specifics under pressure."
+    )
+    assert not question.endswith("..")
+
+
+def test_no_break_space_defeats_neither_the_clause_cut_nor_the_strip():
+    # Signals are model-written from a JD the customer pasted, and pasted
+    # JD text carries U+00A0 wherever the posting's HTML had &nbsp;. Both
+    # the clause-cut markers and the trailing-punctuation strip want an
+    # ASCII space, so the helper normalises whitespace before either runs.
+    # Written as an escape on purpose: a raw U+00A0 in this file is
+    # invisible to a reviewer and one reformat away from silently becoming
+    # a space, leaving these assertions passing while testing nothing.
+    nbsp = "\u00a0"
+    assert _spoken_signal(f"Rewarded: Named specifics.{nbsp}") == "named specifics"
+    assert _spoken_signal(f"Named specifics,{nbsp}discovery, depth.") == "named specifics"
+
+
 def test_degenerate_signal_omits_interest_sentence():
     dimension = _dim("composure", "Composure", "delivery", 1.0, signals=[":"])
     assert _spoken_signal(":") is None

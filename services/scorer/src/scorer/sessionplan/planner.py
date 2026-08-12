@@ -112,7 +112,12 @@ def _spoken_name(name: str) -> str:
 
 def _spoken_signal(signal: str) -> str | None:
     """First signal as one speakable interest clause, or None."""
-    text = signal
+    # Whitespace collapses FIRST, not last: every step below is sensitive to
+    # the exact space characters. A no-break space -- routine in a signal
+    # derived from a pasted JD -- otherwise defeats the clause cut (its
+    # markers want an ASCII space) and the trailing-punctuation strip,
+    # putting back the doubled period this helper exists to remove.
+    text = " ".join(signal.split())
     if ":" in text:
         label, remainder = text.split(":", 1)
         if len(label.split()) <= 6 and not any(mark in label for mark in ".!?"):
