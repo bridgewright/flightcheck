@@ -488,7 +488,7 @@ Changes to targets are recorded here with date and reason — never silently.
   path — so a real oversize failure looked exactly like a normal
   quick ending in the logs. The probe now runs only for sessions
   that can carry a recording, and the error log means something
-  again. DECISIONS 066–067.
+  again. DECISIONS 066–068.
 
 > 2026-08-02: v0.4 scope added above — accounts move ahead of payments
 > because login-gated interviews protect session integrity and per-session

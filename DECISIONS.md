@@ -2727,6 +2727,31 @@ can see (F-89).
   requires evaluating anything beyond constant expressions — the
   scan must never grow an interpreter.
 
+> Amended 2026-08-13, at merge, from the two review rounds. (a) The
+> unknown-value placeholder is a SPACE, not NUL: both are non-word so
+> every \b-anchored rule is identical, but the whole-value hex rule
+> reads \s, and a NUL there hid `"#" + "8b5cf" + shade` from the one
+> rule that should read it — a live evasion on the delivered tree.
+> The accepted trade, measured: a template-built URL anchor whose
+> fragment is 3-8 hex characters (`` `${DOCS}#cafe` ``) false-positives
+> on that rule, is character-for-character the same folded shape as
+> the pinned positive, and cannot be separated by any regex over a
+> folded value; the named EXEMPT list is the route if it ever fires
+> (zero such shapes in today's tree). (b) The corpus initially proved
+> its own COPY of the rules — the self-referential-pin defect again —
+> so the rules now live once in `tests/scan/cooked-rules.ts`, consumed
+> by both the tree scan and the corpus, with a drift gate against the
+> per-line vocabulary, a rule-count pin, and a rule-without-a-corpus-
+> positive failure. (c) Round 2 found both prior passes blind to HTML
+> character references (`&mdash;`, `&#8212;`, `&#45;`) that JSX decodes
+> into real characters — reachable, since this product spells its
+> typography as entities across 23 files. Decoding is scoped to
+> exactly where the compiler decodes (JSX text and JSX attribute
+> string values) and nowhere else, because `bg&#45;red&#45;500` in a
+> plain string matches nothing and reporting it would be false. A
+> parse failure in any scanned file fails the suite by throw — a file
+> the parser drops nodes from must never read as clean.
+
 ## 067 — Generated questions are spoken sentences, not data (2026-08-13)
 
 **Context.** `_generated_question` builds the fallback interview
@@ -2785,3 +2810,50 @@ fixtures are tidy.
 - **Revisit when:** a committed rubric arrives whose signals defeat
   the clause cut (no comma, no parenthesis, 40+ words), or the
   fallback ever grows a second consumer that needs the raw signal.
+
+> Amended 2026-08-13, at merge. Round 1 closed a real hole (U+00A0
+> from pasted-JD `&nbsp;` defeated the clause cut and the punctuation
+> strip) but closed it by collapsing whitespace FIRST, which deleted
+> the leading space a `" ("`-headed signal needs to be cut — the
+> parenthetical shipped as the spoken clause, the exact class this
+> card removes. Round 2 restored the contract order (collapse last)
+> and made the two whitespace-sensitive steps read `\s` instead of an
+> ASCII space; a 71-signal differential harness pinned the blast
+> radius to exactly the two parenthesis-headed cases. Known edges, on
+> the record: a parenthesis with no preceding whitespace after the
+> label strip still speaks the parenthesis (contract-faithful; falls
+> under the existing revisit condition), and zero-width characters
+> (U+200B, U+FEFF, U+2060, U+00AD) would defeat both rules but cannot
+> reach a signal today because `promptsafe.strip_hidden_text` removes
+> them at the rubric-compile intake chokepoint — this feature's
+> guarantee depends on that chokepoint staying on the path.
+
+## 068 — The quick complete stops asking storage for what cannot exist (2026-08-13)
+
+**Context.** F-86: the session-complete route probed Supabase Storage
+for a recording size before EVERY complete, including quick sessions —
+which never record (the room skips the recorder when unscored, the
+worker never reads `audio_path` for quick). The probe was a guaranteed
+storage miss that logged `"could not read the recording size"` on a
+normal quick ending, making a real failure indistinguishable from a
+happy path.
+
+- **Chosen: skip the probe when the authorized package's kind is
+  quick**, on BOTH credential paths (legacy token and viewer), with an
+  absent `kind` field behaving as standard — old serializations keep
+  today's byte-for-byte behavior. For standard sessions nothing moves:
+  positively observed oversize still refuses 413; an unreadable size
+  still fails open with the error log, which now means something.
+- **Chosen: `pkg.kind` from the authorization result**, not the
+  session payload's `package_kind`. Both serialize the same
+  `packages.kind` column and both auth paths guarantee the package IS
+  the session's package, so divergence is unreachable; the
+  authorization result is what the route already holds on both paths.
+- **Rejected: keep probing and silence the log for quick.** The
+  wasted storage round-trip stays, and a log line that is sometimes
+  meaningless is the defect, not the spelling of it.
+- **Rejected: teach `storedRecordingBytes` about kinds.** The helper
+  reads storage; which sessions can have recordings is the route's
+  knowledge.
+- **Revisit when:** quick sessions ever gain a recording path, or a
+  third package kind arrives.
