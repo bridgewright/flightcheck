@@ -506,7 +506,7 @@ def test_standard_twenty_minute_instructions_remain_byte_identical():
     # gained the interviewer-behavior realism sections. The naturalness
     # suite's worklog records this instructions-lever move.
     assert hashlib.sha256(_instructions().encode()).hexdigest() == (
-        "0848f784d791dd8298fe6a9cbbcf64de9f5b2c216873cd92165634b5790efba6"
+        "683db7c2cc19ae9358475520942c352f9b2bf65a9cfd26288d634629b6093105"
     )
 
 
@@ -582,6 +582,32 @@ def test_instructions_embed_pacing_and_closing():
     )
     assert "Say nothing after it." in text
     assert "Thanks for taking the time today." in text
+
+
+def test_spare_time_is_spent_like_a_real_interviewer_never_saved():
+    # F-75 hard wall: realism never invites ending early. An interviewer
+    # done with the plan spends the remainder, it does not leave.
+    text = _instructions()
+    assert "Running out of planned questions does not end the session early" in text
+    assert ("deeper follow-ups on earlier answers, then the candidate's "
+            "own questions") in text
+
+
+def test_wrap_up_register_adapts_and_renders_before_the_exact_closing_line():
+    # F-75 behavior (c): the closing's CONTENT reflects the interview; its
+    # timing machinery and the exact closing literal are untouched, and the
+    # adaptive language renders BEFORE the literal.
+    text = _instructions()
+    assert "Let your wrap-up reflect how this interview actually went" in text
+    assert "warm and specific after a strong session" in text
+    assert "courteous and professional after a rough one" in text
+    assert "never a verdict, a score, or reassurance you cannot back" in text
+    closing_rule = text.index("Deliver the following closing line exactly")
+    assert text.index("Let your wrap-up reflect") < closing_rule
+    assert (
+        "Say nothing after it. Closing line: Thanks for taking the time "
+        "today. That's everything from my side. Good luck out there."
+    ) in text
 
 
 def test_instructions_embed_nondisclosure_rule():
