@@ -133,7 +133,8 @@ typecheck`, `npm run lint` and `npm run build` in `apps/web`; `make test` and
 `make lint` from the repo root; and `uv run scorer-evals` from
 `services/scorer`, which is the only one of them that needs a model API key.
 
-Release notes: [v0.12](docs/releases/v0.12.md) ·
+Release notes: [v0.14](docs/releases/v0.14.md) ·
+[v0.13](docs/releases/v0.13.md) · [v0.12](docs/releases/v0.12.md) ·
 [v0.11](docs/releases/v0.11.md) · [v0.10](docs/releases/v0.10.md) ·
 [v0.9](docs/releases/v0.9.md) · [v0.8](docs/releases/v0.8.md) ·
 [v0.7](docs/releases/v0.7.md) · [v0.6](docs/releases/v0.6.md) ·
@@ -203,6 +204,7 @@ curl -s "https://api.github.com/repos/bridgewright/flightcheck/events?per_page=1
 - **v0.11** — the rubric proves itself: every content dimension carries verbatim JD evidence, enforced by a fourth eval suite in the release gate. Shipped 2026-08-05, tag `v0.11.0`. [Release notes](docs/releases/v0.11.md).
 - **v0.12** — the after-the-session product, and the session itself gets out of your way: per-answer coaching with study notes inside each session, a dashboard that draws trends as lines, structured feedback with an operator inbox, measurement provenance for the naturalness loop, a 0.6 s faster interviewer, and a goodbye that ends the session on its own. Shipped 2026-08-08, tag `v0.12.0`. [Release notes](docs/releases/v0.12.md).
 - **v0.13** — the sessions stop repeating and the front door gets lighter: fresh questions each session aimed at the weakest scored dimension, a profile-licensed role-and-company-fit dimension when a resume is on the package, the free five-minute quick interview replacing the free trial session as the one free door, and a home screen that introduces itself once. Shipped 2026-08-10, tag `v0.13.0`. [Release notes](docs/releases/v0.13.md).
+- **v0.14** — the beta gets its door key and the product gets its own address: a closed beta on one shared access code riding the comp machinery, route transitions that dissolve instead of teleport, an interviewer that acts like one — company-aware, substance-engaged, conservatively warm past the midpoint — the move to flightcheck.coach with the old address redirecting, and three of the repo's own review findings paid off. Shipped 2026-08-13, tag `v0.14.0`. [Release notes](docs/releases/v0.14.md).
 
 The `v0.6.0` and `v0.7.0` tags were both cut on 2026-08-04, after the work
 was already in production: `v0.6.0` sits on `da254e3`, exactly the commit that deployed on

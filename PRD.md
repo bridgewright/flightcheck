@@ -425,22 +425,6 @@ Changes to targets are recorded here with date and reason — never silently.
   revisit condition, not this change), the session room, and ambient
   loops. DECISIONS 063.
 
-- **v0.20 (recorded 2026-08-12, pre-code):** the product moves to its
-  own address. `flightcheck.coach` — bought 2026-08-12, the exact
-  brand name on the one honest TLD that was actually purchasable
-  (DECISIONS 065 records what was not) — becomes the canonical
-  origin: the one `SITE_URL` constant flips, and every canonical URL,
-  OG image, sitemap, and robots line derives from it as they always
-  did; the README's live links and the deploy doc follow; the
-  vercel.app address keeps serving and redirects to the new origin so
-  no existing link breaks. Historical records (release notes, the
-  changelog, RETRO) keep the old address where they mention it —
-  they describe the past, and the past happened there. Alongside the
-  code: the auth provider's redirect allowlist learns the new origin
-  BEFORE the flip deploys, and the site enters Google Search Console
-  with its sitemap submitted — the beta and every future applicant
-  search from here on lands on a real domain. DECISIONS 065.
-
 - **v0.19 (recorded 2026-08-12, pre-code):** the interviewer starts
   ACTING like a real interviewer, not only sounding like one. Three
   instruction-driven behaviors join the interviewer's brief, all
@@ -461,6 +445,22 @@ Changes to targets are recorded here with date and reason — never silently.
   This moves the instructions lever the naturalness suite tracks;
   the move is recorded in that suite's worklog before any baseline
   exists to poison. DECISIONS 064.
+
+- **v0.20 (recorded 2026-08-12, pre-code):** the product moves to its
+  own address. `flightcheck.coach` — bought 2026-08-12, the exact
+  brand name on the one honest TLD that was actually purchasable
+  (DECISIONS 065 records what was not) — becomes the canonical
+  origin: the one `SITE_URL` constant flips, and every canonical URL,
+  OG image, sitemap, and robots line derives from it as they always
+  did; the README's live links and the deploy doc follow; the
+  vercel.app address keeps serving and redirects to the new origin so
+  no existing link breaks. Historical records (release notes, the
+  changelog, RETRO) keep the old address where they mention it —
+  they describe the past, and the past happened there. Alongside the
+  code: the auth provider's redirect allowlist learns the new origin
+  BEFORE the flip deploys, and the site enters Google Search Console
+  with its sitemap submitted — the beta and every future applicant
+  search from here on lands on a real domain. DECISIONS 065.
 
 - **v0.21 (recorded 2026-08-13, pre-code):** three small debts that
   this repo's own review rounds put on the books are paid, and each
