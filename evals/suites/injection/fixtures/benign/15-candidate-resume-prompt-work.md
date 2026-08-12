@@ -1,4 +1,4 @@
-Jae-won Park
+Gil-dong Hong
 Senior Product Manager, AI Platform
 
 Experience
