@@ -48,6 +48,15 @@ const POSITIVES: [source: string, why: string][] = [
     'const v = <p className="bg&#45;red&#45;500">x</p>;',
     "palette token assembled from character references",
   ],
+  // Each named reference the module decodes is proven on its own line, so
+  // deleting any one of the three turns this suite red. `&nbsp;` earns its place
+  // through the only rule that reads whitespace: the whole-value hex rule
+  // anchors on `\s`, and a no-break space in front of a colour would otherwise
+  // stop the value being whole.
+  [
+    'const v = <p title="&nbsp;#8b5cf6">x</p>;',
+    "colour behind a no-break space reference",
+  ],
 ];
 
 const NEGATIVES: [source: string, why: string][] = [
