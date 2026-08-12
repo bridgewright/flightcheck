@@ -117,10 +117,12 @@ export async function POST(
     packageKind = access.value.pkg.kind ?? "standard";
   }
   const audioPath = recordingStoragePath(session.package_id, session.index);
+  // A quick session never writes a recording — its room skips the recorder
+  // entirely — so probing storage here is a guaranteed miss, and the miss
+  // logs as an error on a completely healthy ending. Skipping the probe is
+  // what keeps "could not read the recording size" meaning something for the
+  // sessions that are actually scored.
   if (packageKind !== "quick") {
-    // Quick sessions never write a recording, so probing one guarantees a
-    // storage miss and a false error; skipping it keeps the unreadable-size
-    // log meaningful for scored sessions.
     // Only a positively observed oversize is refused. An unreadable size fails
     // open: the interview is over and cannot be redone, so a storage hiccup
     // must never cost the customer the session they already sat through.
