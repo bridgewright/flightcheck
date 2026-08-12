@@ -2557,3 +2557,71 @@ was built by a parallel track alongside the v0.17 batch.
 - **Revisit when:** the View Transitions flag stabilizes and a
   shared-element need appears, or field feedback reads the
   double-settle through skeletons as pulsing.
+
+## 064 — The interviewer acts like one: realism without touching the clock (2026-08-12)
+
+**Context.** The voice agent's goal decomposes into "sounds like a
+real person" (owned by the morgan_naturalness measurement loop) and
+"ACTS like a real interviewer" — this entry is the second half (F-75,
+user experience-definition discussion 2026-08-08). The card carried
+one design tension to resolve before code: adaptive pacing and early
+wrap-up versus the paid-session promise.
+
+- **Chosen — three behaviors, all instruction-driven, all grounded in
+  what the package already knows.** (a) Company-aware commentary: the
+  interviewer may frame reactions in the company and role context the
+  rubric actually carries (its `company`, `role_title`, and the JD
+  evidence behind the dimensions) — and nothing else; no research
+  pass, no invented team facts, because a fabricated "our team does X"
+  from a product selling interview verdicts is a lie with a coach's
+  voice. (b) Content-engaged reactions: before moving on, the
+  interviewer engages the substance of what the candidate just said —
+  a specific acknowledgment, a genuine follow-through — beyond the
+  rubric-driven probe it already asks. (c) Adaptive closing register:
+  the closing's CONTENT reflects how the interview went (what was
+  strong, what the wrap-up gestures at), while its timing machinery is
+  untouched.
+- **Chosen — adaptive warmth, conservatively triggered.** Past the
+  session midpoint, when the candidate has CLEARLY been answering
+  strongly — the instructions define the bar as sustained, specific,
+  structured answers, not one good moment — the interviewer may allow
+  brief warmth (a short laugh, one light aside), then return to
+  questions. In doubt, the professional register holds: a
+  wrongly-warm interviewer is a false "you're doing well" signal, and
+  the warmth's value is exactly that reading the interviewer loosen
+  up is a real interview skill. The trigger is the model's in-session
+  judgment under these instructions; the planner supplies the
+  language, not the decision.
+- **The tension, resolved: adaptivity changes WHAT is said, never
+  WHEN the session ends.** No early wrap-up, no adaptive shortening.
+  The 20-minute budget, the wrap-up window, the hard cut, and the
+  exact closing sentence (the auto-end sentinel depends on its
+  literal text) stay exactly as the cross-language timing twins gate
+  them. A customer who paid for twenty minutes gets twenty minutes;
+  an interviewer who is "done early" spends the remainder the way
+  real ones do — deeper follow-ups, the candidate's questions —
+  rather than leaving.
+- **Rejected — adaptive early termination:** the paid promise above;
+  also the timing constants are twin-gated on purpose and realism is
+  not a reason to move them.
+- **Rejected — a computed mid-session strength signal:** nothing
+  scores mid-session (the eligibility floor exists because fair
+  scoring needs the whole session), so any numeric trigger would be
+  an invented number. Instructions describing the bar honestly beat
+  a fake metric.
+- **Rejected — extending this to quick interviews:** the quick
+  session is a five-minute ungrounded funnel taste; its midpoint is
+  ~2.5 minutes, far too little evidence for a "clearly strong" call,
+  and its instructions stay simple on purpose.
+- **Lever bookkeeping (mandatory, DECISIONS 047 discipline):** this
+  is the first deliberate move of the instructions lever since the
+  naturalness suite was built. Round 1 of that suite has not run
+  (cases list empty, AVM references pending), so no baseline exists
+  to poison — the move is recorded in the suite's worklog with the
+  landing commit, and the judge rubric, when Round 1 authors it,
+  must not penalize warmth (this entry is the pointer). The next
+  gate report records the instructions hash as MOVED, by this.
+- **Revisit when:** session replays show warmth firing on weak
+  interviews (tighten the bar or pull the lever back), or customers
+  read company-aware commentary as claiming inside knowledge the
+  product does not have (then the framing language narrows further).

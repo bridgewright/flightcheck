@@ -425,6 +425,27 @@ Changes to targets are recorded here with date and reason — never silently.
   revisit condition, not this change), the session room, and ambient
   loops. DECISIONS 063.
 
+- **v0.19 (recorded 2026-08-12, pre-code):** the interviewer starts
+  ACTING like a real interviewer, not only sounding like one. Three
+  instruction-driven behaviors join the interviewer's brief, all
+  grounded in what the package already knows and none of them a new
+  model call: commentary that is aware of the company and role the
+  rubric actually carries; reactions that engage the substance of the
+  candidate's last answer before moving on, beyond rubric probing;
+  and a closing whose register reflects how the interview actually
+  went. Plus **adaptive warmth**: past the session's midpoint, if the
+  candidate has CLEARLY been answering strongly, the interviewer may
+  loosen briefly — a short laugh, one light aside — then return to
+  questions; anything less than clearly strong keeps the professional
+  register, because a wrongly-warm interviewer is a false "you're
+  doing well" signal. The one line this never crosses: adaptivity
+  changes WHAT is said, never WHEN the session ends — the paid
+  20-minute budget, the closing window, and the exact closing
+  sentence stay exactly as gated. Quick interviews are untouched.
+  This moves the instructions lever the naturalness suite tracks;
+  the move is recorded in that suite's worklog before any baseline
+  exists to poison. DECISIONS 064.
+
 > 2026-08-02: v0.4 scope added above — accounts move ahead of payments
 > because login-gated interviews protect session integrity and per-session
 > cost, and the dashboard is what makes a 6-session package usable. The
