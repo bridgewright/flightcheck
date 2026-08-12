@@ -35,6 +35,7 @@ const POSITIVES: [source: string, why: string][] = [
   ['const c = "color: rgb" + "(0 0 0)";', "colour function"],
   ['const c = "text-[" + "13px]";', "pixel font size"],
   ['const k = "background" + "Image";', "computed background property"],
+  ['const css = "background" + "-image: url(x)";', "background image inside a style string"],
   ['const g = "bg-linear" + "-to-r";', "gradient utility"],
   ['const g = "bg-[image:linear" + "-gradient(red,blue)]";', "arbitrary gradient value"],
   ['const c = "bg-\\u0072ed-500";', "unicode escape within token"],
