@@ -136,3 +136,25 @@ discussion happens.
   records the session-room response-policy commit alongside the
   instructions commit — the debounce is part of turn feel, and a run
   that ignores it is comparing across policies.
+
+## 2026-08-12 — instructions lever moved: interviewer-behavior realism (B7-T1)
+
+- The instructions lever moves with this track's landing commit
+  (track/b7-t1-interviewer-realism, F-75, DECISIONS 064) — the first
+  deliberate move since the suite was built. The standard 20-minute
+  instructions gain company-aware commentary grounded in the rubric's
+  own facts, substance-engaged transitions, spare-time spending, an
+  adaptive wrap-up register, and conservatively-triggered warmth past
+  the midpoint. The quick-interview instructions did not move — now
+  pinned byte-for-byte. Timing is untouched: adaptivity changes WHAT is
+  said, never WHEN the session ends.
+- Round 1 has not run (cases list empty, AVM references pending), so no
+  baseline is poisoned by this move. The first Morgan baseline will be
+  recorded against the post-064 instructions, with `lever_state`
+  stamping the instructions commit as the manifest contract requires;
+  the next gate report records the instructions hash as MOVED, by this.
+- For the judge rubric, when Round 1 authors it (bar.md section 4): it
+  must not penalize warmth. A short laugh or one light aside past the
+  midpoint of a clearly strong session is DECISIONS 064's intended
+  behavior, not a naturalness defect — the conservative trigger is the
+  feature.
