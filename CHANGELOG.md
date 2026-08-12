@@ -93,9 +93,9 @@
   every scanned file is parsed with the TypeScript compiler, constant
   concatenations are folded, escapes and character codes and the HTML
   character references JSX decodes are resolved, and the rules run
-  over the values the code actually emits. A self-test corpus of two
-  dozen known evasions is the contract — the gate fails its own suite
-  unless it catches every one — with the rules in one shared module
+  over the values the code actually emits. A self-test corpus of
+  twenty-five known evasions is the contract — the gate fails its own
+  suite unless it catches every one — with the rules in one shared module
   so the corpus can never prove a private copy. Three of the four
   prescribed weaken-the-scan mutations survived the first delivered
   version; the review rounds killed all of them, which is the reason

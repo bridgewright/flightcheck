@@ -654,9 +654,10 @@ past it) and says to hunt it by hand. This is the pattern that retires
 the hand hunt. A per-line regex scan reads *spellings*; the runtime and
 the compiler read *values* — `"bg-red-" + "500"`, `` `${X} bg-red-`
 `` + `"500"`, `"bg-red-500"`, `String.fromCharCode(8212)`, and the
-HTML character references JSX decodes (`&mdash;`, `&#45;`) are all the
-same value wearing five spellings, and four of the five walked a
-line-anchored scan in production here.
+HTML character references JSX decodes (`&mdash;`, `&#45;`) are five
+spellings the runtime resolves to values a line-anchored scan cannot
+all see — the first three are one value, the last two another — and
+four of the five walked a line-anchored scan in production here.
 
 - **Parse with the compiler you already ship.** The `typescript` package
   is a devDependency wherever `tsc --noEmit` runs. Extract every string

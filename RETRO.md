@@ -953,8 +953,9 @@ the v0.13 release audit failed rule ⑫, not because the habit had
 formed" — and this entry exists for the same reason one release
 later. The mechanism named there (documents written *about* the work
 lag; documents written *during* it don't) predicted this precisely.
-Meanwhile the executor identity-slip count this file carried as "four"
-had quietly become seven; two files in the same repo disagreed on the
-same fact until the same audit caught both. The structural fix being
+Meanwhile the executor identity-slip count had quietly become seven
+while THREE files — CLAUDE.md, DECISIONS 024, and this one — all still
+said "four", in perfect agreement and all wrong, until one audit caught
+all three; agreement between documents is not currency. The structural fix being
 tried this time: the retro entry is now written at merge time as part
 of the release ritual checklist, not recalled at audit time.
