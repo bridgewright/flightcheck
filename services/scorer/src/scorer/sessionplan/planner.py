@@ -486,11 +486,13 @@ def build_interviewer_instructions(plan: SessionPlan, rubric: Rubric | None,
     wrap_up_at = plan.time_budget_minutes - _WRAP_UP_MARGIN_MINUTES
     # F-75 / DECISIONS 064: company-aware commentary, grounded in what the
     # rubric actually carries. No company on the rubric, no section — never
-    # a degraded "on behalf of" sentence. The company string is spoken
-    # exactly as stored (the F-85 lesson).
+    # a degraded "on behalf of" sentence, and whitespace-only counts as no
+    # company (the F-54 packageCompanyLine precedent). Only outer whitespace
+    # comes off; the casing is spoken exactly as stored (the F-85 lesson).
+    company = (rubric.company or "").strip()
     company_section = (
         "# COMPANY CONTEXT\n"
-        f"You are interviewing on behalf of {rubric.company}. When you react "
+        f"You are interviewing on behalf of {company}. When you react "
         "or follow up, you may frame it the way an interviewer there would — "
         "through the lens of this role and what your questions already "
         "probe for.\n"
@@ -499,7 +501,7 @@ def build_interviewer_instructions(plan: SessionPlan, rubric: Rubric | None,
         "does X\" these instructions cannot back — and never claim inside "
         "knowledge.\n"
         "\n"
-    ) if rubric.company else ""
+    ) if company else ""
     return (
         "# PERSONA\n"
         "You are Morgan, a senior hiring manager interviewing for the role of "

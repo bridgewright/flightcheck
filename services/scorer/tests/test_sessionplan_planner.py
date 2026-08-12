@@ -672,13 +672,24 @@ def test_company_context_frames_reactions_and_draws_the_grounding_line():
 def test_company_context_is_absent_when_the_rubric_carries_no_company():
     # Graceful absence (the F-80 no-profile rule): a rubric without a company
     # gets no company section at all — never a degraded "on behalf of None".
-    for company in (None, ""):
+    # Whitespace-only counts as no company, and outer whitespace never
+    # reaches the sentence (the F-54 packageCompanyLine precedent trims).
+    for company in (None, "", "   "):
         rubric = _make_rubric().model_copy(update={"company": company})
         text = build_interviewer_instructions(
             plan_baseline_session(rubric), rubric, _make_profile())
         assert "# COMPANY CONTEXT" not in text
         assert "on behalf of" not in text
         assert "None" not in text
+
+
+def test_company_context_speaks_a_padded_company_trimmed():
+    # The F-54 precedent: outer whitespace is the paste's, not the name's.
+    # Only the padding comes off — the casing stays the customer's (F-85).
+    rubric = _make_rubric().model_copy(update={"company": "  dbt Labs "})
+    text = build_interviewer_instructions(
+        plan_baseline_session(rubric), rubric, _make_profile())
+    assert "You are interviewing on behalf of dbt Labs. When you react" in text
 
 
 def test_company_context_preserves_the_company_casing_exactly():
