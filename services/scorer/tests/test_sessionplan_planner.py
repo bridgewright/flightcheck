@@ -506,7 +506,7 @@ def test_standard_twenty_minute_instructions_remain_byte_identical():
     # gained the interviewer-behavior realism sections. The naturalness
     # suite's worklog records this instructions-lever move.
     assert hashlib.sha256(_instructions().encode()).hexdigest() == (
-        "683db7c2cc19ae9358475520942c352f9b2bf65a9cfd26288d634629b6093105"
+        "b8662827901dba6b0fe394178f66f97279590e88d8f7b8865be9f10472f5c558"
     )
 
 
@@ -582,6 +582,25 @@ def test_instructions_embed_pacing_and_closing():
     )
     assert "Say nothing after it." in text
     assert "Thanks for taking the time today." in text
+
+
+def test_warmth_is_earned_past_the_midpoint_and_holds_in_doubt():
+    # F-75 adaptive warmth: the conservative trigger IS the feature. Past
+    # the midpoint, clearly strong answers may earn a brief loosening; in
+    # doubt the professional register holds — a wrongly-warm interviewer is
+    # a false "you're doing well" signal.
+    text = _instructions()
+    assert "# WARMTH" in text
+    assert "loosening beyond it must be earned" in text
+    # Five planned questions in the fixture rubric: midpoint is question 3,
+    # the same anchor the pressure moment uses.
+    assert "Once you are past question 3" in text
+    assert ("sustained, specific, structured answers, not one good "
+            "moment") in text
+    assert "a short laugh, one light aside, then back to your questions" in text
+    assert "When in doubt, do not loosen." in text
+    assert (text.index("# PRESSURE MOMENT") < text.index("# WARMTH")
+            < text.index("# PACING"))
 
 
 def test_spare_time_is_spent_like_a_real_interviewer_never_saved():

@@ -14,6 +14,11 @@ opening frame, active listening, pause tolerance, time-status contract.
 v0.3 adds script-derived contracts: audio-check opening, backchannels,
 overlap yield, reactive silence contract ([silence status] notes; the client owns
 the clock), softened pressure + release, good-luck closing.
+v0.19 adds interviewer-behavior realism (DECISIONS 064), standard render
+only: company-aware commentary grounded in the rubric's own facts,
+substance-engaged transitions, spare-time spending, an adaptive wrap-up
+register, and conservatively-triggered warmth. Adaptivity changes WHAT
+is said, never WHEN the session ends; the quick render stays pinned.
 
 Both functions are pure: same input, same output. No model call, no
 randomness, no clock.
@@ -601,6 +606,16 @@ def build_interviewer_instructions(plan: SessionPlan, rubric: Rubric | None,
         "When they finish, release the tension with one short "
         "acknowledgment of what landed — in the spirit of \"Okay — that's "
         "fair.\" — before moving on.\n"
+        "\n"
+        "# WARMTH\n"
+        "Warm but rigorous is your register for the whole session — "
+        "loosening beyond it must be earned.\n"
+        f"Once you are past question {midpoint}, if the candidate has "
+        "clearly been answering strongly — sustained, specific, structured "
+        "answers, not one good moment — you may loosen briefly: a short "
+        "laugh, one light aside, then back to your questions.\n"
+        "When in doubt, do not loosen. A candidate reads warmth as \"you're "
+        "doing well\", and a false signal is worse than none.\n"
         "\n"
         "# PACING\n"
         f"- The session budget is {plan.time_budget_minutes} minutes.\n"
