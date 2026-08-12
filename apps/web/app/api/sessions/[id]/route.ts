@@ -84,6 +84,7 @@ export async function POST(
   }
   const token = typeof body.token === "string" && body.token !== "" ? body.token : null;
   let session: { package_id: string; index: number };
+  let packageKind: "standard" | "quick";
   if (token !== null) {
     const access = await authorizeSession(token, id);
     if (!access.ok) {
@@ -96,6 +97,7 @@ export async function POST(
       );
     }
     session = access.value.session;
+    packageKind = access.value.pkg.kind ?? "standard";
   } else {
     const viewer = await getViewer();
     if (!viewer) {
@@ -112,18 +114,24 @@ export async function POST(
       );
     }
     session = access.value.session;
+    packageKind = access.value.pkg.kind ?? "standard";
   }
   const audioPath = recordingStoragePath(session.package_id, session.index);
-  // Only a positively observed oversize is refused. An unreadable size fails
-  // open: the interview is over and cannot be redone, so a storage hiccup
-  // must never cost the customer the session they already sat through.
-  const bytes = await storedRecordingBytes(audioPath);
-  if (bytes !== null && bytes > MAX_STORED_RECORDING_BYTES) {
-    console.error(`session complete: recording is ${bytes} bytes, over the cap`);
-    return NextResponse.json(
-      { error: "that recording is too large to score" },
-      { status: 413 },
-    );
+  if (packageKind !== "quick") {
+    // Quick sessions never write a recording, so probing one guarantees a
+    // storage miss and a false error; skipping it keeps the unreadable-size
+    // log meaningful for scored sessions.
+    // Only a positively observed oversize is refused. An unreadable size fails
+    // open: the interview is over and cannot be redone, so a storage hiccup
+    // must never cost the customer the session they already sat through.
+    const bytes = await storedRecordingBytes(audioPath);
+    if (bytes !== null && bytes > MAX_STORED_RECORDING_BYTES) {
+      console.error(`session complete: recording is ${bytes} bytes, over the cap`);
+      return NextResponse.json(
+        { error: "that recording is too large to score" },
+        { status: 413 },
+      );
+    }
   }
   try {
     const result = await completeSession(id, audioPath);

@@ -61,8 +61,49 @@ describe("session route exposes no unauthenticated GET", () => {
 });
 
 describe("POST /api/sessions/[id] complete with the legacy access token", () => {
+  it("completes a quick session without probing storage", async () => {
+    authorizeSession.mockResolvedValue({
+      ok: true,
+      value: { session: SESSION, pkg: { id: SESSION.package_id, kind: "quick" } },
+    });
+    completeSession.mockResolvedValue("accepted");
+    const res = await POST(...completeRequest({ action: "complete", token: "tok-1" }));
+    expect(res.status).toBe(202);
+    expect(list).toHaveBeenCalledTimes(0);
+  });
+
+  it("probes a standard session and refuses an oversize recording", async () => {
+    const errorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+    authorizeSession.mockResolvedValue({
+      ok: true,
+      value: { session: SESSION, pkg: { id: SESSION.package_id, kind: "standard" } },
+    });
+    list.mockResolvedValue({
+      data: [{ metadata: { size: 61 * 1024 * 1024 } }],
+      error: null,
+    });
+    const res = await POST(...completeRequest({ action: "complete", token: "tok-1" }));
+    expect(res.status).toBe(413);
+    expect(list).toHaveBeenCalledTimes(1);
+    errorSpy.mockRestore();
+  });
+
+  it("treats an absent package kind as standard", async () => {
+    authorizeSession.mockResolvedValue({
+      ok: true,
+      value: { session: SESSION, pkg: { id: SESSION.package_id } },
+    });
+    completeSession.mockResolvedValue("accepted");
+    const res = await POST(...completeRequest({ action: "complete", token: "tok-1" }));
+    expect(res.status).toBe(202);
+    expect(list).toHaveBeenCalledTimes(1);
+  });
+
   it("completes with the server-derived storage path", async () => {
-    authorizeSession.mockResolvedValue({ ok: true, value: { session: SESSION } });
+    authorizeSession.mockResolvedValue({
+      ok: true,
+      value: { session: SESSION, pkg: { id: SESSION.package_id } },
+    });
     completeSession.mockResolvedValue("accepted");
     const res = await POST(...completeRequest({ action: "complete", token: "tok-1" }));
     expect(res.status).toBe(202);
@@ -76,7 +117,10 @@ describe("POST /api/sessions/[id] complete with the legacy access token", () => 
 
   it("passes the worker's already-scored refusal through as 409", async () => {
     const errorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
-    authorizeSession.mockResolvedValue({ ok: true, value: { session: SESSION } });
+    authorizeSession.mockResolvedValue({
+      ok: true,
+      value: { session: SESSION, pkg: { id: SESSION.package_id } },
+    });
     completeSession.mockResolvedValue("already-scored");
     const res = await POST(...completeRequest({ action: "complete", token: "tok-1" }));
     expect(res.status).toBe(409);
@@ -122,6 +166,47 @@ describe("POST /api/sessions/[id] complete with viewer ownership (no token)", ()
     expect(authorizeSession).not.toHaveBeenCalled();
   });
 
+  it("completes a quick session without probing storage", async () => {
+    getViewer.mockResolvedValue({ id: "viewer-1", email: null });
+    authorizeViewerSession.mockResolvedValue({
+      ok: true,
+      value: { session: SESSION, pkg: { id: SESSION.package_id, kind: "quick" } },
+    });
+    completeSession.mockResolvedValue("accepted");
+    const res = await POST(...completeRequest({ action: "complete" }));
+    expect(res.status).toBe(202);
+    expect(list).toHaveBeenCalledTimes(0);
+  });
+
+  it("probes a standard session and refuses an oversize recording", async () => {
+    const errorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+    getViewer.mockResolvedValue({ id: "viewer-1", email: null });
+    authorizeViewerSession.mockResolvedValue({
+      ok: true,
+      value: { session: SESSION, pkg: { id: SESSION.package_id, kind: "standard" } },
+    });
+    list.mockResolvedValue({
+      data: [{ metadata: { size: 61 * 1024 * 1024 } }],
+      error: null,
+    });
+    const res = await POST(...completeRequest({ action: "complete" }));
+    expect(res.status).toBe(413);
+    expect(list).toHaveBeenCalledTimes(1);
+    errorSpy.mockRestore();
+  });
+
+  it("treats an absent package kind as standard", async () => {
+    getViewer.mockResolvedValue({ id: "viewer-1", email: null });
+    authorizeViewerSession.mockResolvedValue({
+      ok: true,
+      value: { session: SESSION, pkg: { id: SESSION.package_id } },
+    });
+    completeSession.mockResolvedValue("accepted");
+    const res = await POST(...completeRequest({ action: "complete" }));
+    expect(res.status).toBe(202);
+    expect(list).toHaveBeenCalledTimes(1);
+  });
+
   it("maps a foreign session to 403 without revealing whether it exists", async () => {
     const errorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
     getViewer.mockResolvedValue({ id: "viewer-1", email: null });
@@ -148,7 +233,10 @@ describe("POST /api/sessions/[id] complete with viewer ownership (no token)", ()
 describe("POST /api/sessions/[id] complete enforces the stored recording cap", () => {
   it("refuses to score an oversize recording", async () => {
     const errorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
-    authorizeSession.mockResolvedValue({ ok: true, value: { session: SESSION } });
+    authorizeSession.mockResolvedValue({
+      ok: true,
+      value: { session: SESSION, pkg: { id: SESSION.package_id } },
+    });
     list.mockResolvedValue({
       data: [{ metadata: { size: 61 * 1024 * 1024 } }],
       error: null,
@@ -167,7 +255,10 @@ describe("POST /api/sessions/[id] complete enforces the stored recording cap", (
     // Fail-open on purpose: the interview is already over and cannot be
     // redone, so a storage hiccup must not cost the customer their session.
     const errorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
-    authorizeSession.mockResolvedValue({ ok: true, value: { session: SESSION } });
+    authorizeSession.mockResolvedValue({
+      ok: true,
+      value: { session: SESSION, pkg: { id: SESSION.package_id } },
+    });
     list.mockResolvedValue({ data: null, error: { message: "listing unavailable" } });
     completeSession.mockResolvedValue("accepted");
     const res = await POST(...completeRequest({ action: "complete", token: "tok-1" }));
