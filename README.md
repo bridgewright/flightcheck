@@ -104,7 +104,7 @@ services. There is no root `package.json`, so the `npm` commands run from
 git clone https://github.com/bridgewright/flightcheck.git
 cd flightcheck/apps/web
 npm ci
-npm test              # 2859 tests, 123 files — 8 skip on a fresh clone
+npm test              # 3211 tests, 132 files — 8 skip on a fresh clone
 npm run dev           # http://localhost:3000
 ```
 
@@ -125,7 +125,7 @@ The scoring worker and the eval harness are Python, from `services/scorer`:
 
 ```bash
 cd flightcheck/services/scorer
-uv run pytest -q      # 1185 tests
+uv run pytest -q      # 1229 tests
 ```
 
 The rest of the release gate, each from the directory named: `npm run
@@ -148,7 +148,7 @@ other, on 2026-08-03.
 Architecture detail (data flow, storage layout): [docs/architecture.md](docs/architecture.md).
 Deploy runbook: [docs/deploy.md](docs/deploy.md).
 
-> **Status: v0.13.** Built in public. PRD was committed before the first line of code — [read it](PRD.md); the chronology is checkable below rather than asserted. The S2S provider bake-off that picked the interviewer and scoring models is measured, not guessed ([report](evals/reports/2026-08-02-provider-bakeoff.md)); the release-gate eval numbers are committed verbatim, including the runs that failed ([2026-08-03 v0.5 gate](evals/reports/2026-08-03-v05-gate.md), [2026-08-01 gate record](evals/reports/2026-08-01-v02-gate.md), [2026-07-26 gate run](evals/reports/2026-07-26-v01-gate.md)). Sample sizes in those gates are tiny and each report says so.
+> **Status: v0.14.** Built in public. PRD was committed before the first line of code — [read it](PRD.md); the chronology is checkable below rather than asserted. The S2S provider bake-off that picked the interviewer and scoring models is measured, not guessed ([report](evals/reports/2026-08-02-provider-bakeoff.md)); the release-gate eval numbers are committed verbatim, including the runs that failed ([2026-08-03 v0.5 gate](evals/reports/2026-08-03-v05-gate.md), [2026-08-01 gate record](evals/reports/2026-08-01-v02-gate.md), [2026-07-26 gate run](evals/reports/2026-07-26-v01-gate.md)). Sample sizes in those gates are tiny and each report says so.
 
 ### Verify the PRD-before-code claim yourself
 
