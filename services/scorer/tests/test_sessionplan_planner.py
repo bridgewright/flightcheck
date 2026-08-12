@@ -1,6 +1,7 @@
 """Tests for scorer.sessionplan.planner -- deterministic planning, no LLM."""
 import hashlib
 import json
+import re
 from pathlib import Path
 from types import SimpleNamespace
 
@@ -700,6 +701,31 @@ def test_company_context_preserves_the_company_casing_exactly():
         plan_baseline_session(rubric), rubric, _make_profile())
     assert "You are interviewing on behalf of dbt Labs." in text
     assert "Dbt Labs" not in text
+    # Ampersands and non-ASCII survive the interpolation untouched too —
+    # real company names carry both.
+    for company in ("McKinsey & Company", "Ötztal GmbH"):
+        rubric = _make_rubric().model_copy(update={"company": company})
+        text = build_interviewer_instructions(
+            plan_baseline_session(rubric), rubric, _make_profile())
+        assert f"You are interviewing on behalf of {company}. When you react" in text
+
+
+def test_warmth_window_and_pressure_moment_share_one_midpoint_anchor():
+    # DECISIONS 064: the warmth window opens past the same mid-session
+    # anchor the pressure moment sits at — one midpoint, computed once.
+    # The byte pin cannot hold this line: it is legitimately recomputed
+    # whenever the render changes, so a drift between the two anchors
+    # would ride along with any real edit. Pin their equality directly,
+    # at every session index a six-session package reaches.
+    for session_index in (1, 2, 3, 4, 5, 6):
+        rubric = _make_rubric()
+        text = build_interviewer_instructions(
+            plan_baseline_session(rubric, session_index=session_index),
+            rubric, _make_profile())
+        pressure = re.search(r"around question (\d+)", text)
+        warmth = re.search(r"Once you are past question (\d+)", text)
+        assert pressure is not None and warmth is not None
+        assert pressure.group(1) == warmth.group(1) == "3"
 
 
 def test_instructions_open_by_speaking_first_with_time_and_areas():
