@@ -4,6 +4,11 @@ import { fileURLToPath } from "node:url";
 
 import { describe, expect, it } from "vitest";
 
+import {
+  PALETTE as COOKED_PALETTE,
+  PROP as COOKED_PROP,
+  cookedRules,
+} from "./scan/cooked-rules";
 import { cookedStrings } from "./scan/cooked";
 
 // The gate the F-21 spec asked for, and the one the batch did not actually
@@ -312,34 +317,35 @@ describe("every screen speaks the token vocabulary", () => {
 });
 
 describe("the scans read cooked strings, not spellings", () => {
-  function cookedOffenders(file: string, source: string): string[] {
-    const raw = new RegExp(`\\b(?:${PROP})-(?:${PALETTE})-\\d{2,3}\\b`);
-    const bare = new RegExp(`\\b(?:${PROP})-(?:white|black)\\b`);
-    const colourRules = [
-      raw,
-      bare,
-      /\bdark:/,
-      /^\s*#[0-9a-fA-F]{3,8}\s*$/,
-      /\[#[0-9a-fA-F]{3,8}\]/,
-      /\b(?:rgb|hsl|oklch|oklab)a?\(/,
-    ];
-    const rules = [
-      ...(COLOUR_EXEMPT(file) ? [] : colourRules),
-      /\bbg-(?:gradient|linear|radial|conic)\b/,
-      /-\[(?:[a-z-]+:)?(?:repeating-)?(?:linear|radial|conic)-gradient/,
-      /^(?:backgroundImage|background-image)$/,
-      ...(file in DASH_EXEMPT ? [] : [/[—–]/]),
-      /\btext-\[\d+(?:\.\d+)?px\]/,
-    ];
+  // What the pass below actually read. A gate that quietly stops gating is this
+  // suite's oldest failure mode, and an it.each over a shorter list is its
+  // cheapest form: the checks vanish with the tests they generated, and a run
+  // reporting 179 fewer tests still says PASS.
+  const scanned: string[] = [];
 
+  function cookedOffenders(file: string, source: string): string[] {
+    const rules = cookedRules({ colour: COLOUR_EXEMPT(file), dash: file in DASH_EXEMPT });
     return cookedStrings(source, file)
       .filter(({ value }) => rules.some((rule) => rule.test(value)))
       .map(({ value, line }) => `${file}:${line}: ${JSON.stringify(value).slice(0, 110)}`);
   }
 
+  it("runs the same vocabulary the per-line rules do", () => {
+    // cooked-rules.ts holds the second copy so the corpus can import it. Equal
+    // by gate, not by luck.
+    expect(COOKED_PALETTE).toBe(PALETTE);
+    expect(COOKED_PROP).toBe(PROP);
+  });
+
   it.each(FILES)("%s has no forbidden cooked value", (file) => {
+    scanned.push(file);
     const source = readFileSync(join(webRoot, file), "utf8");
     expect(cookedOffenders(file, source)).toEqual([]);
+  });
+
+  // Reads what the tests above recorded, so it has to follow them in file order.
+  it("ran the cooked pass over every file the walk found", () => {
+    expect([...scanned].sort()).toEqual([...FILES].sort());
   });
 
   it("parses a non-trivial set of strings from the real home page", () => {
