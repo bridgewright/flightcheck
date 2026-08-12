@@ -19,6 +19,60 @@ export interface CookedString {
  */
 const UNKNOWN = " ";
 
+/**
+ * The named character references the JSX compiler decodes AND a rule reads.
+ *
+ * `<p>a &mdash; b</p>` ships a real em dash: the reference is resolved by the
+ * JSX transform, so the em-dash gate saw `&mdash;`, found no dash, and passed a
+ * sentence that reaches the reader with one. Both scans missed it — the per-line
+ * pass reads the same raw text this one did — and `className="bg&#45;red&#45;500"`
+ * is the same escape pointed at the palette rule.
+ *
+ * The set is short because it is complete against the rules rather than against
+ * HTML: a reference the compiler resolves to a character no rule reads cannot
+ * change a verdict, which is why the ones this product actually writes —
+ * `&apos;`, `&rsquo;`, `&ldquo;`, `&rdquo;`, `&hellip;`, `&amp;` — are
+ * deliberately absent. That the product spells its typography this way is also
+ * why the gap is worth closing: an author following the house convention who
+ * wants a dash writes `&mdash;`, and nothing was reading it.
+ *
+ * Which references the compiler resolves was read off the production bundle
+ * rather than assumed, and the punctuation names are NOT resolved by it —
+ * `&num;`, `&colon;`, `&period;`, `&lbrack;`, `&rbrack;`, `&lpar;`, `&hyphen;`,
+ * `&sol;`, `&dash;` and `&lowbar;` all ship verbatim — so decoding them here
+ * would report characters the reader never receives. The numeric form of every
+ * one of them is covered below, which is the half that can spell anything.
+ */
+const NAMED_REFERENCES: Record<string, string> = {
+  mdash: "—",
+  ndash: "–",
+  // Matched by `\s`, which the whole-value hex rule anchors on.
+  nbsp: " ",
+};
+
+/**
+ * Numeric references are decoded in full, since one can spell any character —
+ * `&#45;` is the hyphen that rebuilds `bg-red-500`. An out-of-range code point
+ * is left verbatim rather than thrown, because this runs over real source and a
+ * scan that crashes on a typo is a scan nobody can leave in the gate.
+ */
+function decodeReferences(text: string): string {
+  return text.replace(
+    /&(?:#[xX]([0-9a-fA-F]+)|#(\d+)|([a-zA-Z][a-zA-Z0-9]*));/g,
+    (reference, hex: string | undefined, decimal: string | undefined, name: string | undefined) => {
+      if (hex !== undefined) return fromCodePoint(parseInt(hex, 16)) ?? reference;
+      if (decimal !== undefined) return fromCodePoint(Number(decimal)) ?? reference;
+      return (name !== undefined ? NAMED_REFERENCES[name] : undefined) ?? reference;
+    },
+  );
+}
+
+function fromCodePoint(value: number): string | undefined {
+  return Number.isInteger(value) && value >= 0 && value <= 0x10ffff
+    ? String.fromCodePoint(value)
+    : undefined;
+}
+
 export function cookedStrings(source: string, fileName?: string): CookedString[] {
   const name = fileName ?? "scan.tsx";
   const sourceFile = ts.createSourceFile(
@@ -48,9 +102,12 @@ export function cookedStrings(source: string, fileName?: string): CookedString[]
 
   function fold(node: ts.Node): string | undefined {
     if (ts.isStringLiteral(node) || ts.isNoSubstitutionTemplateLiteral(node)) {
-      return node.text;
+      // A JSX attribute's string value is decoded by the compiler; an ordinary
+      // string is not, and neither is a template inside `{…}`. Decoding those
+      // would report a class that matches nothing as a raw palette utility.
+      return isJsxAttributeValue(node) ? decodeReferences(node.text) : node.text;
     }
-    if (ts.isJsxText(node)) return node.text;
+    if (ts.isJsxText(node)) return decodeReferences(node.text);
     if (ts.isParenthesizedExpression(node)) return fold(node.expression);
     if (ts.isTemplateExpression(node)) {
       return node.templateSpans.reduce(
@@ -105,6 +162,11 @@ export function cookedStrings(source: string, fileName?: string): CookedString[]
       return expression.argumentExpression.text;
     }
     return undefined;
+  }
+
+  function isJsxAttributeValue(node: ts.Node): boolean {
+    const { parent } = node;
+    return parent !== undefined && ts.isJsxAttribute(parent) && parent.initializer === node;
   }
 
   function foldedByParent(node: ts.Node): boolean {

@@ -40,6 +40,14 @@ const POSITIVES: [source: string, why: string][] = [
   ['const g = "bg-[image:linear" + "-gradient(red,blue)]";', "arbitrary gradient value"],
   ['const c = "bg-\\u0072ed-500";', "unicode escape within token"],
   ['const c = "bg-re\\x64-500";', "hex escape within token"],
+  ["const v = <p>a &mdash; b</p>;", "named character reference in JSX text"],
+  ["const v = <p>a &#8212; b</p>;", "decimal character reference in JSX text"],
+  ["const v = <p>a &#x2014; b</p>;", "hex character reference in JSX text"],
+  ['const v = <p title="a &ndash; b">x</p>;', "character reference in a JSX attribute"],
+  [
+    'const v = <p className="bg&#45;red&#45;500">x</p>;',
+    "palette token assembled from character references",
+  ],
 ];
 
 const NEGATIVES: [source: string, why: string][] = [
@@ -48,6 +56,18 @@ const NEGATIVES: [source: string, why: string][] = [
   ['const c = `bg-red${suffix}-500`;', "unknown fragment splitting a token"],
   ['const t = "text-ink/60";', "product token"],
   ['const j = parts.join("-") + "x";', "non-literal junction"],
+  // The boundary of the entity decoding above, verified against the production
+  // bundle rather than assumed: only JSX text and JSX attribute STRING values
+  // are decoded by the compiler. A plain string and an expression container keep
+  // the reference verbatim, so `bg&#45;red&#45;500` is a class that matches
+  // nothing rather than a raw palette utility, and reporting it would be a
+  // false positive.
+  ['const c = "bg&#45;red&#45;500";', "character reference in a plain string"],
+  [
+    "const v = <p className={`bg&#45;red&#45;500`}>x</p>;",
+    "character reference inside an expression container",
+  ],
+  ["const v = <p>a &notarealentity; b</p>;", "unknown named reference"],
 ];
 
 describe("cooked string scan corpus", () => {
