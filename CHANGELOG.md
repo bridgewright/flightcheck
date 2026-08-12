@@ -2,6 +2,11 @@
 
 ## [0.14.0] — 2026-08-13
 
+> Disclosure, so rule ⑦ stays checkable: flightcheck still has no
+> external users at this tag. The closed beta's shared code ships
+> here, minted and live, but has not been distributed; every session
+> behind these claims was run by the operator.
+
 ### Added
 
 - **A closed beta opens on one shared access code.** Sign in, enter
@@ -28,6 +33,73 @@
   verified by toggling, and pinned in the suite so it cannot be
   dropped silently. The session room is deliberately excluded.
   DECISIONS 063.
+
+- **The interviewer starts acting like one, not only sounding like
+  one.** Three instruction-driven behaviors, all grounded in what the
+  package already knows and none of them a new model call: commentary
+  aware of the company and role the rubric actually carries — and
+  nothing else, never an invented team fact; reactions that engage
+  the substance of the candidate's last answer before moving on; and
+  a wrap-up whose register reflects how the interview actually went,
+  never a verdict or a score. Plus adaptive warmth: past the
+  session's midpoint, when the candidate has clearly been answering
+  strongly, the interviewer may loosen briefly, then return to
+  questions; in doubt, the professional register holds. The one line
+  never crossed: adaptivity changes WHAT is said, never WHEN the
+  session ends — the paid budget, the closing window, and the exact
+  closing sentence stay exactly as gated, and quick interviews are
+  untouched. DECISIONS 064.
+
+### Changed
+
+- **The product lives at its own address.** `https://flightcheck.coach`
+  is the canonical origin: one constant flipped, and every canonical
+  URL, OG image, sitemap and robots line derived from it as they
+  always did; the vercel.app address keeps serving and redirects
+  path-preserving so no existing link breaks; the auth provider's
+  redirect allowlist learned the new origin BEFORE the flip deployed;
+  the site is verified in Google Search Console with its sitemap
+  submitted. Historical records keep the address they shipped with —
+  they describe the past, and the past happened there. DECISIONS 065.
+
+### Fixed
+
+- **Fallback interview questions read like an interviewer wrote
+  them.** Against a real rubric, the generated fallback said "ai
+  product strategy & judgment" with a lowercased acronym and a spoken
+  ampersand, then appended the raw signal string — label prefix,
+  forty-word elaboration, doubled period and all. Names keep their
+  acronyms and speak "&" as "and"; signals lose their label prefix
+  and trailing punctuation and are cut to one speakable clause; and
+  the exact output is pinned against the committed real rubric's
+  sentences instead of tidy fixtures. Pasted-JD no-break spaces
+  cannot defeat the rules, and the whitespace collapse runs last so a
+  parenthetical-headed signal is cut rather than spoken — both
+  findings of this batch's own two review rounds, the second on the
+  first's fix. DECISIONS 067.
+
+- **A quick interview's ending stops probing a recording that cannot
+  exist.** The complete route asked storage for a recording size on
+  every session, including the quick kind that never records, and
+  logged an error on that happy path — a real oversize failure was
+  indistinguishable from a normal quick ending. The probe now runs
+  only for sessions that can carry a recording, on both credential
+  paths, proven by reverting the skip and watching the tests go red.
+  The unreadable-size error log means something again. DECISIONS 068.
+
+- **The design-token gate reads what code says, not how it spells
+  it.** A palette class split across string fragments walked every
+  scan twice in one review round, so the gate gains a cooked pass:
+  every scanned file is parsed with the TypeScript compiler, constant
+  concatenations are folded, escapes and character codes and the HTML
+  character references JSX decodes are resolved, and the rules run
+  over the values the code actually emits. A self-test corpus of two
+  dozen known evasions is the contract — the gate fails its own suite
+  unless it catches every one — with the rules in one shared module
+  so the corpus can never prove a private copy. Three of the four
+  prescribed weaken-the-scan mutations survived the first delivered
+  version; the review rounds killed all of them, which is the reason
+  the corpus and the drift gates exist. DECISIONS 066.
 
 ## [0.13.0] — 2026-08-10
 

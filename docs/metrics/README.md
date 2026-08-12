@@ -1,12 +1,12 @@
 # docs/metrics/
 
-**Last reviewed: 2026-08-10, at the `v0.13.0` tag.** This directory is the doc
+**Last reviewed: 2026-08-13, at the `v0.14.0` tag.** This directory is the doc
 of record for real-user numbers; if the date on that line is older than the
 newest release in `CHANGELOG.md`, treat everything below as unverified. Silent
 staleness here is a demonstrated failure mode, not a hypothetical one — see the
 note at the bottom.
 
-**v0.1 through v0.13 all ship with zero external users.** Every session that
+**v0.1 through v0.14 all ship with zero external users.** Every session that
 exists — including the one behind the public sample report, and the sessions
 this cycle's release notes call "the customer's" (the operator in the customer
 seat, disclosed there) — was run by the developer (N=1), so no usage,
@@ -91,7 +91,7 @@ the deliberate floor before the interviewer may speak dropped from ~2.1 s to
 the code intends, not a measurement — but the PRD's ≤ 800 ms target is now
 contradicted by ~1.5 s of design rather than ~2.1 s.
 
-| Number | State at the v0.13 tag |
+| Number | State at the v0.14 tag |
 | --- | --- |
 | Sessions run · completion rate | **Computed, and withheld for want of a sample.** `compute_usage` derives it from `sessions.status` (`scored` + `insufficient`) over the sessions that opened a room (`sessions.secret_mints`), the endpoint serves it, and the report renders it against the ≥ 85% target with its counts beside it. Nothing is missing except users: run today it is a self-test statistic |
 | First-response latency, p50 | **Not instrumented, on purpose, and published as such.** The only latency the product records is `avg_response_latency_s` in the delivery channel, which times the *candidate's* side of a turn and is a mean — so it cannot stand in for the PRD's interviewer-side p50. The endpoint returns `None` for this metric with that reason attached, and the report prints "not instrumented" rather than a dash |
@@ -110,6 +110,10 @@ CBT participants are real external users. Their sessions count as real usage
 under impression rule ⑦, unlike the operator's comped runs and the disclosed
 synthetic row. Their packages are non-revenue and are counted separately as
 CBT packages in the usage payload.
+
+Current fact, as of the v0.14.0 tag: the shared code is minted and live, but
+it has not been distributed. Zero CBT participants exist and no CBT session
+has been run — the paragraph above is policy, not yet data.
 
 ---
 
