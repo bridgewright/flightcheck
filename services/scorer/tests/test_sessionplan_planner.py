@@ -693,6 +693,21 @@ def test_company_context_speaks_a_padded_company_trimmed():
     assert "You are interviewing on behalf of dbt Labs. When you react" in text
 
 
+def test_company_absence_boundary_is_whitespace_exactly_as_f54_trims():
+    # The boundary pins to the F-54 precedent exactly: what packageCompanyLine's
+    # JS trim() keeps, this strip() keeps. A punctuation-only company is a
+    # real, if odd, name and renders; so does a zero-width space (U+200B),
+    # which neither trim() nor strip() treats as whitespace. Narrowing the
+    # boundary here alone would make the web card and the interviewer
+    # disagree about the same package — change both surfaces together or
+    # neither.
+    for company in ("-", "\u200b"):  # escaped on purpose: no invisible source literal
+        rubric = _make_rubric().model_copy(update={"company": company})
+        text = build_interviewer_instructions(
+            plan_baseline_session(rubric), rubric, _make_profile())
+        assert f"You are interviewing on behalf of {company}. When you react" in text
+
+
 def test_company_context_preserves_the_company_casing_exactly():
     # The F-85 lesson: the stored string is spoken as stored — no .lower(),
     # no re-cased fragments.
