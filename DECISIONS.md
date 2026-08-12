@@ -2625,3 +2625,47 @@ wrap-up versus the paid-session promise.
   interviews (tighten the bar or pull the lever back), or customers
   read company-aware commentary as claiming inside knowledge the
   product does not have (then the framing language narrows further).
+
+## 065 — flightcheck.coach: the domain that was buyable, honestly (2026-08-12)
+
+**Context.** F-79 asked for a custom domain. The purchase is the
+owner's money, so every fork below was theirs, decided with prices on
+the table.
+
+- **Chosen — flightcheck.coach, $19.99 first year, renews at $59.**
+  Bought 2026-08-12 through Vercel (registrant: the owner), Vercel
+  DNS, connected to the production project the same hour.
+  **Auto-renew deliberately OFF** (owner decision): the renewal is a
+  yearly decision at the then-current price, not a default — expiry
+  2027-08-12 is on the calendar, not on a card.
+- **Rejected — flightcheck.io (the owner's first choice):** registered
+  since 2020, parked at an aftermarket with "Make an Offer" pricing —
+  typically hundreds to thousands of dollars and a weeks-long
+  transfer. Not worth it for a pre-revenue product; the owner passed
+  on even inquiring.
+- **Rejected — getflightcheck.com / prefix .coms:** cheapest .com
+  trust ($11/yr), but the owner rejected the prefix pattern outright —
+  the product's name is flightcheck, not getflightcheck.
+- **Rejected — flightcheck.tech and the rest of the available field:**
+  .tech reads startup-generic; .careers/.academy/.training are long or
+  off-register. .coach won on the merits: the product IS an interview
+  coach, and the TLD says so in one word. The known cost — new-gTLD
+  TLDs carry a mild trust discount on payment pages versus .com/.io —
+  is accepted and revisitable.
+- **Process lesson, recorded for the next research task:** the
+  availability research used rdap.org, whose .io coverage returns 404
+  for REGISTERED domains — the "buy flightcheck.io" recommendation
+  was wrong at the moment it was made, caught only at purchase time
+  by Vercel's registrar-grade check. Availability claims must come
+  from a registrar check or the registry's own RDAP endpoint, never
+  rdap.org alone.
+- **Cutover posture:** flightcheck.coach is the canonical origin
+  (`SITE_URL`); the vercel.app address keeps serving and redirects so
+  nothing breaks; canonicals/OG/sitemap/robots all derive from the
+  constant; historical documents keep the address they shipped with.
+  The auth redirect allowlist gains the new origin BEFORE the flip
+  deploys — a login that bounces off an unlisted origin is the
+  classic cutover self-inflicted outage.
+- **Revisit when:** checkout metrics ever suggest TLD-trust friction
+  (then the .com hedge gets bought), or flightcheck.io returns to a
+  sane price (the brand-exact upgrade path stays open).
