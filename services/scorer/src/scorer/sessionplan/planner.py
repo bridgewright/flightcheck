@@ -19,6 +19,10 @@ only: company-aware commentary grounded in the rubric's own facts,
 substance-engaged transitions, spare-time spending, an adaptive wrap-up
 register, and conservatively-triggered warmth. Adaptivity changes WHAT
 is said, never WHEN the session ends; the quick render stays pinned.
+v0.27 (F-94, DECISIONS 077): dimensions with probing_mode "indirect" are
+never minted a main question, never open the session's area framing, and
+are never the pressure-probe target -- they are read through follow-ups
+and scored from the whole transcript.
 
 Both functions are pure: same input, same output. No model call, no
 randomness, no clock.
@@ -318,7 +322,11 @@ def plan_baseline_session(
     history: Sequence[SessionHistoryRow] = (),
     profile: CandidateProfile | None = None,
 ) -> SessionPlan:
-    """Deterministic baseline plan covering every rubric dimension at least once."""
+    """Deterministic baseline plan covering every DIRECT dimension at least once.
+
+    Indirect dimensions (F-94) stay in the rubric and in scoring, but get
+    no main question here and never take the pressure probe.
+    """
     latest_scores = _latest_scores(history)
     # sorted() is stable: equal scores and weights keep their rubric order.
     ordered = sorted(
@@ -332,6 +340,12 @@ def plan_baseline_session(
     asked = _asked_question_texts(history)
     sequence: list[QuestionSpec] = []
     for dimension in ordered:
+        if dimension.probing_mode == "indirect":
+            # F-94 (DECISIONS 077): an indirect dimension is read through
+            # follow-ups and scored from the whole transcript. It is never
+            # minted a main question, which also keeps it out of the
+            # opening area list (_area_list reads the planned sequence).
+            continue
         remaining = [
             question for question in rubric.question_bank
             if question.dimension_key == dimension.key and question.question not in asked
@@ -342,11 +356,19 @@ def plan_baseline_session(
             sequence.append(_fit_question(profile, rubric, session_index, asked))
         else:
             sequence.append(_generated_question(dimension, session_index, asked))
-    content_dims = [dim for dim in ordered if dim.channel == "content"]
+    # F-94 / D6 focus protection: the pressure probe targets DIRECT content
+    # dimensions only. A low-scored indirect dimension must never eat a paid
+    # session's focus -- the production failure this batch exists to close.
+    direct_dims = [dim for dim in ordered if dim.probing_mode != "indirect"]
+    content_dims = [dim for dim in direct_dims if dim.channel == "content"]
     scored_content = [dim for dim in content_dims if dim.key in latest_scores]
     pressure_target = min(
         scored_content, key=lambda dim: (latest_scores[dim.key], -dim.weight)
-    ) if scored_content else content_dims[0] if content_dims else ordered[0]
+    ) if scored_content else (
+        content_dims[0] if content_dims
+        else direct_dims[0] if direct_dims
+        else ordered[0]
+    )
     pressure_probe = QuestionSpec(
         dimension_key=pressure_target.key,
         question=_PRESSURE_PROBES[(session_index - 1) % len(_PRESSURE_PROBES)][0],

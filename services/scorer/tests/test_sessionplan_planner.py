@@ -496,6 +496,115 @@ def test_degenerate_signal_omits_interest_sentence():
     )
 
 
+def _rubric_with_indirect_dimension() -> Rubric:
+    """The governed shape: one peripheral dimension, already indirect."""
+    indirect = _dim("ai-safety-and-mission-alignment",
+                    "AI Safety and Mission Alignment", "content", 0.1)
+    indirect = indirect.model_copy(update={"probing_mode": "indirect"})
+    banked_for_indirect = QuestionSpec(
+        dimension_key="ai-safety-and-mission-alignment",
+        question="A banked question an indirect dimension must never surface.",
+        probes=[],
+        source="research-sweep",
+    )
+    return Rubric(
+        role_title="Forward Deployed Product Manager",
+        company="ExampleCo",
+        dimensions=[
+            _dim("structured-answers", "Structured answers", "content", 0.2),
+            _dim("quantified-impact", "Quantified impact", "content", 0.3),
+            indirect,
+            _dim("pacing-control", "Pacing control", "delivery", 0.35),
+            _dim("composure", "Composure", "delivery", 0.05, signals=[]),
+        ],
+        question_bank=[banked_for_indirect],
+        research_summary="Synthetic governed rubric for planner tests.",
+    )
+
+
+def test_indirect_dimensions_are_never_minted_a_main_question():
+    plan = plan_baseline_session(_rubric_with_indirect_dimension())
+    keys = [q.dimension_key for q in plan.question_sequence]
+    assert "ai-safety-and-mission-alignment" not in keys
+    # Every DIRECT dimension is still covered, in descending-weight order.
+    assert keys == [
+        "pacing-control",
+        "quantified-impact",
+        "structured-answers",
+        "composure",
+    ]
+
+
+def test_indirect_dimensions_never_reach_the_opening_area_list():
+    rubric = _rubric_with_indirect_dimension()
+    plan = plan_baseline_session(rubric)
+    text = build_interviewer_instructions(plan, rubric, _make_profile())
+    assert "ai safety and mission alignment" not in text.lower()
+    assert "touching on things like pacing control and quantified impact." in text
+
+
+def test_lowest_scored_indirect_dimension_never_eats_the_session_focus():
+    # The exact production failure (DECISIONS 077): "AI Safety and Mission
+    # Alignment 2.6, the lowest of your 8 dimensions. This session focuses
+    # there" -- compile-time inflation amplified by the F-83 focus-weakest
+    # mechanism into a spent paid session. With the indirect dimension
+    # scored LOWEST, the targeted emphasis and the pressure probe must both
+    # land on the lowest DIRECT dimension instead.
+    rubric = _rubric_with_indirect_dimension()
+    history = _scored_history({
+        "ai-safety-and-mission-alignment": 2.6,
+        "structured-answers": 3.1,
+        "quantified-impact": 4.2,
+        "pacing-control": 3.8,
+        "composure": 4.0,
+    })
+    plan = plan_baseline_session(rubric, session_index=2, history=history)
+    assert plan.focus == "targeted"
+    # The weakest-first emphasis opens on the lowest DIRECT dimension.
+    assert plan.question_sequence[0].dimension_key == "structured-answers"
+    # The pressure probe targets the lowest direct CONTENT dimension.
+    assert plan.pressure_probe.dimension_key == "structured-answers"
+    assert all(q.dimension_key != "ai-safety-and-mission-alignment"
+               for q in plan.question_sequence)
+
+
+def test_pressure_probe_skips_an_indirect_dimension_even_at_top_weight():
+    rubric = Rubric(
+        role_title="Forward Deployed Product Manager",
+        company="ExampleCo",
+        dimensions=[
+            _dim("safety-stewardship", "Safety stewardship", "content", 0.5)
+            .model_copy(update={"probing_mode": "indirect"}),
+            _dim("role-knowledge", "Role knowledge", "content", 0.2),
+            _dim("pacing-control", "Pacing control", "delivery", 0.3),
+        ],
+        question_bank=[],
+        research_summary="Synthetic governed rubric for planner tests.",
+    )
+    plan = plan_baseline_session(rubric)
+    assert plan.pressure_probe.dimension_key == "role-knowledge"
+
+
+def test_a_rubric_whose_only_content_dimension_is_indirect_still_plans():
+    # Defensive degenerate: allocation and the pressure probe fall back to
+    # the direct delivery dimension rather than crashing or targeting the
+    # indirect one.
+    rubric = Rubric(
+        role_title="Forward Deployed Product Manager",
+        company="ExampleCo",
+        dimensions=[
+            _dim("safety-stewardship", "Safety stewardship", "content", 0.6)
+            .model_copy(update={"probing_mode": "indirect"}),
+            _dim("pacing-control", "Pacing control", "delivery", 0.4),
+        ],
+        question_bank=[],
+        research_summary="Synthetic governed rubric for planner tests.",
+    )
+    plan = plan_baseline_session(rubric)
+    assert [q.dimension_key for q in plan.question_sequence] == ["pacing-control"]
+    assert plan.pressure_probe.dimension_key == "pacing-control"
+
+
 def test_pressure_probe_targets_highest_weight_content_dimension():
     plan = plan_baseline_session(_make_rubric())
     # pacing-control has the highest weight overall but is delivery-channel;
