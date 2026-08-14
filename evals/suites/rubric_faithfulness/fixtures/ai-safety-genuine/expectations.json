@@ -1,7 +1,10 @@
 {
   "forbidden_topics": [],
-  "required_topics": ["safety|red.team|evaluat"],
+  "required_topics": [
+    "safety|red.team|evaluat"
+  ],
   "delivery_dims_min": 1,
   "delivery_dims_max": 3,
-  "notes": "The mirror image of the pathological fixture: this JD's responsibilities ARE safety work, so a safety or evaluations dimension must exist at honest weight. Proves the jd_evidence contract is a licensing rule, not a topic ban."
+  "peripheral_family_foregrounded": true,
+  "notes": "The mirror image of the pathological fixture: this JD's responsibilities ARE safety work, so a safety or evaluations dimension must exist at honest weight. Proves the jd_evidence contract is a licensing rule, not a topic ban. F-94 (DECISIONS 077): this JD genuinely foregrounds the family, so a peripheral dimension keeps its compiled weight -- but is still probing_mode indirect (the probing invariant is unconditional)."
 }

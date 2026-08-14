@@ -26,6 +26,12 @@ add. Every CHECK, however, is deterministic given the compile output:
 * **behavior** -- per-fixture expectations.json: no dimension in either
   channel matches a forbidden topic, every required topic matches at least
   one dimension, and the delivery-channel count stays in its band.
+* **governance** (F-94, DECISIONS 077) -- every content dimension matching
+  the peripheral ethics/safety family carries probing_mode "indirect", and
+  when the fixture declares the family not-foregrounded
+  (expectations.json: "peripheral_family_foregrounded": false) each such
+  dimension's weight also respects the 0.10 cap. A fixture declaring it
+  foregrounded (ai-safety-genuine) is the indirect-but-uncapped case.
 
 A compile refusal (RubricCompileError) is a named fixture failure, never a
 crash: the pathological JD is a paying user's JD, and the product must
@@ -44,6 +50,7 @@ from pathlib import Path
 from scorer.config import load_product_config
 from scorer.promptsafe import neutralize_markers
 from scorer.rubric.compiler import RubricCompileError, compile_rubric
+from scorer.rubric.governance import PERIPHERAL_WEIGHT_CAP, is_peripheral_dimension
 from scorer.schemas import CandidateProfile, GenAIClientLike, ResearchFindings, Rubric
 
 
@@ -117,6 +124,33 @@ def _behavior_problems(rubric: Rubric, expectations: dict) -> list[str]:
     return problems
 
 
+def _governance_problems(rubric: Rubric, expectations: dict) -> list[str]:
+    """F-94 checks, deterministic given the compile output.
+
+    The probing invariant is unconditional: a peripheral content dimension
+    is always "indirect" on a freshly compiled rubric, whatever the JD
+    says. The weight cap is conditional and needs the fixture to declare
+    the family not-foregrounded -- the runner never re-derives the
+    emphasis heuristic here, because the fixture's declaration is the
+    expectation under test, not the mechanism that produces it.
+    """
+    problems: list[str] = []
+    foregrounded = expectations.get("peripheral_family_foregrounded")
+    for dim in rubric.dimensions:
+        if not is_peripheral_dimension(dim):
+            continue
+        if dim.probing_mode != "indirect":
+            problems.append(
+                f"peripheral dimension '{dim.key}' must carry probing_mode "
+                f"'indirect', got '{dim.probing_mode}'")
+        if foregrounded is False and dim.weight > PERIPHERAL_WEIGHT_CAP + 1e-6:
+            problems.append(
+                f"peripheral dimension '{dim.key}' weight {dim.weight} "
+                f"exceeds the {PERIPHERAL_WEIGHT_CAP} cap on a JD that does "
+                "not foreground the family")
+    return problems
+
+
 def run_faithfulness_suite(suite_dir: Path,
                            client: GenAIClientLike) -> dict | None:
     """Compile every committed fixture live and check the output deterministically.
@@ -164,10 +198,12 @@ def run_faithfulness_suite(suite_dir: Path,
             processed_jd = neutralize_markers(jd_text[:jd_limit])
             problems.extend(_machinery_problems(rubric, processed_jd))
             problems.extend(_behavior_problems(rubric, expectations))
+            problems.extend(_governance_problems(rubric, expectations))
             dimensions = [
                 {"key": dim.key, "channel": dim.channel, "weight": dim.weight,
                  "license": dim.license,
-                 "has_jd_evidence": bool(dim.jd_evidence)}
+                 "has_jd_evidence": bool(dim.jd_evidence),
+                 "probing_mode": dim.probing_mode}
                 for dim in rubric.dimensions
             ]
 

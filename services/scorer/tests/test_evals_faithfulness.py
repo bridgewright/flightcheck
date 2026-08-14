@@ -40,7 +40,8 @@ _CITATION = {
 
 
 def _dim(key: str, name: str, channel: str, weight: float,
-         jd_evidence: str | None = None) -> dict:
+         jd_evidence: str | None = None,
+         probing_mode: str = "direct") -> dict:
     return {
         "key": key,
         "name": name,
@@ -54,6 +55,7 @@ def _dim(key: str, name: str, channel: str, weight: float,
         "signals": ["named specifics"],
         "citations": [_CITATION],
         "jd_evidence": jd_evidence,
+        "probing_mode": probing_mode,
     }
 
 
@@ -64,9 +66,13 @@ def _safety_rubric() -> dict:
         "role_title": "Product Manager, Safety Evaluations",
         "company": "Windrose Research",
         "dimensions": [
+            # A faithful compile is a GOVERNED compile (F-94): the
+            # peripheral safety dimension carries probing_mode indirect,
+            # at the honest uncapped weight this JD licenses.
             _dim("safety-eval-ownership", "Safety evaluation suite ownership",
                  "content", 0.25,
-                 "Own the roadmap for the safety evaluation suite: red-teaming harnesses,"),
+                 "Own the roadmap for the safety evaluation suite: red-teaming harnesses,",
+                 probing_mode="indirect"),
             _dim("red-teaming-program-design", "Red-teaming program design",
                  "content", 0.2,
                  "Design red-teaming programs with our customers' safety teams"),
@@ -225,6 +231,19 @@ class TestTheCommittedCorpus:
                 re.compile(pattern)  # every expectation is a valid regex
             assert 1 <= expectations["delivery_dims_min"] <= expectations["delivery_dims_max"]
 
+    def test_the_governance_expectations_are_declared_where_f94_needs_them(self):
+        # D9: the pathological fixture declares the family not-foregrounded
+        # (the 0.10 cap must hold there); the genuine-safety fixture
+        # declares it foregrounded (indirect-but-uncapped). A declaration
+        # is a boolean, never a truthy string.
+        def declared(name: str):
+            return json.loads(
+                (SUITE_DIR / "fixtures" / name / "expectations.json")
+                .read_text())["peripheral_family_foregrounded"]
+
+        assert declared("values-boilerplate-fdpm") is False
+        assert declared("ai-safety-genuine") is True
+
 
 class TestTheRunner:
     def test_a_clean_compile_passes_every_check_on_the_committed_fixtures(self):
@@ -244,9 +263,16 @@ class TestTheRunner:
             assert fixture["problems"] == []
             for dim in fixture["dimensions"]:
                 assert set(dim) == {
-                    "key", "channel", "weight", "license", "has_jd_evidence"}
+                    "key", "channel", "weight", "license", "has_jd_evidence",
+                    "probing_mode"}
                 if dim["channel"] == "content" and dim["license"] == "jd":
                     assert dim["has_jd_evidence"] is True
+        # F-94: the genuine-safety fixture's peripheral dimension surfaces
+        # its governed posture in the report -- indirect, weight uncapped.
+        safety_dims = {dim["key"]: dim for dim
+                       in result["fixtures"]["ai-safety-genuine"]["dimensions"]}
+        assert safety_dims["safety-eval-ownership"]["probing_mode"] == "indirect"
+        assert safety_dims["safety-eval-ownership"]["weight"] == 0.25
         # ONE compile call per fixture: the compiler's internal repair retry
         # is the only smoothing mechanism, and none was needed here.
         assert len(fake.calls) == 4
@@ -484,6 +510,77 @@ class TestTheRunner:
                    for entry in result["failures"])
         # 2 calls for the failing fixture (compile + repair), 1 each for the rest.
         assert len(fake.calls) == 5
+
+    def test_a_direct_peripheral_dimension_is_a_governance_failure(
+            self, monkeypatch):
+        # F-94 / D9: the compiler's governance post-pass makes peripheral
+        # dims indirect; the runner must catch a compiler whose post-pass
+        # broke. The regressed output is byte-for-byte a faithful compile
+        # EXCEPT the probing mode -- nothing else may fail.
+        safety = _safety_rubric()
+        safety["dimensions"][0]["probing_mode"] = "direct"
+        _regressed_compiler(monkeypatch, safety=safety)
+
+        result = run_faithfulness_suite(SUITE_DIR, FakeGenAI([]))
+
+        assert result["fixtures"]["ai-safety-genuine"]["problems"] == [
+            "peripheral dimension 'safety-eval-ownership' must carry "
+            "probing_mode 'indirect', got 'direct'"
+        ]
+        assert ("ai-safety-genuine: peripheral dimension "
+                "'safety-eval-ownership' must carry probing_mode 'indirect', "
+                "got 'direct'") in result["failures"]
+
+    def test_an_uncapped_peripheral_dimension_fails_a_not_foregrounded_fixture(
+            self, monkeypatch):
+        # The weight half of D9: values-boilerplate-fdpm declares the family
+        # not-foregrounded, so a peripheral dimension over 0.10 is a cap
+        # failure even when its probing mode is already indirect. (The
+        # forbidden-topic check fires on the same dimension -- both problems
+        # are reported, per the house rule.)
+        fdpm = _fdpm_rubric()
+        fdpm["dimensions"][3] = _dim(
+            "ethical-judgment", "Ethical judgment", "content", 0.15,
+            "ethical AI that benefits everyone", probing_mode="indirect")
+        _regressed_compiler(monkeypatch, fdpm=fdpm)
+
+        result = run_faithfulness_suite(SUITE_DIR, FakeGenAI([]))
+
+        assert ("values-boilerplate-fdpm: peripheral dimension "
+                "'ethical-judgment' weight 0.15 exceeds the 0.1 cap on a JD "
+                "that does not foreground the family") in result["failures"]
+
+    def test_a_capped_indirect_peripheral_dimension_raises_no_governance_problem(
+            self, monkeypatch):
+        # At the cap and indirect: only the (orthogonal) forbidden-topic
+        # expectation may complain -- no governance line.
+        fdpm = _fdpm_rubric()
+        fdpm["dimensions"][3] = _dim(
+            "ethical-judgment", "Ethical judgment", "content", 0.1,
+            "ethical AI that benefits everyone", probing_mode="indirect")
+        fdpm["dimensions"][0]["weight"] = 0.35
+        _regressed_compiler(monkeypatch, fdpm=fdpm)
+
+        result = run_faithfulness_suite(SUITE_DIR, FakeGenAI([]))
+
+        assert result["fixtures"]["values-boilerplate-fdpm"]["problems"] == [
+            "forbidden topic 'ethic' matched dimension "
+            "'ethical-judgment' (content)"
+        ]
+
+    def test_the_cap_check_needs_the_fixture_declaration(self, monkeypatch):
+        # ai-safety-genuine declares the family FOREGROUNDED: an uncapped
+        # indirect peripheral dimension is the correct compile there, and
+        # the clean-run test already pins it at weight 0.25. A fixture with
+        # no declaration at all gets no cap check either -- only fixtures
+        # that state the family is not foregrounded assert the cap.
+        safety = _safety_rubric()
+        assert safety["dimensions"][0]["weight"] > 0.10
+        _regressed_compiler(monkeypatch, safety=safety)
+
+        result = run_faithfulness_suite(SUITE_DIR, FakeGenAI([]))
+
+        assert result["fixtures"]["ai-safety-genuine"]["problems"] == []
 
     def test_an_absent_or_empty_fixtures_dir_is_none_not_an_empty_pass(self, tmp_path):
         silent = FakeGenAI([])  # would raise IndexError if the runner called it
