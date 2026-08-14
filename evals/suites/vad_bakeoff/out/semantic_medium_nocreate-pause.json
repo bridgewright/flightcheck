@@ -1,96 +1,96 @@
 {
- "config": "svad_nocreate",
+ "config": "semantic_medium_nocreate",
  "tape": "pause",
  "events": [
   {
-   "t": 673,
+   "t": 1403,
    "type": "session.created"
   },
   {
-   "t": 838,
+   "t": 1562,
    "type": "session.updated"
   },
   {
-   "t": 850,
+   "t": 1573,
    "type": "input_audio_buffer.speech_started"
   },
   {
-   "t": 4530,
+   "t": 8904,
    "type": "input_audio_buffer.speech_stopped"
   },
   {
-   "t": 4530,
+   "t": 8904,
    "type": "input_audio_buffer.committed",
-   "item_id": "item_ECusPRKSSunQfXK68P0E0"
+   "item_id": "item_ECur6rATUK7a76VRWBqHy"
   },
   {
-   "t": 4531,
+   "t": 8904,
    "type": "conversation.item.added"
   },
   {
-   "t": 4531,
+   "t": 8904,
    "type": "conversation.item.done"
   },
   {
-   "t": 11802,
+   "t": 12554,
    "type": "input_audio_buffer.speech_started"
   },
   {
-   "t": 18336,
+   "t": 18847,
    "type": "input_audio_buffer.speech_stopped"
   },
   {
-   "t": 18336,
+   "t": 18847,
    "type": "input_audio_buffer.committed",
-   "item_id": "item_ECusaOZCUtqQnICoqkyBz"
+   "item_id": "item_ECurHfTz7PRjBZdzjErgh"
   },
   {
-   "t": 18336,
+   "t": 18847,
    "type": "conversation.item.added"
   },
   {
-   "t": 18336,
+   "t": 18847,
    "type": "conversation.item.done"
   }
  ],
  "marks": [
   {
-   "t": 670,
+   "t": 1393,
    "label": "begin:lead",
    "audio_pos_s": 0.0
   },
   {
-   "t": 3539,
+   "t": 4266,
    "label": "end:lead",
    "audio_pos_s": 2.78
   },
   {
-   "t": 3539,
+   "t": 4266,
    "label": "begin:silence_8.0s",
    "audio_pos_s": 2.78
   },
   {
-   "t": 11619,
+   "t": 12376,
    "label": "end:silence_8.0s",
    "audio_pos_s": 10.78
   },
   {
-   "t": 11619,
+   "t": 12376,
    "label": "begin:cont",
    "audio_pos_s": 10.78
   },
   {
-   "t": 17344,
+   "t": 18133,
    "label": "end:cont",
    "audio_pos_s": 16.27
   },
   {
-   "t": 17344,
+   "t": 18133,
    "label": "begin:silence_5.0s",
    "audio_pos_s": 16.27
   },
   {
-   "t": 22395,
+   "t": 23204,
    "label": "end:silence_5.0s",
    "audio_pos_s": 21.27
   }

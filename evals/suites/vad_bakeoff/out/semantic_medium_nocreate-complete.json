@@ -1,55 +1,55 @@
 {
- "config": "svad_nocreate",
+ "config": "semantic_medium_nocreate",
  "tape": "complete",
  "events": [
   {
-   "t": 616,
+   "t": 611,
    "type": "session.created"
   },
   {
-   "t": 782,
+   "t": 777,
    "type": "session.updated"
   },
   {
-   "t": 787,
+   "t": 784,
    "type": "input_audio_buffer.speech_started"
   },
   {
-   "t": 9996,
+   "t": 13576,
    "type": "input_audio_buffer.speech_stopped"
   },
   {
-   "t": 9996,
+   "t": 13578,
    "type": "input_audio_buffer.committed",
-   "item_id": "item_ECust9xivmdmwzooC9dYs"
+   "item_id": "item_ECurbhXkH8Moab8gKcJlH"
   },
   {
-   "t": 9996,
+   "t": 13578,
    "type": "conversation.item.added"
   },
   {
-   "t": 9996,
+   "t": 13578,
    "type": "conversation.item.done"
   }
  ],
  "marks": [
   {
-   "t": 614,
+   "t": 605,
    "label": "begin:complete",
    "audio_pos_s": 0.0
   },
   {
-   "t": 9006,
+   "t": 8952,
    "label": "end:complete",
    "audio_pos_s": 8.14
   },
   {
-   "t": 9006,
+   "t": 8952,
    "label": "begin:silence_6.0s",
    "audio_pos_s": 8.14
   },
   {
-   "t": 15065,
+   "t": 15012,
    "label": "end:silence_6.0s",
    "audio_pos_s": 14.14
   }

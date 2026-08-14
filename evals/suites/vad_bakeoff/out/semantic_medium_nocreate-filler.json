@@ -1,219 +1,156 @@
 {
- "config": "svad_nocreate",
+ "config": "semantic_medium_nocreate",
  "tape": "filler",
  "events": [
   {
-   "t": 638,
+   "t": 617,
    "type": "session.created"
   },
   {
-   "t": 799,
+   "t": 775,
    "type": "session.updated"
   },
   {
-   "t": 809,
+   "t": 787,
    "type": "input_audio_buffer.speech_started"
   },
   {
-   "t": 4482,
+   "t": 7084,
    "type": "input_audio_buffer.speech_stopped"
   },
   {
-   "t": 4483,
+   "t": 7084,
    "type": "input_audio_buffer.committed",
-   "item_id": "item_ECutGZeJkbXctCvMgh4Ax"
+   "item_id": "item_ECuryNzxRnmd8NmiPDpC4"
   },
   {
-   "t": 4483,
+   "t": 7084,
    "type": "conversation.item.added"
   },
   {
-   "t": 4483,
+   "t": 7084,
    "type": "conversation.item.done"
   },
   {
-   "t": 5694,
+   "t": 8090,
    "type": "input_audio_buffer.speech_started"
   },
   {
-   "t": 6904,
+   "t": 17792,
    "type": "input_audio_buffer.speech_stopped"
   },
   {
-   "t": 6904,
+   "t": 17793,
    "type": "input_audio_buffer.committed",
-   "item_id": "item_ECutL0a99KYUp4ZCfQwNo"
+   "item_id": "item_ECus5o8LU6ld2vgJCA8g3"
   },
   {
-   "t": 6904,
+   "t": 17793,
    "type": "conversation.item.added"
   },
   {
-   "t": 6904,
-   "type": "conversation.item.done"
-  },
-  {
-   "t": 8120,
-   "type": "input_audio_buffer.speech_started"
-  },
-  {
-   "t": 9329,
-   "type": "input_audio_buffer.speech_stopped"
-  },
-  {
-   "t": 9329,
-   "type": "input_audio_buffer.committed",
-   "item_id": "item_ECutOTcFxSyRpggxLRtsx"
-  },
-  {
-   "t": 9329,
-   "type": "conversation.item.added"
-  },
-  {
-   "t": 9329,
-   "type": "conversation.item.done"
-  },
-  {
-   "t": 10547,
-   "type": "input_audio_buffer.speech_started"
-  },
-  {
-   "t": 11760,
-   "type": "input_audio_buffer.speech_stopped"
-  },
-  {
-   "t": 11760,
-   "type": "input_audio_buffer.committed",
-   "item_id": "item_ECutQZ7hecsIerYOAcC3z"
-  },
-  {
-   "t": 11760,
-   "type": "conversation.item.added"
-  },
-  {
-   "t": 11760,
-   "type": "conversation.item.done"
-  },
-  {
-   "t": 12975,
-   "type": "input_audio_buffer.speech_started"
-  },
-  {
-   "t": 14181,
-   "type": "input_audio_buffer.speech_stopped"
-  },
-  {
-   "t": 14182,
-   "type": "input_audio_buffer.committed",
-   "item_id": "item_ECutTAQX53ZbiAGqOpoTS"
-  },
-  {
-   "t": 14182,
-   "type": "conversation.item.added"
-  },
-  {
-   "t": 14182,
+   "t": 17793,
    "type": "conversation.item.done"
   }
  ],
  "marks": [
   {
-   "t": 632,
+   "t": 614,
    "label": "begin:lead",
    "audio_pos_s": 0.0
   },
   {
-   "t": 3498,
+   "t": 3472,
    "label": "end:lead",
    "audio_pos_s": 2.78
   },
   {
-   "t": 3498,
+   "t": 3472,
    "label": "begin:silence_2.0s",
    "audio_pos_s": 2.78
   },
   {
-   "t": 5516,
+   "t": 5488,
    "label": "end:silence_2.0s",
    "audio_pos_s": 4.78
   },
   {
-   "t": 5516,
+   "t": 5488,
    "label": "begin:um",
    "audio_pos_s": 4.78
   },
   {
-   "t": 5919,
+   "t": 5896,
    "label": "end:um",
    "audio_pos_s": 5.11
   },
   {
-   "t": 5919,
+   "t": 5896,
    "label": "begin:silence_2.0s",
    "audio_pos_s": 5.11
   },
   {
-   "t": 7937,
+   "t": 7916,
    "label": "end:silence_2.0s",
    "audio_pos_s": 7.11
   },
   {
-   "t": 7937,
+   "t": 7916,
    "label": "begin:um",
    "audio_pos_s": 7.11
   },
   {
-   "t": 8344,
+   "t": 8323,
    "label": "end:um",
    "audio_pos_s": 7.44
   },
   {
-   "t": 8344,
+   "t": 8323,
    "label": "begin:silence_2.0s",
    "audio_pos_s": 7.44
   },
   {
-   "t": 10364,
+   "t": 10344,
    "label": "end:silence_2.0s",
    "audio_pos_s": 9.44
   },
   {
-   "t": 10364,
+   "t": 10344,
    "label": "begin:um",
    "audio_pos_s": 9.44
   },
   {
-   "t": 10771,
+   "t": 10752,
    "label": "end:um",
    "audio_pos_s": 9.78
   },
   {
-   "t": 10771,
+   "t": 10752,
    "label": "begin:silence_2.0s",
    "audio_pos_s": 9.78
   },
   {
-   "t": 12789,
+   "t": 12771,
    "label": "end:silence_2.0s",
    "audio_pos_s": 11.78
   },
   {
-   "t": 12789,
+   "t": 12771,
    "label": "begin:um",
    "audio_pos_s": 11.78
   },
   {
-   "t": 13196,
+   "t": 13177,
    "label": "end:um",
    "audio_pos_s": 12.11
   },
   {
-   "t": 13196,
+   "t": 13177,
    "label": "begin:silence_5.0s",
    "audio_pos_s": 12.11
   },
   {
-   "t": 18249,
+   "t": 18224,
    "label": "end:silence_5.0s",
    "audio_pos_s": 17.11
   }
