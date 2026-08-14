@@ -30,6 +30,15 @@ describe("login page sign-in path", () => {
     expect(source).toContain('provider: "google"');
   });
 
+  it("always offers the account chooser (DECISIONS 073)", () => {
+    // Without a prompt parameter, a returning consented customer gets a
+    // silent bounce that picks an account for them — the wrong-account
+    // trap. GoTrue forwards queryParams to the authorize URL untouched.
+    expect(source).toMatch(
+      /queryParams:\s*\{\s*prompt:\s*"select_account"\s*\}/,
+    );
+  });
+
   it("returns the visitor to where they were headed", () => {
     expect(source).toContain("safeNextPath");
     expect(source).toContain("/auth/callback?next=");

@@ -55,6 +55,11 @@ function LoginForm() {
       provider: "google",
       options: {
         redirectTo: `${location.origin}/auth/callback?next=${encodeURIComponent(nextPath)}`,
+        // DECISIONS 073: without a prompt, a returning consented customer
+        // never sees Google at all — the authorize round-trip bounces
+        // silently into whichever account the browser favors. The chooser
+        // costs one click and prevents the wrong-account trap.
+        queryParams: { prompt: "select_account" },
       },
     });
     if (authError) {
