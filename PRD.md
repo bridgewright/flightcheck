@@ -536,6 +536,22 @@ Changes to targets are recorded here with date and reason — never silently.
   plausibility, which is how the previous three patches were chosen
   and why there was a fourth occurrence to record. DECISIONS 072.
 
+- **v0.25 (recorded 2026-08-14, pre-code):** the Google door always
+  offers the account chooser. A returning, already-consented
+  customer clicking Continue with Google today sees no Google page
+  at all — the authorize round-trip bounces silently into the
+  product, which reads as broken and silently picks whichever
+  account the browser holds, the wrong-account trap for anyone with
+  a work and a personal Google. The sign-in request now carries
+  `prompt=select_account`, so every click lands on the standard
+  chooser. The trade is named honestly: one extra click for a
+  returning single-account customer, in exchange for an explicit
+  door and wrong-account protection. The other half of the card —
+  the trust line naming the product instead of the Supabase
+  infrastructure domain — is registered work with its own recorded
+  fork (free consent-screen brand verification first, the paid
+  custom auth domain only on evidence). DECISIONS 073.
+
 > 2026-08-02: v0.4 scope added above — accounts move ahead of payments
 > because login-gated interviews protect session integrity and per-session
 > cost, and the dashboard is what makes a 6-session package usable. The

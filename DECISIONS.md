@@ -3109,3 +3109,40 @@ ideas, it is evidence retention.
   exact failure mode this entry exists to end.
 - **Revisit when:** Phase 1 lands and the trail's volume or
   retention needs revisiting, or the deletion policy changes shape.
+
+## 073 — The Google door always offers the chooser (2026-08-14)
+
+**Context.** F-93, verified live rather than assumed: a returning,
+already-consented customer clicking Continue with Google sees no
+Google page at all — GoTrue's authorize round-trip bounces silently
+back into the product, because nothing passes a `prompt` parameter.
+That silence is the wrong-account trap: a customer holding a work
+and a personal Google is logged into whichever the browser favors,
+with no moment to choose. The user asked for the standard chooser
+(2026-08-14, workos.com screenshot), and appending
+`prompt=select_account` to the authorize URL was verified live to
+surface it — GoTrue forwards `queryParams` untouched.
+
+- **Chosen: `queryParams: { prompt: "select_account" }`** on the
+  login page's `signInWithOAuth`. The trade, named honestly: a
+  returning single-account customer pays one extra click, in
+  exchange for an explicit door, an unambiguous "this is Google"
+  moment, and wrong-account protection for everyone with more than
+  one identity.
+- **Rejected: `prompt=consent`.** Re-asks scope grants, not just
+  the account — heavier than the ask and re-consents nothing that
+  needs it.
+- **Rejected: leaving the silent bounce.** It reads as broken (the
+  click appears to do nothing but reload) and silently picks an
+  account, which is the exact failure the chooser exists to prevent.
+- **The branding half stays open on F-93's card**: the trust line
+  still names the Supabase infrastructure domain. The recorded fork
+  — free Google consent-screen brand verification first (app name,
+  logo, flightcheck.coach as authorized domain; days-to-weeks
+  review), the paid Supabase custom auth domain (~$10/mo, Pro plan)
+  only if the free path empirically fails — is the owner's call at
+  the money gate. DECISIONS 036's consent-screen revisit condition
+  closes only when that half ships.
+- **Revisit when:** funnel data shows chooser friction for
+  returning customers, or the branding half lands and the whole
+  door can be judged as one surface.
