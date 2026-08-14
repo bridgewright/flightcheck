@@ -582,6 +582,23 @@ class TestTheRunner:
 
         assert result["fixtures"]["ai-safety-genuine"]["problems"] == []
 
+    def test_an_absent_declaration_is_not_a_false_declaration(self):
+        # Review round 1: the mutation "foregrounded is not True" -- the
+        # cap applied to every fixture that merely OMITS the declaration --
+        # survived the whole suite, because the absent-key case was pinned
+        # only in prose. Pin it at the shipped rule: the same over-cap
+        # indirect peripheral dimension raises no cap problem without the
+        # key and exactly one when the fixture declares False.
+        rubric = Rubric.model_validate(_safety_rubric())
+        assert rubric.dimensions[0].weight > 0.10
+
+        assert evals_faithfulness._governance_problems(rubric, {}) == []
+        assert evals_faithfulness._governance_problems(
+            rubric, {"peripheral_family_foregrounded": False}) == [
+            "peripheral dimension 'safety-eval-ownership' weight 0.25 "
+            "exceeds the 0.1 cap on a JD that does not foreground the family"
+        ]
+
     def test_an_absent_or_empty_fixtures_dir_is_none_not_an_empty_pass(self, tmp_path):
         silent = FakeGenAI([])  # would raise IndexError if the runner called it
 
