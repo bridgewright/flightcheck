@@ -72,3 +72,32 @@ describe("ProgressDimensionTable trend direction (DECISIONS 070)", () => {
   });
 });
 
+describe("ProgressDimensionTable dimension glyphs (DECISIONS 071)", () => {
+  it("draws a keyword-chosen glyph before each known dimension name", () => {
+    const markup = render([
+      trend("customer-centric-deployment", [3.0, 3.5]),
+      trend("communication-delivery", [3.0, 3.5]),
+    ]);
+    expect(markup).toContain('data-glyph="person"');
+    expect(markup).toContain('data-glyph="wave"');
+  });
+
+  it("draws the glyph in the F-43 register, decorative and ink-inheriting", () => {
+    const markup = render([trend("customer-centric-deployment", [3.0, 3.5])]);
+    const glyph = markup.match(/<svg[^>]*data-glyph[^>]*>/)?.[0] ?? "";
+    expect(glyph).toContain('viewBox="0 0 24 24"');
+    expect(glyph).toContain('stroke="currentColor"');
+    expect(glyph).toContain('stroke-width="1.5"');
+    expect(glyph).toContain('aria-hidden="true"');
+    // Inherits the surrounding ink: no colour class of its own.
+    expect(glyph).not.toMatch(/class="[^"]*text-/);
+  });
+
+  it("degrades an unknown dimension to its channel glyph, never to a blank", () => {
+    // quantum-basket-weaving is not in META, so the row falls back through a
+    // null channel and still draws something rather than a gap.
+    const markup = render([trend("quantum-basket-weaving", [3.0, 3.5])]);
+    expect(markup).toContain("data-glyph=");
+  });
+});
+

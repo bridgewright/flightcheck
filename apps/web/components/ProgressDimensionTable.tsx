@@ -1,3 +1,4 @@
+import { dimensionGlyph, GLYPH_PATHS } from "@/components/dimension-glyph";
 import type { DimensionMeta } from "@/components/progress-view";
 import {
   formatSigned,
@@ -10,6 +11,40 @@ import type { DimensionTrend } from "@/lib/progress";
 import { EMPTY_RULE, LABEL, SCORE_NUMBER, SUB_HEADING, TABLE_ROW } from "@/lib/ui";
 
 const CHANNEL_TAGS = { content: "Content", delivery: "Delivery" } as const;
+
+// The dimension's pictogram, drawn in the F-43 register: stroke
+// currentColor with no colour class of its own, so it inherits the row's
+// ink; aria-hidden, because the name beside it carries the meaning
+// (DECISIONS 071). Which glyph is components/dimension-glyph.ts's call.
+function DimensionGlyph({
+  dimensionKey,
+  name,
+  channel,
+}: {
+  dimensionKey: string;
+  name: string;
+  channel: DimensionMeta["channel"] | null;
+}) {
+  const { glyph } = dimensionGlyph(dimensionKey, name, channel);
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth={1.5}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+      focusable="false"
+      data-glyph={glyph}
+      className="size-4 shrink-0"
+    >
+      {GLYPH_PATHS[glyph].map((d) => (
+        <path key={d} d={d} />
+      ))}
+    </svg>
+  );
+}
 
 /** Per-dimension score trend: name, channel, sparkline, latest score, and net
  * movement since the first scored session. */
@@ -61,8 +96,15 @@ export default function ProgressDimensionTable({
                   className={TABLE_ROW}
                 >
                   <th scope="row" className="py-2.5 pr-3 text-left">
-                    <span className={SUB_HEADING}>
-                      {dimension?.name ?? humanizeDimensionKey(trend.dimension_key)}
+                    <span className="inline-flex items-center gap-2">
+                      <DimensionGlyph
+                        dimensionKey={trend.dimension_key}
+                        name={dimension?.name ?? humanizeDimensionKey(trend.dimension_key)}
+                        channel={dimension?.channel ?? null}
+                      />
+                      <span className={SUB_HEADING}>
+                        {dimension?.name ?? humanizeDimensionKey(trend.dimension_key)}
+                      </span>
                     </span>
                     {dimension?.channel ? (
                       <span className={`${LABEL} ml-2`}>
