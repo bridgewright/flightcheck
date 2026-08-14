@@ -3357,9 +3357,15 @@ matrix, shipped as the backstop behind 074's gating.
   acoustic lag; a real answer is uncorrelated. The verdict
   (coefficient plus echo/speech/indeterminate) is appended to the
   diagnostics trail BESIDE the timing verdict on every judged
-  commit. Shadow means shadow: the timing heuristic keeps
-  authority, and no behavior changes on the correlation verdict in
-  this phase.
+  commit; entries whose window holds fewer than four ticks —
+  including commits with no preceding speech_started — carry an
+  honest n=0 or n<4 indeterminate placeholder rather than a
+  measurement (merge amendment, from review). Shadow means shadow:
+  the timing heuristic keeps authority, and no behavior changes on
+  the correlation verdict in this phase — a property the review
+  rounds turned from prose into a test after proving it walkable
+  (consulting the verdict beside its diag call tripped nothing
+  until the verdict's fields were pinned absent from the room).
 - **Why shadow:** a detector whose false-suppress class eats real
   first answers must not take authority on lab confidence. The
   promotion gate is recorded field evidence — open-speaker AND
@@ -3377,6 +3383,24 @@ matrix, shipped as the backstop behind 074's gating.
   would be choosing a fix and its validation in one motion, from
   the same desk, which is the pattern 072 retired.
 - **Revisit when:** the shadow ledger holds enough judged commits
-  across both environments to compare detectors — then either
-  promote (own entry), or record that envelope correlation cannot
-  separate the classes and reconsider the capture path.
+  across both environments to compare detectors, read STRATIFIED BY
+  n and never pooled — then either promote (own entry), or record
+  that envelope correlation cannot separate the classes and
+  reconsider the capture path.
+- **Merge amendment (2026-08-15, from the review rounds' measured
+  null distribution):** r is maximised over nine lags, so on
+  NON-echo episodes the verdict still reads "echo" 76% of the time
+  at a four-sample (0.75 s) window, 35% at six samples, 15% at
+  eight, settling to 0.1% only at twenty — a short-window "echo" in
+  the trail is close to no evidence. The table lives in the module
+  docblock and is pinned two-sided by tests that parse it from the
+  source, so it cannot drift from the code that produced it. The
+  four-sample floor was KEPT at merge, deliberately: the phantom
+  class this backstop exists to watch (the measured 1.3 s tail) is
+  a short episode, and raising the floor would blind the ledger to
+  exactly that class. The trail records r, lag, and n on every
+  entry, so the promotion analysis can re-threshold offline; what
+  it may never do is pool across n. The review also proved the
+  correlation guard load-bearing at the caller (a flat paired
+  SUBSET normalises to r = 1 exactly — a perfect echo from
+  nothing), now pinned.
