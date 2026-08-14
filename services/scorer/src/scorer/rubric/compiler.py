@@ -12,7 +12,11 @@ JD as the model saw it, so research findings and corpus documents can
 corroborate a dimension but never create one. Both kinds of failure share a
 single repair retry: the failure text is appended so the model can repair
 its output, and a second failure of either kind raises RubricCompileError.
-Never more than two generate_content calls per compile.
+A passing attempt then flows through the F-94 governance post-pass
+(rubric/governance.py): peripheral ethics/safety-family dimensions become
+probing_mode "indirect", and their weight is capped when the JD does not
+foreground the family. Deterministic repair, never a problem line, never a
+model call. Never more than two generate_content calls per compile.
 """
 from __future__ import annotations
 
@@ -23,6 +27,7 @@ from scorer.config import load_product_config
 from scorer.promptsafe import fence, inline, neutralize_markers
 from scorer.resilience import call_with_retry
 from scorer.rubric.corpus import CorpusDoc
+from scorer.rubric.governance import apply_governance
 from scorer.schemas import CandidateProfile, GenAIClientLike, ResearchFindings, Rubric
 from scorer.verbatim import locate_span
 
@@ -68,6 +73,16 @@ _RULES = (
     "- Delivery dimensions need no jd_evidence -- set it to null there.\n"
     "- Weights follow the job description's own emphasis: what it leads with and\n"
     "  repeats carries the most weight, what it mentions in passing the least.\n"
+    "- Ethics/safety-family dimensions (ethics, ethical, AI safety, standalone\n"
+    '  safety, responsible AI, or the "mission alignment" pair in the key or name)\n'
+    "  are read through follow-ups and interpretation, never grilled head-on: give\n"
+    '  any such content dimension probing_mode "indirect" and write no\n'
+    '  question_bank entries for it. Every other dimension keeps probing_mode\n'
+    '  "direct".\n'
+    "- Unless the JOB DESCRIPTION block itself genuinely foregrounds that family\n"
+    "  -- three or more separate lines naming it -- keep each such dimension at\n"
+    "  weight 0.10 or below and give the difference to the dimensions the job\n"
+    "  description actually stresses.\n"
     "- The example rubrics below may predate jd_evidence and show null on content\n"
     "  dimensions. That is their age, not a license -- your content dimensions must\n"
     "  carry it.\n"
@@ -287,7 +302,10 @@ def compile_rubric(jd_text: str, profile: CandidateProfile, findings: ResearchFi
             rubric, jd_as_shown, bool(profile.roles or profile.headline))
         if problems:
             return None, "\n".join(f"- {problem}" for problem in problems)
-        return rubric, ""
+        # F-94: governance is deterministic repair, applied on whichever
+        # attempt passed the gates -- never a problem line (the prompt rules
+        # above only exist to reduce repair distance), never a model call.
+        return apply_governance(rubric, jd_as_shown), ""
 
     rubric, error_text = _attempt(prompt, "rubric compile")
     if rubric is not None:

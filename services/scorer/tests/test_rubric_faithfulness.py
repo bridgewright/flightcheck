@@ -294,6 +294,92 @@ def test_minimal_profile_cannot_license_a_fit_dimension():
     assert "minimal candidate profile" in _appended(fake)
 
 
+def test_peripheral_dimension_compiles_indirect_and_capped_on_a_plain_jd():
+    # F-94 (DECISIONS 077): the JD here never mentions the family, so the
+    # governance post-pass makes the ethics dimension indirect AND clamps
+    # its weight, redistributing the excess -- with zero extra model calls.
+    inflated = _rubric([
+        _dim("structured-answers", "content", 0.3, "own growth analytics"),
+        _dim("ethical-judgment", "content", 0.4, "Senior Product Analyst"),
+        _dim("pacing-control", "delivery", 0.3),
+    ])
+    fake = FakeGenAI([json.dumps(inflated)])
+    rubric = _compile(fake)
+    assert len(fake.calls) == 1
+    by_key = {dim.key: dim for dim in rubric.dimensions}
+    assert by_key["ethical-judgment"].probing_mode == "indirect"
+    assert by_key["ethical-judgment"].weight == 0.1
+    assert by_key["structured-answers"].probing_mode == "direct"
+    # The 0.3 excess spreads proportionally over the other 0.6.
+    assert abs(by_key["structured-answers"].weight - 0.45) < 1e-9
+    assert abs(by_key["pacing-control"].weight - 0.45) < 1e-9
+    assert abs(sum(dim.weight for dim in rubric.dimensions) - 1.0) < 1e-9
+
+
+def test_peripheral_weight_stands_when_the_jd_foregrounds_the_family():
+    jd = (
+        "SafeCorp hires a Safety Evaluations PM to own growth analytics.\n"
+        "You will run AI safety reviews before every launch.\n"
+        "You will own the ethics escalation process end to end.\n"
+    )
+    genuine = _rubric([
+        _dim("structured-answers", "content", 0.3, "own growth analytics"),
+        _dim("ai-safety-reviews", "content", 0.4,
+             "run AI safety reviews before every launch"),
+        _dim("pacing-control", "delivery", 0.3),
+    ])
+    fake = FakeGenAI([json.dumps(genuine)])
+    rubric = _compile(fake, jd_text=jd)
+    assert len(fake.calls) == 1
+    by_key = {dim.key: dim for dim in rubric.dimensions}
+    # Still read sideways -- the probing invariant is unconditional -- but
+    # the weight the JD genuinely licenses stands.
+    assert by_key["ai-safety-reviews"].probing_mode == "indirect"
+    assert by_key["ai-safety-reviews"].weight == 0.4
+    assert by_key["structured-answers"].weight == 0.3
+
+
+def test_question_bank_entries_for_indirect_dimensions_are_dropped():
+    doc = _rubric([
+        _dim("structured-answers", "content", 0.3, "own growth analytics"),
+        _dim("ethical-judgment", "content", 0.4, "Senior Product Analyst"),
+        _dim("pacing-control", "delivery", 0.3),
+    ])
+    doc["question_bank"] = [
+        {"dimension_key": "ethical-judgment",
+         "question": "How do you weigh ethics in product calls?",
+         "probes": [], "source": "generated"},
+        {"dimension_key": "structured-answers",
+         "question": "Walk me through a project you led end to end.",
+         "probes": [], "source": "generated"},
+    ]
+    fake = FakeGenAI([json.dumps(doc)])
+    rubric = _compile(fake)
+    assert [q.dimension_key for q in rubric.question_bank] == [
+        "structured-answers"]
+
+
+def test_governance_also_governs_the_repair_attempt():
+    inflated = _rubric([
+        _dim("structured-answers", "content", 0.3, "own growth analytics"),
+        _dim("ethical-judgment", "content", 0.4, "Senior Product Analyst"),
+        _dim("pacing-control", "delivery", 0.3),
+    ])
+    fake = FakeGenAI(["not json", json.dumps(inflated)])
+    rubric = _compile(fake)
+    assert len(fake.calls) == 2
+    by_key = {dim.key: dim for dim in rubric.dimensions}
+    assert by_key["ethical-judgment"].probing_mode == "indirect"
+    assert by_key["ethical-judgment"].weight == 0.1
+
+
+def test_a_rubric_without_peripheral_dimensions_is_untouched_by_governance():
+    fake = FakeGenAI([json.dumps(_good_rubric())])
+    rubric = _compile(fake)
+    assert all(dim.probing_mode == "direct" for dim in rubric.dimensions)
+    assert [dim.weight for dim in rubric.dimensions] == [0.4, 0.3, 0.3]
+
+
 def test_problem_lines_neutralize_marker_characters_from_the_claim():
     # The claimed quote is model output that can echo marker characters;
     # a problem line lands in an instruction position of the retry prompt,

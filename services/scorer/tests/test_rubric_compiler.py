@@ -178,6 +178,13 @@ def test_prompt_states_the_strict_rules():
     assert 'keyed "role-and-company-fit"' in prompt
     assert 'license "profile", jd_evidence null' in prompt
     assert "With a minimal profile, add no such dimension" in prompt
+    # F-94: the prompt teaches the governance policy first-pass; the
+    # deterministic post-pass remains the guarantee.
+    assert 'probing_mode "indirect"' in prompt
+    assert "question_bank entries for it" in prompt
+    assert 'keeps probing_mode' in prompt and '"direct"' in prompt
+    assert "three or more separate lines" in prompt
+    assert "weight 0.10 or below" in prompt
 
 
 def _citationless_rubric_dict() -> dict:
