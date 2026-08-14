@@ -149,5 +149,20 @@ describe("the disclosure is honest chrome, silent until opened", () => {
     // response.create sources remain the greeting and silence reducer.
     const sends = sessionRoom.match(/dc(?:Ref\.current)?\??\.send\(/g) ?? [];
     expect(sends).toHaveLength(8);
+    // Counted a second time by the shape that does NOT name the handle,
+    // which is what makes the claim in this test's name true rather than a
+    // spelling of it. The pin above counts two literal spellings, and this
+    // repo's recurring defeat of a counting pin is the alias that walks
+    // between them: `const ch = dcRef.current; ch.send(…)` adds a send and
+    // leaves the count above at eight. Every send in this file goes through
+    // a member call, so any handle at all lands in this one. Equal today at
+    // eight, and it is the stricter of the two: an unrelated `.send(` on
+    // some future object reddens this deliberately, so a reader has to
+    // look at what was added rather than a number moving on its own.
+    const anyHandleSends = sessionRoom.match(/\.send\(/g) ?? [];
+    expect(
+      anyHandleSends.length,
+      "a data-channel send is aliased behind another handle",
+    ).toBe(8);
   });
 });

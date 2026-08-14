@@ -5,7 +5,10 @@
  * Server VAD threshold at rest. Raised from the 0.5 default (2026-08-01
  * diagnostic run): ambient room noise in the open-speakers environment was
  * committing phantom turns every ~10 s and each one triggered a response.
- * Real speech clears 0.6 comfortably. A recorded lever (DECISIONS 074).
+ * Real speech clears 0.6 comfortably. A recorded lever under the standing
+ * VAD/turn-parameter discipline (DECISIONS 047); DECISIONS 074 reads this
+ * value as the floor its gated counterpart is derived against, and records
+ * the gated threshold and the hangover — not this one.
  */
 export const RESTING_VAD_THRESHOLD = 0.6;
 
@@ -23,9 +26,15 @@ export const GATED_VAD_THRESHOLD = 0.85;
  * The turn-detection block, shaped once. `clientSecretRequestBody` mints the
  * session with it at the resting threshold and `vadThresholdUpdateEvent`
  * moves the live session between the two thresholds with the same object.
- * These literals stay in THIS file: `tests/vad-ssot.test.ts` reads
- * `silence_duration_ms` and `prefix_padding_ms` out of this source and fails
- * on any drift against product.toml and the lab harness.
+ * These literals stay in THIS file, and so does the model id below it:
+ * `tests/vad-ssot.test.ts` reads all three out of this source by regex and
+ * fails if they drift. What each one is checked AGAINST differs, and the
+ * difference is the reason this note is specific: `silence_duration_ms` and
+ * the model id are pinned to product.toml AND to the lab harness;
+ * `prefix_padding_ms` has no product.toml entry, so it is pinned
+ * client-to-harness only. Moving any of them out of this file does not
+ * relax the gate, it breaks it — `required()` throws when its pattern stops
+ * matching.
  */
 function turnDetection(threshold: number) {
   return {
@@ -78,10 +87,23 @@ export function clientSecretRequestBody(instructions: string) {
 /**
  * `session.update` moving the live session's input threshold (DECISIONS 074's
  * playback gate). Same nested GA schema as the mint above, and the FULL
- * turn_detection object every time, never a partial patch: how the server
- * merges a partial block is not something this product guesses about, and a
- * dropped field here would silently restore a server default the bake-off
+ * turn_detection block every time rather than a threshold on its own: a
+ * dropped field there would silently restore a server default the bake-off
  * ruled out.
+ *
+ * The block is whole; the `session` around it is NOT, and that part is an
+ * assumption this file should not pretend it has verified. `instructions`,
+ * `output_modalities` and `audio.output.voice` are minted once and omitted
+ * here, so this event is correct only if the server merges an update into
+ * the live session rather than replacing it. Nothing in this repo has
+ * exercised that: the one live-verified `session.update`
+ * (`OpenAIProbe._session_update`, 2026-07-25) carries instructions and
+ * modalities and is sent once at connect, never mid-session. If the merge
+ * is shallower than assumed, the first raise costs the interviewer its
+ * persona or its voice mid-interview. It is cheap to see and impossible to
+ * see from here: 074's verification bar reads a real trail, where a
+ * `vad-raise` answered by `vad-ack` (and an unchanged voice) settles it and
+ * a `server-error` names it.
  */
 export function vadThresholdUpdateEvent(threshold: number): string {
   return JSON.stringify({
