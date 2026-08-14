@@ -2963,6 +2963,36 @@ actions and true errors.
   a shared direction-to-tone module if the track has not already),
   or a "ready"-grade rising semantic (sage) earns its case.
 
+**Merge amendment (2026-08-14).** What shipped, with the review
+rounds' measurements. The ink-grade tokens are `trend-rise #33586b`
+and `trend-fall #8c4a54`, both in the AA matrix; worst pairing
+4.99:1 (trend-fall on sky). Flat declares no new token — its net is
+`text-ink-faint`, its wash `fill-hairline` at the shared 0.45
+opacity, which amends this entry's "neutral (paper/ink family)"
+wording: measured over paper at 0.45, the candidates sit at ΔE 3.77
+(hairline), 1.33 (paper-sunk, invisible), 24.30 (ink-faint, a slab)
+from bare paper — hairline is the only one in the pastel washes'
+weight class. Between the shipped washes: rise/flat 5.64, rise/fall
+7.25, flat/fall 3.07 — the tight pair is flat/fall, modestly above
+the ~2.3 just-noticeable threshold, acceptable ONLY because colour
+is never the sole channel (the printed sign and the sr-only session
+list carry direction); do not lighten blush without re-measuring
+that margin. The falling wash sits ΔE 28.08 from an alarm-coloured
+wash — "deliberately not alarm," now with a number. Direction
+derives from `formatSigned`'s printed one-decimal rounding, so the
+colour can never claim a move the figure denies; a characterization
+pin records the half-up asymmetry inherited from ECMA rounding
+(+0.05 prints "+0.1" and reads rising; -0.05 prints "0.0" and reads
+flat). Review round 1 proved the original 305-case coherence sweep
+never landed on a rounding boundary (a half-away-from-zero refactor
+that breaks sign/colour agreement passed all 305) and rebuilt it as
+567 cases through the exact halves. The revisit condition asking for
+a shared direction-to-tone module is struck —
+`components/trend-direction.ts` is that module. The hero
+overall-trend chart is structurally unable to receive a direction
+tone (its polygon hard-codes the sky wash), stronger than the
+optional-default the plan asked for.
+
 ## 071 — Dimension glyphs are drawn by hand and chosen by keyword (2026-08-13)
 
 **Context.** The user asked for a small pictogram before each
@@ -2993,3 +3023,21 @@ hand-assigned per dimension the way F-43's session-state icons were.
 - **Revisit when:** the real-rubric corpus grows dimension families
   the keyword table misses more often than it hits — the mapping
   test's fixture corpus measures the fallback rate.
+
+**Merge amendment (2026-08-14).** The set shipped as ten pictograms
+(wave, people, speech, person, compass, chip, scales, flag, fork,
+notes), the component inline in `ProgressDimensionTable.tsx` rather
+than a separate file, the mapping in
+`components/dimension-glyph.ts`. Review round 2 confirmed the one
+defect the committed corpus could not see: three keywords were bare
+fragments and claimed names they do not mean — `model` took "Role
+Modeling & Team Culture" for the technical chip, `drive` took
+"Data-Driven Decision Making" for the ownership flag, `action` took
+"Abstraction & Systems Thinking" for the ambiguity fork — breaking
+this entry's own rule that a wrong pictogram is worse than an honest
+fallback, from the other side. Fixed at review with whole-word
+anchors; zero assignment changes across both fixture corpora ("Data
+Modeling," outside them, now falls back honestly). Round 1 gave the
+channel gate (delivery rows only ever wear the waveform, content
+rows never) and the single-session row's glyph the pins they
+shipped without.
