@@ -83,16 +83,25 @@ export type GlyphName = keyof typeof GLYPH_PATHS;
 // Delivery" is a waveform, not a bubble), people-shaped content words before
 // the generic communication rule, and ownership before ambiguity (so
 // "Ownership & Ambiguity Navigation" keeps the flag).
+//
+// Most keywords are stems on purpose, because a compiled rubric inflects
+// them freely ("collaboration", "collaborative"). Three are anchored to whole
+// words instead, because as bare fragments they reached names they do not
+// mean and, first match winning, reached them before the rule written for
+// those names: "model" put the microchip beside "Role Modeling", "drive" put
+// the ownership flag beside "Data-Driven Decision Making", and "action" put
+// the ambiguity fork beside "Abstraction & Systems Thinking". A wrong glyph
+// is worse than the channel fallback, so each of those now degrades honestly.
 const RULES: { pattern: RegExp; glyph: GlyphName }[] = [
   { pattern: /deliver|spoken|speech|clarity|composure|pacing|pronunciation|accent/, glyph: "wave" },
   { pattern: /stakeholder|collabor|cross.functional|influence/, glyph: "people" },
   { pattern: /communicat|present|storytell|articulat/, glyph: "speech" },
   { pattern: /customer|client|user|empath/, glyph: "person" },
   { pattern: /strateg|judgment|judgement|prioriti|vision|roadmap/, glyph: "compass" },
-  { pattern: /technic|implement|engineer|coding|fluen|architect|model/, glyph: "chip" },
+  { pattern: /technic|implement|engineer|coding|fluen|architect|\bmodels?\b/, glyph: "chip" },
   { pattern: /evaluat|responsib|safety|ethic|metric|measur|quality/, glyph: "scales" },
-  { pattern: /owner|impact|end.to.end|accountab|initiative|drive/, glyph: "flag" },
-  { pattern: /ambigu|action|navigat|uncertain|adapt/, glyph: "fork" },
+  { pattern: /owner|impact|end.to.end|accountab|initiative|\bdriv(?:e|es|ing)\b/, glyph: "flag" },
+  { pattern: /ambigu|\baction\b|navigat|uncertain|adapt/, glyph: "fork" },
 ];
 
 /** The glyph each channel degrades to when no keyword lands. A dimension

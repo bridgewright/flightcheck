@@ -96,6 +96,31 @@ describe("dimensionGlyph fallback", () => {
     ).toBe(CHANNEL_GLYPHS.delivery);
   });
 
+  it("keeps a broad keyword from claiming a name it does not mean", () => {
+    // First match wins, so a keyword written as a bare fragment silently
+    // takes names the rules below it are written for, and it takes them with
+    // the wrong pictogram. Three fragments did: "model" put the microchip
+    // beside "Role Modeling", "drive" put the ownership flag beside
+    // "Data-Driven Decision Making", and "action" put the ambiguity fork
+    // beside "Abstraction & Systems Thinking". None of the three is caught by
+    // the corpus, because no committed dimension is spelled that way, and a
+    // wrong glyph beside a customer's score is worse than the honest channel
+    // fallback this module opens by promising.
+    expect(
+      dimensionGlyph("role-modeling-team-culture", "Role Modeling & Team Culture", "content").glyph,
+    ).not.toBe("chip");
+    expect(
+      dimensionGlyph("data-driven-decision-making", "Data-Driven Decision Making", "content").glyph,
+    ).not.toBe("flag");
+    expect(
+      dimensionGlyph("abstraction-systems-thinking", "Abstraction & Systems Thinking", "content").glyph,
+    ).not.toBe("fork");
+    // And the words those three fragments are actually there for still land.
+    expect(dimensionGlyph("model-evaluation", "Model Evaluation", "content").glyph).toBe("chip");
+    expect(dimensionGlyph("drive-for-results", "Drive for Results", "content").glyph).toBe("flag");
+    expect(dimensionGlyph("bias-for-action", "Bias for Action", "content").glyph).toBe("fork");
+  });
+
   it("matches keywords case-insensitively over key and name together", () => {
     // The key alone says nothing here; the name carries the keyword.
     expect(dimensionGlyph("dim-07", "STAKEHOLDER Alignment", "content").fallback).toBe(false);
