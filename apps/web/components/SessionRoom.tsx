@@ -44,6 +44,12 @@ import {
   vadThresholdUpdateEvent,
 } from "../lib/realtime";
 import {
+  echoCorrVerdict,
+  formatEchoCorrNote,
+  pushLevelSample,
+  type LevelSample,
+} from "../lib/echo-correlation";
+import {
   DIAG_DISCLOSURE_LABEL,
   formatDiagTrail,
   formatDiagWire,
@@ -228,6 +234,8 @@ export default function SessionRoom({
   const diagTickRef = useRef(0);
   const lastMorganAudibleAtRef = useRef(0);
   const echoSuspectRef = useRef(false);
+  const candStartAtMsRef = useRef(0);
+  const corrRingRef = useRef<LevelSample[]>([]);
   const micAnalyserRef = useRef<AnalyserNode | null>(null);
   const micLevelDataRef = useRef<Uint8Array<ArrayBuffer> | null>(null);
   const silenceStateRef = useRef(INITIAL_SILENCE_STATE);
@@ -520,6 +528,8 @@ export default function SessionRoom({
     // blocked click is still recorded; start-clicked above carries it.
     diag("session-start", new Date().toISOString());
     gateStateRef.current = INITIAL_GATE_STATE;
+    corrRingRef.current = [];
+    candStartAtMsRef.current = 0;
     connectingRef.current = true;
     setError(null);
     setPhase("connecting");
@@ -794,6 +804,7 @@ export default function SessionRoom({
         const speech = speechStateForEvent(String(ev.data));
         if (speech !== null) console.debug("[silence] cand-ev", speech);
         if (speech === "started") {
+          candStartAtMsRef.current = performance.now();
           diag(
             morganEventAudibleRef.current ? "barge-in" : "cand-start",
           );
@@ -813,6 +824,15 @@ export default function SessionRoom({
           // audio — an echo dies with its source, a barge-in keeps going.
           // Measured at commit time, which absorbs the 900 ms VAD tail.
           const sinceMorganMs = Date.now() - lastMorganAudibleAtRef.current;
+          const commitAtMs = performance.now();
+          const corr = echoCorrVerdict(
+            corrRingRef.current,
+            candStartAtMsRef.current === 0
+              ? commitAtMs + 1
+              : candStartAtMsRef.current,
+            commitAtMs,
+          );
+          diag("echo-corr", formatEchoCorrNote(corr));
           if (!echoSuspectRef.current || sinceMorganMs >= ECHO_OUTLIVE_MS) {
             diag("commit");
             commitArrivedRef.current = true;
@@ -948,6 +968,11 @@ export default function SessionRoom({
           micPeak = Math.max(micPeak, Math.abs(v - 128) / 128);
         }
       }
+      pushLevelSample(corrRingRef.current, {
+        atMs: tickAt,
+        mic: micPeak,
+        remote: remotePeak,
+      });
       // Server events are the second source: whichever signal works on this
       // transport keeps the clock honest (2026-08-01 live failure).
       interviewerAudible = interviewerAudible || morganEventAudibleRef.current;

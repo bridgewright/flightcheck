@@ -65,6 +65,7 @@ describe("F-67 turn-system trail", () => {
     ["cand-stop"],
     ["commit"],
     ["commit-echo-suppressed"],
+    ["echo-corr"],
     ["barge-in"],
     ["morgan-speaking"],
     ["morgan-quiet"],
@@ -106,6 +107,38 @@ describe("F-67 turn-system trail", () => {
     const greetingAt = sessionRoom.indexOf('"greeting-sent"');
     expect(greetingAt).toBeGreaterThan(-1);
     expect(sessionRoom.indexOf('"response-trigger"')).not.toBe(greetingAt);
+  });
+
+  it("samples the raw analyser peak before event audibility is merged", () => {
+    const sampleAt = sessionRoom.indexOf("pushLevelSample(");
+    const eventMergeAt = sessionRoom.indexOf(
+      "interviewerAudible = interviewerAudible || morganEventAudibleRef.current",
+    );
+    expect(sampleAt).toBeGreaterThan(-1);
+    expect(sessionRoom.slice(sampleAt, sampleAt + 180)).toContain(
+      "remote: remotePeak",
+    );
+    expect(sampleAt).toBeLessThan(eventMergeAt);
+  });
+
+  it("records one shadow correlation verdict before timing chooses either arm", () => {
+    const corrCalls = sessionRoom.match(/echoCorrVerdict\(/g) ?? [];
+    expect(corrCalls).toHaveLength(1);
+    const corrAt = sessionRoom.indexOf("echoCorrVerdict(");
+    const timingAt = sessionRoom.indexOf(
+      "if (!echoSuspectRef.current || sinceMorganMs >= ECHO_OUTLIVE_MS)",
+    );
+    expect(corrAt).toBeLessThan(timingAt);
+    expect(sessionRoom).toContain('diag("echo-corr", formatEchoCorrNote(corr))');
+  });
+
+  it("resets correlation episode state with the session gate state", () => {
+    const resetAt = sessionRoom.indexOf(
+      "gateStateRef.current = INITIAL_GATE_STATE",
+    );
+    const resetSlice = sessionRoom.slice(resetAt, resetAt + 180);
+    expect(resetSlice).toContain("corrRingRef.current = []");
+    expect(resetSlice).toContain("candStartAtMsRef.current = 0");
   });
 });
 
