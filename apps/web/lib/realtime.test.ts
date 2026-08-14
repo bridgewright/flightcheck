@@ -1,11 +1,14 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  GATED_VAD_THRESHOLD,
   MAX_RECORDING_BYTES,
+  RESTING_VAD_THRESHOLD,
   clientSecretRequestBody,
   isValidPackageId,
   isValidSessionIndex,
   recordingStoragePath,
+  vadThresholdUpdateEvent,
 } from "./realtime";
 
 describe("clientSecretRequestBody", () => {
@@ -32,6 +35,32 @@ describe("clientSecretRequestBody", () => {
       },
     });
   });
+});
+
+describe("vadThresholdUpdateEvent", () => {
+  it.each([RESTING_VAD_THRESHOLD, GATED_VAD_THRESHOLD])(
+    "sends the full nested turn detection shape at threshold %s",
+    (threshold) => {
+      expect(JSON.parse(vadThresholdUpdateEvent(threshold))).toEqual({
+        type: "session.update",
+        session: {
+          type: "realtime",
+          audio: {
+            input: {
+              turn_detection: {
+                type: "server_vad",
+                silence_duration_ms: 900,
+                prefix_padding_ms: 300,
+                create_response: false,
+                threshold,
+                interrupt_response: false,
+              },
+            },
+          },
+        },
+      });
+    },
+  );
 });
 
 describe("recordingStoragePath", () => {

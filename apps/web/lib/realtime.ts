@@ -15,6 +15,20 @@
  * `create_response: false` the server commits turns but never responds on its
  * own — the client owns all response timing (DECISIONS 009).
  */
+export const RESTING_VAD_THRESHOLD = 0.6;
+export const GATED_VAD_THRESHOLD = 0.85;
+
+function turnDetection(threshold: number) {
+  return {
+    type: "server_vad",
+    silence_duration_ms: 900,
+    prefix_padding_ms: 300,
+    create_response: false,
+    threshold,
+    interrupt_response: false,
+  };
+}
+
 export function clientSecretRequestBody(instructions: string) {
   return {
     session: {
@@ -24,30 +38,22 @@ export function clientSecretRequestBody(instructions: string) {
       output_modalities: ["audio"],
       audio: {
         input: {
-          turn_detection: {
-            type: "server_vad",
-            silence_duration_ms: 900,
-            prefix_padding_ms: 300,
-            create_response: false,
-            // Raised from the 0.5 default (2026-08-01 diagnostic run):
-            // ambient room noise in the open-speakers environment was
-            // committing phantom turns every ~10 s and each one triggered a
-            // response. Real speech clears 0.6 comfortably.
-            threshold: 0.6,
-            // Off for the same reason create_response is off: on open
-            // speakers, Morgan's own leaked audio trips VAD at utterance
-            // onset (logged 1.7 s into the greeting) and the default
-            // server-side interruption truncated his first words — heard
-            // as broken audio. Yielding on overlap is handled in the
-            // interviewer instructions (follow the candidate's thread),
-            // not by chopping the audio stream.
-            interrupt_response: false,
-          },
+          turn_detection: turnDetection(RESTING_VAD_THRESHOLD),
         },
         output: { voice: "marin" },
       },
     },
   };
+}
+
+export function vadThresholdUpdateEvent(threshold: number): string {
+  return JSON.stringify({
+    type: "session.update",
+    session: {
+      type: "realtime",
+      audio: { input: { turn_detection: turnDetection(threshold) } },
+    },
+  });
 }
 
 /**

@@ -193,6 +193,47 @@ export const RESPONSE_DEBOUNCE_S = 0.6;
  * backgrounded, throttled, or the machine slept. */
 export const SUSPEND_GAP_S = 2.0;
 
+export interface PlaybackGateState {
+  /** The threshold the client last asked the server to apply. */
+  applied: "resting" | "gated";
+  /** Seconds of raised-threshold hangover left after playback stops. */
+  hangoverS: number;
+}
+
+export const INITIAL_GATE_STATE: PlaybackGateState = {
+  applied: "resting",
+  hangoverS: 0,
+};
+
+/** Raised-threshold tail covering the measured 1.3 s speaker echo. */
+export const PLAYBACK_GATE_HANGOVER_S = 2.0;
+
+/** Advance the playback-aware VAD threshold gate without side effects. */
+export function nextGateState(
+  state: PlaybackGateState,
+  tick: { dtS: number; interviewerAudible: boolean },
+): { state: PlaybackGateState; effect: "raise" | "restore" | null } {
+  if (tick.interviewerAudible) {
+    return {
+      state: { applied: "gated", hangoverS: PLAYBACK_GATE_HANGOVER_S },
+      effect: state.applied === "resting" ? "raise" : null,
+    };
+  }
+  if (state.applied === "resting") {
+    return { state, effect: null };
+  }
+  if (tick.dtS >= SUSPEND_GAP_S || state.hangoverS - tick.dtS <= 0) {
+    return {
+      state: { applied: "resting", hangoverS: 0 },
+      effect: "restore",
+    };
+  }
+  return {
+    state: { applied: "gated", hangoverS: state.hangoverS - tick.dtS },
+    effect: null,
+  };
+}
+
 /**
  * Seconds between two ticker callbacks, read from a monotonic clock.
  *

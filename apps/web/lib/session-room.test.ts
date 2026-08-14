@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  INITIAL_GATE_STATE,
   CLOSING_LINGER_S,
   CLOSING_MARKER,
   HARD_CUT_S,
@@ -11,7 +12,9 @@ import {
   SILENCE_STAGES,
   SILENCE_STATUS_PREFIX,
   QUICK_SESSION_BUDGET_S,
+  PLAYBACK_GATE_HANGOVER_S,
   STALL_BLIP_MAX_S,
+  SUSPEND_GAP_S,
   TIME_STATUS_PREFIX,
   committedItemId,
   dueTimeStatus,
@@ -23,6 +26,7 @@ import {
   interviewerStateForEvent,
   isHardCut,
   minutesRemaining,
+  nextGateState,
   nextSilenceState,
   responseTriggerEvent,
   silenceStatusEvent,
@@ -34,6 +38,69 @@ import {
   type SilenceClockState,
   type SilenceTick,
 } from "./session-room";
+
+describe("nextGateState", () => {
+  it("raises once and refills the hangover while the interviewer is audible", () => {
+    const raised = nextGateState(INITIAL_GATE_STATE, {
+      dtS: 0.25,
+      interviewerAudible: true,
+    });
+    expect(raised).toEqual({
+      state: { applied: "gated", hangoverS: PLAYBACK_GATE_HANGOVER_S },
+      effect: "raise",
+    });
+    expect(
+      nextGateState(
+        { applied: "gated", hangoverS: 0.25 },
+        { dtS: 0.25, interviewerAudible: true },
+      ),
+    ).toEqual({
+      state: { applied: "gated", hangoverS: PLAYBACK_GATE_HANGOVER_S },
+      effect: null,
+    });
+  });
+
+  it("counts down silence and restores exactly when the hangover expires", () => {
+    const waiting = nextGateState(
+      { applied: "gated", hangoverS: 0.5 },
+      { dtS: 0.25, interviewerAudible: false },
+    );
+    expect(waiting).toEqual({
+      state: { applied: "gated", hangoverS: 0.25 },
+      effect: null,
+    });
+    expect(
+      nextGateState(waiting.state, {
+        dtS: 0.25,
+        interviewerAudible: false,
+      }),
+    ).toEqual({
+      state: { applied: "resting", hangoverS: 0 },
+      effect: "restore",
+    });
+  });
+
+  it("restores immediately after a suspension gap", () => {
+    expect(
+      nextGateState(
+        { applied: "gated", hangoverS: PLAYBACK_GATE_HANGOVER_S },
+        { dtS: SUSPEND_GAP_S, interviewerAudible: false },
+      ),
+    ).toEqual({
+      state: { applied: "resting", hangoverS: 0 },
+      effect: "restore",
+    });
+  });
+
+  it("does nothing while resting and the interviewer is silent", () => {
+    expect(
+      nextGateState(INITIAL_GATE_STATE, {
+        dtS: 0.25,
+        interviewerAudible: false,
+      }),
+    ).toEqual({ state: INITIAL_GATE_STATE, effect: null });
+  });
+});
 
 describe("formatTimer", () => {
   it("formats zero", () => {

@@ -8,7 +8,9 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  INITIAL_GATE_STATE,
   INITIAL_SILENCE_STATE,
+  PLAYBACK_GATE_HANGOVER_S,
   RESPONSE_DEBOUNCE_S,
   SILENCE_STAGES,
   STALL_BLIP_MAX_S,
@@ -16,6 +18,7 @@ import {
   committedItemId,
   indicatorForEvent,
   interviewerStateForEvent,
+  nextGateState,
   speechStateForEvent,
   tickDeltaS,
 } from "./session-room";
@@ -342,6 +345,58 @@ describe("seed ⑤: onset truncation adjacency", () => {
 // the generator and the seed that produced it, and replays exactly.
 
 const ROUND_SEEDS = [1, 7, 42, 1337, 20260801, 987654321];
+
+describe("playback gate invariants under generated adversarial load", () => {
+  for (const name of GENERATOR_NAMES) {
+    for (const seed of ROUND_SEEDS) {
+      it(`${name} pairs transitions and bounds the hangover (seed ${seed})`, () => {
+        const ticks = [
+          ...generate(name, seed),
+          ...quietTicks(PLAYBACK_GATE_HANGOVER_S + TICK_S),
+        ];
+        let state = INITIAL_GATE_STATE;
+        let raises = 0;
+        let restores = 0;
+        let continuousSilenceS = 0;
+
+        for (const current of ticks) {
+          const result = nextGateState(state, {
+            dtS: current.dtS,
+            interviewerAudible: current.interviewerAudible,
+          });
+          if (current.interviewerAudible) continuousSilenceS = 0;
+          else if (current.dtS < SUSPEND_GAP_S) continuousSilenceS += current.dtS;
+          else continuousSilenceS = PLAYBACK_GATE_HANGOVER_S;
+
+          if (result.effect === "raise") {
+            expect(raises).toBe(restores);
+            raises += 1;
+          }
+          if (result.effect === "restore") {
+            restores += 1;
+            expect(restores).toBe(raises);
+          }
+          if (continuousSilenceS > PLAYBACK_GATE_HANGOVER_S) {
+            expect(result.state.applied).toBe("resting");
+          }
+          if (
+            state.applied === "gated" &&
+            !current.interviewerAudible &&
+            current.dtS >= SUSPEND_GAP_S
+          ) {
+            expect(result).toEqual({
+              state: { applied: "resting", hangoverS: 0 },
+              effect: "restore",
+            });
+          }
+          state = result.state;
+        }
+        expect(restores).toBe(raises);
+        expect(state.applied).toBe("resting");
+      });
+    }
+  }
+});
 
 describe("clock invariants under generated adversarial load", () => {
   for (const name of GENERATOR_NAMES) {

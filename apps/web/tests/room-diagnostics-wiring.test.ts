@@ -74,6 +74,15 @@ describe("F-67 turn-system trail", () => {
     expect(sessionRoom).toContain(`"${tag}"`);
   });
 
+  it.each([
+    ["vad-raise"],
+    ["vad-restore"],
+    ["vad-ack"],
+    ["session-start"],
+  ])("records %s", (tag) => {
+    expect(sessionRoom).toContain(`"${tag}"`);
+  });
+
   it("records heartbeat failures and only failures — the incident's clearest signal", () => {
     // The 409 heartbeat train was the one unambiguous server-side symptom
     // in the F-66 incident, and the beat used to be fire-and-forget. A
@@ -135,10 +144,10 @@ describe("the disclosure is honest chrome, silent until opened", () => {
     expect(sessionRoom).toMatch(/\{trail !== null && \(/);
   });
 
-  it("adds no new data-channel sends: measurement never speaks", () => {
-    // The sole sources of response.create stay the greeting nudge and the
-    // reducer-driven triggers that existed before this instrumentation.
+  it("pins every data-channel send, including both VAD transitions", () => {
+    // Six existing sends plus playback-gate raise and restore. The sole
+    // response.create sources remain the greeting and silence reducer.
     const sends = sessionRoom.match(/dc(?:Ref\.current)?\??\.send\(/g) ?? [];
-    expect(sends).toHaveLength(6);
+    expect(sends).toHaveLength(8);
   });
 });

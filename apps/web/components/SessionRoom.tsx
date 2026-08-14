@@ -37,7 +37,12 @@ import {
   type DeniedScope,
   type MicPermissionStatusLike,
 } from "../lib/mic-permission";
-import { MAX_RECORDING_BYTES } from "../lib/realtime";
+import {
+  GATED_VAD_THRESHOLD,
+  MAX_RECORDING_BYTES,
+  RESTING_VAD_THRESHOLD,
+  vadThresholdUpdateEvent,
+} from "../lib/realtime";
 import {
   DIAG_DISCLOSURE_LABEL,
   formatDiagTrail,
@@ -65,6 +70,7 @@ import {
   ECHO_START_WINDOW_MS,
   HARD_CUT_S,
   HEARTBEAT_INTERVAL_S,
+  INITIAL_GATE_STATE,
   INITIAL_GUARD_STATE,
   INITIAL_SILENCE_STATE,
   SESSION_BUDGET_S,
@@ -81,6 +87,7 @@ import {
   isHardCut,
   itemDeleteEvent,
   nextGuardState,
+  nextGateState,
   nextSilenceState,
   responseTriggerEvent,
   silenceStatusEvent,
@@ -224,6 +231,7 @@ export default function SessionRoom({
   const micAnalyserRef = useRef<AnalyserNode | null>(null);
   const micLevelDataRef = useRef<Uint8Array<ArrayBuffer> | null>(null);
   const silenceStateRef = useRef(INITIAL_SILENCE_STATE);
+  const gateStateRef = useRef(INITIAL_GATE_STATE);
   const lastTickAtRef = useRef(0);
   const remoteAnalyserRef = useRef<AnalyserNode | null>(null);
   const remoteLevelDataRef = useRef<Uint8Array<ArrayBuffer> | null>(null);
@@ -498,10 +506,12 @@ export default function SessionRoom({
     // Recorded BEFORE the re-entry guard: the F-68 evidence is a Start
     // click that left no trace anywhere, and a guard stuck holding
     // connectingRef would produce exactly that silence.
+    diag("session-start", new Date().toISOString());
     diag("start-clicked", connectingRef.current ? "reentry-blocked" : "");
     // Re-entry guard (mirrors endingRef): a concurrent second start() would
     // double-mint the secret and corrupt chunksRef mid-recording.
     if (connectingRef.current) return;
+    gateStateRef.current = INITIAL_GATE_STATE;
     connectingRef.current = true;
     setError(null);
     setPhase("connecting");
@@ -758,6 +768,12 @@ export default function SessionRoom({
       });
       dc.addEventListener("message", (ev) => {
         messageArrivedRef.current = true;
+        try {
+          const event = JSON.parse(String(ev.data)) as { type?: unknown };
+          if (event.type === "session.updated") diag("vad-ack");
+        } catch {
+          // Existing event helpers ignore malformed frames too.
+        }
         const finishedTranscript = finishedTranscriptForEvent(String(ev.data));
         if (
           finishedTranscript !== null &&
@@ -928,6 +944,20 @@ export default function SessionRoom({
       // transport keeps the clock honest (2026-08-01 live failure).
       interviewerAudible = interviewerAudible || morganEventAudibleRef.current;
       if (interviewerAudible) lastMorganAudibleAtRef.current = Date.now();
+      if (dcRef.current?.readyState === "open") {
+        const gate = nextGateState(gateStateRef.current, {
+          dtS,
+          interviewerAudible,
+        });
+        gateStateRef.current = gate.state;
+        if (gate.effect === "raise") {
+          dcRef.current.send(vadThresholdUpdateEvent(GATED_VAD_THRESHOLD));
+          diag("vad-raise", String(GATED_VAD_THRESHOLD));
+        } else if (gate.effect === "restore") {
+          dcRef.current.send(vadThresholdUpdateEvent(RESTING_VAD_THRESHOLD));
+          diag("vad-restore", String(RESTING_VAD_THRESHOLD));
+        }
+      }
       diagTickRef.current = (diagTickRef.current + 1) % 8;
       if (diagTickRef.current === 0) {
         console.debug(
