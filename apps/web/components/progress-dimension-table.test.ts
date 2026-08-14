@@ -69,6 +69,9 @@ describe("ProgressDimensionTable trend direction (DECISIONS 070)", () => {
     expect(markup).not.toContain("text-trend-rise");
     expect(markup).not.toContain("text-trend-fall");
     expect(markup).toContain("bg-hairline");
+    // Having no direction to claim is not the same as having nothing to show:
+    // the row still names its dimension, so it still draws its glyph.
+    expect(markup).toContain("data-glyph=");
   });
 });
 

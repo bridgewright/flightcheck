@@ -82,6 +82,20 @@ describe("dimensionGlyph fallback", () => {
     expect(chosen.fallback).toBe(true);
   });
 
+  it("gates on the channel, not only on the keyword", () => {
+    // The corpus cannot prove this one. No committed content dimension happens
+    // to carry a delivery word and no committed delivery dimension carries a
+    // content word, so deleting either channel filter leaves every corpus
+    // assertion above green. A compiled rubric is open-ended and "clarity" is
+    // an ordinary content word, so the gate is pinned on names that cross.
+    expect(
+      dimensionGlyph("narrative-clarity", "Narrative Clarity", "content").glyph,
+    ).not.toBe(CHANNEL_GLYPHS.delivery);
+    expect(
+      dimensionGlyph("stakeholder-presence", "Stakeholder Presence", "delivery").glyph,
+    ).toBe(CHANNEL_GLYPHS.delivery);
+  });
+
   it("matches keywords case-insensitively over key and name together", () => {
     // The key alone says nothing here; the name carries the keyword.
     expect(dimensionGlyph("dim-07", "STAKEHOLDER Alignment", "content").fallback).toBe(false);

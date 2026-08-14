@@ -18,13 +18,37 @@ describe("trendDirection", () => {
     expect(trendDirection(0)).toBe("flat");
   });
 
+  it("prints and colours the half boundary the same way, in both signs", () => {
+    // Math.round is half-UP, not half-away-from-zero, so the two signs are not
+    // mirror images and the asymmetry is deliberate: +0.05 rounds to +0.1 and
+    // reads rising, while -0.05 rounds to -0, prints "0.0", and reads flat.
+    // Named here rather than left to the sweep because it is the one place the
+    // printed figure and the wash can part company.
+    expect(formatSigned(0.04)).toBe("0.0");
+    expect(trendDirection(0.04)).toBe("flat");
+    expect(formatSigned(-0.04)).toBe("0.0");
+    expect(trendDirection(-0.04)).toBe("flat");
+    expect(formatSigned(0.05)).toBe("+0.1");
+    expect(trendDirection(0.05)).toBe("rising");
+    expect(formatSigned(-0.05)).toBe("0.0");
+    expect(trendDirection(-0.05)).toBe("flat");
+  });
+
   it("agrees with the printed net everywhere, including the rounding boundary", () => {
     // The colour must never claim a move the printed figure denies:
     // formatSigned rounds to one decimal, so a +0.04 net prints "0.0" and has
     // to read flat, while a +0.05 prints "+0.1" and must not. The two must
     // share one rounding rule, and this sweep is what holds them to it.
-    for (let tenth = -30; tenth <= 30; tenth++) {
-      for (const jitter of [-0.049, -0.04, 0, 0.04, 0.049]) {
+    //
+    // The sweep steps THROUGH the exact half boundaries rather than around
+    // them, and runs the whole net range a 1..5 rubric can produce. The
+    // version this replaces jittered by at most 0.049 and stopped at 3.0, so
+    // it never landed on a half boundary at all: swapping this module's
+    // rounding for a round-half-away-from-zero one, which colours a -0.05 net
+    // falling while the figure beside it prints "0.0", passed all 305 of its
+    // cases.
+    for (let tenth = -40; tenth <= 40; tenth++) {
+      for (const jitter of [-0.05, -0.049, -0.04, 0, 0.04, 0.049, 0.05]) {
         const net = tenth / 10 + jitter;
         const printed = formatSigned(net);
         const direction = trendDirection(net);
