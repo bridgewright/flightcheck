@@ -2903,6 +2903,31 @@ how mail to it gets received, by whom, and at what standing cost.
   Email's SMTP or Workspace — SPF/DMARC must change in the same
   batch), or reply volume makes a shared inbox worth paying for.
 
+**Amendment (2026-08-14).** The chosen free tier never delivered: the
+first real round-trip bounced `550 5.1.1 ... requires an upgrade to
+Enhanced Protection` — Forward Email's free plan does not serve
+`.coach`, a paid-plan TLD paywall its RCPT acceptance does not
+mention. The "verified live before the code flip" claim above rested
+on RCPT 250 plus a greylist reading; RCPT acceptance happens before
+the paywall check, so only a DATA-phase delivery proves a forwarding
+path. Receiving moved to ImprovMX's free tier the same day the
+bounce surfaced (owner-approved): `.coach` is on their free plan
+(only .tk/.ml/.ga/.cf/.gq are excluded), MX swapped to
+mx1/mx2.improvmx.com, SPF to `v=spf1 include:spf.improvmx.com -all`,
+DMARC untouched, the stale `forward-email=` TXT removed. This
+reopens the rejected "vendor dashboard account" option with changed
+facts — the no-account advantage was void for this TLD — and the
+forwarding target now lives in that dashboard rather than in an
+encrypted DNS record. Verified end to end in ImprovMX's delivery
+log: the alias mail entered the queue and the forwarded copy was
+accepted by `gmail-smtp-in.l.google.com` with `250 2.0.0 OK` two
+seconds later. Testing caveat for the record: a self-addressed test
+(Gmail to an alias forwarding back to the same Gmail) is silently
+deduplicated after acceptance, so an empty inbox proves nothing past
+the 250 — read the delivery log or send from a second address. No
+code changed in this amendment; the address, the SUPPORT_EMAIL
+constant, and the legal surfaces are exactly as v0.22 shipped them.
+
 ## 070 — Trend direction speaks in the pastel pair, not in alarm (2026-08-13)
 
 **Context.** The dashboard's dimension-trends table (F-72, redrawn by
