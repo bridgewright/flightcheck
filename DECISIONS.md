@@ -3056,16 +3056,16 @@ each held only until the acoustics changed. The bottleneck is not
 ideas, it is evidence retention.
 
 - **Chosen: the trail rides the heartbeat.** The room already POSTs
-  an authenticated, rate-limited heartbeat every 15 seconds; it now
-  carries the diagnostic entries recorded since the last successful
-  beat (a cursor over the existing ring buffer, rolled back on a
-  failed beat so nothing is lost), plus one final flush at the top
-  of the clean end path. The worker appends the lines to a new
-  nullable `sessions.diagnostics` column (migration 014),
-  server-capped at 32 KB keeping the newest tail. The final flush
-  runs on BOTH end paths — the clean end and the connection-loss
-  guard, and the guard's is the one the trail exists for (review
-  round 1 corrected this entry's original "clean end" wording). The
+  an authenticated heartbeat every 15 seconds; it now carries
+  the diagnostic entries recorded since the last successful
+  beat (a cursor over the existing ring buffer, left unadvanced on a
+  failed beat so the next one re-carries the same delta), plus one
+  final flush at the top of the clean end path. The worker appends
+  the lines to a new nullable `sessions.diagnostics` column
+  (migration 014), server-capped at 32 KB keeping the newest tail.
+  The final flush runs on BOTH end paths — the clean end and the
+  connection-loss guard, and the guard's is the one the trail exists
+  for (review round 1 corrected this entry's "clean end" wording). The
   wire format carries absolute monotonic milliseconds (a new pure
   formatter) — the on-screen formatter's slice-relative clock would
   restart at zero on every delta. Deploy-order rule the review
@@ -3074,10 +3074,25 @@ ideas, it is evidence retention.
   poison pill — anyone adding a field to the beat body deploys the
   worker before the page. The privacy page's collection list gains
   the telemetry category in the same change, because "that is the
-  whole list" must stay true. Tags and offsets only: no audio, no
-  transcript, no speech content; deleted with the session row. The
-  column joins no read payload (`SESSION_COLUMNS` unchanged) — the
-  operator reads it by SQL when a recurrence needs it.
+  whole list" must stay true. Two corrections from review round 2,
+  which read this entry against the code rather than against round
+  1: the heartbeat is authenticated but is NOT rate-limited (only
+  session-start, scoring, package-create, feedback and cbt-redeem
+  are), and the persisted trail is at-least-once rather than
+  complete, so the original "nothing is lost" is struck. A beat
+  whose write landed and whose response did not is appended twice;
+  entries the ring trimmed before any beat carried them, a final
+  flush that loses its race with the clean end's `/complete`, and an
+  entry sharing a millisecond with the last one delivered are lost
+  by design (`takeDiagDelta` is strictly-after, and browsers that
+  clamp `performance.now()` to 1 ms make that tie reachable). Tags
+  and offsets only: no audio, no transcript, no speech content;
+  deleted with the session row, which round 2 also put under a test
+  in `tests/test_api_deletion.py` — the column dies with the row in
+  Postgres, and the fake now pops the trail the same way it pops a
+  deleted row's transcript. The column joins no read payload
+  (`SESSION_COLUMNS` unchanged) — the operator reads it by SQL when
+  a recurrence needs it.
 - **Chosen: the field is optional and an empty beat stays valid.**
   Deploy order guarantees a window where old pages meet the new
   worker; their bodyless heartbeats keep exactly today's contract

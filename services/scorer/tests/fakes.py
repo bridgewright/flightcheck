@@ -635,11 +635,14 @@ class FakeDatabase:
                 deleted += 1
                 if kind == "session":
                     # Transcripts live on the session row in Postgres, so
-                    # they cannot outlive it here either.
+                    # they cannot outlive it here either. Same for the room
+                    # diagnostics trail (migration 014): a column on the row
+                    # is what makes the privacy page's deletion promise true.
                     self.transcripts.pop(row_id, None)
                     self.paraphrases.pop(row_id, None)
                     self.insights.pop(row_id, None)
                     self.marks.pop(row_id, None)
+                    self.session_diagnostics.pop(row_id, None)
         return deleted
     # -------------------------------------------------- v0.6 usage metrics
 

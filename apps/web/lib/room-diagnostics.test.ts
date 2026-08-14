@@ -137,6 +137,18 @@ describe("takeDiagDelta", () => {
     expect(takeDiagDelta(buf, cursor)).toEqual([]);
   });
 
+  it("steps over an entry that shares its millisecond with the cursor", () => {
+    // The known cost of a strictly-after cursor, pinned so it stays known:
+    // browsers that clamp performance.now() to 1 ms can record two entries
+    // at the same atMs, and one delivered as the tail of a delta takes its
+    // twin with it. One line of an already at-least-once trail, against a
+    // sequence number on every entry to prevent it.
+    const buf: DiagEntry[] = [];
+    recordDiag(buf, 100, "delivered");
+    recordDiag(buf, 100, "same-millisecond");
+    expect(takeDiagDelta(buf, 100)).toEqual([]);
+  });
+
   it("survives ring trimming: a cursor older than the retained head sends the whole buffer", () => {
     const buf: DiagEntry[] = [];
     for (let i = 0; i < DIAG_CAPACITY + 10; i += 1) {

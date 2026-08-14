@@ -241,10 +241,18 @@ export default function SessionRoom({
     recordDiag(diagRef.current, performance.now(), tag, note);
   }, []);
 
-  // DECISIONS 072: the trail rides the heartbeat as deltas. The cursor
-  // marks the last entry a DELIVERED beat carried; a refused or unreachable
-  // beat leaves it alone, so the next beat re-carries the same delta and
-  // the server-side trail keeps no holes.
+  // DECISIONS 072: the trail rides the heartbeat as deltas. The cursor marks
+  // the last entry a DELIVERED beat carried; a refused or unreachable beat
+  // leaves it alone, so the next beat re-carries the same delta rather than
+  // stepping over it. That makes the persisted trail at-least-once, not
+  // complete, and the operator should read it as such: a beat whose write
+  // landed and whose response did not is appended twice, and three things
+  // still leave holes in it — entries the ring trimmed before any beat
+  // carried them, a final flush that loses its race with the clean end's
+  // /complete (409, and the page is gone before it could retry), and an
+  // entry recorded in the same millisecond as the last one delivered, which
+  // the strictly-after cursor steps over (performance.now() is clamped to
+  // 1 ms on some browsers, so a tie is reachable, not theoretical).
   const diagSentMsRef = useRef(0);
 
   // Failures land in the diagnostic trail; a healthy beat stays silent

@@ -8,6 +8,18 @@ const room = readFileSync(
   "utf-8",
 );
 
+/** Source with comments blanked, line count preserved: the house idiom, so a
+ * comment that names the identifier a pin counts is not what moves the count. */
+function withoutComments(source: string): string {
+  return source
+    .replace(/\/\*[\s\S]*?\*\//g, (block) => block.replace(/[^\n]/g, " "))
+    .replace(/(^|[^:])\/\/[^\n]*/g, (match, before: string) =>
+      before + match.slice(before.length).replace(/./g, " "),
+    );
+}
+
+const emitted = withoutComments(room);
+
 describe("room heartbeat lifecycle", () => {
   it("runs only in the reducer's live phase and cleans up with that phase", () => {
     expect(room).toContain('if (phase !== "live") return;');
@@ -25,8 +37,10 @@ describe("room heartbeat lifecycle", () => {
 // node-only (vitest.config.ts sets environment: "node") and this repo has no
 // DOM, no testing-library, and no component-render test anywhere. So these
 // pin the shape of the code, not the behaviour of a mounted room: they catch
-// a moved assignment, a dropped call site, a lost body, and they cannot catch
-// a rewrite that keeps the shape. The pure half of the delta logic lives in
+// a moved assignment, a dropped call site, a lost body, and an alias of the
+// symbol they count. What they cannot catch is a rewrite that names none of
+// those symbols — a fourth flush that inlines its own fetch to the heartbeat
+// route is invisible here. The pure half of the delta logic lives in
 // lib/room-diagnostics.ts precisely so that half IS behaviour-tested; what
 // stays here is the wiring, which nothing in this harness can execute.
 describe("diagnostics delta on the beat (DECISIONS 072)", () => {
@@ -62,6 +76,16 @@ describe("diagnostics delta on the beat (DECISIONS 072)", () => {
     // nothing. The lookbehind keeps `heartbeat()` and any `x.beat()` out;
     // `setInterval(beat, …)` passes the reference rather than calling it and
     // is deliberately not a call site.
-    expect(room.match(/(?<![.\w])beat\(\)/g)).toHaveLength(3);
+    expect(emitted.match(/(?<![.\w])beat\(\)/g)).toHaveLength(3);
+    // And counted as MENTIONS as well, which is what makes the claim in this
+    // test's name true rather than a spelling of it (the b5-t3 lesson, kept
+    // by hero-drift.test.ts and route-motion.test.ts the same way). A
+    // fourth flush written `const flush = beat; flush();`, `setTimeout(beat,
+    // 0)`, or `[beat].forEach((f) => f())` leaves the call count at three and
+    // was proved green against that count alone; every one of them adds a
+    // mention. Eight: the useCallback, the three calls, the setInterval
+    // reference, and the three dependency arrays that carry it.
+    const mentions = emitted.match(/(?<![.\w])beat\b/g) ?? [];
+    expect(mentions.length, "beat is aliased, deferred, or flushed again").toBe(8);
   });
 });

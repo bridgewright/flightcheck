@@ -88,6 +88,13 @@ export function formatDiagWire(entries: DiagEntry[]): string {
  * time. Entries the ring trims before they were ever sent are gone by
  * design: the cap guards a pathological event storm, and a storm's tail is
  * its diagnostic part.
+ *
+ * Strictly after, so a delivered cursor is never re-sent — which also means
+ * an entry sharing its millisecond with the last delivered one is stepped
+ * over. A recorded limit rather than a bug to chase: browsers that clamp
+ * performance.now() to 1 ms make ties reachable, and the cost is one line of
+ * a trail that is already at-least-once. Fixing it means a sequence number
+ * per entry, which is a bigger change than the loss it prevents.
  */
 export function takeDiagDelta(buffer: DiagEntry[], sinceMs: number): DiagEntry[] {
   return buffer.filter((entry) => entry.atMs > sinceMs);

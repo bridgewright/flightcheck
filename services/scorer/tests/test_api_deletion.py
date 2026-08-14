@@ -244,6 +244,24 @@ def test_execute_removes_every_artifact_of_the_user():
     assert outcome.recordings_deleted == 2
 
 
+def test_the_room_diagnostics_trail_dies_with_the_session_row():
+    """DECISIONS 072, and the privacy page's promise in its own words.
+
+    The trail is a column on sessions (migration 014), so in Postgres it
+    cannot outlive the row. The fake keeps it in a side dict, which is only
+    a faithful stand-in if the row's deletion takes it too -- the same
+    reason transcripts, insights and marks are popped there.
+    """
+    db = FakeDatabase()
+    seeded = _seed_user(db, "user-a", sessions_with_audio=1)
+    db.append_session_diagnostics(seeded["session_ids"][0], "1200ms guard-trip")
+    assert db.session_diagnostics
+
+    execute_deletion(db, _storage_for(db), collect_deletion_plan(db, "user-a"))
+
+    assert db.session_diagnostics == {}
+
+
 def test_execute_leaves_every_other_account_untouched():
     db = FakeDatabase()
     _seed_user(db, "user-a")
