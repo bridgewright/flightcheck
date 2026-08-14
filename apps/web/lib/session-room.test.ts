@@ -92,6 +92,31 @@ describe("nextGateState", () => {
     });
   });
 
+  it("restores on a suspension gap with hangover still to spare", () => {
+    // The gap rule is "parked time is absence" (DECISIONS 011's amnesty
+    // philosophy), NOT "the countdown happened to reach zero" — a gate held
+    // through a backgrounded tab would tax the candidate's real speech in
+    // the room they come back to. Today those two readings are
+    // indistinguishable by coincidence: hangoverS is capped at
+    // PLAYBACK_GATE_HANGOVER_S, both it and SUSPEND_GAP_S are 2.0, so any
+    // gap-sized delta already drives the countdown to zero on its own, and
+    // deleting the gap branch changes no reachable behaviour. Both are
+    // recorded levers (DECISIONS 074 revisits the hangover if a phantom
+    // outlives it), and the moment the hangover is raised past the gap this
+    // branch is the only thing that restores. Pinning the rule with
+    // hangover left over is what keeps its removal a test failure instead
+    // of a silent one.
+    expect(
+      nextGateState(
+        { applied: "gated", hangoverS: SUSPEND_GAP_S * 3 },
+        { dtS: SUSPEND_GAP_S, interviewerAudible: false },
+      ),
+    ).toEqual({
+      state: { applied: "resting", hangoverS: 0 },
+      effect: "restore",
+    });
+  });
+
   it("does nothing while resting and the interviewer is silent", () => {
     expect(
       nextGateState(INITIAL_GATE_STATE, {

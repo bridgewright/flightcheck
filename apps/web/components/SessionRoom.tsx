@@ -506,11 +506,19 @@ export default function SessionRoom({
     // Recorded BEFORE the re-entry guard: the F-68 evidence is a Start
     // click that left no trace anywhere, and a guard stuck holding
     // connectingRef would produce exactly that silence.
-    diag("session-start", new Date().toISOString());
     diag("start-clicked", connectingRef.current ? "reentry-blocked" : "");
     // Re-entry guard (mirrors endingRef): a concurrent second start() would
     // double-mint the secret and corrupt chunksRef mid-recording.
     if (connectingRef.current) return;
+    // AFTER the guard, unlike start-clicked above, because this marker's
+    // whole job is to open a trail slice (DECISIONS 074): the monotonic
+    // clock every other entry is stamped with restarts on rearm and on
+    // reload, so the persisted column needs one wall-clock anchor per real
+    // attempt to be readable. A click the guard turned away begins no
+    // attempt and restarts no clock — marking it would plant a false slice
+    // boundary mid-trail, which is the opposite of what this buys. The
+    // blocked click is still recorded; start-clicked above carries it.
+    diag("session-start", new Date().toISOString());
     gateStateRef.current = INITIAL_GATE_STATE;
     connectingRef.current = true;
     setError(null);
@@ -945,15 +953,19 @@ export default function SessionRoom({
       interviewerAudible = interviewerAudible || morganEventAudibleRef.current;
       if (interviewerAudible) lastMorganAudibleAtRef.current = Date.now();
       if (dcRef.current?.readyState === "open") {
-        const gate = nextGateState(gateStateRef.current, {
+        // playbackGate, not gate: the console line a few lines below already
+        // prints `gate` for heardMorganRef (the greeting gate), and one word
+        // meaning two things in this file is how a later reader misreads a
+        // trail.
+        const playbackGate = nextGateState(gateStateRef.current, {
           dtS,
           interviewerAudible,
         });
-        gateStateRef.current = gate.state;
-        if (gate.effect === "raise") {
+        gateStateRef.current = playbackGate.state;
+        if (playbackGate.effect === "raise") {
           dcRef.current.send(vadThresholdUpdateEvent(GATED_VAD_THRESHOLD));
           diag("vad-raise", String(GATED_VAD_THRESHOLD));
-        } else if (gate.effect === "restore") {
+        } else if (playbackGate.effect === "restore") {
           dcRef.current.send(vadThresholdUpdateEvent(RESTING_VAD_THRESHOLD));
           diag("vad-restore", String(RESTING_VAD_THRESHOLD));
         }

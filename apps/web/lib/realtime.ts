@@ -2,6 +2,49 @@
 // in a pure function so they can be unit-tested without minting anything).
 
 /**
+ * Server VAD threshold at rest. Raised from the 0.5 default (2026-08-01
+ * diagnostic run): ambient room noise in the open-speakers environment was
+ * committing phantom turns every ~10 s and each one triggered a response.
+ * Real speech clears 0.6 comfortably. A recorded lever (DECISIONS 074).
+ */
+export const RESTING_VAD_THRESHOLD = 0.6;
+
+/**
+ * Server VAD threshold while the interviewer is audible and through the
+ * playback hangover behind it (DECISIONS 074). Sits above leaked speaker
+ * audio arriving at the microphone and below close-talking candidate
+ * speech — the same measured-margin derivation that put the resting value
+ * at 0.6 — so a genuine barge-in still starts a turn while the gate is up
+ * and the interviewer's own echo no longer can. A recorded lever.
+ */
+export const GATED_VAD_THRESHOLD = 0.85;
+
+/**
+ * The turn-detection block, shaped once. `clientSecretRequestBody` mints the
+ * session with it at the resting threshold and `vadThresholdUpdateEvent`
+ * moves the live session between the two thresholds with the same object.
+ * These literals stay in THIS file: `tests/vad-ssot.test.ts` reads
+ * `silence_duration_ms` and `prefix_padding_ms` out of this source and fails
+ * on any drift against product.toml and the lab harness.
+ */
+function turnDetection(threshold: number) {
+  return {
+    type: "server_vad",
+    silence_duration_ms: 900,
+    prefix_padding_ms: 300,
+    create_response: false,
+    threshold,
+    // Off for the same reason create_response is off: on open speakers,
+    // Morgan's own leaked audio trips VAD at utterance onset (logged 1.7 s
+    // into the greeting) and the default server-side interruption
+    // truncated his first words — heard as broken audio. Yielding on
+    // overlap is handled in the interviewer instructions (follow the
+    // candidate's thread), not by chopping the audio stream.
+    interrupt_response: false,
+  };
+}
+
+/**
  * Body for POST https://api.openai.com/v1/realtime/client_secrets.
  *
  * Hard-won GA fact (W1 bake-off): this endpoint wants the NESTED session
@@ -15,20 +58,6 @@
  * `create_response: false` the server commits turns but never responds on its
  * own — the client owns all response timing (DECISIONS 009).
  */
-export const RESTING_VAD_THRESHOLD = 0.6;
-export const GATED_VAD_THRESHOLD = 0.85;
-
-function turnDetection(threshold: number) {
-  return {
-    type: "server_vad",
-    silence_duration_ms: 900,
-    prefix_padding_ms: 300,
-    create_response: false,
-    threshold,
-    interrupt_response: false,
-  };
-}
-
 export function clientSecretRequestBody(instructions: string) {
   return {
     session: {
@@ -46,6 +75,14 @@ export function clientSecretRequestBody(instructions: string) {
   };
 }
 
+/**
+ * `session.update` moving the live session's input threshold (DECISIONS 074's
+ * playback gate). Same nested GA schema as the mint above, and the FULL
+ * turn_detection object every time, never a partial patch: how the server
+ * merges a partial block is not something this product guesses about, and a
+ * dropped field here would silently restore a server default the bake-off
+ * ruled out.
+ */
 export function vadThresholdUpdateEvent(threshold: number): string {
   return JSON.stringify({
     type: "session.update",
