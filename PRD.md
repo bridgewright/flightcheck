@@ -552,6 +552,30 @@ Changes to targets are recorded here with date and reason — never silently.
   fork (free consent-screen brand verification first, the paid
   custom auth domain only on evidence). DECISIONS 073.
 
+- **v0.26 (recorded 2026-08-15, pre-code):** the interviewer stops
+  hearing itself, and its turn-taking gets measured before it gets
+  changed. The open-speaker reproduction v0.24 was built for
+  arrived, and the persisted trail named three mechanisms with
+  timestamps: the interviewer's own leaked greeting read as a
+  candidate barge-in while he was still speaking; a phantom echo
+  tail, 1.3 seconds after he went quiet, committed as a turn he
+  then answered; and — separate from echo entirely — the
+  silence-counting turn policy answered into a thinking pause and
+  talked over the resumed answer. Phase 1 takes those three
+  structurally. The room turns the server's ear down while the
+  interviewer is audible plus a two-second tail: echo can no longer
+  start a turn there, a real interruption still clears the raised
+  bar, and earphone sessions are untouched by construction. The
+  semantic turn-detection mode the 2026-08-01 bake-off disqualified
+  gets a measured re-audition in the lab — adopted or rejected on
+  numbers, never on the industry's word. And the echo verdict
+  itself becomes a measurement: a microphone-against-speaker
+  correlation recorded in shadow beside today's timing physics,
+  taking no authority until the field ledger earns it. Every
+  parameter this touches is a recorded lever, and the verification
+  bar is one real session in each first-class audio environment.
+  DECISIONS 074–076.
+
 > 2026-08-02: v0.4 scope added above — accounts move ahead of payments
 > because login-gated interviews protect session integrity and per-session
 > cost, and the dashboard is what makes a 6-session package usable. The

@@ -3146,3 +3146,196 @@ surface it — GoTrue forwards `queryParams` untouched.
 - **Revisit when:** funnel data shows chooser friction for
   returning customers, or the branding half lands and the whole
   door can be judged as one surface.
+
+## 074 — The room turns the server's ear down while the interviewer speaks (2026-08-15)
+
+**Context.** F-67 Phase 1. The open-speaker reproduction that
+DECISIONS 072's persisted trail was built for happened on 2026-08-14,
+and the trail did its job: for the first time in four occurrences,
+the mechanisms are timestamped facts instead of hypotheses. Three
+were confirmed. (1) **Echo as barge-in during playback**: the echo of
+the interviewer's own greeting was detected as candidate speech WHILE
+he spoke, and the resulting barge-in at +9.4s truncated the greeting
+2.9 seconds in. (2) **Self-advance from a commit outside the playback
+window**: that barge-in's commit WAS suppressed by the timing
+heuristic (`commit-echo-suppressed 1096ms` — the overlap physics work
+where they apply), but a second phantom segment started 1.3 seconds
+AFTER `morgan-quiet` — an echo/buffer tail outside the 400 ms
+start window — committed unsuppressed, and the interviewer answered
+his own echo. (3) A turn-policy failure that is not echo at all,
+split to DECISIONS 075. This entry is the fix for (1) and most of
+(2): the "dynamic VAD during playback" row of 072's decision matrix,
+chosen because the trail shows that exact class and not by
+plausibility, which is how the previous three patches were chosen and
+why there was a fourth occurrence to record.
+
+- **Chosen: playback-aware input gating.** While the interviewer is
+  audible (the `output_audio_buffer` lifecycle or the remote
+  analyser, the room's existing two-source rule) plus a hangover
+  after he goes quiet — 2.0 seconds, sized above the measured 1.3 s
+  phantom tail with margin — the client raises the server VAD
+  threshold with a `session.update` and restores it when the
+  hangover expires. The gated value discriminates by level: leaked
+  speaker audio arrives at the microphone well below a close-talking
+  candidate's level (the echo floor — the same measured-margin
+  derivation that put the resting threshold at 0.6 in the 2026-08-01
+  diagnostic run, where real speech "clears it comfortably" and
+  ambient phantoms do not). So a genuine interruption still starts a
+  turn while the gate is up; echo no longer can, during playback or
+  in its tail. Earphone sessions see no behavioral change by
+  construction — no leak reaches the mic, so nothing there ever
+  depended on the lower threshold during playback — and the
+  both-environments verification bar below holds this to evidence.
+  The gate lives in the session-room reducer as pure state emitting
+  a `session.update` effect, under the reducer's adversarial test
+  discipline; the reducer stays the sole `response.create` source
+  and this adds none.
+- **Chosen: the gate is visible in the trail.** Gate transitions
+  (raise/restore, with the applied value) become diagnostics
+  entries, and a session-start marker now opens every trail slice —
+  the open item Phase 0's review recorded (the trail clock restarts
+  on rearm/reload), folded in here so the next trail reads
+  unambiguously.
+- **Chosen: the timing heuristics stay.** The 400 ms start window
+  and the 2400 ms outlive floor remain as the second layer — they
+  demonstrably caught mechanism (1)'s commit — but they are no
+  longer the only defense against the class they cannot see:
+  episodes that start outside the window.
+- **Rejected: transmit gating (mute the mic during playback).** The
+  third row of 072's matrix. It makes barge-in impossible by
+  construction — the candidate could never interrupt, which a real
+  interviewer allows — and it is a pure loss for earphone sessions,
+  which never leak. A feature that must behave that differently
+  between the two first-class audio environments fails the standing
+  directive on its face.
+- **Rejected: widening the client-side start window to cover the
+  tail.** The timing heuristic has already swallowed a genuine first
+  answer once (DECISIONS 052's filed evidence,
+  `commit-echo-suppressed 1066ms`); stretching its windows grows
+  exactly that false-suppression class. Gating at the source
+  prevents the phantom from ever committing instead of arguing about
+  it afterwards.
+- **Rejected: a permanently higher threshold.** It taxes the
+  quietest honest speaker for the whole session. The gated value is
+  affordable precisely because it applies only while echo is
+  physically possible.
+- **Lever discipline:** the gated threshold and the hangover are
+  recorded levers (the naturalness suite's `lever_state` contract
+  and worklog), like every VAD/turn parameter since DECISIONS 047.
+- **Verification bar:** one real open-speaker session AND one real
+  earphone session, both with trails read. The earphone session must
+  show nothing changed but the trail entries.
+- **Revisit when:** a trail shows a real barge-in missed while
+  gated (the gated value is too high), or a phantom surviving the
+  hangover (the tail runs longer than 2 s), or the Realtime API
+  grows server-side echo handling that makes client gating
+  redundant.
+
+## 075 — semantic_vad gets a re-audition: numbers or nothing (2026-08-15)
+
+**Context.** The third mechanism on the 2026-08-14 trail is a
+turn-policy failure, not echo: the candidate's multi-segment answer
+committed at +70.0s, the 0.6 s client debounce (DECISIONS 055) fired
+at +70.8s, the candidate RESUMED at +71.1s, and the interviewer
+talked over them from +71.7s. A thinking pause of roughly 1.6 s also
+closed a turn early — past the 900 ms VAD tail, so the acoustic
+guard cannot help; the pause was silence, and `server_vad` counts
+silence. Also on the trail: a debounce deferred through the
+interviewer's own audio fired the moment `response-done` landed,
+producing back-to-back interviewer utterances (+81.2s quiet, +82.5s
+speaking again). The structural answer to "silence is not the end of
+a thought" is semantic turn detection — the API's `semantic_vad`
+judges whether the utterance reads complete instead of counting
+quiet. This log already disqualified it once, on measurement
+(DECISIONS 009, 2026-08-01): low eagerness never committed a
+complete answer (2/2), auto eagerness interrupted an 8 s thinking
+pause at ~4.4 s and invented content, and both starved the client
+clock of events while holding a turn. Whether the shipping API has
+outgrown those measurements is an empirical question, and this
+defect's whole Phase 0 existed to end fixing-by-plausibility.
+
+- **Chosen: an empirical re-audition, gated on numbers.** The lab
+  harness (`webroom/server.py`) runs the 2026-08-01 bake-off
+  scenarios again — complete answer, mid-answer thinking pause,
+  filler stall, held-turn event visibility — at low and medium
+  eagerness, against current API documentation. The bar it must
+  clear is 009's four failures inverted: a complete answer commits
+  with bounded latency (comparable to today's ~1.5 s total quiet);
+  an 8 s mid-answer thinking pause is NOT interrupted; turn events
+  remain visible while a turn is held (the client clock and the
+  connection guard both feed on them); zero uninvited responses
+  under `create_response: false`. Only a lab pass earns one real
+  session behind a recorded lever. Adopt or reject on the numbers;
+  either way the run lands in `evals/reports/` and this log gains
+  the verdict.
+- **Rejected: adopting on the field defect alone.** The 009
+  measurements are the most recent data this repo holds on
+  semantic_vad. "The industry uses it for thinking pauses" is
+  exactly the plausibility-shaped reasoning the trail exists to
+  replace.
+- **Rejected: stretching `silence_duration_ms` instead.** Taxes
+  every turn transition including genuinely complete answers (009's
+  original rejection, still true), and the failure is the policy —
+  counting silence — not the count.
+- **Rejected: a client-side resume-grace (cancel the response when
+  the candidate resumes).** `response.cancel` against
+  already-streaming audio is truncation machinery — the class
+  `interrupt_response: false` exists to keep out of this product —
+  and it answers the talk-over symptom while leaving the early
+  close in place.
+- **Carried observation:** the deferred-debounce double utterance
+  (+81.2s/+82.5s above). If semantic_vad is adopted, the debounce
+  machinery changes shape anyway; if it is rejected, that
+  observation gets its own turn-policy pass on `server_vad` rather
+  than dying in this entry.
+- **Revisit when:** the re-audition report lands (this entry gains
+  the verdict and its numbers), or OpenAI ships a semantic_vad
+  revision that invalidates the new measurements.
+
+## 076 — The echo verdict becomes a measurement, in shadow first (2026-08-15)
+
+**Context.** Today's echo verdict is timing physics alone: a
+candidate episode STARTING within 400 ms of interviewer audio is
+suspect, and a suspect commit is purged unless it OUTLIVED his audio
+by 2400 ms. The 2026-08-14 trail showed both sides of that
+heuristic's ledger in one session: it correctly suppressed the
+echo-barge-in's commit (`commit-echo-suppressed 1096ms`), it has
+swallowed a genuine first answer before (DECISIONS 052), and it is
+structurally blind to an episode that starts outside its window
+(074's mechanism 2). The room already holds the signal needed to
+measure instead of infer: two AnalyserNodes, microphone and remote.
+This is the "correlation-measured echo verdicts" row of 072's
+matrix, shipped as the backstop behind 074's gating.
+
+- **Chosen: cross-correlation verdict, recorded in shadow.** A pure
+  module keeps short rolling level-envelope series from both
+  analysers; when a commit (or a suppression) lands, it
+  cross-correlates the microphone envelope against the interviewer
+  envelope over the episode window across small lags. An echo is
+  the remote signal re-entering the mic — high correlation at some
+  acoustic lag; a real answer is uncorrelated. The verdict
+  (coefficient plus echo/speech/indeterminate) is appended to the
+  diagnostics trail BESIDE the timing verdict on every judged
+  commit. Shadow means shadow: the timing heuristic keeps
+  authority, and no behavior changes on the correlation verdict in
+  this phase.
+- **Why shadow:** a detector whose false-suppress class eats real
+  first answers must not take authority on lab confidence. The
+  promotion gate is recorded field evidence — open-speaker AND
+  earphone trails showing the correlation verdict separating the
+  classes the timing margins cannot — and promotion is its own
+  logged decision with those trails cited.
+- **Rejected: raw-waveform cross-correlation.** The analysers are
+  sampled on the client's coarse tick; waveform alignment wants a
+  continuous capture path the room does not have, for accuracy the
+  envelope form may already deliver at this job's scale (the
+  question is "same shape as the remote audio, slightly delayed?",
+  not "which millisecond"). Measure the cheap form first; the
+  shadow ledger will say if it is not enough.
+- **Rejected: promoting to authority in the same change.** That
+  would be choosing a fix and its validation in one motion, from
+  the same desk, which is the pattern 072 retired.
+- **Revisit when:** the shadow ledger holds enough judged commits
+  across both environments to compare detectors — then either
+  promote (own entry), or record that envelope correlation cannot
+  separate the classes and reconsider the capture path.
