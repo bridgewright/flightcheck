@@ -68,7 +68,11 @@ def is_peripheral_dimension(dim: RubricDimension) -> bool:
         return False
     if dim.license == "profile" or dim.key == "role-and-company-fit":
         return False
-    return mentions_family(f"{dim.key} {dim.name}")
+    # Each field stands alone: a joined "key name" haystack lets the pair
+    # patterns match ACROSS the boundary -- key "company-mission" beside
+    # name "Alignment with stakeholders" manufactured "mission alignment"
+    # out of two words DECISIONS 077 says never classify on their own.
+    return mentions_family(dim.key) or mentions_family(dim.name)
 
 
 def jd_foregrounds_family(jd_as_shown: str) -> bool:

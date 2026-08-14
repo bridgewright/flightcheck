@@ -112,6 +112,18 @@ class TestTheClassifier:
         # that admits it in the key (the eval suite's own lesson).
         assert is_peripheral_dimension(_dim("account-fit", "Mission alignment"))
 
+    def test_pair_keywords_never_match_across_the_key_name_boundary(self):
+        # Key and name are separate fields: a key ending in "mission" next
+        # to a name starting with "Alignment" is bare "mission" plus bare
+        # "alignment" -- exactly what DECISIONS 077 says never classifies.
+        # A joined "key name" haystack manufactured both pairs out of
+        # fields that are each innocent on their own.
+        for key, name in [
+            ("company-mission", "Alignment with stakeholders"),
+            ("socially-responsible", "AI product judgment"),
+        ]:
+            assert not is_peripheral_dimension(_dim(key, name)), key
+
     def test_the_fit_dimension_is_excluded_by_key_and_by_license(self):
         assert not is_peripheral_dimension(
             _dim("role-and-company-fit", "Ethics and company fit"))
