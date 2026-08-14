@@ -4,7 +4,9 @@ import {
   DIAG_CAPACITY,
   DIAG_DISCLOSURE_LABEL,
   formatDiagTrail,
+  formatDiagWire,
   recordDiag,
+  takeDiagDelta,
   type DiagEntry,
 } from "./room-diagnostics";
 
@@ -66,6 +68,83 @@ describe("formatDiagTrail", () => {
     recordDiag(buf, 10_000, "dc-open");
     recordDiag(buf, 10_900, "greeting-sent");
     expect(formatDiagTrail(buf)).toBe("0.0s dc-open\n0.9s greeting-sent");
+  });
+});
+
+// DECISIONS 072: the trail rides the heartbeat to the worker as deltas.
+
+describe("formatDiagWire", () => {
+  it("renders absolute monotonic milliseconds so appended slices keep one clock", () => {
+    const buf: DiagEntry[] = [];
+    recordDiag(buf, 10_000.4, "dc-open");
+    recordDiag(buf, 10_900.6, "greeting-sent");
+    recordDiag(buf, 12_050, "gum-fail", "NotFoundError");
+    expect(formatDiagWire(buf)).toBe(
+      "10000ms dc-open\n10901ms greeting-sent\n12050ms gum-fail NotFoundError",
+    );
+  });
+
+  it("is empty for an empty slice", () => {
+    expect(formatDiagWire([])).toBe("");
+  });
+
+  it("does not reset its clock per slice, unlike the on-screen formatter", () => {
+    const buf: DiagEntry[] = [];
+    recordDiag(buf, 30_000, "speech-started");
+    expect(formatDiagWire(buf)).toBe("30000ms speech-started");
+    expect(formatDiagTrail(buf)).toBe("0.0s speech-started");
+  });
+});
+
+describe("takeDiagDelta", () => {
+  it("returns only entries recorded after the cursor", () => {
+    const buf: DiagEntry[] = [];
+    recordDiag(buf, 100, "a");
+    recordDiag(buf, 200, "b");
+    recordDiag(buf, 300, "c");
+    expect(takeDiagDelta(buf, 200).map((e) => e.tag)).toEqual(["c"]);
+  });
+
+  it("returns everything for the initial zero cursor", () => {
+    const buf: DiagEntry[] = [];
+    recordDiag(buf, 0.5, "first");
+    recordDiag(buf, 1, "second");
+    expect(takeDiagDelta(buf, 0).map((e) => e.tag)).toEqual([
+      "first",
+      "second",
+    ]);
+  });
+
+  it("is empty when nothing new was recorded", () => {
+    const buf: DiagEntry[] = [];
+    recordDiag(buf, 100, "a");
+    expect(takeDiagDelta(buf, 100)).toEqual([]);
+  });
+
+  it("re-carries the same delta until the cursor advances, then stops", () => {
+    const buf: DiagEntry[] = [];
+    recordDiag(buf, 100, "a");
+    recordDiag(buf, 250, "b");
+
+    // A failed beat never advances the cursor: the next beat resends.
+    const failed = takeDiagDelta(buf, 100);
+    expect(failed.map((e) => e.tag)).toEqual(["b"]);
+    const resent = takeDiagDelta(buf, 100);
+    expect(resent).toEqual(failed);
+
+    // A delivered beat advances to the last sent entry and the delta drains.
+    const cursor = resent[resent.length - 1].atMs;
+    expect(takeDiagDelta(buf, cursor)).toEqual([]);
+  });
+
+  it("survives ring trimming: a cursor older than the retained head sends the whole buffer", () => {
+    const buf: DiagEntry[] = [];
+    for (let i = 0; i < DIAG_CAPACITY + 10; i += 1) {
+      recordDiag(buf, i, `ev-${i}`);
+    }
+    const delta = takeDiagDelta(buf, 3);
+    expect(delta).toHaveLength(DIAG_CAPACITY);
+    expect(delta[0].tag).toBe("ev-10");
   });
 });
 

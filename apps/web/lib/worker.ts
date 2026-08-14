@@ -244,9 +244,21 @@ export interface SessionSummary {
   stopped_reporting?: boolean;
 }
 
-export async function heartbeatSession(sessionId: string): Promise<void> {
+export async function heartbeatSession(
+  sessionId: string,
+  diagnostics?: string,
+): Promise<void> {
   const path = `/api/sessions/${encodeURIComponent(sessionId)}/heartbeat`;
-  await workerJson(`POST ${path}`, await workerFetch(path, { method: "POST" }));
+  await workerJson(
+    `POST ${path}`,
+    await workerFetch(
+      path,
+      // A bodyless beat keeps the pre-072 contract byte for byte.
+      diagnostics
+        ? { method: "POST", body: JSON.stringify({ diagnostics }) }
+        : { method: "POST" },
+    ),
+  );
 }
 
 export async function reclaimSession(

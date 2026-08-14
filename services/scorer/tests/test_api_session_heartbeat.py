@@ -108,6 +108,85 @@ class TestHeartbeatRoute:
         assert response.status_code == 409
 
 
+class TestHeartbeatDiagnostics:
+    """DECISIONS 072: the trail rides the heartbeat as appended deltas."""
+
+    def test_a_beat_with_diagnostics_appends_the_delta(self, client, db):
+        _, row = _live_row(db)
+
+        first = client.post(
+            f"/api/sessions/{row.id}/heartbeat", headers=AUTH,
+            json={"diagnostics": "100ms greeting-sent"},
+        )
+        second = client.post(
+            f"/api/sessions/{row.id}/heartbeat", headers=AUTH,
+            json={"diagnostics": "16040ms speech-started\n17110ms speech-stopped"},
+        )
+
+        assert first.status_code == second.status_code == 200
+        assert db.session_diagnostics[row.id] == (
+            "100ms greeting-sent\n16040ms speech-started\n17110ms speech-stopped"
+        )
+
+    def test_a_bodyless_beat_keeps_todays_contract(self, client, db):
+        _, row = _live_row(db)
+
+        response = client.post(f"/api/sessions/{row.id}/heartbeat", headers=AUTH)
+
+        assert response.status_code == 200
+        assert db.get_session(row.id).last_heartbeat_at is not None
+        assert row.id not in db.session_diagnostics
+
+    def test_an_empty_diagnostics_field_appends_nothing(self, client, db):
+        _, row = _live_row(db)
+        response = client.post(
+            f"/api/sessions/{row.id}/heartbeat", headers=AUTH,
+            json={"diagnostics": ""},
+        )
+        assert response.status_code == 200
+        assert row.id not in db.session_diagnostics
+
+    def test_a_refused_beat_appends_nothing(self, client, db):
+        _, row = _live_row(db)
+        db.set_session_status(row.id, "scoring")
+
+        response = client.post(
+            f"/api/sessions/{row.id}/heartbeat", headers=AUTH,
+            json={"diagnostics": "1ms too-late"},
+        )
+
+        assert response.status_code == 409
+        assert row.id not in db.session_diagnostics
+
+
+class TestDiagnosticsCap:
+    """The server, not the client, bounds the stored trail."""
+
+    def test_within_the_cap_everything_is_kept(self):
+        from scorer.api.db import capped_diagnostics
+
+        joined = capped_diagnostics("1ms a", "2ms b", cap_bytes=64)
+        assert joined == "1ms a\n2ms b"
+
+    def test_over_the_cap_the_newest_tail_survives_on_a_line_boundary(self):
+        from scorer.api.db import capped_diagnostics
+
+        current = "\n".join(f"{i}ms filler-entry" for i in range(100))
+        joined = capped_diagnostics(current, "999999ms newest", cap_bytes=120)
+
+        assert joined.endswith("999999ms newest")
+        assert len(joined.encode()) <= 120
+        # No partial first line: every retained line still parses.
+        assert all(line.split("ms ")[0].isdigit() for line in joined.splitlines())
+
+    def test_a_single_oversized_line_is_kept_truncated(self):
+        from scorer.api.db import capped_diagnostics
+
+        joined = capped_diagnostics(None, "1ms " + "x" * 500, cap_bytes=64)
+        assert len(joined.encode()) <= 64
+        assert joined.endswith("x")
+
+
 class TestReclaimRoute:
     def test_owner_reclaims_stale_session_without_spending_a_slot(self, client, db):
         package, row = _live_row(db)

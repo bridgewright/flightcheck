@@ -43,7 +43,43 @@ describe("session heartbeat route", () => {
     heartbeatSession.mockResolvedValue(undefined);
     expect((await heartbeat(request, context)).status).toBe(200);
     expect(authorizeViewerSession).toHaveBeenCalledWith(viewer, "sess-1");
-    expect(heartbeatSession).toHaveBeenCalledWith("sess-1");
+    // A bodyless beat carries no diagnostics — the pre-072 contract.
+    expect(heartbeatSession).toHaveBeenCalledWith("sess-1", undefined);
+  });
+
+  it("forwards a diagnostics delta to the worker (DECISIONS 072)", async () => {
+    getViewer.mockResolvedValue({ id: "owner-1", email: null });
+    authorizeViewerSession.mockResolvedValue({
+      ok: true,
+      value: { session: { package_id: "pkg-1" } },
+    });
+    heartbeatSession.mockResolvedValue(undefined);
+    const withDelta = new Request("http://web.test", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ diagnostics: "100ms greeting-sent" }),
+    });
+    expect((await heartbeat(withDelta, context)).status).toBe(200);
+    expect(heartbeatSession).toHaveBeenCalledWith(
+      "sess-1",
+      "100ms greeting-sent",
+    );
+  });
+
+  it("degrades anything malformed to the plain beat, never to a refusal", async () => {
+    getViewer.mockResolvedValue({ id: "owner-1", email: null });
+    authorizeViewerSession.mockResolvedValue({
+      ok: true,
+      value: { session: { package_id: "pkg-1" } },
+    });
+    heartbeatSession.mockResolvedValue(undefined);
+    for (const body of ["not json{", JSON.stringify({ diagnostics: 42 }), JSON.stringify({ diagnostics: "" })]) {
+      const malformed = new Request("http://web.test", { method: "POST", body });
+      expect((await heartbeat(malformed, context)).status).toBe(200);
+    }
+    for (const call of heartbeatSession.mock.calls) {
+      expect(call[1]).toBeUndefined();
+    }
   });
 });
 

@@ -64,6 +64,16 @@ class ReclaimSessionRequest(BaseModel):
     package_id: str
 
 
+class HeartbeatRequest(BaseModel):
+    """Optional beat payload (DECISIONS 072). A bodyless beat — every
+    pre-072 client — keeps exactly the old contract, so the field must
+    stay optional for as long as mixed page/worker versions can meet."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    diagnostics: str | None = None
+
+
 class CoachingResponse(BaseModel):
     model_config = ConfigDict(extra="forbid")
     session_id: str
@@ -518,7 +528,7 @@ def build_router(deps: Deps) -> APIRouter:
         return {"session_id": session_id, "secret_mints": count}
 
     @router.post("/sessions/{session_id}/heartbeat")
-    def heartbeat_session(session_id: str):
+    def heartbeat_session(session_id: str, body: HeartbeatRequest | None = None):
         try:
             row = db.get_session(session_id)
         except KeyError as exc:
@@ -529,6 +539,8 @@ def build_router(deps: Deps) -> APIRouter:
                 content={"error": "session is not running", "code": "session-not-live"},
             )
         db.touch_session_heartbeat(session_id)
+        if body is not None and body.diagnostics:
+            db.append_session_diagnostics(session_id, body.diagnostics)
         return {"session_id": session_id, "status": "alive"}
 
     @router.post("/sessions/{session_id}/reclaim")

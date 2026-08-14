@@ -244,6 +244,25 @@ class StudyRow(BaseModel):
     updated_at: str | None = None
 
 
+DIAGNOSTICS_CAP_BYTES = 32_768
+
+
+def capped_diagnostics(
+    current: str | None, delta: str, cap_bytes: int = DIAGNOSTICS_CAP_BYTES
+) -> str:
+    """Join the stored trail with a new delta, keeping only the newest tail
+    within cap_bytes, cut on a line boundary so no partial line survives
+    (DECISIONS 072). The newest end is the diagnostic end: a failure sits
+    where the trail stops, never where it started."""
+    joined = delta if not current else f"{current}\n{delta}"
+    raw = joined.encode()
+    if len(raw) <= cap_bytes:
+        return joined
+    tail = raw[-cap_bytes:].decode(errors="ignore")
+    cut = tail.find("\n")
+    return tail[cut + 1 :] if cut != -1 else tail
+
+
 @runtime_checkable
 class Database(Protocol):
     """Persistence seam the pipeline consumes (Task 12); SupabaseDatabase
@@ -456,6 +475,11 @@ class Database(Protocol):
 
     def touch_session_heartbeat(self, session_id: str) -> None:
         """Stamp only last_heartbeat_at for a planned session."""
+
+    def append_session_diagnostics(self, session_id: str, lines: str) -> None:
+        """Append room-trail lines to the session row, server-capped keeping
+        the newest tail (DECISIONS 072). Tags and offsets only, never
+        speech content; the column joins no read payload."""
 
     def reclaim_session(self, session_id: str, older_than_s: float) -> bool:
         """Atomically abandon a planned row only if its heartbeat is stale."""
@@ -990,6 +1014,15 @@ class SupabaseDatabase:
                 .execute().data)
         if not data:
             raise KeyError(session_id)
+
+    def append_session_diagnostics(self, session_id: str, lines: str) -> None:
+        data = (self._client.table("sessions").select("id,diagnostics")
+                .eq("id", session_id).execute().data)
+        if not data:
+            raise KeyError(session_id)
+        joined = capped_diagnostics(data[0].get("diagnostics"), lines)
+        (self._client.table("sessions").update({"diagnostics": joined})
+         .eq("id", session_id).execute())
 
     def reclaim_session(self, session_id: str, older_than_s: float) -> bool:
         data = (self._client.table("sessions")

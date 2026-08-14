@@ -62,3 +62,30 @@ export function formatDiagTrail(buffer: DiagEntry[]): string {
     })
     .join("\n");
 }
+
+/**
+ * Wire format for persisted deltas (DECISIONS 072): absolute monotonic
+ * milliseconds, so slices appended server-side across many heartbeats keep
+ * one clock. The on-screen formatter above stays slice-relative on purpose
+ * — it always renders the whole retained buffer against a screen recording.
+ */
+export function formatDiagWire(entries: DiagEntry[]): string {
+  return entries
+    .map(
+      (entry) =>
+        `${Math.round(entry.atMs)}ms ${entry.tag}${entry.note === "" ? "" : ` ${entry.note}`}`,
+    )
+    .join("\n");
+}
+
+/**
+ * Entries recorded after `sinceMs` — the heartbeat's delta. The caller
+ * advances its cursor to the last returned entry's atMs only on a DELIVERED
+ * beat, so a refused or unreachable one re-carries the same delta next
+ * time. Entries the ring trims before they were ever sent are gone by
+ * design: the cap guards a pathological event storm, and a storm's tail is
+ * its diagnostic part.
+ */
+export function takeDiagDelta(buffer: DiagEntry[], sinceMs: number): DiagEntry[] {
+  return buffer.filter((entry) => entry.atMs > sinceMs);
+}

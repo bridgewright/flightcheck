@@ -23,6 +23,7 @@ from scorer.api.db import (
     PackageRow,
     SessionRow,
     StudyRow,
+    capped_diagnostics,
     expires_at_from,
 )
 from scorer.schemas import (
@@ -186,6 +187,7 @@ class FakeDatabase:
     def __init__(self):
         self.packages: dict[str, PackageRow] = {}
         self.sessions: dict[str, SessionRow] = {}
+        self.session_diagnostics: dict[str, str] = {}
         self.orders: dict[str, OrderRow] = {}
         self.cbt_codes: dict[str, CbtCodeRow] = {}
         self.cbt_redemptions: dict[str, CbtRedemptionRow] = {}
@@ -553,6 +555,13 @@ class FakeDatabase:
         self.sessions[session_id] = row.model_copy(update={
             "last_heartbeat_at": self._now().isoformat(),
         })
+
+    def append_session_diagnostics(self, session_id: str, lines: str) -> None:
+        if session_id not in self.sessions:
+            raise KeyError(session_id)
+        self.session_diagnostics[session_id] = capped_diagnostics(
+            self.session_diagnostics.get(session_id), lines
+        )
 
     def reclaim_session(self, session_id: str, older_than_s: float) -> bool:
         row = self.sessions[session_id]

@@ -41,7 +41,9 @@ import { MAX_RECORDING_BYTES } from "../lib/realtime";
 import {
   DIAG_DISCLOSURE_LABEL,
   formatDiagTrail,
+  formatDiagWire,
   recordDiag,
+  takeDiagDelta,
   type DiagEntry,
 } from "../lib/room-diagnostics";
 import {
@@ -236,23 +238,46 @@ export default function SessionRoom({
     recordDiag(diagRef.current, performance.now(), tag, note);
   }, []);
 
+  // DECISIONS 072: the trail rides the heartbeat as deltas. The cursor
+  // marks the last entry a DELIVERED beat carried; a refused or unreachable
+  // beat leaves it alone, so the next beat re-carries the same delta and
+  // the server-side trail keeps no holes.
+  const diagSentMsRef = useRef(0);
+
+  // Failures land in the diagnostic trail; a healthy beat stays silent
+  // (four beats a minute would evict the turn events the ring exists to
+  // keep). The 409 train was the F-66 incident's clearest signal, and
+  // this used to be fire-and-forget.
+  const beat = useCallback(() => {
+    const delta = takeDiagDelta(diagRef.current, diagSentMsRef.current);
+    const sentThroughMs =
+      delta.length > 0 ? delta[delta.length - 1].atMs : diagSentMsRef.current;
+    void fetch(
+      `/api/sessions/${sessionId}/heartbeat`,
+      delta.length > 0
+        ? {
+            method: "POST",
+            headers: { "content-type": "application/json" },
+            body: JSON.stringify({ diagnostics: formatDiagWire(delta) }),
+          }
+        : { method: "POST" },
+    )
+      .then((res) => {
+        if (!res.ok) {
+          diag("heartbeat-refused", String(res.status));
+          return;
+        }
+        diagSentMsRef.current = sentThroughMs;
+      })
+      .catch(() => diag("heartbeat-unreachable"));
+  }, [diag, sessionId]);
+
   useEffect(() => {
     if (phase !== "live") return;
-    // Failures land in the diagnostic trail; a healthy beat stays silent
-    // (four beats a minute would evict the turn events the ring exists to
-    // keep). The 409 train was the F-66 incident's clearest signal, and
-    // this used to be fire-and-forget.
-    const beat = () => {
-      void fetch(`/api/sessions/${sessionId}/heartbeat`, { method: "POST" })
-        .then((res) => {
-          if (!res.ok) diag("heartbeat-refused", String(res.status));
-        })
-        .catch(() => diag("heartbeat-unreachable"));
-    };
     beat();
     const heartbeat = setInterval(beat, HEARTBEAT_INTERVAL_S * 1000);
     return () => clearInterval(heartbeat);
-  }, [phase, diag, sessionId]);
+  }, [phase, beat]);
 
   // --- F-63: the denied-mic error stops being a dead end ------------------
   // Once the permission is "denied", getUserMedia rejects instantly and the
@@ -418,6 +443,10 @@ export default function SessionRoom({
     if (endingRef.current) return;
     endingRef.current = true;
     setConfirmingEnd(false);
+    // Final trail flush while the row is still live (DECISIONS 072).
+    // Fire-and-forget on purpose: ending must never wait on it, and the
+    // heartbeat path already tolerates refusal.
+    beat();
     if (tickerRef.current) clearInterval(tickerRef.current);
     const blob = await stopRecorder();
     pcRef.current?.close();
@@ -428,13 +457,18 @@ export default function SessionRoom({
     }
     blobRef.current = blob;
     await uploadAndComplete(blob);
-  }, [completeUnscored, stopRecorder, unscored, uploadAndComplete]);
+  }, [beat, completeUnscored, stopRecorder, unscored, uploadAndComplete]);
 
   const endForConnectionLoss = useCallback(
     async (reason: GuardEndReason) => {
       if (endingRef.current) return;
       endingRef.current = true;
       diag("guard-trip", reason);
+      // The flush the trail exists for: a dying session's last recorded
+      // moments, guard-trip included, attempted while the row is still
+      // live. The transport may be the thing that died — then this fails
+      // and the previous beat's delta is the record (DECISIONS 072).
+      beat();
       console.debug("[guard] trip", reason);
       if (tickerRef.current) clearInterval(tickerRef.current);
       // Stop the recorder and DISCARD the blob: audio that will never be
@@ -445,7 +479,7 @@ export default function SessionRoom({
       micStreamRef.current?.getTracks().forEach((t) => t.stop());
       setPhase("connection-lost");
     },
-    [diag, stopRecorder],
+    [beat, diag, stopRecorder],
   );
 
   // --- Start: mint secret, connect WebRTC, wire the recording mix -------

@@ -81,7 +81,11 @@ describe("F-67 turn-system trail", () => {
     // evict the turn events the ring exists to keep.
     expect(sessionRoom).toContain('"heartbeat-refused"');
     expect(sessionRoom).toContain('"heartbeat-unreachable"');
-    expect(sessionRoom).toMatch(/if \(!res\.ok\) diag\("heartbeat-refused"/);
+    // Since DECISIONS 072 the delivered branch advances the delta cursor,
+    // so the guard is a block now — but it still records ONLY the failure.
+    expect(sessionRoom).toMatch(
+      /if \(!res\.ok\) \{\s*diag\("heartbeat-refused", String\(res\.status\)\);\s*return;\s*\}/,
+    );
   });
 
   it("records which trigger asked for a response, stage or debounce", () => {
