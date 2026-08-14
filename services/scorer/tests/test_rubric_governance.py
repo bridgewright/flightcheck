@@ -35,6 +35,7 @@ from scorer.schemas import (
     RubricDimension,
     SourceCitation,
 )
+from scorer.sessionplan.planner import plan_baseline_session
 
 FIXTURES_ROOT = REPO_ROOT / "evals" / "suites" / "rubric_faithfulness" / "fixtures"
 
@@ -197,6 +198,34 @@ class TestTheCommittedCorpus:
                     "ai-product-strategy-judgment",
                     "end-to-end-ownership"):
             assert not is_peripheral_dimension(dims[key]), key
+
+
+class TestLegacyStoredRubrics:
+    """A rubric stored before probing_mode existed behaves exactly as before.
+
+    DECISIONS 077 rejects retroactive mutation: only the compile path calls
+    governance, so a legacy rubric -- even one holding a peripheral-family
+    dimension -- parses via the schema default and keeps its front-line
+    behavior. The committed discrimination rubric is exactly that shape.
+    """
+
+    LEGACY = REPO_ROOT / "evals" / "suites" / "rubric_discrimination" / "rubric.json"
+
+    def test_a_stored_rubric_without_the_field_parses_all_direct(self):
+        raw = self.LEGACY.read_text()
+        assert "probing_mode" not in raw  # genuinely pre-F-94 storage
+        rubric = Rubric.model_validate(json.loads(raw))
+        assert all(dim.probing_mode == "direct" for dim in rubric.dimensions)
+        assert any(is_peripheral_dimension(dim) for dim in rubric.dimensions)
+
+    def test_a_stored_rubric_plans_exactly_as_before_f94(self):
+        # The peripheral dimension keeps its main question and stays
+        # eligible for every planner surface -- new compiles only.
+        rubric = Rubric.model_validate(json.loads(self.LEGACY.read_text()))
+        plan = plan_baseline_session(rubric)
+        planned_keys = {q.dimension_key for q in plan.question_sequence}
+        assert planned_keys == {dim.key for dim in rubric.dimensions}
+        assert "ai-evaluation-responsible-ai" in planned_keys
 
 
 class TestTheEmphasisHeuristic:
