@@ -824,12 +824,22 @@ export default function SessionRoom({
           // audio — an echo dies with its source, a barge-in keeps going.
           // Measured at commit time, which absorbs the 900 ms VAD tail.
           const sinceMorganMs = Date.now() - lastMorganAudibleAtRef.current;
+          // Shadow only (DECISIONS 076): measured beside the timing verdict,
+          // recorded, and never consulted. Computed before the branch so it
+          // lands on BOTH arms, the plain commit and the suppression.
           const commitAtMs = performance.now();
-          const corr = echoCorrVerdict(
-            corrRingRef.current,
+          // No speech_started before this commit means there is no episode to
+          // judge. Hand the module a deliberately inverted window, which its
+          // documented contract turns into an honest n=0 indeterminate,
+          // rather than a start of 0 — that would be a 25-minute window
+          // reaching back to the epoch of the room's clock.
+          const episodeStartAtMs =
             candStartAtMsRef.current === 0
               ? commitAtMs + 1
-              : candStartAtMsRef.current,
+              : candStartAtMsRef.current;
+          const corr = echoCorrVerdict(
+            corrRingRef.current,
+            episodeStartAtMs,
             commitAtMs,
           );
           diag("echo-corr", formatEchoCorrNote(corr));
