@@ -211,8 +211,28 @@ describe("what the rendered markup actually says about probing (F-94)", () => {
     }),
   );
 
+  /**
+   * What a reader's eye actually receives: tags stripped, whitespace
+   * collapsed the way HTML rendering collapses it. The raw-markup checks
+   * below still run on the tagged string, because an attribute (aria-label,
+   * title) is spoken by a screen reader yet vanishes when tags are stripped;
+   * the two views close each other's blind spot.
+   */
+  const rendered = (html: string) =>
+    html.replace(/<[^>]+>/g, "").replace(/\s+/g, " ");
+
   it("says the note exactly once, for the one indirect dimension", () => {
     expect(markup.split(INDIRECT_PROBING_NOTE)).toHaveLength(2);
+  });
+
+  it("says the note exactly once in the reader's text, whatever markup surrounds it", () => {
+    // The raw-markup count above can be blinded by an element boundary: a
+    // mutant that renders the claim as two adjacent <span>s, from split
+    // source literals, passed every scan and the raw count both, on every
+    // dimension including legacy. Tags are not part of what the reader
+    // reads, so this count strips them first; no DOM structure can hide a
+    // contiguous sentence from it.
+    expect(rendered(markup).split(INDIRECT_PROBING_NOTE)).toHaveLength(2);
   });
 
   it("places the note on the meta line, after the channel label", () => {
@@ -237,6 +257,9 @@ describe("what the rendered markup actually says about probing (F-94)", () => {
       }),
     );
     expect(legacy).not.toContain(INDIRECT_PROBING_NOTE);
+    // And not in the reader's text either: the tag-stripped view is the one
+    // an element-boundary split cannot dodge.
+    expect(rendered(legacy)).not.toContain(INDIRECT_PROBING_NOTE);
   });
 });
 
