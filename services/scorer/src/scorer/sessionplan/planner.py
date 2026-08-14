@@ -22,7 +22,9 @@ is said, never WHEN the session ends; the quick render stays pinned.
 v0.27 (F-94, DECISIONS 077): dimensions with probing_mode "indirect" are
 never minted a main question, never open the session's area framing, and
 are never the pressure-probe target -- they are read through follow-ups
-and scored from the whole transcript.
+and scored from the whole transcript. Same release, F-09's remainder
+(DECISIONS 078): the previous scored session's advised drills reach the
+interviewer as one calm carry-over block, standard render only.
 
 Both functions are pure: same input, same output. No model call, no
 randomness, no clock.
@@ -95,6 +97,9 @@ class DimensionScoreLike(Protocol):
 
 class SessionReportLike(Protocol):
     dimension_scores: Sequence[DimensionScoreLike]
+    # DECISIONS 078: the advised drills the next session's interviewer
+    # carries over. Read by the session routes, not by the planner itself.
+    next_drills: Sequence[str]
 
 
 class SessionHistoryRow(Protocol):
@@ -506,7 +511,8 @@ def _question_block(plan: SessionPlan) -> str:
 def build_interviewer_instructions(plan: SessionPlan, rubric: Rubric | None,
                                    profile: CandidateProfile, *,
                                    company: str | None = None,
-                                   role: str | None = None) -> str:
+                                   role: str | None = None,
+                                   drills: Sequence[str] = ()) -> str:
     """Render the plan into system instructions for the realtime interviewer.
 
     company/role are the quick package's own columns and are read only when
@@ -514,6 +520,10 @@ def build_interviewer_instructions(plan: SessionPlan, rubric: Rubric | None,
     They are passed rather than recovered from the rendered question text --
     parsing them back out re-split on any company or role containing the
     template's own words.
+
+    drills (DECISIONS 078) are the most recent scored session's
+    report.next_drills, rendered as one calm carry-over block in the
+    standard render only; empty drills leave the render byte-identical.
     """
     if plan.focus == "quick":
         company_phrase, role_phrase = _quick_phrases(company, role)
@@ -557,6 +567,24 @@ def build_interviewer_instructions(plan: SessionPlan, rubric: Rubric | None,
     # a degraded "on behalf of" sentence, and whitespace-only counts as no
     # company (the F-54 packageCompanyLine precedent). Only outer whitespace
     # comes off; the casing is spoken exactly as stored (the F-85 lesson).
+    # F-09 / DECISIONS 078: one calm carry-over block, only when a previous
+    # scored session left drills. Values are flattened through inline() --
+    # they land in an instruction position (F-11a hygiene) -- and
+    # whitespace-only drills render nothing, so the no-drills goldens stay
+    # byte-identical.
+    drill_lines = [line for line in (inline(drill, 300) for drill in drills)
+                   if line]
+    carryover_section = (
+        "# CARRY-OVER\n"
+        "After the previous session, the candidate was advised to work on:\n"
+        + "\n".join(f"- {line}" for line in drill_lines) + "\n"
+        "Listen for whether these improvements landed. If a natural moment "
+        "arises, probe one of them once, in your own words — a brief "
+        "follow-up, not a new question round.\n"
+        "Never read this list aloud and never mention the report it came "
+        "from.\n"
+        "\n"
+    ) if drill_lines else ""
     company = (rubric.company or "").strip()
     company_section = (
         "# COMPANY CONTEXT\n"
@@ -678,6 +706,7 @@ def build_interviewer_instructions(plan: SessionPlan, rubric: Rubric | None,
         "Never recite the job description's wording or string its phrases "
         "together — ask in your own conversational words.\n"
         "\n"
+        f"{carryover_section}"
         "# PRESSURE MOMENT\n"
         f"Exactly once, mid-session (around question {midpoint}), challenge the "
         "candidate's answer by saying, verbatim:\n"

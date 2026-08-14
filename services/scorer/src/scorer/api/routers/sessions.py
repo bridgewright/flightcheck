@@ -187,13 +187,33 @@ def _room_is_closed(package: PackageRow) -> bool:
     return _is_locked_standard(package) or is_expired(package)
 
 
-def _session_response(row: SessionRow, package: PackageRow) -> dict:
+def _carryover_drills(sessions: Iterable[SessionRow],
+                      before_index: int) -> list[str]:
+    """next_drills from the MOST RECENT scored session before this one.
+
+    DECISIONS 078: the most recent scored report is the live coaching
+    state -- older sessions' drills are stale advice and never compound,
+    so the first report found walking backwards wins outright, even when
+    its own drill list is empty. Only sessions BEFORE this one count: a
+    report is written after the interview it scores, and rebuilding that
+    session's instructions must never claim advice its interviewer did
+    not have.
+    """
+    for row in sorted(sessions, key=lambda entry: entry.index, reverse=True):
+        if row.index < before_index and row.report is not None:
+            return list(row.report.next_drills)
+    return []
+
+
+def _session_response(row: SessionRow, package: PackageRow,
+                      history: Iterable[SessionRow] = ()) -> dict:
     """The POST /api/sessions payload for a session row (new or existing).
 
     Callers guarantee row.session_plan is present, and package.rubric for a
     standard package: a session row is only ever created for a "ready"
     package, with its plan. A quick package has no rubric by design and
-    carries its company/role instead.
+    carries its company/role instead. history is the package's session
+    list, read for the F-09 drill carry-over.
     """
     profile = package.candidate_profile
     if profile is None:
@@ -201,6 +221,7 @@ def _session_response(row: SessionRow, package: PackageRow) -> dict:
     instructions = build_interviewer_instructions(
         row.session_plan, package.rubric, profile,
         company=package.quick_company, role=package.quick_role,
+        drills=_carryover_drills(history, row.index),
     )
     return {
         "session_id": row.id,
@@ -318,7 +339,7 @@ def build_router(deps: Deps) -> APIRouter:
             # rearm_session there is what flips it back to "planned".
             if row.status not in RESUME_COUNTED_STATUSES:
                 # A planned row never ran: resuming it is free, always.
-                return _session_response(row, package)
+                return _session_response(row, package, existing)
             if resume_attempts.bump(row.id) <= limits.resume_attempt_cap:
                 # Re-arm the row before handing it back. "planned" is what
                 # every room guard means by "a browser may interview this":
@@ -334,7 +355,8 @@ def build_router(deps: Deps) -> APIRouter:
                 # the whole hard cut, and keep charging new attempts
                 # against the old attempt's mint spend.
                 db.rearm_session(row.id)
-                return _session_response(db.get_session(row.id), package)
+                return _session_response(db.get_session(row.id), package,
+                                         existing)
             # Past the cap: retire the row and spend its slot, so the answer
             # below is honestly "next session" or "exhausted" — never an
             # endless retry loop on a session that keeps dying (F-30).
@@ -384,7 +406,7 @@ def build_router(deps: Deps) -> APIRouter:
             )
         row = db.create_session(body.package_id, next_index, plan)
         db.touch_updated_at("session", row.id)
-        return _session_response(row, package)
+        return _session_response(row, package, existing)
 
     @router.post("/sessions/{session_id}/complete", status_code=202)
     def complete_session(
@@ -612,9 +634,14 @@ def build_router(deps: Deps) -> APIRouter:
             profile = package.candidate_profile
             if profile is None:
                 profile = _empty_profile()
+            # The drill carry-over needs the package's other sessions; a
+            # quick package never renders drills, so it skips the read.
+            history = (db.list_sessions(row.package_id)
+                       if package.rubric is not None else [])
             instructions = build_interviewer_instructions(
                 row.session_plan, package.rubric, profile,
                 company=package.quick_company, role=package.quick_role,
+                drills=_carryover_drills(history, row.index),
             )
         payload = row.model_dump(mode="json")
         payload["package_kind"] = package.kind
