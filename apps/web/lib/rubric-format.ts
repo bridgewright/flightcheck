@@ -63,3 +63,32 @@ export const DELIVERY_RECEIPT =
 
 export const PROFILE_RECEIPT =
   "This bar comes from your own profile - the interview probes your motivation and fit for this specific company and role.";
+
+// --- Probing posture (F-94) -----------------------------------------------
+//
+// A peripheral dimension (the ethics/safety family) is compiled as
+// probing_mode "indirect": the planner never mints it a question of its own,
+// never opens with it, never aims the session focus or the pressure probe at
+// it, and the judge scores it from evidence across the candidate's answers.
+// The rubric page says so, because a customer reading eight dimensions will
+// otherwise expect eight grilled questions. The copy is an absolute claim
+// about interviewer behaviour, so it claims exactly the planner's guarantee
+// and no more: it does not promise the area never comes up, because a
+// follow-up inside another question's thread legitimately may touch it.
+// Absence and "direct" render nothing, which keeps every rubric stored
+// before the field existed byte-identical to today.
+
+/** The slice of a dimension the probing decision reads. */
+type ProbingCarrier = Pick<RubricDimension, "probing_mode">;
+
+/**
+ * The indirect dimension's meta-line fragment. One quoted string literal on
+ * purpose: the built-copy gate exists because joined copy can be folded
+ * apart by the production bundler.
+ */
+export const INDIRECT_PROBING_NOTE =
+  "Assessed from your answers, not asked as its own question";
+
+export function probingLabel(dimension: ProbingCarrier): string | null {
+  return dimension.probing_mode === "indirect" ? INDIRECT_PROBING_NOTE : null;
+}

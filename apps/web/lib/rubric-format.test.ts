@@ -7,6 +7,7 @@ import {
   DELIVERY_RECEIPT,
   formatWeight,
   hasReceipts,
+  probingLabel,
   sortedAnchors,
   PROFILE_RECEIPT,
 } from "./rubric-format";
@@ -103,5 +104,30 @@ describe("PROFILE_RECEIPT", () => {
     expect(PROFILE_RECEIPT).toBe(
       "This bar comes from your own profile - the interview probes your motivation and fit for this specific company and role.",
     );
+  });
+});
+
+describe("the indirect posture label's register", () => {
+  // F-94. The copy is an absolute claim about interviewer behaviour, so it
+  // must claim exactly what the planner enforces: no question of this
+  // dimension's own, judged from the candidate's answers. Register checks
+  // here; the absent/direct/indirect behaviour is pinned in
+  // types-probing-mode.test.ts beside the type it guards.
+  const label = probingLabel({ probing_mode: "indirect" });
+
+  it("says where the assessment comes from, and what is not asked", () => {
+    expect(label).toContain("your answers");
+    expect(label).toContain("not asked as its own question");
+  });
+
+  it("keeps the calm register: no dashes, no exclamation", () => {
+    expect(label).not.toMatch(/[–—]/);
+    expect(label).not.toContain("!");
+  });
+
+  it("reads as a meta-line fragment, like the channel labels", () => {
+    // It joins "30% of your score · Content: what you say" on the same line,
+    // so it is a fragment without a trailing period, not a sentence.
+    expect(label?.trim().endsWith(".")).toBe(false);
   });
 });
