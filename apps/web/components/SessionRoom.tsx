@@ -129,8 +129,11 @@ interface SessionRoomProps {
 // F-67/F-68 instrumentation: the trail the next fix will be chosen from.
 // A ring buffer of turn events and start-sequence breadcrumbs, in a ref so
 // recording never re-renders, surfaced behind a collapsed Diagnostics
-// disclosure. Presentational only — measurement never sends anything. The
-// trail is SNAPSHOTTED in the toggle handler, never read during render:
+// disclosure. This component is presentational, but the trail as a whole is
+// no longer local: since DECISIONS 072 the heartbeat carries the same
+// entries to the session row as tags and offsets. Opening the disclosure
+// still sends nothing; the beat does, open or closed. The trail is
+// SNAPSHOTTED in the toggle handler, never read during render:
 // refs are off-limits to render, and a snapshot is what the operator wants
 // anyway — reopen to refresh. Collapsed, the element costs one summary row.
 function DiagTrail({ entriesRef }: { entriesRef: RefObject<DiagEntry[]> }) {

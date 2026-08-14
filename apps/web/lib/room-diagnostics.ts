@@ -10,8 +10,11 @@
 //
 // The room pushes entries into a plain in-memory ring buffer held in a ref:
 // no React state, no re-renders, no timing impact. The trail surfaces
-// behind a collapsed details disclosure, formatted only when the operator
-// opens it.
+// behind a collapsed details disclosure, formatted for the screen only when
+// the operator opens it — and since DECISIONS 072 it also leaves the
+// browser, formatted for the wire once per delivered heartbeat and appended
+// to the session row. The ring is still the only writer; both formatters
+// are pure reads of it.
 
 /** One recorded moment: a monotonic timestamp, a short tag, an optional
  * note (a DOMException name, an HTTP status, a millisecond gap). */
