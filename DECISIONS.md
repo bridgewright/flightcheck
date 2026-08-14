@@ -3311,6 +3311,27 @@ defect's whole Phase 0 existed to end fixing-by-plausibility.
 - **Revisit when:** the re-audition report lands (this entry gains
   the verdict and its numbers), or OpenAI ships a semantic_vad
   revision that invalidates the new measurements.
+- **VERDICT (recorded same day, 2026-08-15): REJECTED, on the
+  numbers.** Full report:
+  `evals/reports/2026-08-15-f67-semantic-vad-reaudition.md`. Low
+  eagerness reproduced its 2026-08-01 disqualifier — two of three
+  tape-final complete segments never committed (≥12.1 s and ≥11.1 s
+  of observed silence), while the one that did was ideal (+0.95 s
+  after true completion, 8 s pause held) — an unpredictable strand
+  is a strand. Medium eagerness committed 4.6 s INTO the 8 s
+  thinking pause (the exact failure this re-audition existed to
+  rule out), tripled answer-end latency (+4.6 s vs the same-day
+  server_vad control's +0.99 s), and chunked filler stalls into
+  multi-second episodes that defeat the stall-blip filter's
+  contract. Both cells starve the client clock while a turn is
+  held (17.5 s to indefinite with zero events), which composes
+  catastrophically with create_response:false — no commit means no
+  debounce, no scaffolds, a dead room to the hard cut. The one
+  clean pass: zero uninvited responses in all nine runs. The
+  conditionally budgeted real session is not spent; the carried
+  observation (deferred debounce, resumed-answer talk-over) becomes
+  a client-side turn-policy work item on server_vad, registered on
+  the F-67 card.
 
 ## 076 — The echo verdict becomes a measurement, in shadow first (2026-08-15)
 

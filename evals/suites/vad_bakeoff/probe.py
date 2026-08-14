@@ -39,6 +39,21 @@ CONFIGS: dict[str, dict | None] = {
         "prefix_padding_ms": 300,
         "create_response": False,
     },
+    # F-67 Phase 1 re-audition (DECISIONS 075): semantic_vad in the exact
+    # composition the product would run it — the client owns response
+    # timing, so create_response is off. The 2026-08-01 cells above ran
+    # semantic_vad with server-fired responses; these do not, and medium
+    # replaces auto because the docs now name auto as medium's alias.
+    "semantic_low_nocreate": {
+        "type": "semantic_vad",
+        "eagerness": "low",
+        "create_response": False,
+    },
+    "semantic_medium_nocreate": {
+        "type": "semantic_vad",
+        "eagerness": "medium",
+        "create_response": False,
+    },
 }
 
 TAPES: dict[str, list] = {
