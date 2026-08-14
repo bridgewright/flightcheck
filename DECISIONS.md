@@ -3041,3 +3041,47 @@ Modeling," outside them, now falls back honestly). Round 1 gave the
 channel gate (delivery rows only ever wear the waveform, content
 rows never) and the single-session row's glyph the pins they
 shipped without.
+
+## 072 — The room's black box survives the room (2026-08-14)
+
+**Context.** F-67 (the interviewer answering itself on open
+speakers) recurred a third time, and for the third time the
+diagnostic trail built for exactly this moment (DECISIONS 046) died
+with the closed tab — it lives in a client-side ring buffer,
+rendered on demand, persisted nowhere. Three structural fixes have
+been waiting on that evidence since the card was written (dynamic
+VAD during playback, correlation-measured echo verdicts, transmit
+gating); every patch so far was chosen on plausibility instead, and
+each held only until the acoustics changed. The bottleneck is not
+ideas, it is evidence retention.
+
+- **Chosen: the trail rides the heartbeat.** The room already POSTs
+  an authenticated, rate-limited heartbeat every 15 seconds; it now
+  carries the diagnostic entries recorded since the last successful
+  beat (a cursor over the existing ring buffer, rolled back on a
+  failed beat so nothing is lost), plus one final flush at the top
+  of the clean end path. The worker appends the lines to a new
+  nullable `sessions.diagnostics` column (migration 014),
+  server-capped at 32 KB keeping the newest tail. The wire format
+  carries absolute monotonic milliseconds (a new pure formatter) —
+  the on-screen formatter's slice-relative clock would restart at
+  zero on every delta. Tags and offsets only: no audio, no
+  transcript, no speech content; deleted with the session row. The
+  column joins no read payload (`SESSION_COLUMNS` unchanged) — the
+  operator reads it by SQL when a recurrence needs it.
+- **Chosen: the field is optional and an empty beat stays valid.**
+  Deploy order guarantees a window where old pages meet the new
+  worker; their bodyless heartbeats keep exactly today's contract
+  (touch + 409-when-not-live, no append).
+- **Rejected: upload once at session end.** The sessions that need
+  the trail most — crashes, kills, connection loss — are precisely
+  the ones that never reach the end path. An end-only flush records
+  the healthy and loses the sick.
+- **Rejected: a dedicated diagnostics endpoint.** A new
+  authenticated, rate-limited surface for a signal a periodic authed
+  POST already carries; more code, same evidence.
+- **Rejected: a download button in the disclosure.** It returns the
+  evidence burden to the user at reproduction time, which is the
+  exact failure mode this entry exists to end.
+- **Revisit when:** Phase 1 lands and the trail's volume or
+  retention needs revisiting, or the deletion policy changes shape.

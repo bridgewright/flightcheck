@@ -519,6 +519,23 @@ Changes to targets are recorded here with date and reason — never silently.
   per-channel fallback so an unmatched name degrades to its
   channel's glyph rather than to a blank. DECISIONS 070–071.
 
+- **v0.24 (recorded 2026-08-14, pre-code):** the room's black box
+  survives the room. The self-talking-interviewer defect (F-67)
+  recurred a third time on open speakers, and for the third time its
+  diagnostic trail — turn events, echo verdicts, response triggers,
+  already recorded in the room since 2026-08-05 — died with the
+  closed tab. The trail now rides the session heartbeat to the
+  worker as small deltas every fifteen seconds, with a final flush
+  at a clean end, appended server-capped to the session row. Tags
+  and millisecond offsets only: no audio, no transcript, no speech
+  content, deleted with the session row it lives on. Observation
+  only — nothing about how the interview behaves changes — so the
+  next open-speaker reproduction is the last one this defect needs:
+  the structural fix among dynamic VAD, measured echo verdicts, and
+  transmit gating gets chosen on a recorded trail instead of on
+  plausibility, which is how the previous three patches were chosen
+  and why there was a fourth occurrence to record. DECISIONS 072.
+
 > 2026-08-02: v0.4 scope added above — accounts move ahead of payments
 > because login-gated interviews protect session integrity and per-session
 > cost, and the dashboard is what makes a 6-session package usable. The
