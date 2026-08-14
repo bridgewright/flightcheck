@@ -596,6 +596,26 @@ Changes to targets are recorded here with date and reason — never silently.
   again, the recorded next move is splitting the opening across
   client-armed responses. DECISIONS 077.
 
+- **v0.28 (recorded 2026-08-15, pre-code):** the rubric stops
+  inflating peripheral JD mentions — the ethics/safety family first,
+  and only, for now — into front-line dimensions. Compiled dimensions
+  gain a probing mode, and peripheral-family dimensions are always
+  indirect: never a dedicated main question, never the opening
+  framing, never the focus of a later session, read instead through
+  follow-up probes and interpretation of the candidate's own answers,
+  and labeled honestly on the rubric page. Weight follows the JD's
+  own emphasis, not the compiler's prior that ethics sounds important
+  for AI roles: when the JD's text does not genuinely foreground the
+  family, the dimension's weight is capped and the excess returns to
+  the dimensions the JD actually stresses; a JD that truly centers
+  safety keeps its weight, and is still read sideways. The stake is
+  the purchase itself: a rubric a paying customer cannot agree with
+  voids six sessions of trust at the door. Alongside it, the previous
+  session's advised drills reach the next session's interviewer
+  (F-09's remainder): carried as a short brief, listened for, probed
+  once if natural — the coach now remembers its own advice.
+  DECISIONS 078–079.
+
 > 2026-08-02: v0.4 scope added above — accounts move ahead of payments
 > because login-gated interviews protect session integrity and per-session
 > cost, and the dashboard is what makes a 6-session package usable. The

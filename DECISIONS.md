@@ -3493,3 +3493,68 @@ isolated at last by Phase 1 removing the acoustics that masked it.
   correlation guard load-bearing at the caller (a flat paired
   SUBSET normalises to r = 1 exactly — a perfect echo from
   nothing), now pinned.
+
+## 078 — peripheral rubric areas: indirect by rule, capped by evidence (2026-08-15)
+
+- **Decision:** `RubricDimension` gains `probing_mode` (`direct` |
+  `indirect`, default `direct` so every stored rubric parses unchanged —
+  the `jd_evidence` precedent). The ethics/safety family — a whole-word
+  classification list held in one module constant and driven over the
+  committed rubric corpus by test; the fit dimension and every
+  delivery-channel dimension excluded — is ALWAYS `indirect` on newly
+  compiled rubrics: no minted main question, excluded from the opening
+  area list, excluded from focus and pressure-probe targeting, judged
+  from evidence across the whole transcript with a rationale that names
+  where the evidence came from, and labeled honestly on the rubric page.
+  Weight is governed conditionally: a deterministic emphasis heuristic
+  (three or more distinct JD lines naming the family = the JD genuinely
+  foregrounds it) decides whether the compiled weight stands; when the JD
+  does not foreground the family, the dimension is clamped to 0.10 and
+  the excess redistributes proportionally, keeping the 0.01 sum
+  tolerance. The compiler prompt teaches the same policy first-pass; the
+  deterministic post-pass beside the faithfulness gate is the
+  enforcement. The faithfulness eval suite gains governance checks so
+  the release gate validates this live.
+- **Why:** the operator's own rubric is the exhibit: "AI Safety and
+  Mission Alignment," one of eight dimensions with a dedicated grilled
+  question, scored 2.6 — lowest — and the F-83 focus-weakest mechanism
+  then aimed the next paid session at it. Real interviews read these
+  areas through follow-ups and interpretation. A rubric the customer
+  cannot agree with voids the trust the whole package runs on, and since
+  F-84 the rubric is also a pre-purchase surface.
+- **Rejected — an unconditional weight cap:** an alignment-team JD
+  genuinely foregrounds safety; capping it there would misread the JD,
+  and `ai-safety-genuine` exists in the faithfulness fixtures precisely
+  to keep that honest. The cap is conditional on the JD's own text; the
+  probing mode is not (user directive: these areas are asked sideways,
+  everywhere).
+- **Rejected — prompt-only enforcement:** prompt drift regresses
+  silently; the post-pass is the guarantee and the prompt just reduces
+  repair retries.
+- **Rejected — retroactive mutation of stored rubrics:** a customer's
+  rubric changing mid-package is a worse trust break than the one being
+  fixed. New compiles only.
+- **Revisit when:** feedback names a peripheral area a customer wanted
+  centered (the indirect experience reading as neglect), or a second
+  family earns a place on the list — the user scoped it to ethics
+  deliberately, and widening it is a product call, not a code call.
+
+## 079 — the advised drills reach the next interviewer (2026-08-15)
+
+- **Decision:** `build_interviewer_instructions` gains
+  `drills: Sequence[str] = ()`; the session mint and read paths pass the
+  most recent scored session's `report.next_drills`; the standard branch
+  renders one calm carry-over block — the candidate was advised these
+  improvements last time; listen for whether they landed, probe once if
+  natural. `SessionReportLike` widens to declare `next_drills`. The
+  golden instruction fixtures stay byte-identical when no drills exist.
+- **Why:** F-09's remainder. The report tells the customer what to
+  drill; the next session's interviewer had no memory of it — a coach
+  that forgets its own advice is six strangers, not a program.
+- **Rejected — a `SessionPlan` schema field:** it would cross the web
+  type mirror for data the browser never renders; the instruction text
+  is the only consumer.
+- **Rejected — feeding the full history's drills:** stale advice
+  compounds; the most recent scored session is the live coaching state.
+- **Revisit when:** cross-package coaching continuity (the rest of
+  F-09's original framing) is scheduled.
