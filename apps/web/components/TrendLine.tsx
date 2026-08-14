@@ -1,3 +1,5 @@
+import { TREND_WASH } from "@/components/trend-direction";
+import type { TrendDirection } from "@/components/trend-direction";
 import { trendGeometry } from "@/components/trend-line";
 import type { TrendPoint } from "@/components/trend-line";
 
@@ -6,6 +8,11 @@ interface TrendLineProps {
   totalSlots: number;
   variant: "hero" | "spark";
   ariaLabel: string;
+  // Which way the series moved, colouring the spark's area wash (DECISIONS
+  // 070). Optional because not every trend makes a direction claim: the hero
+  // overall chart keeps its fixed sky wash, and a caller with no net to
+  // speak of omits it and gets the same historical sky.
+  direction?: TrendDirection;
 }
 
 const SIZES = {
@@ -26,8 +33,10 @@ export default function TrendLine({
   totalSlots,
   variant,
   ariaLabel,
+  direction,
 }: TrendLineProps) {
   const geometry = trendGeometry(points, totalSlots, SIZES[variant]);
+  const sparkWash = direction === undefined ? "fill-sky" : TREND_WASH[direction];
   const hero = variant === "hero";
   const baseline = geometry.height - SIZES[variant].pad.bottom;
   const area = geometry.dots.length > 1
@@ -119,7 +128,7 @@ export default function TrendLine({
     >
       <g aria-hidden="true">
         {area ? (
-          <polygon points={area} className="fill-sky" fillOpacity={0.45} stroke="none" />
+          <polygon points={area} className={sparkWash} fillOpacity={0.45} stroke="none" />
         ) : null}
         {geometry.dots.length > 1 ? (
           <polyline

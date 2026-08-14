@@ -229,6 +229,30 @@ export const VERDICT_READY = "text-verdict text-ready";
 export const SCORE_NUMBER = "tabular-nums text-ink";
 export const SCORE_DENOMINATOR = "text-fine tabular-nums text-ink-faint";
 
+// --- Trend direction ------------------------------------------------------
+//
+// Which way a dimension score moved, said in the pastel pair rather than in
+// alarm: rising keeps the sky family, flat goes neutral, falling goes to
+// blush, whose declared meaning (work in progress) is exactly what a falling
+// coaching score is. Alarm stays reserved for destructive actions and true
+// errors; a dip is a coaching signal, not a failure of ours (DECISIONS 070).
+//
+// The washes are SVG area fills, composed at the sparkline with the
+// fillOpacity attribute rather than a `/NN` modifier: the COMPOSITES gate
+// classifies `fill-*` utilities as text against a 4.5:1 bar, which an
+// intentionally quiet wash must fail. The net figures DO carry text, so
+// trend-rise and trend-fall sit in design-system.test.ts's AA matrix like
+// any other ink; flat reuses ink-faint, because neutral is what the ink
+// family is for.
+
+export const TREND_RISE_WASH = "fill-sky";
+export const TREND_FLAT_WASH = "fill-hairline";
+export const TREND_FALL_WASH = "fill-blush";
+
+export const TREND_RISE_NET = "text-trend-rise";
+export const TREND_FLAT_NET = "text-ink-faint";
+export const TREND_FALL_NET = "text-trend-fall";
+
 /** The reader's own words, quoted back as evidence. */
 export const EVIDENCE_QUOTE =
   "border-l border-hairline pl-3 text-fine italic text-ink-muted";

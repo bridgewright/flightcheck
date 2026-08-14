@@ -113,7 +113,12 @@ const bloomPeak = Math.max(
 
 // Every ground a body string may sit on, including the pastel chips.
 const GROUNDS = ["paper", "paper-sunk", "surface", "sky", "blush", "ready-wash", "alarm-wash"];
-const INKS = ["ink", "ink-muted", "ink-faint", "ready", "alarm"];
+// trend-rise and trend-fall carry the dimension-trends net figures as text
+// (DECISIONS 070), so they are inks and take the full matrix. The matching
+// area WASHES are not here and must never be: an SVG-only fill under the
+// sparkline carries no text and is not a ground, so listing it would assert
+// a bar it is deliberately built to sit under.
+const INKS = ["ink", "ink-muted", "ink-faint", "ready", "alarm", "trend-rise", "trend-fall"];
 
 describe("the design tokens exist where the system says they do", () => {
   it("declares every ground, ink, line, and semantic colour", () => {

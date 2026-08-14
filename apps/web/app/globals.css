@@ -94,6 +94,19 @@
   --color-alarm: #a03a2e;
   --color-alarm-wash: #f8e7e3;
 
+  /* Trend direction, ink grade. The dimension-trends table says which way a
+     score moved in the pastel pair's own families: rising is a sky-family
+     ink, falling is a blush-family ink. Blush already means work in
+     progress, which is exactly what a falling coaching score is, so falling
+     is deliberately NOT alarm: painting a 0.2-point dip with the error red
+     would false-alarm a reader mid-improvement and make true errors quieter
+     by association. Flat needs no token of its own, because neutral is what
+     the ink family already provides (ink-faint). Both values carry the net
+     figure as text, so both sit in the AA matrix over every ground
+     (DECISIONS 070). */
+  --color-trend-rise: #33586b;
+  --color-trend-fall: #8c4a54;
+
   /* --- Shape ----------------------------------------------------------- */
   /*
      One documented rule, and it is the reference's rather than the usual one:

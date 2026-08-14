@@ -152,6 +152,22 @@ describe("TrendLine", () => {
     expect(markup).not.toContain("data-trend-dot");
   });
 
+  it("washes the spark by direction, at the same quiet opacity (DECISIONS 070)", () => {
+    const spark = (direction: "rising" | "flat" | "falling") =>
+      renderToStaticMarkup(createElement(TrendLine, {
+        points, totalSlots: 4, variant: "spark", ariaLabel: "Trend", direction,
+      }));
+
+    expect(spark("rising")).toContain('class="fill-sky"');
+    expect(spark("flat")).toContain('class="fill-hairline"');
+    expect(spark("falling")).toContain('class="fill-blush"');
+    // The wash carries the direction; the line and dots stay in plain ink.
+    for (const direction of ["rising", "flat", "falling"] as const) {
+      expect(spark(direction)).toContain('fill-opacity="0.45"');
+      expect(spark(direction)).toContain('class="stroke-ink-muted"');
+    }
+  });
+
   it("anchors every slot label at the same x as the dots it labels", () => {
     const markup = renderToStaticMarkup(createElement(TrendLine, {
       points: [

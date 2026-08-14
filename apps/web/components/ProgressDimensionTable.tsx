@@ -4,6 +4,7 @@ import {
   humanizeDimensionKey,
   SCORE_MAX,
 } from "@/components/progress-view";
+import { TREND_NET, trendDirection } from "@/components/trend-direction";
 import TrendLine from "@/components/TrendLine";
 import type { DimensionTrend } from "@/lib/progress";
 import { EMPTY_RULE, LABEL, SCORE_NUMBER, SUB_HEADING, TABLE_ROW } from "@/lib/ui";
@@ -51,6 +52,9 @@ export default function ProgressDimensionTable({
             {trends.map((trend) => {
               const dimension = meta[trend.dimension_key];
               const latest = trend.points[trend.points.length - 1];
+              // net is 0 under two points by lib/progress contract, so a
+              // single scored session reads flat: no claim either way.
+              const direction = trendDirection(trend.net);
               return (
                 <tr
                   key={trend.dimension_key}
@@ -74,6 +78,7 @@ export default function ProgressDimensionTable({
                       }))}
                       totalSlots={totalSlots}
                       variant="spark"
+                      direction={direction}
                       ariaLabel={`${dimension?.name ?? humanizeDimensionKey(trend.dimension_key)} score trend across ${totalSlots} planned sessions.`}
                     />
                     <span className="sr-only">
@@ -89,7 +94,9 @@ export default function ProgressDimensionTable({
                   </td>
                   <td className="py-2.5 text-right tabular-nums">
                     {trend.points.length >= 2 ? (
-                      formatSigned(trend.net)
+                      <span className={TREND_NET[direction]}>
+                        {formatSigned(trend.net)}
+                      </span>
                     ) : (
                       <span className={EMPTY_RULE} aria-hidden="true" />
                     )}
