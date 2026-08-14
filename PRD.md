@@ -564,8 +564,9 @@ Changes to targets are recorded here with date and reason — never silently.
   talked over the resumed answer. Phase 1 takes those three
   structurally. The room turns the server's ear down while the
   interviewer is audible plus a two-second tail: echo can no longer
-  start a turn there, a real interruption still clears the raised
-  bar, and earphone sessions are untouched by construction. The
+  start a turn once the bar is raised, a real interruption still
+  clears it, and earphone sessions see no behavioral change by
+  construction — nothing but the new trail entries. The
   semantic turn-detection mode the 2026-08-01 bake-off disqualified
   gets a measured re-audition in the lab — adopted or rejected on
   numbers, never on the industry's word. And the echo verdict

@@ -3181,8 +3181,15 @@ why there was a fourth occurrence to record.
   derivation that put the resting threshold at 0.6 in the 2026-08-01
   diagnostic run, where real speech "clears it comfortably" and
   ambient phantoms do not). So a genuine interruption still starts a
-  turn while the gate is up; echo no longer can, during playback or
-  in its tail. Earphone sessions see no behavioral change by
+  turn while the gate is up; echo no longer can, once it is.
+  (Corrected at merge by review round 2, which read this entry
+  against the shipped code: the gate goes up one ticker period,
+  250 ms, plus a session.update round trip after the interviewer's
+  audio starts, so the onset of each utterance is still ungated and
+  still relies on the timing heuristics behind it — which is the
+  layering this entry keeps, not a defect in it. The original "during
+  playback or in its tail" claimed the onset too, and that was not
+  true.) Earphone sessions see no behavioral change by
   construction — no leak reaches the mic, so nothing there ever
   depended on the lower threshold during playback — and the
   both-environments verification bar below holds this to evidence.
@@ -3192,10 +3199,15 @@ why there was a fourth occurrence to record.
   and this adds none.
 - **Chosen: the gate is visible in the trail.** Gate transitions
   (raise/restore, with the applied value) become diagnostics
-  entries, and a session-start marker now opens every trail slice —
-  the open item Phase 0's review recorded (the trail clock restarts
-  on rearm/reload), folded in here so the next trail reads
-  unambiguously.
+  entries, and a session-start marker now opens every real start
+  attempt — the wall-clock anchor the persisted column needs once
+  the monotonic clock has restarted on rearm or reload. The Phase 0
+  open item closes here. (Corrected at merge: this entry first said
+  the marker opens "every trail slice" — heartbeat delta slices do
+  not each carry one, and a guard-blocked Start click deliberately
+  writes none; review round 1 moved the marker behind the re-entry
+  guard so a blocked click cannot plant a false slice boundary, and
+  round 2 caught the overclaim in this sentence.)
 - **Chosen: the timing heuristics stay.** The 400 ms start window
   and the 2400 ms outlive floor remain as the second layer — they
   demonstrably caught mechanism (1)'s commit — but they are no
@@ -3224,7 +3236,15 @@ why there was a fourth occurrence to record.
   and worklog), like every VAD/turn parameter since DECISIONS 047.
 - **Verification bar:** one real open-speaker session AND one real
   earphone session, both with trails read. The earphone session must
-  show nothing changed but the trail entries.
+  show nothing changed but the trail entries. Both trails must also
+  show a `vad-ack` following the first `vad-raise`, with the
+  interviewer's voice and persona unchanged after it: the raise's
+  session.update carries only the turn_detection block, so it is
+  correct only if the server merges an update into the live session
+  rather than replacing it — an assumption nothing in this repo has
+  exercised mid-session (round 2's finding; the one live
+  session.update on record is sent once at connect). No local test
+  can see this; the first real session settles it.
 - **Revisit when:** a trail shows a real barge-in missed while
   gated (the gated value is too high), or a phantom surviving the
   hangover (the tail runs longer than 2 s), or the Realtime API

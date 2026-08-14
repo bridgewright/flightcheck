@@ -158,3 +158,25 @@ discussion happens.
   midpoint of a clearly strong session is DECISIONS 064's intended
   behavior, not a naturalness defect — the conservative trigger is the
   feature.
+
+## 2026-08-15 — VAD lever moved: playback-aware input gating (B11-T1)
+
+- The acoustic layer gains a dynamic component with this track's
+  landing commit (F-67 Phase 1, DECISIONS 074): while the interviewer
+  is audible plus a 2.0 s hangover, the client raises the server VAD
+  threshold 0.6 -> 0.85 via session.update and restores it at expiry.
+  New recorded levers: `GATED_VAD_THRESHOLD` (0.85) and
+  `PLAYBACK_GATE_HANGOVER_S` (2.0), both in apps/web. The resting
+  threshold (0.6), the 900 ms tail, and the 0.6 s response debounce
+  did not move.
+- Round 1 has still not run (AVM references pending), so no baseline
+  is poisoned. Any Morgan case recorded from here on runs under the
+  gated policy during and just after interviewer audio; `lever_state`
+  for such cases must stamp the session-room commit (the manifest's
+  vad object records the RESTING values — note the gate separately in
+  the case's free-text note until the manifest schema grows a field).
+- Turn-feel caveat for future measurements: a candidate whose answer
+  onset lands inside the 2.0 s hangover speaks against the 0.85 bar;
+  if onsets read as clipped in Round 1 audio, check the trail for
+  onsets swallowed by the gate (cand-start only after vad-restore)
+  before blaming the model's pacing.
