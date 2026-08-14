@@ -1,3 +1,5 @@
+import { readFileSync } from "node:fs";
+
 import { describe, expect, it } from "vitest";
 
 import {
@@ -16,6 +18,11 @@ const sample = (atMs: number, mic: number, remote: number): LevelSample => ({
   mic,
   remote,
 });
+
+/** The room's tick, which every series below is spaced on. The module keeps
+ * its own copy private; this one exists so the docblock's published window
+ * spans can be checked against the sample counts they claim. */
+const TICK_MS = 250;
 
 describe("echoCorrVerdict", () => {
   it("finds a one-bin echo lag in coarse level envelopes", () => {
@@ -71,7 +78,7 @@ describe("echoCorrVerdict", () => {
   // "never" would be false as a general claim: over a window this short the
   // measured false-echo rate on independent series is high (see the honesty
   // block below). Scoped to the twenty-tick series it actually feeds.
-  it("keeps a loud uncorrelated barge-in under the echo threshold over five seconds", () => {
+  it("keeps a loud uncorrelated barge-in under the echo threshold across a twenty-tick window", () => {
     const mic = [
       0.6, 0.54, 0.89, 0.96, 0.85, 0.56, 0.99, 0.92, 0.76, 0.5, 0.92, 0.81,
       0.81, 0.51, 0.87, 0.52, 0.74, 0.57, 0.68, 0.95,
@@ -263,6 +270,47 @@ describe("echoCorrVerdict boundaries", () => {
     expect(echoCorrVerdict(ring, 0, 1000).verdict).toBe("indeterminate");
   });
 
+  it("refuses a lag whose paired series are flat only to roundoff", () => {
+    // The third guard, pearson()'s denominator floor, which the mic and
+    // remote guards above do NOT cover: they test the FULL window series and
+    // the per-lag remote, while pearson() sees the PAIRED subset, and pairing
+    // can hand it a flat slice of a window that varies. Here the mic is flat
+    // from tick 8 and the remote is flat until tick 6, so lag 2000 pairs a
+    // flat mic run against a flat remote run while every other lag sees real
+    // signal on both sides.
+    //
+    // The constants are ninths and sevenths: NOT dyadic, so a flat run of
+    // them has a mean that carries roundoff and squared deviations near 1e-32
+    // rather than the exact zero a dyadic run gives. Delete the denominator
+    // floor and that roundoff normalises to r === 1 at lag 2000 -- a perfect
+    // echo manufactured from nothing, which `Number.isFinite` cannot catch
+    // because 1 is a perfectly finite number.
+    //
+    // Analyser peaks are dyadic (`|byte - 128| / 128`), so this input is not
+    // reachable from today's ticker, and the note on hasSignal() says so.
+    // It is pinned because that redundancy is a property of the CALLER, not
+    // of this module: any future smoothing, decibel conversion or
+    // normalisation of the level makes this guard load-bearing again, and it
+    // should fail loudly here rather than quietly promote noise to "echo".
+    const flatMic = 5 / 9;
+    const flatRemote = 1 / 7;
+    const micVary = [0.9, 0.2, 0.7, 0.35, 0.85, 0.15, 0.6, 0.45];
+    const remoteVary = [0.3, 0.95, 0.25, 0.8, 0.4, 0.7, 0.55, 0.1];
+    const ring = Array.from({ length: 14 }, (_, index) =>
+      sample(
+        index * 250,
+        index < 8 ? micVary[index] : flatMic,
+        index < 6 ? flatRemote : remoteVary[index - 6],
+      ),
+    );
+
+    const result = echoCorrVerdict(ring, 0, 3250);
+
+    expect(result.verdict).not.toBe("echo");
+    expect(result.lagMs).not.toBe(CORR_LAG_MAX_MS);
+    expect(result.r).toBeLessThan(CORR_ECHO_MIN_R);
+  });
+
   it("reports an empty verdict for an inverted window", () => {
     // The room hands this shape in deliberately when a commit arrives with no
     // speech_started before it. Contract, not accident.
@@ -330,28 +378,66 @@ describe("echoCorrVerdict honesty about what it cannot resolve", () => {
     expect(result.verdict).not.toBe("indeterminate");
   });
 
-  it("calls independent noise an echo far too often at short windows", () => {
-    // NOT a specification of desired behaviour. This is the selection bias of
-    // maximising over nine lags, measured, so that it is on the record before
-    // anyone reads the shadow ledger DECISIONS 076 promotes on. Mic and
-    // remote here are independent by construction, so every "echo" is false.
-    expect(echoRateOnIndependentSeries(4, 4000)).toBeGreaterThan(0.6);
-    expect(echoRateOnIndependentSeries(6, 4000)).toBeGreaterThan(0.25);
-    expect(echoRateOnIndependentSeries(8, 4000)).toBeGreaterThan(0.1);
+  // The rates are READ OUT OF the module docblock rather than restated here.
+  // That table is what the promotion decision behind DECISIONS 076 will be
+  // read against, and the docblock claims it is pinned; parsing it is what
+  // makes the claim true instead of decorative. Restating the numbers in this
+  // file would leave the published table free to drift, which is exactly the
+  // defect this replaced: the previous assertions were one-sided floors, so
+  // the 76% row was pinned only above 60% and a table claiming 3% passed.
+  const publishedRows = [
+    ...readFileSync(new URL("./echo-correlation.ts", import.meta.url), "utf8")
+      .matchAll(
+        /window (\d+) samples \(([\d.]+) s\)\s*->\s*(?:"echo" on )?([\d.]+)%/g,
+      ),
+  ].map(([, samples, spanS, percent]) => ({
+    windowSamples: Number(samples),
+    spanS: Number(spanS),
+    published: Number(percent) / 100,
+  }));
+
+  it("publishes a selection-bias table this file can read", () => {
+    expect(publishedRows.map((row) => row.windowSamples)).toEqual([
+      4, 6, 8, 12, 20,
+    ]);
   });
 
-  it("recovers at the window lengths a real answer occupies", () => {
-    expect(echoRateOnIndependentSeries(12, 4000)).toBeLessThan(0.06);
-    expect(echoRateOnIndependentSeries(20, 4000)).toBeLessThan(0.01);
-  });
+  it.each(publishedRows)(
+    "calls independent noise an echo on $published of $windowSamples-sample windows",
+    ({ windowSamples, spanS, published }) => {
+      // NOT a specification of desired behaviour. This is the selection bias
+      // of maximising over nine lags, measured, so that it is on the record
+      // before anyone reads the shadow ledger DECISIONS 076 promotes on. Mic
+      // and remote here are independent by construction, so every "echo" is
+      // false.
+      //
+      // The span the table prints is n-1 ticks, never n. Getting that wrong
+      // is how the four-sample row came to be labelled a one-second window
+      // when it is the 750 ms one, which reads as if the table stopped short
+      // of the sub-second episodes it actually covers.
+      expect(spanS).toBe(((windowSamples - 1) * TICK_MS) / 1000);
+
+      // Ten percent relative, floored so the 0.1% row keeps a usable band.
+      // Wide enough to survive a different generator (an independent
+      // OS-entropy Monte Carlo at 40k trials/row reads 76.3, 35.2, 14.8, 2.6
+      // and 0.09) and far too narrow to survive a wrong table.
+      const tolerance = Math.max(published * 0.1, 0.0005);
+      const rate = echoRateOnIndependentSeries(windowSamples, 20000);
+      expect(rate).toBeGreaterThan(published - tolerance);
+      expect(rate).toBeLessThan(published + tolerance);
+    },
+  );
 
   it("keeps a leak-carrying barge-in under the echo threshold at three leak levels", () => {
     // The honest open-speaker case, which the uncorrelated barge-in above
     // does not model: the mic carries the candidate's own voice PLUS an
     // attenuated one-bin-delayed copy of the interviewer still playing
     // through the speakers. The margin is thinner than it looks, so the
-    // measured coefficient is pinned too: at half-amplitude leak this reaches
-    // 0.64 against a 0.75 threshold.
+    // measured coefficient is pinned too: the three leak levels read 0.634,
+    // 0.641 and 0.578 against a 0.75 threshold, so the worst case is the
+    // MIDDLE one, not the loudest leak. Correlation is not monotonic in leak
+    // here because the mic clamps at 1.0, and a clamped series has a flatter
+    // shape than the source it is copying.
     const remote = [
       0.62, 0.91, 0.55, 0.78, 0.66, 0.83, 0.59, 0.95, 0.7, 0.6, 0.88, 0.52,
       0.74, 0.97, 0.63, 0.81, 0.57, 0.9, 0.68, 0.76,

@@ -6,13 +6,18 @@
 // searched lags, so its null distribution is not centred on zero: picking the
 // best of nine correlations inflates it, and the fewer points the window
 // holds, the harder it inflates. Measured against independent random series
-// (echo-correlation.test.ts pins this, 20k trials per row):
+// (echo-correlation.test.ts pins every row below, 20k trials each):
 //
-//   window 4 samples (1.0 s)   -> "echo" on 76% of NON-echo episodes
-//   window 6 samples (1.5 s)   -> 35%
-//   window 8 samples (2.0 s)   -> 15%
-//   window 12 samples (3.0 s)  -> 2.6%
-//   window 20 samples (5.0 s)  -> 0.1%
+//   window 4 samples (0.75 s)  -> "echo" on 76% of NON-echo episodes
+//   window 6 samples (1.25 s)  -> 35%
+//   window 8 samples (1.75 s)  -> 15%
+//   window 12 samples (2.75 s) -> 2.6%
+//   window 20 samples (4.75 s) -> 0.1%
+//
+// The spans are n-1 ticks, not n: four samples span 750 ms, so the worst row
+// here IS the sub-second episode, not something shorter than the table
+// reaches. An earlier version of this table rounded each span up one tick and
+// hid that.
 //
 // So a short-window "echo" in the trail is close to no evidence at all, and
 // the shadow ledger DECISIONS 076 promotes on must be read stratified by `n`,

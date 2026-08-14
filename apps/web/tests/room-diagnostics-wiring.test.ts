@@ -132,6 +132,23 @@ describe("F-67 turn-system trail", () => {
     expect(sessionRoom).toContain('diag("echo-corr", formatEchoCorrNote(corr))');
   });
 
+  it("never reads the shadow verdict back into the room", () => {
+    // DECISIONS 076 gives the timing heuristic authority and makes promotion
+    // its own logged decision with field trails cited. The test above pins
+    // that the verdict is COMPUTED once; this one pins that it is never
+    // CONSULTED, which is the half that keeps the promotion honest. Without
+    // it the mandate is walkable: adding `if (corr.verdict === "echo")` next
+    // to the diag call leaves the call count at one, both send pins at eight
+    // and every ordering assertion here green.
+    //
+    // Reading any field of the verdict is the only way to act on it, so the
+    // fields are pinned absent. The lookbehind keeps the "echo-corr" trail
+    // tag from counting as a use of the binding.
+    expect(sessionRoom).not.toMatch(/\bcorr\.(verdict|r|lagMs|n)\b/);
+    const bindingUses = sessionRoom.match(/(?<!-)\bcorr\b/g) ?? [];
+    expect(bindingUses).toHaveLength(2);
+  });
+
   it("resets correlation episode state with the session gate state", () => {
     const resetAt = sessionRoom.indexOf(
       "gateStateRef.current = INITIAL_GATE_STATE",
