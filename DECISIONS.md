@@ -3062,10 +3062,19 @@ ideas, it is evidence retention.
   failed beat so nothing is lost), plus one final flush at the top
   of the clean end path. The worker appends the lines to a new
   nullable `sessions.diagnostics` column (migration 014),
-  server-capped at 32 KB keeping the newest tail. The wire format
-  carries absolute monotonic milliseconds (a new pure formatter) —
-  the on-screen formatter's slice-relative clock would restart at
-  zero on every delta. Tags and offsets only: no audio, no
+  server-capped at 32 KB keeping the newest tail. The final flush
+  runs on BOTH end paths — the clean end and the connection-loss
+  guard, and the guard's is the one the trail exists for (review
+  round 1 corrected this entry's original "clean end" wording). The
+  wire format carries absolute monotonic milliseconds (a new pure
+  formatter) — the on-screen formatter's slice-relative clock would
+  restart at zero on every delta. Deploy-order rule the review
+  proved: `extra="forbid"` makes an unknown body field fail the
+  WHOLE beat, and the client's re-carry cursor turns that into a
+  poison pill — anyone adding a field to the beat body deploys the
+  worker before the page. The privacy page's collection list gains
+  the telemetry category in the same change, because "that is the
+  whole list" must stay true. Tags and offsets only: no audio, no
   transcript, no speech content; deleted with the session row. The
   column joins no read payload (`SESSION_COLUMNS` unchanged) — the
   operator reads it by SQL when a recurrence needs it.

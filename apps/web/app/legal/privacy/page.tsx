@@ -26,14 +26,17 @@ export default async function PrivacyPage() {
   const viewer = await getViewer();
   return (
     <Shell viewer={viewer}>
-      <LegalPage title="Privacy Policy" updated="August 3, 2026">
+      <LegalPage title="Privacy Policy" updated="August 14, 2026">
         <LegalSection heading="What we collect">
           <p>
             Your name and email address, read from the Google account you sign in
             with (we never see a password), the job description and any resume or profile text you
             paste in, the audio recordings of your sessions, the transcripts
-            made from them, the reports we score from both, and your order
-            history. That is the whole list. We do not run advertising
+            made from them, the reports we score from both, your order
+            history, and a short technical log of each session (when speech
+            started and stopped, connection and microphone events, with no
+            speech content), kept so we can diagnose a session that
+            misbehaved. That is the whole list. We do not run advertising
             trackers, and we do not collect anything a mock interview does not
             need.
           </p>
