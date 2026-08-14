@@ -70,6 +70,13 @@ class RubricDimension(BaseModel):
     # None on delivery-channel dimensions too: those are licensed by the
     # product, not the JD.
     jd_evidence: str | None = None
+    # F-94: how the interviewer reads this dimension. "direct" dimensions
+    # get a dedicated main question; "indirect" ones are read through
+    # follow-up probes and interpretation of the candidate's answers, never
+    # headlined. Default keeps every rubric stored before the field existed
+    # valid on read (the jd_evidence contract above); only compile-time
+    # governance ever sets it.
+    probing_mode: Literal["direct", "indirect"] = "direct"
 
 
 class QuestionSpec(BaseModel):

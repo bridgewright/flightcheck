@@ -39,6 +39,12 @@ export interface RubricDimension {
   // before the field existed and on delivery-channel dimensions (licensed
   // by the product, not the JD); renderers then show no receipt.
   jd_evidence?: string | null;
+  // F-94: how the interviewer reads this dimension. "direct" gets a
+  // dedicated main question; "indirect" is read through follow-up probes
+  // and interpretation of the candidate's answers, never headlined. Absent
+  // on rubrics compiled before the field existed; renderers treat absence
+  // as "direct".
+  probing_mode?: "direct" | "indirect";
 }
 
 export type QuestionSource = "research-sweep" | "corpus" | "generated";
