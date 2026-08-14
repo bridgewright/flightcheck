@@ -126,12 +126,27 @@ def _transcript_block(segments: list[TranscriptSegment]) -> str:
 def _dimension_block(dim: RubricDimension) -> str:
     signals = "\n".join(f"  - {signal}" for signal in dim.signals)
     anchors = "\n".join(f"  score {a.score}: {a.behavior}" for a in dim.anchors)
-    return (
+    block = (
         f"Dimension key: {dim.key}\n"
         f"Name: {dim.name}\n"
         f"Signals:\n{signals}\n"
         f"BARS anchors:\n{anchors}"
     )
+    if dim.probing_mode == "indirect":
+        # F-94 (DECISIONS 077): the planner never mints this dimension a
+        # main question, so the evidence lives wherever the candidate
+        # happened to show it. Only the reading changes -- the anchors, the
+        # candidate-speech-only rule (line "no credit for anything the
+        # interviewer said"), and the quote verification all still apply.
+        block += (
+            "\nProbing mode: indirect. The candidate was not asked a "
+            "dedicated question for this dimension; assess it from evidence "
+            "anywhere in the candidate's answers. The rationale must name "
+            "where the evidence came from (which answer or moment). If the "
+            "evidence is thin or absent, state that plainly in the rationale "
+            "and score what the evidence supports -- never invent evidence."
+        )
+    return block
 
 
 def _build_prompt(

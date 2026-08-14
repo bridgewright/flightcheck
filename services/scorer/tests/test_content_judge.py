@@ -551,3 +551,83 @@ def test_prompt_fences_the_transcript_as_untrusted():
     end = prompt.index("<<<END UNTRUSTED TRANSCRIPT>>>")
     assert begin < prompt.index("CANDIDATE: I led the churn dashboard") < end
     assert not begin < prompt.index("Scoring rules:") < end
+
+
+def _governed_rubric() -> Rubric:
+    """One direct and one indirect content dimension (F-94 governed shape)."""
+    indirect = _dim("ai-safety-stewardship", "AI safety stewardship",
+                    "content", 0.2)
+    indirect = indirect.model_copy(update={"probing_mode": "indirect"})
+    return Rubric(
+        role_title="Forward Deployed Product Manager",
+        company="ExampleCo",
+        dimensions=[
+            _dim("structured-answers", "Structured answers", "content", 0.4),
+            indirect,
+            _dim("pacing-control", "Pacing control", "delivery", 0.4),
+        ],
+        question_bank=[],
+        research_summary="Synthetic governed rubric for judge tests.",
+    )
+
+
+def _governed_keyed_texts() -> dict[str, list[str]]:
+    docs = [
+        _content_score(
+            "structured-answers",
+            4.0,
+            ["I owned the metrics definition and ran weekly reviews with the sales team."],
+            "Clear ownership arc, close to the score-5 anchor's specificity.",
+        ),
+        _content_score(
+            "ai-safety-stewardship",
+            3.0,
+            ["I led the churn dashboard rollout"],
+            "In the rollout answer the candidate described guardrails only in "
+            "passing; evidence is thin across the transcript.",
+        ),
+    ]
+    return {
+        doc["dimension_key"]: [json.dumps({"scores": [doc]})] * 3
+        for doc in docs
+    }
+
+
+def test_indirect_dimension_prompt_carries_the_indirect_clause():
+    # F-94 / D5: an indirect dimension was never asked directly, so the
+    # judge is told to read evidence from anywhere in the candidate's
+    # answers, name where it came from, and say when it is thin -- never
+    # invent it. Direct dimensions keep the unmodified block.
+    fake = FakeGenAI(keyed_texts=_governed_keyed_texts())
+
+    scores = score_content(_governed_rubric(), _make_segments(), fake)
+
+    assert [s.dimension_key for s in scores] == [
+        "structured-answers",
+        "ai-safety-stewardship",
+    ]
+    for call in _calls_for(fake, "ai-safety-stewardship"):
+        prompt = call["contents"]
+        assert "Probing mode: indirect." in prompt
+        assert "was not asked a dedicated question" in prompt
+        assert "anywhere in the candidate's answers" in prompt
+        assert "name where the evidence came from" in prompt
+        assert "thin or absent" in prompt
+        assert "never invent" in prompt
+    for call in _calls_for(fake, "structured-answers"):
+        assert "Probing mode: indirect." not in call["contents"]
+
+
+def test_indirect_dimension_is_scored_like_any_other():
+    # The invariant is about HOW the dimension is read, not WHETHER: the
+    # score flows through sampling, quote verification, and assembly
+    # exactly like a direct dimension's.
+    fake = FakeGenAI(keyed_texts=_governed_keyed_texts())
+
+    scores = score_content(_governed_rubric(), _make_segments(), fake)
+
+    indirect = next(s for s in scores
+                    if s.dimension_key == "ai-safety-stewardship")
+    assert indirect.score == 3.0
+    assert indirect.evidence_quotes == ["I led the churn dashboard rollout"]
+    assert len(_calls_for(fake, "ai-safety-stewardship")) == 3
