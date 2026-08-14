@@ -1,7 +1,13 @@
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 
+import { createElement } from "react";
+import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
+
+import RubricView from "../components/RubricView";
+import { INDIRECT_PROBING_NOTE } from "../lib/rubric-format";
+import type { Rubric, RubricDimension } from "../lib/types";
 
 // F-62, the web half: each content dimension on /rubric shows its receipt,
 // the JD's own words that license it, and delivery dimensions say in fine
@@ -126,7 +132,11 @@ describe("the indirect posture is said only where it is true (F-94)", () => {
     expect(code).toMatch(
       /import \{[^}]*\bprobingLabel\b[^}]*\} from "@\/lib\/rubric-format";/,
     );
-    expect(code).toContain("probingLabel(dimension)");
+    // The full binding statement, not just the call: a bare call plus an
+    // inline `const probing = "..."` satisfied a call-only scan while
+    // rendering the claim on every dimension. Pinning the binding means the
+    // guarded value below can only be the helper's return.
+    expect(code).toMatch(/const probing = probingLabel\(dimension\);/);
   });
 
   it("renders the label only behind the guard, on the meta line", () => {
@@ -152,6 +162,81 @@ describe("the indirect posture is said only where it is true (F-94)", () => {
       /export const INDIRECT_PROBING_NOTE =\s*\n?\s*"[^"]+";/,
     );
     expect(format).toMatch(/probing_mode === "indirect"/);
+  });
+});
+
+describe("what the rendered markup actually says about probing (F-94)", () => {
+  // The scans above read the source; this block reads the output. The gap it
+  // closes was demonstrated by a survived mutation: a decoy probingLabel call
+  // beside `const probing = "Assessed from your " + "answers, ..."` passed
+  // every source scan while rendering the absolute claim on every dimension.
+  // A rendered-markup assertion cannot be dodged by literal obfuscation,
+  // because whatever the source looks like, the reader's string is here.
+  // The harness is the house one: coaching-wiring and quick-report already
+  // render server components through renderToStaticMarkup.
+
+  const dimension = (over: Partial<RubricDimension>): RubricDimension => ({
+    key: "k",
+    name: "Dimension",
+    weight: 0.2,
+    channel: "content",
+    anchors: [],
+    signals: [],
+    citations: [],
+    ...over,
+  });
+
+  const rubric = (dimensions: RubricDimension[]): Rubric => ({
+    role_title: "Role",
+    company: null,
+    dimensions,
+    question_bank: [],
+    research_summary: "",
+  });
+
+  const markup = renderToStaticMarkup(
+    createElement(RubricView, {
+      rubric: rubric([
+        // Stored before the field existed: absence must say nothing.
+        dimension({ key: "legacy", name: "Legacy", channel: "delivery" }),
+        // Explicitly direct: also nothing.
+        dimension({ key: "direct", name: "Direct", probing_mode: "direct" }),
+        // The one indirect dimension: the note, once, on its meta line.
+        dimension({
+          key: "indirect",
+          name: "AI Safety and Mission Alignment",
+          probing_mode: "indirect",
+        }),
+      ]),
+    }),
+  );
+
+  it("says the note exactly once, for the one indirect dimension", () => {
+    expect(markup.split(INDIRECT_PROBING_NOTE)).toHaveLength(2);
+  });
+
+  it("places the note on the meta line, after the channel label", () => {
+    expect(markup).toContain(`Content: what you say · ${INDIRECT_PROBING_NOTE}`);
+  });
+
+  it("ends the direct dimension's meta line at the channel label", () => {
+    expect(markup).toContain("Content: what you say</span>");
+  });
+
+  it("ends the legacy dimension's meta line at the channel label", () => {
+    expect(markup).toContain("Delivery: how you say it</span>");
+  });
+
+  it("renders a rubric stored before the field existed with no note at all", () => {
+    const legacy = renderToStaticMarkup(
+      createElement(RubricView, {
+        rubric: rubric([
+          dimension({ key: "a", name: "A" }),
+          dimension({ key: "b", name: "B", channel: "delivery" }),
+        ]),
+      }),
+    );
+    expect(legacy).not.toContain(INDIRECT_PROBING_NOTE);
   });
 });
 
