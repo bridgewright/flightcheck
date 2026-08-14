@@ -6,6 +6,7 @@ import {
   DELIVERY_RECEIPT,
   formatWeight,
   hasReceipts,
+  probingLabel,
   PROFILE_RECEIPT,
   sortedAnchors,
 } from "@/lib/rubric-format";
@@ -68,6 +69,11 @@ export default function RubricView({ rubric }: { rubric: Rubric }) {
           // words. Rubrics stored before the field existed carry no receipt
           // and must render exactly as today, so absence collapses to "".
           const evidence = dimension.jd_evidence?.trim() ?? "";
+          // The probing posture (F-94): an indirect dimension gets no
+          // question of its own, and the meta line says so. probingLabel
+          // returns null for "direct" AND for absence, so rubrics stored
+          // before the field existed keep today's meta line untouched.
+          const probing = probingLabel(dimension);
           return (
             <li key={dimension.key} className="flex flex-col gap-3 py-5">
               <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
@@ -75,6 +81,7 @@ export default function RubricView({ rubric }: { rubric: Rubric }) {
                 <span className={SUBTLE}>
                   {formatWeight(dimension.weight)} of your score ·{" "}
                   {channelLabel(dimension.channel)}
+                  {probing ? <> · {probing}</> : null}
                 </span>
               </div>
 

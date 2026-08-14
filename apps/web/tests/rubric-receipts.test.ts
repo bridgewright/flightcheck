@@ -114,6 +114,47 @@ describe("the profile line has its own receipt branch", () => {
   });
 });
 
+describe("the indirect posture is said only where it is true (F-94)", () => {
+  // The label is an absolute claim about interviewer behaviour, so where it
+  // renders is part of the claim: on an indirect dimension it is honesty, on
+  // a direct one it is a lie, and on a legacy rubric it is a compat
+  // violation. The value itself collapses absence and "direct" to null
+  // (pinned in lib/types-probing-mode.test.ts); these scans hold the
+  // component to a single guarded emission of that value.
+
+  it("derives the label through probingLabel", () => {
+    expect(code).toMatch(
+      /import \{[^}]*\bprobingLabel\b[^}]*\} from "@\/lib\/rubric-format";/,
+    );
+    expect(code).toContain("probingLabel(dimension)");
+  });
+
+  it("renders the label only behind the guard, on the meta line", () => {
+    // The one emission site, in full: guard, separator, value, else nothing.
+    expect(code).toMatch(/\{probing \? <> · \{probing\}<\/> : null\}/);
+    // And nothing else touches the value. Declaration, guard test, guarded
+    // emission: three references. A mutation that renders it unconditionally
+    // drops the guard to two, and a second emission site raises it to four,
+    // so either direction fails before a reader sees a false claim.
+    expect(code.match(/\bprobing\b/g) ?? []).toHaveLength(3);
+  });
+
+  it("keeps the copy out of the component", () => {
+    // One string literal in lib/rubric-format, per the built-copy lesson.
+    // The component reaches it only through probingLabel, so the guard in
+    // that helper cannot be bypassed by inlining the sentence here.
+    expect(code).not.toContain("INDIRECT_PROBING_NOTE");
+    expect(code).not.toContain("Assessed from your answers");
+  });
+
+  it("keeps the copy one string literal behind the indirect predicate", () => {
+    expect(format).toMatch(
+      /export const INDIRECT_PROBING_NOTE =\s*\n?\s*"[^"]+";/,
+    );
+    expect(format).toMatch(/probing_mode === "indirect"/);
+  });
+});
+
 describe("what the screen still never renders", () => {
   it("no question bank, no ad-hoc company line", () => {
     expect(code).not.toContain("question_bank");
