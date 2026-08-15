@@ -1,6 +1,10 @@
+import { readFileSync } from "node:fs";
+import { fileURLToPath } from "node:url";
+
 import { describe, expect, it } from "vitest";
 
 import {
+  ASK_STEMS,
   INITIAL_GATE_STATE,
   BARGE_LEVEL_MULTIPLE,
   BARGE_SUSTAIN_MS,
@@ -27,6 +31,7 @@ import {
   committedItemId,
   assistantOutputItemId,
   bargeCutDecision,
+  transcriptCarriesAsk,
   dueTimeStatus,
   formatTimer,
   finishedTranscriptForEvent,
@@ -117,6 +122,127 @@ describe("assistantOutputItemId", () => {
   });
 });
 
+/**
+ * The owes-speech detector, driven over the questions this product really
+ * asks rather than over questions invented for the test.
+ *
+ * The planner is Python and lives on the other side of the repo, so this
+ * reads its source the way the VAD single-source gates read product.toml and
+ * the lab harness. Every anchor below is asserted present: if the planner is
+ * refactored and a block stops matching, the test throws instead of quietly
+ * checking a shorter corpus, which is the only failure mode that would let
+ * this gate go green while guarding nothing.
+ */
+const PLANNER_PY = fileURLToPath(
+  new URL("../../../services/scorer/src/scorer/sessionplan/planner.py", import.meta.url),
+);
+const RUBRIC_FIXTURE = fileURLToPath(
+  new URL("../../../evals/suites/rubric_discrimination/rubric.json", import.meta.url),
+);
+
+/** Blocks of planner.py that hold text the interviewer speaks aloud. The
+ * instruction-render block is deliberately excluded: those sentences address
+ * the model, not the candidate. */
+const SPOKEN_BLOCKS: [string, string][] = [
+  ["_PRESSURE_PROBES = (", "_CLOSING_LINE = ("],
+  ["    templates = (", "    candidates = []"],
+  ["    pivot_open = (", "    # One probe per candidate"],
+  ["    fit_probes = [", "def plan_baseline_session"],
+  ["    questions = (", "def _area_list"],
+];
+
+function plannerStrings(source: string, [start, end]: [string, string]): string[] {
+  const from = source.indexOf(start);
+  const to = source.indexOf(end, from);
+  if (from === -1 || to === -1) {
+    throw new Error(
+      `planner.py no longer contains the block ${JSON.stringify(start)} .. ` +
+        `${JSON.stringify(end)}: the owes-speech corpus gate stopped guarding it`,
+    );
+  }
+  // Python implicit concatenation: two literals separated by nothing but
+  // whitespace and an f/r prefix are one string at runtime, so glue them
+  // before extracting or every wrapped question arrives in halves.
+  const glued = source.slice(from, to).replace(/"\s*[fr]?"/g, "");
+  return [...glued.matchAll(/"((?:[^"\\]|\\.)*)"/g)]
+    .map((match) => match[1].replace(/\\'/g, "'").replace(/\{[^}]*\}/g, "the thing").trim())
+    .filter((text) => /[.?!]$/.test(text) && text.split(/\s+/).length >= 3);
+}
+
+describe("owes-speech reads the questions this product actually asks", () => {
+  const planner = readFileSync(PLANNER_PY, "utf-8");
+  const spoken = SPOKEN_BLOCKS.flatMap((block) => plannerStrings(planner, block));
+
+  it("reads every planner question and probe as an ask", () => {
+    // Guard the guard: a corpus that quietly shrank to nothing would pass
+    // every assertion below.
+    expect(spoken.length).toBeGreaterThanOrEqual(50);
+    const strandedByDetector = spoken.filter((text) => !transcriptCarriesAsk(text));
+    expect(strandedByDetector).toEqual([]);
+  });
+
+  it("reads a dimension question as an ask after the interest clause is appended", () => {
+    // _generated_question appends " I'm especially interested in X." to the
+    // template it picked, so the sentence the model ends on is a statement
+    // even when the question it just asked ended in "?". This is the shape
+    // that reaches the room, and a last-sentence rule calls all of it an
+    // unfinished turn.
+    const composed = spoken
+      .filter((text) => /^(tell me|walk me|what is a concrete|describe a decision|when has|which experience)/i.test(text))
+      .map((text) => `${text} I'm especially interested in shipping under a hard deadline.`);
+    expect(composed.length).toBeGreaterThanOrEqual(6);
+    expect(composed.filter((text) => !transcriptCarriesAsk(text))).toEqual([]);
+  });
+
+  it("reads every committed rubric-fixture question as an ask", () => {
+    const fixture = readFileSync(RUBRIC_FIXTURE, "utf-8");
+    const questions = [...fixture.matchAll(/"question"\s*:\s*"((?:[^"\\]|\\.)*)"/g)]
+      .map((match) => match[1].replace(/\\"/g, '"').replace(/\\n/g, " ").trim())
+      .filter((text) => text.length > 0);
+    expect(questions.length).toBeGreaterThanOrEqual(10);
+    // These are JD-derived, so they carry shapes the planner never writes:
+    // a bare imperative ("Design an AI code reviewer for GitHub pull
+    // requests.") and a case prompt that states the situation and leaves the
+    // work implied ("You are given an operational product case, ...").
+    expect(questions.filter((text) => !transcriptCarriesAsk(text))).toEqual([]);
+  });
+
+  it("still hears the turn that stranded the room", () => {
+    // The field case, verbatim in shape: the interviewer framed the topics
+    // and stopped, the candidate owed nothing, and the room had no move.
+    expect(transcriptCarriesAsk("So we'll look at pacing, impact, and composure.")).toBe(false);
+    expect(transcriptCarriesAsk("Right. Let me set up what we're doing today.")).toBe(false);
+    expect(transcriptCarriesAsk("Great, thanks for that.")).toBe(false);
+    expect(transcriptCarriesAsk("That makes sense to me.")).toBe(false);
+    // The closing line reads as a statement on its own. It never reaches the
+    // derivation - closingSeen returns first - and the reducer test below
+    // pins that path; this pins what the helper alone would say, so a later
+    // reader does not mistake the helper for the closing's guard.
+    expect(transcriptCarriesAsk("Thanks for taking the time today. That's everything from my side. Good luck out there.")).toBe(false);
+  });
+
+  it("does not mistake a word that merely starts with a stem", () => {
+    expect(transcriptCarriesAsk("Whatever we do next stays on the record.")).toBe(false);
+    expect(transcriptCarriesAsk("Island projects like that one rarely scale.")).toBe(false);
+    expect(transcriptCarriesAsk("Willing teams ship faster.")).toBe(false);
+    // An empty turn asserts nothing, so it creates no obligation.
+    expect(transcriptCarriesAsk("   ")).toBe(true);
+  });
+
+  it("publishes the stem list the corpus tests drive", () => {
+    // Exported so the corpus above is pinning a list a reader can see, not a
+    // regex buried in the module.
+    expect(ASK_STEMS).toContain("tell me");
+    expect(ASK_STEMS).toContain("walk me");
+    expect(ASK_STEMS).toContain("give me");
+    expect(ASK_STEMS).toContain("describe");
+    expect(ASK_STEMS).toContain("design");
+    expect(ASK_STEMS).toContain("you are given");
+    expect(new Set(ASK_STEMS).size).toBe(ASK_STEMS.length);
+    expect(ASK_STEMS.every((stem) => stem === stem.toLowerCase().trim())).toBe(true);
+  });
+});
+
 describe("the turn policy's recorded numbers", () => {
   it("holds every lever DECISIONS 080-082 chose at the value it chose", () => {
     // These six are levers with field arithmetic and revisit conditions
@@ -177,6 +303,34 @@ describe("response cancel window and owes-speech ladder", () => {
     expect(result.state.morganOwesSpeech).toBe(false);
     expect(result.state.responseInFlight).toBe(true);
     expect(nextSilenceState(INITIAL_SILENCE_STATE, silenceTick({ finishedTranscript: "Ready?" })).state.morganOwesSpeech).toBe(false);
+  });
+
+  it("leaves no obligation after a question that ends in a period", () => {
+    // The reducer half of the corpus gate. Most of this product's real
+    // questions are imperatives, so a bare trailing-"?" derivation would
+    // have nudged Morgan three seconds into the candidate's thinking pause
+    // on most turns of a session - re-creating, from the other side, the
+    // talk-over this batch exists to remove.
+    const asked = [
+      "Tell me about a result you are most proud of, with numbers.",
+      "Walk me through a project you led end to end.",
+      "Give me one concrete example that backs that up.",
+      "Describe a decision that depended on your composure.",
+      "What is a concrete example that best shows your composure? I'm especially interested in incident response.",
+    ];
+    for (const transcript of asked) {
+      let result = nextSilenceState(
+        INITIAL_SILENCE_STATE,
+        silenceTick({ interviewerAudible: true, finishedTranscript: transcript }),
+      );
+      expect(result.state.morganOwesSpeech, transcript).toBe(false);
+      const nudges: number[] = [];
+      for (let i = 1; i <= 40; i += 1) {
+        result = nextSilenceState(result.state, silenceTick());
+        if (result.effects.turnNudge) nudges.push(i);
+      }
+      expect(nudges, transcript).toEqual([]);
+    }
   });
 
   it("never nudges during candidate audio or after the closing marker", () => {

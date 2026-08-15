@@ -292,6 +292,79 @@ export const TURN_STATUS_PREFIX = "[turn status]";
 export const TURN_NUDGE_S = 3.0;
 export const TURN_NUDGE_TEXT = `${TURN_STATUS_PREFIX} You stopped without asking the candidate anything. Continue your turn now and end it with your question to them.`;
 
+/** Openings that make a sentence an ask, even without a question mark.
+ *
+ * Most of this product's real questions end in a PERIOD: the planner's
+ * inventory is full of imperatives ("Tell me about a time you demonstrated
+ * composure.", "Walk me through the strongest data point behind that.",
+ * "Design an AI code reviewer for GitHub pull requests."), and two of the six
+ * pressure follow-ups are built that way on purpose. A trailing "?" alone
+ * therefore reads most legitimate questions as an unfinished turn.
+ *
+ * The corpus test drives this list over the planner's own strings and the
+ * committed rubric fixture, so it is not a guess about English: it is the
+ * cover of an inventory that exists in the repo. */
+export const ASK_STEMS: readonly string[] = [
+  // Interrogatives.
+  "what", "which", "how", "why", "when", "where", "who", "whose",
+  // Subject-verb inversions, which in English open a question and almost
+  // nothing else.
+  "can", "could", "would", "will", "do", "does", "did", "have", "has",
+  "are", "is", "was", "were", "should",
+  // Imperative asks. An interviewer uses these as often as interrogatives,
+  // and the planner writes most of its inventory this way.
+  "tell me", "walk me", "talk me", "take me", "describe", "design",
+  "give me", "share", "explain", "suppose", "imagine", "outline",
+  "propose", "consider", "pick", "play devil", "let's hear", "help me see",
+  // Case prompts from a JD-derived rubric, which state the situation and
+  // leave the work implied.
+  "you are given", "you have",
+];
+
+/** Sentences of a spoken turn, split on terminal punctuation. */
+function askSentences(transcript: string): string[] {
+  return transcript
+    .split(/(?<=[.!?])\s+/)
+    .map((sentence) => sentence.trim())
+    .filter((sentence) => sentence.length > 0);
+}
+
+function sentenceIsAsk(sentence: string): boolean {
+  if (sentence.endsWith("?")) return true;
+  // Leading quotes, dashes and stray punctuation are not part of the stem.
+  const opening = sentence.toLowerCase().replace(/^[^a-z']+/, "");
+  return ASK_STEMS.some((stem) => {
+    if (!opening.startsWith(stem)) return false;
+    // "whatever we do next." must not match "what". The stem has to end on
+    // a word boundary to be the sentence's opening word.
+    const after = opening.charAt(stem.length);
+    return after === "" || !/[a-z']/.test(after);
+  });
+}
+
+/**
+ * Does this interviewer turn put a question to the candidate (DECISIONS 082)?
+ *
+ * Deliberately generous, and the asymmetry is the whole reason. Reading a
+ * real question as an unfinished turn nudges Morgan into a candidate who is
+ * mid-thought, on most turns of a session, which is the talk-over this batch
+ * exists to remove. Reading an unfinished turn as a question costs one
+ * missed nudge in a room the hardened opening instructions already make rare.
+ * So the test is "did this turn ask anything", not "did its last sentence
+ * ask": the planner appends an interest clause AFTER the question it just
+ * asked ("... best shows your composure? I'm especially interested in X."),
+ * and a last-sentence rule calls every one of those an unfinished turn.
+ *
+ * An empty transcript asserts nothing either way, so it creates no
+ * obligation.
+ */
+export function transcriptCarriesAsk(transcript: string): boolean {
+  const trimmed = transcript.trim();
+  if (trimmed.length === 0) return true;
+  if (trimmed.endsWith("?")) return true;
+  return askSentences(trimmed).some(sentenceIsAsk);
+}
+
 export const BARGE_SUSTAIN_MS = 750;
 export const BARGE_LEVEL_MULTIPLE = 3;
 export const LEAK_FLOOR = 0.005;
@@ -433,7 +506,7 @@ export function nextSilenceState(
     tick.finishedTranscript !== null &&
     tick.finishedTranscript !== undefined
   ) {
-    morganOwesSpeech = !tick.finishedTranscript.trim().endsWith("?");
+    morganOwesSpeech = !transcriptCarriesAsk(tick.finishedTranscript);
     quietS = 0;
   }
 
