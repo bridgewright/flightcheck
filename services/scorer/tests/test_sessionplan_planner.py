@@ -739,10 +739,10 @@ def test_quick_instructions_remain_byte_identical():
     bare = build_interviewer_instructions(
         plan_quick_session(None, None), None, _make_profile())
     assert hashlib.sha256(named.encode()).hexdigest() == (
-        "fea08f1ddf02abd2a431c67d9d7c95f5435f945a946417a2e688fc9a8f409ed6"
+        "09ff230e04286599c52b28c4fe10708351c7f58b185c3bc577e7f839b8cb0be0"
     )
     assert hashlib.sha256(bare.encode()).hexdigest() == (
-        "f7299183a299289042b4abc8cb4fd4810c0a8d0d4a008b67f3534aeb24d251e6"
+        "507d04c3f9a4146529afb250c2bbc6efee8671886799f61f9b281b05df817361"
     )
 
 
@@ -765,7 +765,7 @@ def test_standard_twenty_minute_instructions_remain_byte_identical():
     # are confined to # OPENING -- verified by rendering main's planner and
     # diffing the two documents section by section, not by trusting the diff.
     assert hashlib.sha256(_instructions().encode()).hexdigest() == (
-        "858d9635a68f460fe95d57299986cd4cbf0c3e898ea9335f76bf59b03a3a238d"
+        "c9752eae91f1451d4f7859770cd2655e51a6afba35d44d740737ff2ed1ae300d"
     )
 
 
@@ -1084,7 +1084,14 @@ def test_opening_checks_are_structural_turn_stops():
     # check ENDS the turn, self-answering is banned by name, and a quiet
     # candidate is the silence ladder's job, never the interviewer's.
     text = _instructions()
-    assert "Each beat is a SEPARATE turn of yours, never one speech" in text
+    # DECISIONS 082 reshaped the beats into exactly two turns after the
+    # field showed the model ending a turn mid-framing (topics named, no
+    # question, room stranded): the turn boundary belongs to the checks,
+    # not to arbitrary pauses, so framing and at-ease are ONE turn closed
+    # by "Sound good?".
+    assert "in exactly two turns" in text
+    assert "Each turn ends with a question to the candidate" in text
+    assert "Each beat is a SEPARATE turn" not in text
     assert "stop speaking there and end your turn" in text
     assert 'no "great", no "all right"' in text
     # Round 1: the two banned tokens are the two the live session happened to
@@ -1121,6 +1128,27 @@ def test_quick_opening_check_is_a_structural_turn_stop():
     assert "Never answer the check yourself" in named
     assert "[silence status] note will prompt you" in named
     assert "Once they answer" in named
+
+
+def test_every_turn_ends_facing_the_candidate():
+    # DECISIONS 082: the field session where the interviewer framed the
+    # topics and stopped -- no question, nobody's turn -- is the defect.
+    # The web side gained an owes-speech nudge for when the model still
+    # stops short; this is the instruction side: a turn may end only on
+    # a question, closing line excepted, in BOTH renders.
+    text = _instructions()
+    assert "Every turn you take ends facing the candidate" in text
+    assert "Never end a turn on a statement" in text
+    assert "The closing line is the only exception." in text
+    # The framing turn may not strand the room short of its check.
+    assert 'Never stop this turn anywhere before "Sound good?"' in text
+    named = build_interviewer_instructions(
+        plan_quick_session("ACME Labs", "Staff AI Engineer"), None,
+        _make_profile(), company="ACME Labs", role="Staff AI Engineer")
+    assert "Never end a turn without a question to the candidate" in named
+    # Quick's framing turn ends on the first question, never on the
+    # pause-to-think statement it used to trail off with.
+    assert "move straight into your first question in that same turn" in named
 
 
 def test_opening_check_does_not_railroad_past_a_no():
