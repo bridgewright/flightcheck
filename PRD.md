@@ -643,6 +643,23 @@ Changes to targets are recorded here with date and reason — never silently.
   offering to skip the audio check. Every knob this touches is a
   recorded lever. DECISIONS 080–082.
 
+- **v0.30 (recorded 2026-08-15, pre-code):** two residuals the B12
+  integration named are paid, and both are honesty floors. The home
+  screen's focus sentence stops overstating for governed rubrics:
+  when the lowest-scored dimension is one the planner reads sideways,
+  the sentence says so and names the dimension the session will
+  actually focus, instead of promising a focus the planner refuses.
+  And the rubric compiler stops losing a whole compile to the one
+  citation the model most often forgets: a delivery dimension that
+  arrives citation-less gains the product's own methodology citation
+  deterministically — delivery dimensions are product-licensed by
+  design, so the product's methodology is their honest source — while
+  the faithfulness gate learns two recorded postures: an indirect,
+  capped peripheral dimension is the acceptable form of a forbidden
+  topic, and a failing fixture earns one recorded second attempt,
+  every attempt kept honestly (the v0.14 gate precedent), with the
+  1.0 baseline unmoved. DECISIONS 083–084.
+
 > 2026-08-02: v0.4 scope added above — accounts move ahead of payments
 > because login-gated interviews protect session integrity and per-session
 > cost, and the dashboard is what makes a 6-session package usable. The

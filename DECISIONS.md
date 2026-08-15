@@ -3827,3 +3827,58 @@ it.)
   turn that plainly asked nothing (a stem is reading a statement
   as an ask) — both are one-line changes to the two stem families,
   and the corpus gate names which family.
+
+## 083 — the focus sentence tells the truth about indirect dimensions (2026-08-15)
+
+- **Decision:** `verdictLine` learns which dimensions are indirect (from
+  the rubric already in scope at both call sites — no new data crosses).
+  The named focus mirrors the planner's rule: the lowest-scored DIRECT
+  dimension. When the overall lowest is indirect, the sentence names it
+  as read through follow-ups and names the dimension the session will
+  actually focus. Delivery dimensions can never be indirect, so a full
+  report always holds a direct dimension; the empty-report case keeps
+  today's copy.
+- **Why:** the B12 integration's accepted residual: since governance,
+  "This session focuses there" could promise a focus the planner
+  refuses — a false sentence at the exact moment the customer decides
+  what the next paid session is for.
+- **Rejected — hot-patching at the B12 merge:** home.ts sat outside
+  every reviewed zone that day; a merge-time product change without
+  review is how regressions ship.
+- **Rejected — a new endpoint or payload field:** the rubric already
+  crosses to the page that renders the sentence.
+- **Revisit when:** the planner's focus-selection rule changes shape —
+  this sentence is a mirror and must move with it.
+
+## 084 — the compiler repairs the citation it can, and the gate keeps honest attempts (2026-08-15)
+
+- **Decision:** three parts. **(a)** Deterministic pre-validation
+  repair: a delivery-channel dimension arriving from the model with no
+  citations gains the product's methodology citation — a verbatim
+  snippet from `docs/architecture.md`, pinned by test to remain a real
+  substring of that document. Model-provided citations always win;
+  content dimensions are NEVER backfilled (their citations are JD and
+  research grounding — fabricating one would be dishonest, and the
+  faithfulness gate exists to catch exactly that). **(b)** The
+  forbidden-topic check learns the governed form: a forbidden topic
+  matching an `indirect` dimension at or below the weight cap passes
+  and is recorded as governed in the report; a match on a `direct`
+  dimension still fails. **(c)** Each fixture earns one recorded
+  second compile attempt on failure — every attempt kept in the
+  report, pass meaning any attempt passed — and the 1.0 baseline does
+  not move.
+- **Why:** the five-run record in the 078–079 amendments: two of ten
+  governed compiles died post-retry to the same citation-less delivery
+  dimension (twice literally "composure-clarity"), and the base tree
+  failed the forbidden check on exactly the dimension class F-94 now
+  governs. The gate was failing on noise the product can honestly
+  absorb and on a definition F-94 legitimately changed.
+- **Rejected — lowering the baseline:** the bar does not move.
+- **Rejected — silent reruns:** green-by-rerun is gate-gaming,
+  rejected on the record the day before.
+- **Rejected — repairing license misuse deterministically:** forcing
+  `license="jd"` onto a mis-licensed dimension would then demand
+  `jd_evidence` the JD cannot give; the honest path there remains the
+  model retry.
+- **Revisit when:** the recorded second-attempt rate climbs — the
+  report now measures it, so the next conversation reads a number.
