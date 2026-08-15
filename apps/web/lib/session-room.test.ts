@@ -346,6 +346,42 @@ describe("owes-speech reads the questions this product actually asks", () => {
     }
   });
 
+  it("does not read an ordinary interviewer statement as an ask", () => {
+    // Overreach costs a nudge the room deserved, which is the safe
+    // direction but not a free one. Each stem was removed in turn and the
+    // corpus re-run: these five were required by nothing in the planner or
+    // the fixture, and every one of them opens a statement an interviewer
+    // really makes. They are gone, and this is what keeps them gone.
+    for (const statement of [
+      "Share prices moved twelve percent that quarter.",
+      "Pick any of those and it still works.",
+      "Consider it noted.",
+      "You have a strong track record on that.",
+      "Should be straightforward from here.",
+      // The same words behind a marker, where the clause rule would reach
+      // them: still a statement.
+      "That is a fair read, and you have a strong track record on that.",
+    ]) {
+      expect(transcriptCarriesAsk(statement), statement).toBe(false);
+    }
+  });
+
+  it("still owes speech after Morgan answers a question of the candidate's", () => {
+    // The seam the phase-honest nudge exists for (082 merge fix). The client
+    // cannot hear WHAT the candidate said, so an answer to their question
+    // reaches the detector as a plain statement and correctly reads as
+    // owing. That is why the nudge must not order an interview question -
+    // the instructions forbid tacking one onto an answer.
+    for (const answer of [
+      "Sessions run twenty minutes, and you get six of them in a package.",
+      "The report lands about a minute after we finish.",
+      "No, there's no prep material - we just talk.",
+      "Yes, the recording is yours to keep.",
+    ]) {
+      expect(transcriptCarriesAsk(answer), answer).toBe(false);
+    }
+  });
+
   it("publishes the stem list the corpus tests drive", () => {
     // Exported so the corpus above is pinning a list a reader can see, not a
     // regex buried in the module.
@@ -507,10 +543,21 @@ describe("response cancel window and owes-speech ladder", () => {
     // Both branches must survive (082 merge fix): the strand case gets its
     // ask; the answered-their-question case gets a check-in, never an
     // ordered question — the instructions forbid tacking one onto an answer.
-    expect(TURN_NUDGE_TEXT).toContain("If you owe them a question, ask it now");
+    expect(TURN_NUDGE_TEXT).toContain("If you still owe them a question, ask it now");
     expect(TURN_NUDGE_TEXT).toContain("answering a question of theirs");
-    expect(TURN_NUDGE_TEXT).toContain("hand the turn back");
+    expect(TURN_NUDGE_TEXT).toContain("do not add an interview question");
+    // The failure this replaces: one unconditional order to end on a
+    // question, which is what the instructions forbid after an answer.
     expect(TURN_NUDGE_TEXT).not.toContain("end it with your question");
+    // Two branches, so two conditionals. A rewrite that collapses to one is
+    // the defect coming back however it is worded.
+    expect(TURN_NUDGE_TEXT.match(/\bIf you\b/g) ?? []).toHaveLength(2);
+    // ASCII only: this string is read aloud by a model whose transcript the
+    // ask detector then reads back, and the house dash ban applies to
+    // anything a reader could see.
+    expect(TURN_NUDGE_TEXT).toMatch(/^[\x20-\x7E]+$/);
+    // And it is not itself an ask, like every other note the room injects.
+    expect(transcriptCarriesAsk(TURN_NUDGE_TEXT)).toBe(false);
     expect(GREETING_STAGES.map(({ at }) => at)).toEqual(SILENCE_STAGES.map(({ at }) => at));
     expect(GREETING_STAGES.map(({ text }) => text)).toEqual([
       `${SILENCE_STATUS_PREFIX} The candidate has not answered your audio check for about eight seconds. Warmly ask once more whether they can hear you. Check nothing else and do not move on.`,

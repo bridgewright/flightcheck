@@ -335,7 +335,7 @@ export const TURN_NUDGE_TEXT =
 const QUESTION_OPENER_STEMS: readonly string[] = [
   "what", "which", "how", "why", "when", "where", "who", "whose",
   "can", "could", "would", "will", "do", "does", "did", "have", "has",
-  "are", "is", "was", "were", "should",
+  "are", "is", "was", "were",
 ];
 
 /** Imperative asks, and the case prompts a JD-derived rubric writes.
@@ -348,12 +348,25 @@ const QUESTION_OPENER_STEMS: readonly string[] = [
  * — the ask sits after a reaction sentence and a discourse marker, and a
  * sentence-head-only rule reads the whole turn as owing speech. That is the
  * 3-second talk-over this batch exists to remove, on every transition of
- * every session. */
+ * every session.
+ *
+ * Five stems came out after each one was removed in turn and the corpus
+ * re-run: "share", "pick", "consider", "you have" and "should" were needed
+ * by nothing in the planner or the fixture, and each one is an ordinary way
+ * to open a STATEMENT an interviewer makes — "Share prices moved twelve
+ * percent that quarter.", "You have a strong track record on that." Reading
+ * those as asks mutes a nudge the room deserved. What stayed without being
+ * corpus-required stayed on purpose: the model is told to ask in its own
+ * words, so "explain", "outline", "suppose" and the rest cover phrasing the
+ * planner never writes but the interviewer speaks, and none of them opens a
+ * natural statement the way the five did. "design" is the awkward one — the
+ * rubric fixture needs it ("Design an AI code reviewer for GitHub pull
+ * requests.") and it is also a noun, so "design was never the bottleneck"
+ * reads as an ask; the fixture wins, and the cost is a missed nudge. */
 const DIRECTIVE_ASK_STEMS: readonly string[] = [
   "tell me", "walk me", "talk me", "take me", "describe", "design",
-  "give me", "share", "explain", "suppose", "imagine", "outline",
-  "propose", "consider", "pick", "play devil", "let's hear", "help me see",
-  "you are given", "you have",
+  "give me", "explain", "suppose", "imagine", "outline", "propose",
+  "play devil", "let's hear", "help me see", "you are given",
 ];
 
 export const ASK_STEMS: readonly string[] = [
