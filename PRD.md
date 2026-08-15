@@ -577,6 +577,23 @@ Changes to targets are recorded here with date and reason — never silently.
   bar is one real session in each first-class audio environment.
   DECISIONS 074–076.
 
+- **v0.27 (recorded 2026-08-15, pre-code):** the interviewer's
+  opening waits where it asks. The first live session on the v0.26
+  gating proved the acoustic fix — the trail's echo class went to
+  zero on open speakers, the raised-ear handshake was acknowledged,
+  voice and persona held — and exposed what the echo had been
+  masking: the model's single opening response answered its own
+  "can you hear me okay?", rolled through "sound good?", and asked
+  the first question, a monologue where a conversation was
+  specified. The opening's two checks now become structural turn
+  boundaries: the interviewer says the check and ends its turn,
+  never answers for the candidate, and lets the existing silence
+  scaffolding prompt a quiet room. Both openings get the stops —
+  the paid session's and the free quick interview's, whose opening
+  had no stop at all. If a transcript ever shows the monologue
+  again, the recorded next move is splitting the opening across
+  client-armed responses. DECISIONS 077.
+
 > 2026-08-02: v0.4 scope added above — accounts move ahead of payments
 > because login-gated interviews protect session integrity and per-session
 > cost, and the dashboard is what makes a 6-session package usable. The

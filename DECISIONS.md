@@ -3387,6 +3387,69 @@ matrix, shipped as the backstop behind 074's gating.
   n and never pooled — then either promote (own entry), or record
   that envelope correlation cannot separate the classes and
   reconsider the capture path.
+
+## 077 — The greeting stops where the reply belongs (2026-08-15)
+
+**Context.** The first open-speaker session on the Phase 1 gating
+(the same slot as the 2026-08-14 reproduction, run 2026-08-15 08:55
+KST) split the defect cleanly in two. The trail shows the acoustic
+half closed: one `greeting-sent`, one response, `vad-raise` 53 ms
+after the interviewer's audio started and `vad-ack` 279 ms later,
+`vad-restore` + ack at hangover expiry, and ZERO echo events across
+a 24.5-second open-speaker playback — where yesterday's slice of
+the same column logged a barge-in, a suppressed echo commit, two
+phantom commits and four spurious response triggers. The raise's
+partial session.update merged (persona and voice intact by ear),
+retiring 074's one unexercised assumption. And the transcript shows
+what the echo had been masking, in a single segment: the
+interviewer's one opening response swallowed both checks it was
+told to wait on — "Can you hear me okay? All right, great. …
+Sound good? All right, let's dive in." — and rolled into the first
+question. The machinery armed exactly one response and then waited
+honestly; the monologue happened INSIDE it. The OPENING
+instructions already said "Wait for their reply" twice, but prose
+cannot be obeyed mid-utterance: for a realtime model, waiting means
+ENDING the turn, and nothing said so. This is the original F-67
+card's candidate fix ① (instructions pinning the greeting to wait),
+isolated at last by Phase 1 removing the acoustics that masked it.
+
+- **Chosen: structural turn stops in the opening.** Beat 1 becomes
+  the whole first turn — say the hello and the audio check, then
+  stop speaking and end the turn; never answer the check yourself;
+  the reply arrives as the candidate's turn. The "Sound good?"
+  check before the first question gets the same structural stop.
+  The framing content between them is unchanged. Each stop carries
+  an explicit "if they stay silent, a [silence status] note will
+  prompt you — never fill the silence yourself", tying into the
+  scaffold ladder that already exists for exactly that room.
+- **Chosen: the quick interview's opening gets the same stops.**
+  Its # OPENING has no stop at all, and it is the free funnel's
+  first impression. The byte-for-byte pin that froze the quick
+  instructions during the B7 move (suite worklog, 2026-08-12) is
+  deliberately updated with this entry as the reason: the pin
+  exists against accidental drift, not against recorded decisions.
+- **Rejected: splitting the opening into two client-armed
+  responses.** The client could nudge beat 1 only and let the
+  normal commit-and-debounce machinery produce the rest. It is the
+  structural guarantee — but it adds an opening-specific response
+  policy to a room whose reducer is deliberately the sole, uniform
+  response source. Instructions are the cheap first lever and the
+  next transcript verifies them. If a trail shows the monologue
+  rolling through a structural stop, this split is the recorded
+  next move, not a new debate.
+- **Rejected: leaving it.** The first minute of every session,
+  paid and demo alike, is the interviewer interviewing itself.
+- **Lever discipline:** this moves the instructions lever (the
+  naturalness suite's worklog gains the entry; F-69 contract).
+- **Verification:** the next real session's transcript shows the
+  opening as separate interviewer segments — the check as its own
+  turn, the framing as its own turn after the candidate's reply —
+  and the earphone session (074's still-open other half) can serve
+  as exactly that session.
+- **Revisit when:** any transcript shows a monologue rolling
+  through a structural stop (then the two-response split), or
+  field sessions show the stops making the opening feel stilted
+  and interrogative rather than warm.
 - **Merge amendment (2026-08-15, from the review rounds' measured
   null distribution):** r is maximised over nine lags, so on
   NON-echo episodes the verdict still reads "echo" 76% of the time
