@@ -1,4 +1,4 @@
-"""F-09 remainder (DECISIONS 078): the advised drills reach the next interviewer.
+"""F-09 remainder (DECISIONS 079): the advised drills reach the next interviewer.
 
 The report tells the customer what to drill; before this, the next
 session's interviewer had no memory of it -- a coach that forgets its own
@@ -105,7 +105,7 @@ def test_get_session_read_rebuilds_the_same_carry_over():
 
 
 def test_the_most_recent_scored_report_wins():
-    # DECISIONS 078: stale advice compounds; the most recent scored session
+    # DECISIONS 079: stale advice compounds; the most recent scored session
     # is the live coaching state -- earlier drills never ride along.
     client, db, package = _seed()
     _scored_session(db, package.id, 1, ["Stale drill from session one."])

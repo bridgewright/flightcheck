@@ -26,7 +26,7 @@ add. Every CHECK, however, is deterministic given the compile output:
 * **behavior** -- per-fixture expectations.json: no dimension in either
   channel matches a forbidden topic, every required topic matches at least
   one dimension, and the delivery-channel count stays in its band.
-* **governance** (F-94, DECISIONS 077) -- every content dimension matching
+* **governance** (F-94, DECISIONS 078) -- every content dimension matching
   the peripheral ethics/safety family carries probing_mode "indirect", and
   when the fixture declares the family not-foregrounded
   (expectations.json: "peripheral_family_foregrounded": false) each such

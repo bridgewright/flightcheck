@@ -19,11 +19,11 @@ only: company-aware commentary grounded in the rubric's own facts,
 substance-engaged transitions, spare-time spending, an adaptive wrap-up
 register, and conservatively-triggered warmth. Adaptivity changes WHAT
 is said, never WHEN the session ends; the quick render stays pinned.
-v0.27 (F-94, DECISIONS 077): dimensions with probing_mode "indirect" are
+v0.28 (F-94, DECISIONS 078): dimensions with probing_mode "indirect" are
 never minted a main question, never open the session's area framing, and
 are never the pressure-probe target -- they are read through follow-ups
 and scored from the whole transcript. Same release, F-09's remainder
-(DECISIONS 078): the previous scored session's advised drills reach the
+(DECISIONS 079): the previous scored session's advised drills reach the
 interviewer as one calm carry-over block, standard render only.
 
 Both functions are pure: same input, same output. No model call, no
@@ -97,7 +97,7 @@ class DimensionScoreLike(Protocol):
 
 class SessionReportLike(Protocol):
     dimension_scores: Sequence[DimensionScoreLike]
-    # DECISIONS 078: the advised drills the next session's interviewer
+    # DECISIONS 079: the advised drills the next session's interviewer
     # carries over. Read by the session routes, not by the planner itself.
     next_drills: Sequence[str]
 
@@ -346,7 +346,7 @@ def plan_baseline_session(
     sequence: list[QuestionSpec] = []
     for dimension in ordered:
         if dimension.probing_mode == "indirect":
-            # F-94 (DECISIONS 077): an indirect dimension is read through
+            # F-94 (DECISIONS 078): an indirect dimension is read through
             # follow-ups and scored from the whole transcript. It is never
             # minted a main question, which also keeps it out of the
             # opening area list (_area_list reads the planned sequence).
@@ -521,7 +521,7 @@ def build_interviewer_instructions(plan: SessionPlan, rubric: Rubric | None,
     parsing them back out re-split on any company or role containing the
     template's own words.
 
-    drills (DECISIONS 078) are the most recent scored session's
+    drills (DECISIONS 079) are the most recent scored session's
     report.next_drills, rendered as one calm carry-over block in the
     standard render only; empty drills leave the render byte-identical.
     """
@@ -567,7 +567,7 @@ def build_interviewer_instructions(plan: SessionPlan, rubric: Rubric | None,
     # a degraded "on behalf of" sentence, and whitespace-only counts as no
     # company (the F-54 packageCompanyLine precedent). Only outer whitespace
     # comes off; the casing is spoken exactly as stored (the F-85 lesson).
-    # F-09 / DECISIONS 078: one calm carry-over block, only when a previous
+    # F-09 / DECISIONS 079: one calm carry-over block, only when a previous
     # scored session left drills. Values are flattened through inline() --
     # they land in an instruction position (F-11a hygiene) -- and
     # whitespace-only drills render nothing, so the no-drills goldens stay

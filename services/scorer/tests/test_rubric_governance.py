@@ -1,4 +1,4 @@
-"""F-94 / DECISIONS 077: the peripheral-family governance module.
+"""F-94 / DECISIONS 078: the peripheral-family governance module.
 
 The classification is deliberately narrow -- the ethics/safety family and
 only that family, by whole-word match over a dimension's key and name (the
@@ -116,7 +116,7 @@ class TestTheClassifier:
     def test_pair_keywords_never_match_across_the_key_name_boundary(self):
         # Key and name are separate fields: a key ending in "mission" next
         # to a name starting with "Alignment" is bare "mission" plus bare
-        # "alignment" -- exactly what DECISIONS 077 says never classifies.
+        # "alignment" -- exactly what DECISIONS 078 says never classifies.
         # A joined "key name" haystack manufactured both pairs out of
         # fields that are each innocent on their own.
         for key, name in [
@@ -203,7 +203,7 @@ class TestTheCommittedCorpus:
 class TestLegacyStoredRubrics:
     """A rubric stored before probing_mode existed behaves exactly as before.
 
-    DECISIONS 077 rejects retroactive mutation: only the compile path calls
+    DECISIONS 078 rejects retroactive mutation: only the compile path calls
     governance, so a legacy rubric -- even one holding a peripheral-family
     dimension -- parses via the schema default and keeps its front-line
     behavior. The committed discrimination rubric is exactly that shape.
@@ -395,7 +395,7 @@ class TestApplyGovernance:
 
     def test_a_stray_indirect_on_a_legitimate_dimension_is_normalized_direct(self):
         # The prompt tells the model every non-family dimension keeps
-        # probing_mode "direct", but DECISIONS 077 rejected prompt-only
+        # probing_mode "direct", but DECISIONS 078 rejected prompt-only
         # enforcement: prompt drift regresses silently. A model that marks
         # a legitimate dimension indirect would silently strip its main
         # question and its focus eligibility -- the F-83 failure inverted,

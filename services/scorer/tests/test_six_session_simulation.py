@@ -5,7 +5,7 @@ the package, not by trusting per-session tests to compose. A governed
 rubric (one indirect peripheral dimension beside realistic direct ones)
 runs sessions 1..6 through the real mint route with evolving scored
 history in which the indirect dimension is ALWAYS the lowest score --
-exactly the shape that produced the production failure DECISIONS 077
+exactly the shape that produced the production failure DECISIONS 078
 closes. Across all six sessions:
 
 * the indirect dimension is never minted a main question;
@@ -13,7 +13,7 @@ closes. Across all six sessions:
   target never land on it;
 * no question text repeats verbatim anywhere in the package;
 * the carry-over drills block appears exactly when a prior scored report
-  exists, carrying the MOST RECENT report's drills only (DECISIONS 078);
+  exists, carrying the MOST RECENT report's drills only (DECISIONS 079);
 * the instructions stay well-formed: every section present and ordered,
   no template artifacts, and the carry-over block in the calm register.
 """
@@ -197,7 +197,7 @@ def test_six_governed_sessions_never_surface_the_indirect_dimension():
         assert "ai safety" not in instructions.lower(), index
         assert "mission alignment" not in instructions.lower(), index
 
-        # -- Carry-over (DECISIONS 078): the block appears exactly when a
+        # -- Carry-over (DECISIONS 079): the block appears exactly when a
         # prior scored report exists, with the most recent drills only.
         if index == 1:
             assert "# CARRY-OVER" not in instructions

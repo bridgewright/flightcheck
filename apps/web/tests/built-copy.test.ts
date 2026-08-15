@@ -113,6 +113,8 @@ const CANONICAL = [
   "and all data attached to it.",
   // lib/rubric-format.ts, the delivery receipt line on /rubric
   "how you sound is part of every interview.",
+  // lib/rubric-format.ts, the indirect probing note on /rubric (F-94)
+  "Assessed from your answers, not asked as its own question",
 ];
 
 function builtChunks(): string[] {

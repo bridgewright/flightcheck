@@ -295,7 +295,7 @@ def test_minimal_profile_cannot_license_a_fit_dimension():
 
 
 def test_peripheral_dimension_compiles_indirect_and_capped_on_a_plain_jd():
-    # F-94 (DECISIONS 077): the JD here never mentions the family, so the
+    # F-94 (DECISIONS 078): the JD here never mentions the family, so the
     # governance post-pass makes the ethics dimension indirect AND clamps
     # its weight, redistributing the excess -- with zero extra model calls.
     inflated = _rubric([

@@ -191,7 +191,7 @@ def _carryover_drills(sessions: Iterable[SessionRow],
                       before_index: int) -> list[str]:
     """next_drills from the MOST RECENT scored session before this one.
 
-    DECISIONS 078: the most recent scored report is the live coaching
+    DECISIONS 079: the most recent scored report is the live coaching
     state -- older sessions' drills are stale advice and never compound,
     so the first report found walking backwards wins outright, even when
     its own drill list is empty. Only sessions BEFORE this one count: a

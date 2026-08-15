@@ -133,7 +133,7 @@ def _dimension_block(dim: RubricDimension) -> str:
         f"BARS anchors:\n{anchors}"
     )
     if dim.probing_mode == "indirect":
-        # F-94 (DECISIONS 077): the planner never mints this dimension a
+        # F-94 (DECISIONS 078): the planner never mints this dimension a
         # main question, so the evidence lives wherever the candidate
         # happened to show it. Only the reading changes -- the anchors, the
         # candidate-speech-only rule (line "no credit for anything the

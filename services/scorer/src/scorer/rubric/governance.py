@@ -1,4 +1,4 @@
-"""Peripheral-dimension governance for compiled rubrics (F-94, DECISIONS 077).
+"""Peripheral-dimension governance for compiled rubrics (F-94, DECISIONS 078).
 
 The production failure this closes: a JD's About-section mention of ethics
 compiled into "AI Safety and Mission Alignment", a front-line dimension with
@@ -71,7 +71,7 @@ def is_peripheral_dimension(dim: RubricDimension) -> bool:
     # Each field stands alone: a joined "key name" haystack lets the pair
     # patterns match ACROSS the boundary -- key "company-mission" beside
     # name "Alignment with stakeholders" manufactured "mission alignment"
-    # out of two words DECISIONS 077 says never classify on their own.
+    # out of two words DECISIONS 078 says never classify on their own.
     return mentions_family(dim.key) or mentions_family(dim.name)
 
 

@@ -544,7 +544,7 @@ def test_indirect_dimensions_never_reach_the_opening_area_list():
 
 
 def test_lowest_scored_indirect_dimension_never_eats_the_session_focus():
-    # The exact production failure (DECISIONS 077): "AI Safety and Mission
+    # The exact production failure (DECISIONS 078): "AI Safety and Mission
     # Alignment 2.6, the lowest of your 8 dimensions. This session focuses
     # there" -- compile-time inflation amplified by the F-83 focus-weakest
     # mechanism into a spent paid session. With the indirect dimension
@@ -1275,7 +1275,7 @@ def test_fit_probes_rotate_across_a_six_session_package():
 
 
 def test_carry_over_block_renders_drills_between_questions_and_pressure():
-    # F-09 (DECISIONS 078): the previous session's advised drills reach the
+    # F-09 (DECISIONS 079): the previous session's advised drills reach the
     # interviewer as ONE short, calm block -- listened for, probed once if
     # natural, never a new question round.
     rubric = _make_rubric()
@@ -1315,7 +1315,7 @@ def test_absent_drills_leave_the_standard_render_byte_identical():
 
 
 def test_quick_render_never_carries_drills():
-    # Standard branch only (DECISIONS 078). The quick interview has no
+    # Standard branch only (DECISIONS 079). The quick interview has no
     # scored history by construction, and its render is pinned byte-stable.
     plan = plan_quick_session("ACME Labs", "Staff AI Engineer")
     without = build_interviewer_instructions(
