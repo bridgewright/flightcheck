@@ -23,12 +23,16 @@ forms instead of the stored ones. The lesson generalizes: drive a gate
 over real data AS THE CONSUMER RECEIVES IT, not as the producer stores
 it. The corpus test now composes both.
 
-Same batch, process defect: a round-1 reviewer delivered a late fix
-into a worktree while the round-2 reviewer was already running in it.
-The round-2 agent detected the collision itself and renegotiated its
-mandate, but the interleaving risk was real — one worktree, one writer
-at a time is now the dispatch rule, enforced by the controller granting
-exclusivity explicitly when rounds overlap.
+Same batch, process defect, twice: a round-1 reviewer delivered a late
+fix into a worktree while the round-2 reviewer was already running in
+it — and then the CONTROLLER did the same thing, committing a closing
+fix into that worktree minutes after granting the round-2 reviewer
+exclusive write access. The controller's commit swept the reviewer's
+in-progress edit of one file into a commit tested against neither,
+pairing a new constant with assertions written for a different one.
+The combined-tree gate caught the mismatch at merge, which is what it
+exists for. One worktree, one writer at a time is now the dispatch
+rule, and it binds the controller first.
 
 ## 2026-07-25 — Rejecting the cascade before building it
 
