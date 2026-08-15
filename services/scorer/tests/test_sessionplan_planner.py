@@ -733,16 +733,25 @@ def test_quick_instructions_remain_byte_identical():
     # drift, not against recorded decisions. Moved again in the same batch's
     # round-1 review, which added the one clause keeping the new stop from
     # railroading past a candidate who says they cannot hear.
+    # Moved a third time by DECISIONS 082 (2026-08-15): the framing turn now
+    # runs into the first question instead of trailing off on the
+    # pause-to-think statement, and # RULES gained the turn-ending rule.
+    # Moved a fourth time by that move's round-1 review, which found the new
+    # rule's "the closing line is the only exception" false against the
+    # [silence status] notes quick forwards, and named the exceptions.
+    # Delta is confined to # OPENING and # RULES -- verified by rendering
+    # main's planner and diffing document against document, not by reading
+    # the source diff.
     named = build_interviewer_instructions(
         plan_quick_session("ACME Labs", "Staff AI Engineer"), None,
         _make_profile(), company="ACME Labs", role="Staff AI Engineer")
     bare = build_interviewer_instructions(
         plan_quick_session(None, None), None, _make_profile())
     assert hashlib.sha256(named.encode()).hexdigest() == (
-        "09ff230e04286599c52b28c4fe10708351c7f58b185c3bc577e7f839b8cb0be0"
+        "fd7608daa3040bbfe42f8ea3b5ec8fc3e8fcc000ebfbcbf999dcaf32ac8daa39"
     )
     assert hashlib.sha256(bare.encode()).hexdigest() == (
-        "507d04c3f9a4146529afb250c2bbc6efee8671886799f61f9b281b05df817361"
+        "b93fa9d955dfd28ef668f362b2c4ff63c93c7679041542fda931c561c788d4bb"
     )
 
 
@@ -761,11 +770,20 @@ def test_standard_twenty_minute_instructions_remain_byte_identical():
     # session showed one 24.5 s response answering both of them itself.
     # Moved a fourth time by that batch's round-1 review, which closed the
     # self-answer ban over the reply instead of over two observed tokens and
-    # stopped beat 2 railroading past a "no, I can't hear you". Both moves
-    # are confined to # OPENING -- verified by rendering main's planner and
-    # diffing the two documents section by section, not by trusting the diff.
+    # stopped beat 2 railroading past a "no, I can't hear you". Those two
+    # moves were confined to # OPENING.
+    # Moved a fifth time by DECISIONS 082 (2026-08-15), which merged beats 2
+    # and 3 into one turn closed by "Sound good?" and added the turn-ending
+    # rule -- the first move in this series to touch # RULES as well.
+    # Moved a sixth time by that move's round-1 review: the new rule claimed
+    # the closing line was its only exception while the same document orders
+    # three more statement turns (the barge-in yield, the unfinished-answer
+    # "Mm-hm.", and whatever a [silence status] note says), so the exceptions
+    # are named and the model is told not to add a question to them.
+    # Every move is verified by rendering main's planner and diffing the two
+    # documents section by section, not by trusting the source diff.
     assert hashlib.sha256(_instructions().encode()).hexdigest() == (
-        "c9752eae91f1451d4f7859770cd2655e51a6afba35d44d740737ff2ed1ae300d"
+        "f8d4f98175757145b0b869502e3e26b8572d5c05badb3d2421d3de39f76fdc3d"
     )
 
 
@@ -1135,20 +1153,72 @@ def test_every_turn_ends_facing_the_candidate():
     # topics and stopped -- no question, nobody's turn -- is the defect.
     # The web side gained an owes-speech nudge for when the model still
     # stops short; this is the instruction side: a turn may end only on
-    # a question, closing line excepted, in BOTH renders.
+    # a question, named exceptions aside, in BOTH renders.
     text = _instructions()
     assert "Every turn you take ends facing the candidate" in text
     assert "Never end a turn on a statement" in text
-    assert "The closing line is the only exception." in text
+    # Round 1: "The closing line is the only exception" was FALSE, and this
+    # test asserted the falsehood. The document itself ORDERS three other
+    # statement turns (below), so the rule commanded and forbade the same
+    # behavior; worse, its remedy clause ("continue and ask") pointed at
+    # exactly the harm two of them exist to prevent -- talking over a
+    # candidate who is mid-answer or mid-interruption. The exceptions are
+    # named, and the model is told not to "fix" them.
+    assert "The closing line is the only exception." not in text
+    assert "In those four, stopping without a question is right" in text
     # The framing turn may not strand the room short of its check.
     assert 'Never stop this turn anywhere before "Sound good?"' in text
     named = build_interviewer_instructions(
         plan_quick_session("ACME Labs", "Staff AI Engineer"), None,
         _make_profile(), company="ACME Labs", role="Staff AI Engineer")
     assert "Never end a turn without a question to the candidate" in named
+    # Quick carries the same carve-out, sized to the turns quick actually
+    # orders: it has no barge-in rule and no unfinished-answer rule.
+    assert ("the exceptions are the closing line and whatever a "
+            "[silence status] note tells you to say") in named
+    assert "the closing line is the only exception" not in named
     # Quick's framing turn ends on the first question, never on the
     # pause-to-think statement it used to trail off with.
     assert "move straight into your first question in that same turn" in named
+
+
+def test_turn_rule_exempts_every_statement_turn_the_document_orders():
+    # Round 1, absolute-claims lens pointed at the new rule itself: "never
+    # end a turn on a statement" is a claim over EVERY turn, so it is
+    # checked against every turn these instructions order the interviewer
+    # to end on a statement. Each ordered turn must carry its exemption,
+    # or the document commands and forbids one behavior and the model
+    # settles the clash on its own, unobservably.
+    text = _instructions()
+    ordered_statement_turns = (
+        # The barge-in yield hands the floor back mid-sentence; "continue
+        # and ask" would be the talk-over that rule exists to stop.
+        ('say "Sorry — go ahead"',
+         '"Sorry — go ahead" when the candidate interrupts you'),
+        # A fragment is not a finished answer -- asking here is exactly the
+        # interruption the PAUSES AND SILENCE section spends four bullets
+        # banning.
+        ("give only a soft one-word acknowledgment",
+         "a soft acknowledgment while their answer is unfinished"),
+        # The ladder speaks in statements: its 8s rung orders a bare
+        # "Take your time." with "nothing else", its 15s rung a bare
+        # hint. The document forwards them with "nothing more".
+        ("do exactly what it says — nothing more",
+         "whatever a [silence status] note tells you to say"),
+    )
+    for ordered, exemption in ordered_statement_turns:
+        assert ordered in text, f"ordered turn vanished: {ordered}"
+        assert exemption in text, f"exemption missing for: {ordered}"
+
+
+def test_opening_is_two_numbered_turns_and_no_third():
+    # DECISIONS 082 merged beats 2 and 3. "in exactly two turns" is prose;
+    # a stray third list item would contradict it in the same breath and
+    # only the byte pin would notice, so the shape is asserted directly.
+    opening = _instructions().split("# OPENING\n", 1)[1].split("\n# RULES")[0]
+    assert "\n1. " in opening
+    assert "\n2. " in opening
+    assert "\n3. " not in opening
 
 
 def test_opening_check_does_not_railroad_past_a_no():
