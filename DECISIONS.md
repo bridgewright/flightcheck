@@ -3657,7 +3657,11 @@ answers: commit to first audio measured 1.53-2.11s, on top of the
 - **Revisit when:** trails show cancels arriving so late the
   interviewer's first words were already generated and dropped
   (then the window is mis-measured), or 0.45 produces premature
-  starts the cancel window cannot cover.
+  starts the cancel window cannot cover. Field watch (added at
+  merge): a `response-cancel` followed by a server error is the
+  same mis-measurement seen from the other side — the response was
+  already past canceling — and reads as a window that needs
+  shortening, not a transport fault.
 
 ## 081 — A real interruption stops the interviewer's audio (2026-08-15)
 
@@ -3734,9 +3738,14 @@ review had already registered the mirror defect (the ladder reads
 wrong at the greeting; its 30s rung offers to skip the audio
 check). One principle closes all of it: in any silence, someone
 owes speech, and the room can tell WHO from the interviewer's last
-finished transcript — a turn that ends with a question (the
-checks, a probe, the next question) leaves the candidate owing; a
-turn that ends without one leaves the interviewer owing.
+finished transcript — a turn that ASKS anything (the checks, a
+probe, the next question) leaves the candidate owing; a turn that
+asks nothing leaves the interviewer owing. (Corrected at merge:
+this entry first said "ends with a question", and the review
+rounds proved both words wrong — most of this product's questions
+end in a period, and the instructions put the ask behind a
+reaction, so neither a question mark nor a sentence head finds
+it.)
 
 - **Chosen (instructions, both renders):** beats 2 and 3 of the
   opening are ONE turn ending with "Sound good?" — the 077 stops
@@ -3744,10 +3753,23 @@ turn that ends without one leaves the interviewer owing.
   the boundary belongs to the checks, not to arbitrary pauses. And
   a global rule: never end a turn without a question to the
   candidate — the audio check, "Sound good?", a probe, or the next
-  question; the closing line is the sole exception.
+  question; the closing line is the sole exception (see the merge
+  amendment below: the count did not survive review).
 - **Chosen (web): the ladder learns who owes speech.** The reducer
   derives owes-speech from the last finished interviewer
-  transcript (trailing question mark, closing excluded). While the
+  transcript: a trailing question mark, OR an ask stem at the head
+  of a sentence or of a marker-led or closing clause (as amended at
+  merge — imperative stems read at clause positions, interrogative
+  stems at sentence heads only, since mid-sentence they are
+  subordinators). The list of ask openings is a gated artifact, not
+  prose: `ASK_STEMS` is exported and a corpus test drives it over
+  the planner's own strings in the transition shapes the
+  instructions make the model speak, so an inventory change that
+  outruns the list fails the web gates rather than reaching a
+  candidate. Closing excluded, empty transcripts excluded (a
+  canceled response is not a turn), and a scaffold stretch
+  excluded — the ladder's own reassurance is not a turn the
+  interviewer owes, which is a guard no detector can retire. While the
   INTERVIEWER owes, the candidate-facing ladder is replaced by a
   single short-fuse nudge at 3 seconds of quiet: a `[turn status]`
   system note — you stopped without asking anything; continue your
@@ -3772,7 +3794,29 @@ turn that ends without one leaves the interviewer owing.
 - **Lever discipline:** instructions hash moves again (worklog);
   the ladder text changes are conversational levers recorded the
   same way.
+- **Merge amendments (2026-08-15, the review chains).** "The
+  closing line is the sole exception" did not survive review.
+  Round 1 found three more ordered statement turns (the barge-in
+  yield, the soft acknowledgment while an answer is unfinished,
+  whatever a [silence status] note dictates); round 2 found the
+  four-item replacement was itself a false count — # PACING orders
+  a fifth, the spare time spent on the candidate's own questions,
+  where every answer is a statement. The rule ships naming its
+  exceptions rather than counting them, and forbids tacking a
+  question onto an answer to close a turn — this entry's own
+  revisit condition, moved into the instruction. On the web side
+  the same fifth turn forced the nudge text to become phase-honest
+  (a controller closing fix at merge): the client cannot hear WHAT
+  the candidate said, so the nudge names both branches — ask now
+  if a question is owed, check in briefly and hand the turn back
+  if the turn was an answer — instead of ordering the tacked-on
+  question the instructions forbid.
 - **Revisit when:** transcripts show the model gaming the rule
   (rhetorical questions to legally end turns), or the 3s nudge
   reads as impatient in field sessions, or the greeting rungs fire
-  on a candidate who was merely slow to unmute.
+  on a candidate who was merely slow to unmute. Or trails show a
+  nudge after a turn that plainly asked something (the stem list
+  is short of a shape the model uses), or a stranded room after a
+  turn that plainly asked nothing (a stem is reading a statement
+  as an ask) — both are one-line changes to the two stem families,
+  and the corpus gate names which family.

@@ -633,7 +633,10 @@ Changes to targets are recorded here with date and reason — never silently.
   reason interruptions could not cut, echo misfiring the
   truncation, finally has counter-machinery. And no turn may end
   facing away: the interviewer is instructed to end every turn
-  with a question (the closing line excepted), and when it still
+  with a question, except where these instructions put the words
+  in its mouth — the closing line, the yield to an interruption, a
+  mid-answer acknowledgment, a silence note's own words, or an
+  answer to the candidate's own question — and when it still
   stops short, the room now knows WHO owes speech and nudges the
   interviewer to finish — instead of telling a candidate who owes
   nothing to take their time. The greeting's silence rungs stop

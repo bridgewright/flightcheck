@@ -7,6 +7,29 @@ these lessons produced) and [DECISIONS.md](DECISIONS.md) (the decision log).
 
 ---
 
+## 2026-08-15 — The strongest-looking test validated the wrong thing
+
+The B13 turn-policy batch's owes-speech detector shipped with a corpus
+test that drove it over every question string the planner emits — 54
+real strings, anchored extraction, size floors so the gate could not go
+vacuous. It was the strongest-looking test in the track, and it
+validated the wrong thing: the product's own instructions order the
+interviewer to react before asking ("That's helpful. Now, describe..."),
+so the transcript the room actually receives never carries a bare
+planner string — and the detector's sentence-head stem matching failed
+on every transition shape while the corpus test stayed green. The
+round-2 reviewer caught it by running the detector over the heard
+forms instead of the stored ones. The lesson generalizes: drive a gate
+over real data AS THE CONSUMER RECEIVES IT, not as the producer stores
+it. The corpus test now composes both.
+
+Same batch, process defect: a round-1 reviewer delivered a late fix
+into a worktree while the round-2 reviewer was already running in it.
+The round-2 agent detected the collision itself and renegotiated its
+mandate, but the interleaving risk was real — one worktree, one writer
+at a time is now the dispatch rule, enforced by the controller granting
+exclusivity explicitly when rounds overlap.
+
 ## 2026-07-25 — Rejecting the cascade before building it
 
 The obvious v0.1 architecture was an STT → LLM → TTS cascade: mature tooling,

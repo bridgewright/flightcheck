@@ -207,3 +207,23 @@ discussion happens.
   (30 s rung offers to skip the audio check). Web-side fix pending;
   do not count a ladder firing inside the opening as an interviewer
   naturalness defect in judging.
+
+## 2026-08-15 — response-policy and instructions levers moved: B13 turn feel
+
+- DECISIONS 080-082, same-day field session. Response-policy levers:
+  `RESPONSE_DEBOUNCE_S` 0.6 -> 0.45 behind a new cancel window (an
+  armed response is revocable until the interviewer's first audio);
+  `TURN_NUDGE_S` 3.0 (new); barge-in truncation behind
+  `BARGE_SUSTAIN_MS` 750 / `BARGE_LEVEL_MULTIPLE` 3 / corr veto. All
+  six values are pinned by name in the web suite.
+- Instructions lever moved again, in both renders, three times inside
+  the batch (implementation, round 1's exception carve-out, round 2's
+  fifth exception): opening is exactly two turns; every turn ends
+  facing the candidate, exceptions named not counted. The byte pins
+  in test_sessionplan_planner.py are the authoritative digests; this
+  note is a pointer, not a copy.
+- Turn-feel note for Round 1 judging: interviewer turns can now be
+  CUT mid-audio by a validated barge-in, canceled before first
+  audio, and nudged to continue after statement turns. None of these
+  are naturalness defects; read the trail (barge-cut, response-cancel,
+  turn-nudge) before attributing pacing artifacts to the model.
