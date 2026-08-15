@@ -113,9 +113,11 @@ def _behavior_problems(
             if regex.search(label):
                 if (dim.probing_mode == "indirect"
                         and dim.weight <= PERIPHERAL_WEIGHT_CAP + 1e-6):
+                    # Named per dimension, never "only": the same pattern
+                    # may also match a direct dimension, which fails below.
                     governed.append(
-                        f"forbidden topic '{pattern}' appears only in its "
-                        f"governed form: dimension '{dim.key}' is indirect "
+                        f"forbidden topic '{pattern}' matched dimension "
+                        f"'{dim.key}' in its governed form: indirect "
                         f"at weight {dim.weight}")
                     continue
                 problems.append(

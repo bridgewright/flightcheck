@@ -300,6 +300,27 @@ class TestTheRunner:
         assert not any("forbidden topic" in failure
                        for failure in result["failures"])
 
+    def test_an_uncapped_indirect_forbidden_match_is_not_governed(
+            self, monkeypatch):
+        # DECISIONS 084(b) has two conditions, and the cap is load-bearing:
+        # indirect ABOVE the weight cap is not the governed form -- the
+        # forbidden match must fail, and nothing may be recorded governed.
+        # Reaching this shape takes the regressed compiler: the real one
+        # caps this fixture's peripheral weights (family not foregrounded).
+        fdpm = _fdpm_rubric()
+        fdpm["dimensions"][3] = _dim(
+            "ethical-judgment", "Ethical judgment", "content", 0.15,
+            "ethical AI that benefits everyone", probing_mode="indirect")
+        _regressed_compiler(monkeypatch, fdpm=fdpm)
+
+        result = run_faithfulness_suite(SUITE_DIR, FakeGenAI([]))
+
+        fixture = result["fixtures"]["values-boilerplate-fdpm"]
+        assert fixture["status"] == "FAIL"
+        assert fixture["governed_forbidden"] == []
+        assert ("values-boilerplate-fdpm: forbidden topic 'ethic' matched "
+                "dimension 'ethical-judgment' (content)") in result["failures"]
+
     def test_a_direct_forbidden_match_gets_no_second_attempt(
             self, monkeypatch):
         # DECISIONS 084(c): deterministic-check failures are the gate doing
