@@ -144,9 +144,12 @@ async function lastOutcome(
       .filter((d) => d.probing_mode === "indirect")
       .map((d) => d.key),
   );
+  const weights = Object.fromEntries(
+    (pkg?.rubric?.dimensions ?? []).map((d) => [d.key, d.weight]),
+  );
   const report = session?.report ?? null;
   return {
-    line: verdictLine(report, names, indirectKeys),
+    line: verdictLine(report, names, indirectKeys, weights),
     verdict: report?.verdict ?? null,
     overall: report?.overall_score ?? latest.overall,
     rubric: pkg?.rubric ?? null,

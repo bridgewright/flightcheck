@@ -270,6 +270,63 @@ describe("verdictLine", () => {
     expect(line?.detail).toBe("Ethics 2.0, read through follow-ups.");
   });
 
+  // The planner breaks score ties by weight descending (planner.py's
+  // (score asc, weight desc) sort key); the mirror must break them the
+  // same way or the sentence promises a focus the planner refuses.
+  it("breaks a direct score tie by weight, the planner's way", () => {
+    const line = verdictLine(
+      report("approaching", [
+        dimensionScore("ai-safety-and-mission-alignment", 2.6),
+        dimensionScore("stakeholder-alignment", 3.1),
+        dimensionScore("spoken-clarity", 3.1),
+      ]),
+      {
+        "ai-safety-and-mission-alignment": "AI Safety and Mission Alignment",
+        "spoken-clarity": "Spoken Clarity",
+      },
+      new Set(["ai-safety-and-mission-alignment"]),
+      {
+        "ai-safety-and-mission-alignment": 0.1,
+        "stakeholder-alignment": 0.2,
+        "spoken-clarity": 0.3,
+      },
+    );
+    expect(line?.detail).toBe(
+      "AI Safety and Mission Alignment 2.6, the lowest of your 3 dimensions, read through follow-ups. This session focuses on Spoken Clarity.",
+    );
+  });
+
+  it("redirects a tied direct lowest to the planner's heavier pick", () => {
+    const line = verdictLine(
+      report("approaching", [
+        dimensionScore("stakeholder-alignment", 2.4),
+        dimensionScore("deployment-ownership", 2.4),
+      ]),
+      {
+        "stakeholder-alignment": "Stakeholder Alignment",
+        "deployment-ownership": "Deployment Ownership",
+      },
+      new Set(),
+      { "stakeholder-alignment": 0.1, "deployment-ownership": 0.3 },
+    );
+    expect(line?.detail).toBe(
+      "Stakeholder Alignment 2.4, the lowest of your 2 dimensions. This session focuses on Deployment Ownership.",
+    );
+  });
+
+  it("keeps first-listed tie-breaking when no weights are supplied", () => {
+    const line = verdictLine(
+      report("approaching", [
+        dimensionScore("stakeholder-alignment", 2.4),
+        dimensionScore("deployment-ownership", 2.4),
+      ]),
+      { "stakeholder-alignment": "Stakeholder Alignment" },
+    );
+    expect(line?.detail).toBe(
+      "Stakeholder Alignment 2.4, the lowest of your 2 dimensions. This session focuses there.",
+    );
+  });
+
   it("has nothing to say before the first report", () => {
     expect(verdictLine(null)).toBeNull();
   });

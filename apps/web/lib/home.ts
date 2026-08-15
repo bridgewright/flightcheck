@@ -153,6 +153,14 @@ export function verdictLine(
   // dimension) — a sentence promising focus the planner refuses is false
   // at the exact moment the customer decides what the next session is for.
   indirectKeys: ReadonlySet<string> = new Set(),
+  // The planner breaks score ties by weight, descending (sessionplan/
+  // planner.py orders by (score asc, weight desc), stable over rubric
+  // order — and report order IS rubric order). Without the weights, two
+  // tied dimensions could make this sentence promise one focus while the
+  // planner delivers the other. Callers that omit weights keep
+  // first-listed tie-breaking, which matches the planner whenever the
+  // tied weights are equal.
+  dimensionWeights: Record<string, number> = {},
 ): VerdictLine | null {
   if (!report) {
     return null;
@@ -173,25 +181,41 @@ export function verdictLine(
     scores.length > 1
       ? `${measurement}, the lowest of your ${scores.length} dimensions`
       : measurement;
+  const direct = scores.filter(
+    (score) => !indirectKeys.has(score.dimension_key),
+  );
   let detail: string;
-  if (!indirectKeys.has(weakest.dimension_key)) {
-    detail = `${lowestClause}. This session focuses there.`;
+  if (direct.length === 0) {
+    // Every scored dimension is indirect: nothing can honestly be
+    // promised focus, so nothing is.
+    detail = `${lowestClause}, read through follow-ups.`;
   } else {
-    const direct = scores.filter(
-      (score) => !indirectKeys.has(score.dimension_key),
-    );
-    if (direct.length === 0) {
-      // Every scored dimension is indirect: nothing can honestly be
-      // promised focus, so nothing is.
-      detail = `${lowestClause}, read through follow-ups.`;
+    // The planner's focus, mirrored exactly: the lowest direct dimension,
+    // score ties broken by weight descending, remaining ties by report
+    // order — the planner's own stable-sort base.
+    const focus = direct.reduce((low, score) => {
+      if (score.score < low.score) {
+        return score;
+      }
+      if (
+        score.score === low.score &&
+        (dimensionWeights[score.dimension_key] ?? 0) >
+          (dimensionWeights[low.dimension_key] ?? 0)
+      ) {
+        return score;
+      }
+      return low;
+    });
+    const observed = indirectKeys.has(weakest.dimension_key)
+      ? `${lowestClause}, read through follow-ups`
+      : lowestClause;
+    if (focus.dimension_key === weakest.dimension_key) {
+      detail = `${observed}. This session focuses there.`;
     } else {
-      const focus = direct.reduce((low, score) =>
-        score.score < low.score ? score : low,
-      );
       const focusName =
         dimensionNames[focus.dimension_key] ??
         humanizeDimensionKey(focus.dimension_key);
-      detail = `${lowestClause}, read through follow-ups. This session focuses on ${focusName}.`;
+      detail = `${observed}. This session focuses on ${focusName}.`;
     }
   }
   return { headline, detail, text: `Last verdict: ${headline} ${detail}` };
