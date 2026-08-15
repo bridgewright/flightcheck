@@ -204,6 +204,8 @@ export default function DevPreviewPage() {
   const dimensionNames = Object.fromEntries(
     sample.dimensions.map((dimension) => [dimension.key, dimension.name]),
   );
+  // The checked-in fixture predates probing modes, so the indirect set
+  // stays at verdictLine's empty default here; /home wires the real one.
   const line = verdictLine(sample.report, dimensionNames);
 
   return (

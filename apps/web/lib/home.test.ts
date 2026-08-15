@@ -229,6 +229,47 @@ describe("nextSessionNumber", () => {
 });
 
 describe("verdictLine", () => {
+  // F-95 (DECISIONS 083): an indirect lowest is named but never promised
+  // focus; the promised focus mirrors the planner (lowest direct).
+  it("names an indirect lowest and promises focus on the lowest direct dimension", () => {
+    const line = verdictLine(
+      report("approaching", [
+        dimensionScore("ai-safety-and-mission-alignment", 2.6),
+        dimensionScore("stakeholder-alignment", 3.1),
+        dimensionScore("spoken-clarity", 3.8),
+      ]),
+      { "ai-safety-and-mission-alignment": "AI Safety and Mission Alignment",
+        "stakeholder-alignment": "Stakeholder Alignment" },
+      new Set(["ai-safety-and-mission-alignment"]),
+    );
+    expect(line?.detail).toBe(
+      "AI Safety and Mission Alignment 2.6, the lowest of your 3 dimensions, read through follow-ups. This session focuses on Stakeholder Alignment.",
+    );
+  });
+
+  it("keeps the standing sentence when the lowest dimension is direct", () => {
+    const line = verdictLine(
+      report("approaching", [
+        dimensionScore("stakeholder-alignment", 2.4),
+        dimensionScore("ai-safety-and-mission-alignment", 3.2),
+      ]),
+      { "stakeholder-alignment": "Stakeholder Alignment" },
+      new Set(["ai-safety-and-mission-alignment"]),
+    );
+    expect(line?.detail).toBe(
+      "Stakeholder Alignment 2.4, the lowest of your 2 dimensions. This session focuses there.",
+    );
+  });
+
+  it("makes no focus promise when every scored dimension is indirect", () => {
+    const line = verdictLine(
+      report("not_ready", [dimensionScore("ethics", 2.0)]),
+      { ethics: "Ethics" },
+      new Set(["ethics"]),
+    );
+    expect(line?.detail).toBe("Ethics 2.0, read through follow-ups.");
+  });
+
   it("has nothing to say before the first report", () => {
     expect(verdictLine(null)).toBeNull();
   });

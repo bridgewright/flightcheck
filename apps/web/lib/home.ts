@@ -148,6 +148,11 @@ function humanizeDimensionKey(key: string): string {
 export function verdictLine(
   report: SessionReport | null,
   dimensionNames: Record<string, string> = {},
+  // F-95 (DECISIONS 083): keys of dimensions the planner reads sideways.
+  // The promised focus must mirror the planner's rule (lowest DIRECT
+  // dimension) — a sentence promising focus the planner refuses is false
+  // at the exact moment the customer decides what the next session is for.
+  indirectKeys: ReadonlySet<string> = new Set(),
 ): VerdictLine | null {
   if (!report) {
     return null;
@@ -164,10 +169,31 @@ export function verdictLine(
     dimensionNames[weakest.dimension_key] ??
     humanizeDimensionKey(weakest.dimension_key);
   const measurement = `${name} ${weakest.score.toFixed(1)}`;
-  const detail =
+  const lowestClause =
     scores.length > 1
-      ? `${measurement}, the lowest of your ${scores.length} dimensions. This session focuses there.`
-      : `${measurement}. This session focuses there.`;
+      ? `${measurement}, the lowest of your ${scores.length} dimensions`
+      : measurement;
+  let detail: string;
+  if (!indirectKeys.has(weakest.dimension_key)) {
+    detail = `${lowestClause}. This session focuses there.`;
+  } else {
+    const direct = scores.filter(
+      (score) => !indirectKeys.has(score.dimension_key),
+    );
+    if (direct.length === 0) {
+      // Every scored dimension is indirect: nothing can honestly be
+      // promised focus, so nothing is.
+      detail = `${lowestClause}, read through follow-ups.`;
+    } else {
+      const focus = direct.reduce((low, score) =>
+        score.score < low.score ? score : low,
+      );
+      const focusName =
+        dimensionNames[focus.dimension_key] ??
+        humanizeDimensionKey(focus.dimension_key);
+      detail = `${lowestClause}, read through follow-ups. This session focuses on ${focusName}.`;
+    }
+  }
   return { headline, detail, text: `Last verdict: ${headline} ${detail}` };
 }
 

@@ -139,9 +139,14 @@ async function lastOutcome(
   const names = Object.fromEntries(
     (pkg?.rubric?.dimensions ?? []).map((d) => [d.key, d.name]),
   );
+  const indirectKeys = new Set(
+    (pkg?.rubric?.dimensions ?? [])
+      .filter((d) => d.probing_mode === "indirect")
+      .map((d) => d.key),
+  );
   const report = session?.report ?? null;
   return {
-    line: verdictLine(report, names),
+    line: verdictLine(report, names, indirectKeys),
     verdict: report?.verdict ?? null,
     overall: report?.overall_score ?? latest.overall,
     rubric: pkg?.rubric ?? null,
