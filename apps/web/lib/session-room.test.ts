@@ -321,6 +321,31 @@ describe("owes-speech reads the questions this product actually asks", () => {
     expect(transcriptCarriesAsk("We'll look at scoping, design sense, and composure.")).toBe(false);
   });
 
+  it("reads no scaffold as an ask, and needs the stagesSent guard anyway", () => {
+    // Two separate claims, and the brief asks which one carries the ladder.
+    //
+    // First: no rung's NOTE is an ask. A note never reaches this derivation
+    // (finishedTranscript is Morgan's own audio transcript), but the 30 s
+    // rung quotes a question inside itself, so a detector reading "?"
+    // anywhere would call it one - and the day a model reads a direction
+    // aloud, that verdict is what the room would act on.
+    for (const stage of [...SILENCE_STAGES, ...GREETING_STAGES]) {
+      expect(transcriptCarriesAsk(stage.text), stage.text).toBe(false);
+    }
+    // Second, and this is the one that matters: what the rungs put in
+    // Morgan's MOUTH is genuinely not an ask, so the detector reads it as
+    // owing a turn no matter how good it gets. The stagesSent guard is what
+    // carries the ladder; a better detector cannot retire it.
+    for (const spokenRung of [
+      "Take your time.",
+      "You were starting to talk about the rollout - think about who owned the decision.",
+      "I think we might be having some audio trouble. I'll wait for you.",
+      "The room stays open, and I'm ready whenever you can hear me.",
+    ]) {
+      expect(transcriptCarriesAsk(spokenRung), spokenRung).toBe(false);
+    }
+  });
+
   it("publishes the stem list the corpus tests drive", () => {
     // Exported so the corpus above is pinning a list a reader can see, not a
     // regex buried in the module.

@@ -594,6 +594,21 @@ export function nextSilenceState(
   // stagesSent is the exact predicate: it is non-zero only while a scaffold
   // stretch is open, and candidate speech past STALL_BLIP_MAX_S clears it.
   //
+  // The guard and transcriptCarriesAsk do NOT overlap, which is why both are
+  // here. A better detector cannot retire the guard: what the ladder puts in
+  // Morgan's mouth is genuinely not an ask ("Take your time.", a directional
+  // hint, "I'll wait for you."), so any honest detector reads a scaffold's
+  // own speech as owing a turn, and the guard is the only thing that stops
+  // the room nudging him three seconds into a candidate who is thinking.
+  // The guard's cost is a real residual, recorded rather than fixed: a
+  // candidate blip under STALL_BLIP_MAX_S leaves stagesSent non-zero, so a
+  // genuine framing turn spoken inside an open scaffold stretch sets no
+  // obligation and gets no 3 s nudge. The room still recovers — the next
+  // rung fires on its own clock — so the failure is slow, not silent, and
+  // the narrower predicate that would close it (marking the one transcript a
+  // scaffold requested) can mistake a second transcript from the same
+  // response for a turn, which is the defect this guard just fixed.
+  //
   // An empty transcript is not a turn. finishedTranscriptForEvent hands back
   // whatever string the event carried, and a response canceled inside 080's
   // window can complete with nothing in it — which used to restart the
