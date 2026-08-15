@@ -116,6 +116,13 @@ def capped_weights(weights: Sequence[float],
 def apply_governance(rubric: Rubric, jd_as_shown: str) -> Rubric:
     """The deterministic post-pass: indirect always, capped conditionally.
 
+    probing_mode is normalized in BOTH directions: peripheral dimensions
+    become "indirect", and every other dimension becomes "direct" -- the
+    prompt states that rule, but prompt drift regresses silently (DECISIONS
+    077 rejected prompt-only enforcement), and a stray indirect on a
+    legitimate dimension would strip its main question and focus
+    eligibility, a runtime widening of the hand-scoped family.
+
     Also drops question_bank entries keyed to the now-indirect dimensions --
     the planner never allocates them a main question, so a banked question
     there is dead weight at best and a leak path at worst (belt and
@@ -124,14 +131,15 @@ def apply_governance(rubric: Rubric, jd_as_shown: str) -> Rubric:
     model.
     """
     flags = [is_peripheral_dimension(dim) for dim in rubric.dimensions]
-    if not any(flags):
+    if not any(flags) and all(
+            dim.probing_mode == "direct" for dim in rubric.dimensions):
         return rubric
     weights = [dim.weight for dim in rubric.dimensions]
-    if not jd_foregrounds_family(jd_as_shown):
+    if any(flags) and not jd_foregrounds_family(jd_as_shown):
         weights = capped_weights(weights, flags)
     dimensions = [
         dim.model_copy(update={
-            "probing_mode": "indirect" if flag else dim.probing_mode,
+            "probing_mode": "indirect" if flag else "direct",
             "weight": weight,
         })
         for dim, flag, weight in zip(rubric.dimensions, flags, weights,

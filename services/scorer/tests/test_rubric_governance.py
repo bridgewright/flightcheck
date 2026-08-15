@@ -393,6 +393,48 @@ class TestApplyGovernance:
         })
         assert apply_governance(rubric, PLAIN_JD) == rubric
 
+    def test_a_stray_indirect_on_a_legitimate_dimension_is_normalized_direct(self):
+        # The prompt tells the model every non-family dimension keeps
+        # probing_mode "direct", but DECISIONS 077 rejected prompt-only
+        # enforcement: prompt drift regresses silently. A model that marks
+        # a legitimate dimension indirect would silently strip its main
+        # question and its focus eligibility -- the F-83 failure inverted,
+        # and a runtime widening of the family the user scoped by hand.
+        rubric = _governable_rubric()
+        rubric = rubric.model_copy(update={
+            "dimensions": [
+                dim.model_copy(update={"probing_mode": "indirect"})
+                if dim.key == "field-discovery" else dim
+                for dim in rubric.dimensions
+            ],
+        })
+        governed = apply_governance(rubric, PLAIN_JD)
+        by_key = {dim.key: dim for dim in governed.dimensions}
+        assert by_key["field-discovery"].probing_mode == "direct"
+        assert (by_key["ai-safety-and-mission-alignment"].probing_mode
+                == "indirect")
+
+    def test_a_stray_indirect_is_normalized_even_without_peripheral_dims(self):
+        # The no-peripheral fast path must not skip the normalization: a
+        # rubric with no family dimension at all can still arrive with a
+        # stray indirect, and it must leave all-direct.
+        rubric = _governable_rubric()
+        rubric = rubric.model_copy(update={
+            "dimensions": [
+                dim.model_copy(update={"probing_mode": "indirect"})
+                if dim.key == "field-discovery" else dim
+                for dim in rubric.dimensions
+                if dim.key != "ai-safety-and-mission-alignment"
+            ] + [_dim("stakeholder-alignment", "Stakeholder Alignment",
+                      weight=0.25)],
+        })
+        governed = apply_governance(rubric, PLAIN_JD)
+        assert all(dim.probing_mode == "direct" for dim in governed.dimensions)
+        # Normalization never touches weights or the question bank.
+        assert [dim.weight for dim in governed.dimensions] == [
+            dim.weight for dim in rubric.dimensions]
+        assert governed.question_bank == rubric.question_bank
+
     def test_governance_is_idempotent(self):
         once = apply_governance(_governable_rubric(), PLAIN_JD)
         assert apply_governance(once, PLAIN_JD) == once

@@ -380,6 +380,22 @@ def test_a_rubric_without_peripheral_dimensions_is_untouched_by_governance():
     assert [dim.weight for dim in rubric.dimensions] == [0.4, 0.3, 0.3]
 
 
+def test_a_stray_indirect_on_a_legitimate_dimension_compiles_back_direct():
+    # The prompt says every non-family dimension keeps probing_mode
+    # "direct", but the deterministic post-pass is the guarantee (DECISIONS
+    # 077 rejected prompt-only enforcement). A model marking a legitimate
+    # dimension indirect would otherwise strip its main question, its focus
+    # eligibility, and its banked questions' rendering -- a runtime widening
+    # of the hand-scoped family. Zero extra model calls, no repair retry.
+    stray = _good_rubric()
+    stray["dimensions"][0]["probing_mode"] = "indirect"
+    fake = FakeGenAI([json.dumps(stray)])
+    rubric = _compile(fake)
+    assert len(fake.calls) == 1
+    assert all(dim.probing_mode == "direct" for dim in rubric.dimensions)
+    assert [dim.weight for dim in rubric.dimensions] == [0.4, 0.3, 0.3]
+
+
 def test_problem_lines_neutralize_marker_characters_from_the_claim():
     # The claimed quote is model output that can echo marker characters;
     # a problem line lands in an instruction position of the retry prompt,
