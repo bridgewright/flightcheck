@@ -9,7 +9,7 @@ from scorer.rubric.repair import (
 )
 
 
-def _delivery_dim(citations: list | None) -> dict:
+def _delivery_dim(citations: object) -> dict:
     dim = {"key": "spoken-clarity", "channel": "delivery"}
     if citations is not None:
         dim["citations"] = citations
@@ -47,6 +47,15 @@ class TestTheRepair:
         for garbage in ("text", 7, None, {"dimensions": "nope"},
                         {"dimensions": ["not-a-dict"]}):
             assert repair_delivery_citations(garbage) == garbage
+
+    def test_a_malformed_citations_value_is_left_for_pydantic(self):
+        # "" and 0 and {} are falsy but they are not "no citations" -- they
+        # are malformed output, and backfilling over them would hide from
+        # pydantic exactly what it exists to reject.
+        for malformed in ("", 0, {}, False):
+            raw = {"dimensions": [_delivery_dim(malformed)]}
+            out = repair_delivery_citations(raw)
+            assert out["dimensions"][0]["citations"] == malformed
 
     def test_the_input_is_never_mutated(self):
         raw = {"dimensions": [_delivery_dim([])]}

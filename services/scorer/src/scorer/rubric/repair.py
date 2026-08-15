@@ -33,8 +33,11 @@ def repair_delivery_citations(raw: object) -> object:
         return raw
     repaired = copy.deepcopy(raw)
     for dim in repaired["dimensions"]:
+        # Absent, null, or an empty LIST is "no citations". Any other
+        # falsy value ("" or 0 or {}) is malformed, and repairing it
+        # would hide from pydantic exactly what it must reject.
         if (isinstance(dim, dict)
                 and dim.get("channel") == "delivery"
-                and not dim.get("citations")):
+                and dim.get("citations") in (None, [])):
             dim["citations"] = [dict(PRODUCT_DELIVERY_CITATION)]
     return repaired
