@@ -780,10 +780,17 @@ def test_standard_twenty_minute_instructions_remain_byte_identical():
     # three more statement turns (the barge-in yield, the unfinished-answer
     # "Mm-hm.", and whatever a [silence status] note says), so the exceptions
     # are named and the model is told not to add a question to them.
+    # Moved a seventh time by round 2, which found a FIFTH ordered statement
+    # turn in # PACING -- the spare time spent on the candidate's own
+    # questions -- and, in round 1's "Four exceptions", a fresh absolute of
+    # the same shape as the one it had just removed. The rule now names its
+    # exceptions without counting them.
     # Every move is verified by rendering main's planner and diffing the two
-    # documents section by section, not by trusting the source diff.
+    # documents section by section, not by trusting the source diff. Moves
+    # five through seven touch # OPENING and # RULES; nothing else in the
+    # document has moved since c75fc64.
     assert hashlib.sha256(_instructions().encode()).hexdigest() == (
-        "f8d4f98175757145b0b869502e3e26b8572d5c05badb3d2421d3de39f76fdc3d"
+        "02b47acf50652c05117016cb0a5adb26069b1990018ad17270b4fce8762a92cf"
     )
 
 
@@ -1158,14 +1165,25 @@ def test_every_turn_ends_facing_the_candidate():
     assert "Every turn you take ends facing the candidate" in text
     assert "Never end a turn on a statement" in text
     # Round 1: "The closing line is the only exception" was FALSE, and this
-    # test asserted the falsehood. The document itself ORDERS three other
+    # test asserted the falsehood. The document itself ORDERS other
     # statement turns (below), so the rule commanded and forbade the same
     # behavior; worse, its remedy clause ("continue and ask") pointed at
     # exactly the harm two of them exist to prevent -- talking over a
     # candidate who is mid-answer or mid-interruption. The exceptions are
     # named, and the model is told not to "fix" them.
     assert "The closing line is the only exception." not in text
-    assert "In those four, stopping without a question is right" in text
+    assert "In those, stopping without a question is right" in text
+    # Round 2: round 1 replaced one absolute with another -- "Four
+    # exceptions" is a count, and it was wrong the moment it was written
+    # (# PACING orders a fifth). A count is also invisible to a scan that
+    # only reads the members, so dropping an exemption left the tally
+    # claiming four over a list of three and nothing failed. The rule now
+    # names its exceptions without tallying them; no numeral may return.
+    assert not re.search(r"\b(Two|Three|Four|Five|Six) exceptions\b", text)
+    # ...and the anti-gaming clause, which is DECISIONS 082's own named
+    # revisit condition ("rhetorical questions to legally end turns")
+    # written into the rule rather than left for a later transcript audit.
+    assert "never tack a question onto an answer just to close a turn" in text
     # The framing turn may not strand the room short of its check.
     assert 'Never stop this turn anywhere before "Sound good?"' in text
     named = build_interviewer_instructions(
@@ -1191,6 +1209,13 @@ def test_turn_rule_exempts_every_statement_turn_the_document_orders():
     # settles the clash on its own, unobservably.
     text = _instructions()
     ordered_statement_turns = (
+        # Round 2: the closing line was the one exemption round 1 left
+        # unpinned -- it lived only inside the "In those four" frame, so
+        # deleting "the closing line;" from the list passed every test
+        # while # PACING still ordered the line and banned speech after
+        # it. Each exemption is now pinned by its own text.
+        ("Deliver the following closing line exactly, word for word",
+         "the closing line"),
         # The barge-in yield hands the floor back mid-sentence; "continue
         # and ask" would be the talk-over that rule exists to stop.
         ('say "Sorry — go ahead"',
@@ -1205,6 +1230,20 @@ def test_turn_rule_exempts_every_statement_turn_the_document_orders():
         # hint. The document forwards them with "nothing more".
         ("do exactly what it says — nothing more",
          "whatever a [silence status] note tells you to say"),
+        # Round 2, the fifth ordered statement turn round 1 missed, and the
+        # only one that recurs for minutes rather than a beat: # PACING
+        # orders the spare time spent on "the candidate's own questions",
+        # and answering a question is a statement. Under the four-item
+        # rule the model had to append a question to every answer it gave
+        # the candidate -- which is exactly the gaming DECISIONS 082 lists
+        # as its revisit condition, reached by obeying the rule rather
+        # than by breaking it. The web half makes it mechanical: its nudge
+        # fires on any interviewer turn not ending in "?" until the
+        # closing line itself is transcribed, so each answer drew a
+        # "[turn status] you stopped without asking anything" three
+        # seconds later.
+        ("then the candidate's own questions",
+         "your own answer when the candidate asks you a question"),
     )
     for ordered, exemption in ordered_statement_turns:
         assert ordered in text, f"ordered turn vanished: {ordered}"
