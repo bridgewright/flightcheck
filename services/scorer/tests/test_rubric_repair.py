@@ -1,9 +1,7 @@
 """F-96 / DECISIONS 084: the one repair the compiler makes honestly."""
 
 import copy
-import json
 
-from fakes import FakeGenAI
 from scorer.evals_l3.regression import REPO_ROOT
 from scorer.rubric.repair import (
     PRODUCT_DELIVERY_CITATION,

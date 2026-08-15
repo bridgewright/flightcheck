@@ -95,14 +95,29 @@ def _machinery_problems(rubric: Rubric, processed_jd: str) -> list[str]:
     return problems
 
 
-def _behavior_problems(rubric: Rubric, expectations: dict) -> list[str]:
-    """Per-fixture topic and channel-count expectations."""
+def _behavior_problems(
+        rubric: Rubric, expectations: dict) -> tuple[list[str], list[str]]:
+    """Per-fixture topic and channel-count expectations.
+
+    Returns (problems, governed): a forbidden topic that matched only an
+    "indirect" dimension at or below the weight cap is the GOVERNED form
+    F-94 defined (DECISIONS 084) -- recorded, not failed. A match on a
+    "direct" dimension, or above the cap, still fails.
+    """
     problems: list[str] = []
+    governed: list[str] = []
     labels = [(dim, f"{dim.key} {dim.name}".lower()) for dim in rubric.dimensions]
     for pattern in expectations["forbidden_topics"]:
         regex = re.compile(pattern, re.IGNORECASE)
         for dim, label in labels:
             if regex.search(label):
+                if (dim.probing_mode == "indirect"
+                        and dim.weight <= PERIPHERAL_WEIGHT_CAP + 1e-6):
+                    governed.append(
+                        f"forbidden topic '{pattern}' appears only in its "
+                        f"governed form: dimension '{dim.key}' is indirect "
+                        f"at weight {dim.weight}")
+                    continue
                 problems.append(
                     f"forbidden topic '{pattern}' matched dimension "
                     f"'{dim.key}' ({dim.channel})")
@@ -121,7 +136,7 @@ def _behavior_problems(rubric: Rubric, expectations: dict) -> list[str]:
         if [dim.key for dim in profile_dims] != ["role-and-company-fit"]:
             problems.append(
                 "expected exactly one profile-licensed role-and-company-fit dimension")
-    return problems
+    return problems, governed
 
 
 def _governance_problems(rubric: Rubric, expectations: dict) -> list[str]:
@@ -185,27 +200,47 @@ def run_faithfulness_suite(suite_dir: Path,
             else _empty_profile()
         )
 
+        # Corpus and fewshots stay empty so the only sources in tension
+        # are the JD and the (salted) findings. A COMPILE failure earns one
+        # recorded second attempt (DECISIONS 084: the live model is
+        # nondeterministic and both recorded flaky runs were this class);
+        # a rubric that compiled but fails the deterministic checks gets
+        # no second chance. Every attempt is kept in the report.
+        attempts: list[dict] = []
         problems: list[str] = []
+        governed: list[str] = []
         dimensions: list[dict] = []
-        try:
-            # ONE compile per fixture; corpus and fewshots empty so the only
-            # sources in tension are the JD and the (salted) findings.
-            rubric = compile_rubric(jd_text, profile, findings,
-                                    [], [], client)
-        except RubricCompileError as exc:
-            problems.append(f"compile failed: {exc}")
-        else:
-            processed_jd = neutralize_markers(jd_text[:jd_limit])
-            problems.extend(_machinery_problems(rubric, processed_jd))
-            problems.extend(_behavior_problems(rubric, expectations))
-            problems.extend(_governance_problems(rubric, expectations))
-            dimensions = [
-                {"key": dim.key, "channel": dim.channel, "weight": dim.weight,
-                 "license": dim.license,
-                 "has_jd_evidence": bool(dim.jd_evidence),
-                 "probing_mode": dim.probing_mode}
-                for dim in rubric.dimensions
-            ]
+        for _attempt_no in (1, 2):
+            problems = []
+            governed = []
+            dimensions = []
+            compile_failed = False
+            try:
+                rubric = compile_rubric(jd_text, profile, findings,
+                                        [], [], client)
+            except RubricCompileError as exc:
+                problems.append(f"compile failed: {exc}")
+                compile_failed = True
+            else:
+                processed_jd = neutralize_markers(jd_text[:jd_limit])
+                problems.extend(_machinery_problems(rubric, processed_jd))
+                behavior_problems, governed = _behavior_problems(
+                    rubric, expectations)
+                problems.extend(behavior_problems)
+                problems.extend(_governance_problems(rubric, expectations))
+                dimensions = [
+                    {"key": dim.key, "channel": dim.channel,
+                     "weight": dim.weight, "license": dim.license,
+                     "has_jd_evidence": bool(dim.jd_evidence),
+                     "probing_mode": dim.probing_mode}
+                    for dim in rubric.dimensions
+                ]
+            attempts.append({
+                "status": "PASS" if not problems else "FAIL",
+                "problems": problems,
+            })
+            if not compile_failed:
+                break
 
         if not problems:
             passed += 1
@@ -213,6 +248,8 @@ def run_faithfulness_suite(suite_dir: Path,
         fixtures[name] = {
             "status": "PASS" if not problems else "FAIL",
             "problems": problems,
+            "governed_forbidden": governed,
+            "attempts": attempts,
             "dimensions": dimensions,
         }
 

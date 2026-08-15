@@ -277,18 +277,90 @@ class TestTheRunner:
         # is the only smoothing mechanism, and none was needed here.
         assert len(fake.calls) == 4
 
-    def test_an_ethics_dimension_fails_the_pathological_fixture_named(self):
-        # The production failure of 2026-08-04, replayed: an ethics dimension
-        # whose only JD evidence is About-section boilerplate. The quote IS a
-        # verbatim JD slice, so the machinery check passes and the behavior
-        # check is what has to catch it.
+    def test_a_governed_ethics_dimension_passes_and_is_recorded(self):
+        # DECISIONS 084(b): the same 2026-08-04 pathology in its GOVERNED
+        # form -- indirect at the cap -- is the acceptable shape F-94
+        # defined. Recorded, not failed.
         fdpm = _fdpm_rubric()
         fdpm["dimensions"][3] = _dim(
             "ethical-judgment", "Ethical judgment", "content", 0.15,
             "ethical AI that benefits everyone")
+        fdpm["dimensions"][3]["weight"] = 0.10
+        fdpm["dimensions"][3]["probing_mode"] = "indirect"
+        spread = [d for d in fdpm["dimensions"] if d["key"] != "ethical-judgment"]
+        spread[0]["weight"] = round(spread[0]["weight"] + 0.05, 4)
         fake = _fake_for(fdpm=fdpm)
 
         result = run_faithfulness_suite(SUITE_DIR, fake)
+
+        fixture = result["fixtures"]["values-boilerplate-fdpm"]
+        assert fixture["status"] == "PASS"
+        assert any("governed form" in note
+                   for note in fixture["governed_forbidden"])
+        assert not any("forbidden topic" in failure
+                       for failure in result["failures"])
+
+    def test_a_direct_forbidden_match_gets_no_second_attempt(
+            self, monkeypatch):
+        # DECISIONS 084(c): deterministic-check failures are the gate doing
+        # its job on a real output -- one attempt, recorded as one. Takes
+        # the regressed compiler: the real one governs this shape.
+        fdpm = _fdpm_rubric()
+        fdpm["dimensions"][3] = _dim(
+            "ethical-judgment", "Ethical judgment", "content", 0.15,
+            "ethical AI that benefits everyone")
+        _regressed_compiler(monkeypatch, fdpm=fdpm)
+
+        result = run_faithfulness_suite(SUITE_DIR, FakeGenAI([]))
+
+        fixture = result["fixtures"]["values-boilerplate-fdpm"]
+        assert fixture["status"] == "FAIL"
+        assert len(fixture["attempts"]) == 1
+
+    def test_a_failed_compile_earns_one_recorded_second_attempt(self):
+        # DECISIONS 084(c): the recorded flake class. Two garbage replies
+        # burn compile one (attempt + its internal repair retry); the second
+        # suite-level attempt compiles clean. Both attempts are kept.
+        fake = _fake_for(control_script=[
+            "not json", "still not json", json.dumps(_control_rubric())])
+
+        result = run_faithfulness_suite(SUITE_DIR, fake)
+
+        fixture = result["fixtures"]["plain-control"]
+        assert fixture["status"] == "PASS"
+        assert [a["status"] for a in fixture["attempts"]] == ["FAIL", "PASS"]
+        assert "compile failed" in fixture["attempts"][0]["problems"][0]
+        assert result["fixtures_passed"] == 4
+        assert result["failures"] == []
+
+    def test_two_failed_compiles_fail_with_both_attempts_kept(self):
+        fake = _fake_for(control_script=["not json"] * 4)
+
+        result = run_faithfulness_suite(SUITE_DIR, fake)
+
+        fixture = result["fixtures"]["plain-control"]
+        assert fixture["status"] == "FAIL"
+        assert [a["status"] for a in fixture["attempts"]] == ["FAIL", "FAIL"]
+        assert result["fixtures_passed"] == 3
+        assert any("plain-control: compile failed" in failure
+                   for failure in result["failures"])
+
+    def test_an_ethics_dimension_fails_the_pathological_fixture_named(
+            self, monkeypatch):
+        # The production failure of 2026-08-04, replayed: an ethics dimension
+        # whose only JD evidence is About-section boilerplate. The quote IS a
+        # verbatim JD slice, so the machinery check passes and the behavior
+        # check is what has to catch it. Since F-94 the REAL compiler
+        # auto-governs this shape (indirect + capped -- see the governed
+        # test above), so reaching the check ungoverned takes the regressed
+        # compiler, which is precisely the regression this gate exists for.
+        fdpm = _fdpm_rubric()
+        fdpm["dimensions"][3] = _dim(
+            "ethical-judgment", "Ethical judgment", "content", 0.15,
+            "ethical AI that benefits everyone")
+        _regressed_compiler(monkeypatch, fdpm=fdpm)
+
+        result = run_faithfulness_suite(SUITE_DIR, FakeGenAI([]))
 
         assert result["fixtures_passed"] == 3
         assert result["pass_rate"] == 3 / 4
@@ -311,7 +383,8 @@ class TestTheRunner:
         assert ("values-boilerplate-fdpm: forbidden topic 'mission' matched "
                 "dimension 'mission-driven-presence' (delivery)") in result["failures"]
 
-    def test_a_forbidden_topic_hiding_in_the_name_alone_is_still_caught(self):
+    def test_a_forbidden_topic_hiding_in_the_name_alone_is_still_caught(
+            self, monkeypatch):
         # The scan label is key plus name: a dimension whose key is scrubbed
         # clean but whose display name says "Mission alignment" is exactly as
         # unlicensed as one that admits it in the key. Before this test the
@@ -320,9 +393,9 @@ class TestTheRunner:
         fdpm["dimensions"][3] = _dim(
             "account-fit", "Mission alignment", "content", 0.15,
             "Own the deployment metrics for your accounts: time to first automated")
-        fake = _fake_for(fdpm=fdpm)
+        _regressed_compiler(monkeypatch, fdpm=fdpm)
 
-        result = run_faithfulness_suite(SUITE_DIR, fake)
+        result = run_faithfulness_suite(SUITE_DIR, FakeGenAI([]))
 
         assert ("values-boilerplate-fdpm: forbidden topic 'mission' matched "
                 "dimension 'account-fit' (content)") in result["failures"]
@@ -493,10 +566,11 @@ class TestTheRunner:
 
     def test_a_compile_refusal_is_a_named_fixture_failure_not_a_crash(self):
         # The pathological JD is a paying user's JD: the product must compile
-        # it WITHOUT the unlicensed dimensions, not refuse it. Two bad
-        # replies exhaust compile_rubric's internal repair retry; the runner
-        # records the RubricCompileError against the fixture and moves on.
-        fake = _fake_for(control_script=["not json", "still not json"])
+        # it WITHOUT the unlicensed dimensions, not refuse it. Each bad pair
+        # exhausts compile_rubric's internal repair retry; DECISIONS 084(c)
+        # then grants the fixture ONE recorded second compile, which fails
+        # too. The runner records both attempts and moves on.
+        fake = _fake_for(control_script=["not json"] * 4)
 
         result = run_faithfulness_suite(SUITE_DIR, fake)
 
@@ -506,10 +580,12 @@ class TestTheRunner:
         assert failed["status"] == "FAIL"
         assert failed["dimensions"] == []
         assert failed["problems"][0].startswith("compile failed:")
+        assert [a["status"] for a in failed["attempts"]] == ["FAIL", "FAIL"]
         assert any(entry.startswith("plain-control: compile failed:")
                    for entry in result["failures"])
-        # 2 calls for the failing fixture (compile + repair), 1 each for the rest.
-        assert len(fake.calls) == 5
+        # 4 calls for the failing fixture (two compiles, each with its
+        # internal repair retry), 1 each for the rest.
+        assert len(fake.calls) == 7
 
     def test_a_direct_peripheral_dimension_is_a_governance_failure(
             self, monkeypatch):
@@ -552,8 +628,9 @@ class TestTheRunner:
 
     def test_a_capped_indirect_peripheral_dimension_raises_no_governance_problem(
             self, monkeypatch):
-        # At the cap and indirect: only the (orthogonal) forbidden-topic
-        # expectation may complain -- no governance line.
+        # At the cap and indirect: no governance line, and since 084(b)
+        # the forbidden-topic expectation records the governed form
+        # instead of complaining.
         fdpm = _fdpm_rubric()
         fdpm["dimensions"][3] = _dim(
             "ethical-judgment", "Ethical judgment", "content", 0.1,
@@ -563,10 +640,12 @@ class TestTheRunner:
 
         result = run_faithfulness_suite(SUITE_DIR, FakeGenAI([]))
 
-        assert result["fixtures"]["values-boilerplate-fdpm"]["problems"] == [
-            "forbidden topic 'ethic' matched dimension "
-            "'ethical-judgment' (content)"
-        ]
+        fixture = result["fixtures"]["values-boilerplate-fdpm"]
+        assert fixture["problems"] == []
+        # The forbidden topic surfaces as the governed form (DECISIONS
+        # 084(b)), not as a failure -- and not as a governance line.
+        assert any("'ethical-judgment'" in note
+                   for note in fixture["governed_forbidden"])
 
     def test_the_cap_check_needs_the_fixture_declaration(self, monkeypatch):
         # ai-safety-genuine declares the family FOREGROUNDED: an uncapped
