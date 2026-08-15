@@ -616,6 +616,30 @@ Changes to targets are recorded here with date and reason — never silently.
   once if natural — the coach now remembers its own advice.
   DECISIONS 078–079.
 
+- **v0.29 (recorded 2026-08-15, pre-code):** the conversation
+  learns to be interrupted, to take back a response, and to never
+  strand its turn. Three repairs from the same field session, one
+  batch. A response the client armed can be CANCELED while the
+  interviewer has not yet made a sound — the measured losing race
+  was a candidate resuming 0.5s after the request and a full
+  second before first audio — and with that safety net the
+  answer-end debounce drops from 0.6s to 0.45s, so finished
+  answers get a faster interviewer while resumed sentences get
+  MORE room, not less. A genuine mid-speech interruption now
+  stops the interviewer's audio within about a second, behind
+  three stacked guards (sustained speech, a mic level well above
+  this room's own measured echo leak, and the correlation
+  module's first — veto-only — authority), because the 2026-08-01
+  reason interruptions could not cut, echo misfiring the
+  truncation, finally has counter-machinery. And no turn may end
+  facing away: the interviewer is instructed to end every turn
+  with a question (the closing line excepted), and when it still
+  stops short, the room now knows WHO owes speech and nudges the
+  interviewer to finish — instead of telling a candidate who owes
+  nothing to take their time. The greeting's silence rungs stop
+  offering to skip the audio check. Every knob this touches is a
+  recorded lever. DECISIONS 080–082.
+
 > 2026-08-02: v0.4 scope added above — accounts move ahead of payments
 > because login-gated interviews protect session integrity and per-session
 > cost, and the dashboard is what makes a 6-session package usable. The

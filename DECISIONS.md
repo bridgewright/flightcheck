@@ -3608,3 +3608,171 @@ isolated at last by Phase 1 removing the acoustics that masked it.
   older than this batch; registered as follow-up (deterministic repair
   for product-licensed delivery citations, and whether the faithfulness
   fixtures need a governed-indirect clause).
+
+## 080 — The armed response can still be taken back (2026-08-15)
+
+**Context.** The 2026-08-15 field session (the third trail slice on
+the reproduction slot) recorded the turn-policy race in full. A
+20.9-second answer committed at +76.4s; the 0.6s debounce fired at
++77.3s and the response request went out; the candidate RESUMED at
++77.8s — 0.46s after the request, a full second before the
+interviewer's first audio at +78.8s — and the interviewer talked
+over the resumed answer. The same trail shows the policy winning
+whenever the resume beats the debounce: at +102.6s/+103.5s the
+armed response was canceled and the interviewer waited. The losing
+window is precisely the model's time-to-first-audio — 0.6 to 1.3
+seconds across today's seven triggers — during which the client
+treats the armed response as irrevocable for no reason but history.
+The same session filed the opposite complaint about completed
+answers: commit to first audio measured 1.53-2.11s, on top of the
+900ms VAD tail before the commit — a felt gap of 2.4-3.0 seconds.
+
+- **Chosen: a cancel window.** The reducer tracks an in-flight
+  response between the trigger and the interviewer's first audio;
+  candidate speech arriving inside that window emits a cancel
+  effect, the wiring sends `response.cancel`, and the trail records
+  `response-cancel`. Once first audio exists the response is
+  committed-to: stopping it then is truncation, which is DECISIONS
+  081's separate machinery behind a separate confidence bar, not a
+  cancel.
+- **Chosen: `RESPONSE_DEBOUNCE_S` 0.6 → 0.45.** Safe BECAUSE of the
+  cancel window: resume protection no longer ends at the debounce —
+  it extends through time-to-first-audio, so total tolerance for a
+  resumed sentence GROWS while the felt answer-end gap shrinks.
+  DECISIONS 055's revisit condition contemplated one failure
+  direction (premature starts meaning 0.6 was too tight); today's
+  field session showed 0.6-without-cancel losing in BOTH directions
+  at once — too slow after completed answers, and still talking
+  over resumed ones. The pair (0.45 + cancel) dominates 0.6-alone
+  on both axes.
+- **Rejected: cutting the 900ms VAD tail.** Unchanged from 055: it
+  is the acoustic hesitation guard for exactly this product's
+  audience, and the latency budget had cheaper line items.
+- **Rejected: canceling after first audio has played.** A cancel
+  that lands mid-sentence is a truncation wearing a softer name;
+  081 handles that case with a discriminator this entry does not
+  need.
+- **Lever discipline:** both are recorded levers (naturalness suite
+  worklog; F-69 contract).
+- **Revisit when:** trails show cancels arriving so late the
+  interviewer's first words were already generated and dropped
+  (then the window is mis-measured), or 0.45 produces premature
+  starts the cancel window cannot cover.
+
+## 081 — A real interruption stops the interviewer's audio (2026-08-15)
+
+**Context.** The field ask, in the operator's words: once the
+interviewer starts speaking, he cannot be stopped. Mechanically
+true, and deliberate until today: generation finishes seconds
+before the audio drains (today's trail: `response-done` 2.1s into
+an utterance whose audio ran 9 more seconds), `interrupt_response`
+has been off since 2026-08-01 because speaker echo tripped
+server-side truncation and chopped the interviewer's own greeting,
+and the instructions' yield rule cannot act on already-generated
+queued audio. What changed since 08-01: T1's playback gate (0.85
+during playback) and 076's correlation module. Today's nine shadow
+verdicts were consistent 9/9 — eight real-speech commits at
+r ≤ 0.29, one echo at r = 1.00 that the timing layer also caught —
+but the same session proved echo can CLEAR the raised threshold (a
+barge-in event at +82.3s was echo), so a bare threshold cut
+remains exactly as unsafe as it was in August's first week.
+
+- **Chosen: client-side truncation behind a composite
+  discriminator.** A barge-in (speech_started while the interviewer
+  is audible) starts a validation clock — never an immediate cut.
+  The cut fires only when ALL three hold: (a) the episode SUSTAINS
+  at least 750ms of continued candidate audibility; (b) the mic
+  level during the episode clears an ADAPTIVE echo floor — a fixed
+  multiple of this same utterance's pre-barge leak baseline (the
+  median mic peak while the interviewer alone was audible), so an
+  earphone room whose baseline is silence cuts fast and a loud
+  open room raises its own bar; (c) the running correlation
+  verdict over the episode-so-far does NOT read echo (r below
+  CORR_ECHO_MIN_R at n ≥ 4). On fire: `output_audio_buffer.clear`
+  plus `conversation.item.truncate` at the played offset, with
+  trail entries `barge-cut` (level ratio, r, n) and `barge-hold`
+  (which condition failed) either way. `interrupt_response` stays
+  false — the client owns the decision, as it owns every other
+  piece of response timing.
+- **On 076's promotion gate, honestly:** condition (c) is the
+  correlation module's first authority, granted NARROWLY — a veto
+  on cutting, not an echo verdict the room acts on anywhere else;
+  commit suppression stays timing-owned. The full promotion 076
+  names still waits for the both-environments ledger. The
+  asymmetry that justifies this much now: a wrong VETO costs one
+  missed cut — today's status quo, the behavior every session so
+  far has had — while a wrong cut chops the interviewer
+  mid-sentence; the veto can only fail toward the safe side, and
+  it sits behind two independent conditions besides.
+- **Rejected: `interrupt_response: true`.** The server would cut on
+  the raised threshold alone; today's echo-that-cleared-0.85 would
+  have chopped the interviewer again, which is the recorded 08-01
+  failure with extra steps.
+- **Rejected: instructions-only.** The yield rule already exists
+  and cannot reach queued audio; prose does not stop a speaker.
+- **Verification:** field sessions read the barge-cut/barge-hold
+  ledger; a deliberate mid-speech interruption in the next real
+  session must cut within ~1 second, and the earphone session must
+  cut at least as fast (baseline ~0).
+- **Revisit when:** the ledger shows a false cut (raise the floor
+  multiple or the sustain), or missed cuts with all three
+  conditions logged healthy (lower the sustain), or the
+  both-environments ledger matures enough to revisit 076's full
+  promotion.
+
+## 082 — Every turn ends facing the candidate (2026-08-15)
+
+**Context.** Same field session: the interviewer framed the topics
+("we'll look at X, Y, Z") and stopped — no question — and the room
+had no move. The candidate owed nothing, the interviewer owed a
+question, and the only machinery for silence (the scaffold ladder)
+is written for the opposite case: a candidate stuck on a question.
+The operator had to answer an unasked question to restart the
+interview. Root cause is honest: DECISIONS 077 taught the model to
+end turns without teaching where a turn may end, and the 077
+review had already registered the mirror defect (the ladder reads
+wrong at the greeting; its 30s rung offers to skip the audio
+check). One principle closes all of it: in any silence, someone
+owes speech, and the room can tell WHO from the interviewer's last
+finished transcript — a turn that ends with a question (the
+checks, a probe, the next question) leaves the candidate owing; a
+turn that ends without one leaves the interviewer owing.
+
+- **Chosen (instructions, both renders):** beats 2 and 3 of the
+  opening are ONE turn ending with "Sound good?" — the 077 stops
+  taught turn-ending so well the model began stopping mid-framing;
+  the boundary belongs to the checks, not to arbitrary pauses. And
+  a global rule: never end a turn without a question to the
+  candidate — the audio check, "Sound good?", a probe, or the next
+  question; the closing line is the sole exception.
+- **Chosen (web): the ladder learns who owes speech.** The reducer
+  derives owes-speech from the last finished interviewer
+  transcript (trailing question mark, closing excluded). While the
+  INTERVIEWER owes, the candidate-facing ladder is replaced by a
+  single short-fuse nudge at 3 seconds of quiet: a `[turn status]`
+  system note — you stopped without asking anything; continue your
+  turn and end it facing the candidate — plus the response
+  trigger, trail-tagged `turn-nudge`. While the CANDIDATE owes,
+  the existing ladder stands, with one repair from the 077 review:
+  before any candidate turn has ever committed (the greeting
+  phase), the rungs speak to the audio check — re-ask it warmly
+  once at 8s, name possible audio trouble at 15s and 30s — and
+  never offer directional hints toward an answer that was never
+  asked for, never offer to "set this question aside".
+- **Rejected: instructions alone.** The model will still sometimes
+  stop short; a room with no move is the defect, not the model's
+  turn shape.
+- **Rejected: a bare auto-continue (response.create with no
+  note).** Re-triggering without telling the model why re-invites
+  the monologue: the note names what is owed.
+- **Interaction with 080/081, stated:** the turn-nudge is a
+  response trigger and obeys the same cancel window; a barge-in
+  during a nudged continuation cuts under 081's discriminator like
+  any other utterance.
+- **Lever discipline:** instructions hash moves again (worklog);
+  the ladder text changes are conversational levers recorded the
+  same way.
+- **Revisit when:** transcripts show the model gaming the rule
+  (rhetorical questions to legally end turns), or the 3s nudge
+  reads as impatient in field sessions, or the greeting rungs fire
+  on a candidate who was merely slow to unmute.
