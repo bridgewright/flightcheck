@@ -987,6 +987,15 @@ def test_opening_checks_are_structural_turn_stops():
     assert "no reaction of any kind to a reply you have not heard" in text
     assert "the answer belongs to the candidate" in text
     assert "never fill the silence on your own" in text
+    # Round 2: beat 2's gate was the one part of the stop no NAMED test held --
+    # deleting "Once they have answered:" left the whole suite green except the
+    # byte pin, and that pin is documented as movable by recorded decision (it
+    # has moved four times, twice in this batch). Whoever moves it next
+    # recomputes from the tree, so an ungated beat 2 would be baked into the new
+    # hash silently. The gate is also what round 1's "before any framing" clause
+    # attaches to, and the quick render's twin ("Once they answer") was already
+    # pinned in the test below -- the standard render was the asymmetric one.
+    assert "2. Once they have answered:" in text
     # The old prose-only waiting sentence is gone in both spots — leaving
     # either would keep the exact wording the live session proved inert.
     assert "Wait for their reply before moving on" not in text
