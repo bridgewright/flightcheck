@@ -618,16 +618,20 @@ def test_quick_instructions_remain_byte_identical():
     # Pinned before B7-T1 (interviewer-behavior realism, DECISIONS 064):
     # the realism behaviors are standard-render only, and the quick render
     # must not move a byte — both the named path and the degraded one.
+    # Moved deliberately once since: DECISIONS 077 (2026-08-15) gave the
+    # quick opening the structural audio-check turn stop the live session
+    # proved the prose could not deliver. The pin exists against accidental
+    # drift, not against recorded decisions.
     named = build_interviewer_instructions(
         plan_quick_session("ACME Labs", "Staff AI Engineer"), None,
         _make_profile(), company="ACME Labs", role="Staff AI Engineer")
     bare = build_interviewer_instructions(
         plan_quick_session(None, None), None, _make_profile())
     assert hashlib.sha256(named.encode()).hexdigest() == (
-        "a4f004474e043aaf3dd7e42637bbb45aba0ebe50e77e1e33fb0c3b16ff0f1b49"
+        "47b6ef57085a8ad79f61b546603a33bc23cadd80f0812c37b6dad4b03c006cc2"
     )
     assert hashlib.sha256(bare.encode()).hexdigest() == (
-        "ec4f5f345e733171f16e72864bee9f5ebb9e4de18a7043ea4f3a3a6dfe91f3da"
+        "a569943fb23006a247ce8da68f162e87baf8bc068dcefcdb5db1768ac0819b1a"
     )
 
 
@@ -641,8 +645,12 @@ def test_standard_twenty_minute_instructions_remain_byte_identical():
     # "...interested in named specifics."). Those two lines are the ENTIRE
     # delta between the two hashes -- the instructions themselves did not
     # move a byte, which is the claim this pin exists to keep honest.
+    # Moved a third time by DECISIONS 077 (2026-08-15): the opening's two
+    # checks became structural turn stops after the first gated live
+    # session showed one 24.5 s response answering both of them itself.
+    # The delta is confined to # OPENING.
     assert hashlib.sha256(_instructions().encode()).hexdigest() == (
-        "2e9a2f069891a4b5755a2701908b39148793b9061f575e63c15b82bb6ac7055e"
+        "a5c7175a30af5a468e61dc43c061e5b371526f9537dedff9ffc20934fc691ca7"
     )
 
 
@@ -885,7 +893,6 @@ def test_instructions_open_by_speaking_first_with_time_and_areas():
     assert "# OPENING" in text
     assert "Speak first, the moment the call connects" in text
     assert "can you hear me okay?" in text
-    assert "Wait for their reply" in text
     assert "about 20 minutes" in text
     names = {dim.key: dim.name.lower() for dim in rubric.dimensions}
     expected_areas = " and ".join(
@@ -948,7 +955,41 @@ def test_confidentiality_allows_coarse_area_framing_only():
 def test_opening_ends_with_a_sound_good_check():
     text = _instructions()
     assert '"Sound good?"' in text
-    assert "wait for their reply before your first question" in text
+    assert "that check ends your turn too" in text
+    assert "ask your first question only after they reply" in text
+
+
+def test_opening_checks_are_structural_turn_stops():
+    # DECISIONS 077: the 2026-08-15 live session (the first on the Phase 1
+    # gating) produced the whole opening as ONE 24.5-second response — the
+    # model answered its own "can you hear me okay?" ("All right, great")
+    # and "Sound good?" ("All right, let's dive in") and rolled into the
+    # first question. "Wait for their reply" was already in the text; prose
+    # cannot be obeyed mid-utterance. The stops must be structural: each
+    # check ENDS the turn, self-answering is banned by name, and a quiet
+    # candidate is the silence ladder's job, never the interviewer's.
+    text = _instructions()
+    assert "Each beat is a SEPARATE turn of yours, never one speech" in text
+    assert "stop speaking there and end your turn" in text
+    assert 'no "great", no "all right"' in text
+    assert "the answer belongs to the candidate" in text
+    assert "never fill the silence on your own" in text
+    # The old prose-only waiting sentence is gone in both spots — leaving
+    # either would keep the exact wording the live session proved inert.
+    assert "Wait for their reply before moving on" not in text
+    assert "wait for their reply before your first question" not in text
+
+
+def test_quick_opening_check_is_a_structural_turn_stop():
+    # Same defect, same fix, free funnel (DECISIONS 077): the quick opening
+    # had no stop at all after its audio check.
+    named = build_interviewer_instructions(
+        plan_quick_session("ACME Labs", "Staff AI Engineer"), None,
+        _make_profile(), company="ACME Labs", role="Staff AI Engineer")
+    assert "end your turn there" in named
+    assert "Never answer the check yourself" in named
+    assert "[silence status] note will prompt you" in named
+    assert "Once they answer" in named
 
 
 def test_rules_include_overlap_yield():
