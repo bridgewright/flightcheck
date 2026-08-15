@@ -296,6 +296,22 @@ export const BARGE_SUSTAIN_MS = 750;
 export const BARGE_LEVEL_MULTIPLE = 3;
 export const LEAK_FLOOR = 0.005;
 
+/** Median of a peak series, 0 when empty.
+ *
+ * The median and not the mean, because both series this feeds are short and
+ * spiky: one loud tick of leak inflates a baseline mean enough to hide a real
+ * barge-in behind the level condition, and one silent tick inside a barge
+ * episode drags its mean under the same bar. The cut is a level comparison
+ * between two typical ticks, not between two totals. */
+export function medianPeak(values: number[]): number {
+  if (values.length === 0) return 0;
+  const sorted = [...values].sort((a, b) => a - b);
+  const middle = Math.floor(sorted.length / 2);
+  return sorted.length % 2 === 0
+    ? (sorted[middle - 1] + sorted[middle]) / 2
+    : sorted[middle];
+}
+
 export interface BargeEvidence {
   sustainedMs: number;
   bargeMicMedian: number;
@@ -396,8 +412,24 @@ export function nextSilenceState(
   ) {
     closingSeen = true;
   }
+  // Who owes speech next, read off the interviewer's last finished turn
+  // (DECISIONS 082). The clock restarts here because the nudge counts quiet
+  // since the OWING transcript, and because the ladder should measure the
+  // candidate's silence from the end of the question rather than from
+  // whenever the room last happened to be quiet.
+  //
+  // A scaffold is exempt from both halves. Once a stage has fired, the
+  // stretch belongs to the candidate — they owe an answer to the question
+  // that opened it — and the reassurance the ladder just put in Morgan's
+  // mouth ("Take your time.") is not a turn he may be nudged for. Letting it
+  // set the obligation nudged him three seconds after every scaffold, into a
+  // candidate who was still thinking, and restarted the ladder's clock so
+  // the 15 s rung announced "about fifteen seconds" some 26 s in.
+  // stagesSent is the exact predicate: it is non-zero only while a scaffold
+  // stretch is open, and candidate speech past STALL_BLIP_MAX_S clears it.
   if (
     !closingSeen &&
+    stagesSent === 0 &&
     tick.finishedTranscript !== null &&
     tick.finishedTranscript !== undefined
   ) {
@@ -485,12 +517,24 @@ export function nextSilenceState(
     }
     if (morganOwesSpeech && quietS >= TURN_NUDGE_S) {
       effects.turnNudge = true;
+      // The nudge carries its own response.create, so it consumes a debounce
+      // expiring on this same tick — exactly as a scaffold does below.
+      // Without this the two co-fire: a commit landing while Morgan still
+      // owed a question put the debounce's expiry and the 3 s fuse on one
+      // tick, and the tick asked him to speak twice.
+      effects.triggerResponse = false;
       morganOwesSpeech = false;
       responseInFlight = true;
       responseDueInS = null;
     }
     const stages = candidateCommitSeen ? SILENCE_STAGES : GREETING_STAGES;
     const next = stages[stagesSent];
+    // While Morgan owes speech the candidate-facing ladder is replaced, not
+    // merely deferred (DECISIONS 082). At today's numbers the second clause
+    // never decides anything on its own — the 3 s fuse always fires before
+    // the earliest rung is due, and the first clause covers that tick — so
+    // it survives mutation on purpose. It is the whole rule the day
+    // TURN_NUDGE_S passes a rung; the test that pins the ordering names it.
     if (
       !effects.turnNudge &&
       !morganOwesSpeech &&

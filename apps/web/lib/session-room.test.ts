@@ -8,6 +8,8 @@ import {
   CLOSING_MARKER,
   HARD_CUT_S,
   GREETING_STAGES,
+  LEAK_FLOOR,
+  medianPeak,
   INITIAL_SILENCE_STATE,
   endedRoomNotice,
   RESPONSE_DEBOUNCE_S,
@@ -64,6 +66,47 @@ describe("bargeCutDecision", () => {
     expect(bargeCutDecision({ sustainedMs: BARGE_SUSTAIN_MS, bargeMicMedian: 0.015, leakBaselineMedian: 0, corr: null })).toEqual({ cut: true, reason: "cut" });
     expect(bargeCutDecision({ sustainedMs: BARGE_SUSTAIN_MS, bargeMicMedian: 0.015, leakBaselineMedian: 0, corr: { verdict: "indeterminate", r: 1, lagMs: 0, n: 2 } })).toEqual({ cut: true, reason: "cut" });
   });
+
+  it("names the first failing condition when several fail at once", () => {
+    // Every row below fails more than one condition, so the reason it
+    // carries is evidence of the ORDER and not merely of the condition. The
+    // trail's barge-hold entries are read as "which condition failed", and a
+    // reordering would relabel them all without changing a single cut.
+    const echo = { verdict: "echo" as const, r: 1, lagMs: 0, n: 6 };
+    expect(bargeCutDecision({ sustainedMs: BARGE_SUSTAIN_MS - 1, bargeMicMedian: 0, leakBaselineMedian: 1, corr: echo }).reason).toBe("sustain");
+    expect(bargeCutDecision({ sustainedMs: BARGE_SUSTAIN_MS, bargeMicMedian: 0, leakBaselineMedian: 1, corr: echo }).reason).toBe("level");
+    expect(bargeCutDecision({ sustainedMs: BARGE_SUSTAIN_MS, bargeMicMedian: 3, leakBaselineMedian: 1, corr: echo }).reason).toBe("corr-echo");
+  });
+
+  it("raises the bar with the room's own leak, and floors it in an earphone room", () => {
+    const quietRoom = { sustainedMs: BARGE_SUSTAIN_MS, leakBaselineMedian: 0, corr: null };
+    expect(bargeCutDecision({ ...quietRoom, bargeMicMedian: BARGE_LEVEL_MULTIPLE * LEAK_FLOOR }).cut).toBe(true);
+    expect(bargeCutDecision({ ...quietRoom, bargeMicMedian: BARGE_LEVEL_MULTIPLE * LEAK_FLOOR - 1e-6 }).cut).toBe(false);
+    // The same speech in a loud open room has to clear that room's leak.
+    const loudRoom = { sustainedMs: BARGE_SUSTAIN_MS, leakBaselineMedian: 0.1, corr: null };
+    expect(bargeCutDecision({ ...loudRoom, bargeMicMedian: BARGE_LEVEL_MULTIPLE * LEAK_FLOOR }).cut).toBe(false);
+    expect(bargeCutDecision({ ...loudRoom, bargeMicMedian: BARGE_LEVEL_MULTIPLE * 0.1 }).cut).toBe(true);
+  });
+});
+
+describe("medianPeak", () => {
+  it("takes the middle of a spiky series, never its mean", () => {
+    // The two series the cut compares are short and spiky. One loud tick of
+    // leak inflates a baseline mean enough to hide a real barge-in, and one
+    // silent tick inside a barge episode drags its mean under the same bar,
+    // so a mean here is a wrong cut in either direction.
+    const leakWithOneSpike = [0.01, 0.01, 0.01, 0.01, 0.9];
+    expect(medianPeak(leakWithOneSpike)).toBe(0.01);
+    expect(medianPeak(leakWithOneSpike)).not.toBeCloseTo(0.188, 3);
+    const bargeWithOneSilentTick = [0, 0.4, 0.5, 0.6];
+    expect(medianPeak(bargeWithOneSilentTick)).toBeCloseTo(0.45, 10);
+    expect(medianPeak([])).toBe(0);
+    expect(medianPeak([0.3])).toBe(0.3);
+    // Unsorted input, and the input is not mutated.
+    const unsorted = [0.5, 0.1, 0.9];
+    expect(medianPeak(unsorted)).toBe(0.5);
+    expect(unsorted).toEqual([0.5, 0.1, 0.9]);
+  });
 });
 
 describe("assistantOutputItemId", () => {
@@ -71,6 +114,34 @@ describe("assistantOutputItemId", () => {
     expect(assistantOutputItemId(JSON.stringify({ type: "response.output_item.added", item: { role: "assistant", id: "a1" } }))).toBe("a1");
     expect(assistantOutputItemId(JSON.stringify({ type: "response.output_item.added", item: { role: "user", id: "u1" } }))).toBeNull();
     expect(assistantOutputItemId("bad json")).toBeNull();
+  });
+});
+
+describe("the turn policy's recorded numbers", () => {
+  it("holds every lever DECISIONS 080-082 chose at the value it chose", () => {
+    // These six are levers with field arithmetic and revisit conditions
+    // behind them, and until now every test reached them through the symbol,
+    // so any of them could have been retuned in silence. 0.45 in particular
+    // is only safe BECAUSE of the cancel window (080): a revert to 0.6 undoes
+    // half of one decision and leaves the other half standing, which is the
+    // shape of change that has to argue for itself in DECISIONS.md first.
+    expect(RESPONSE_DEBOUNCE_S).toBe(0.45);
+    expect(TURN_NUDGE_S).toBe(3.0);
+    expect(BARGE_SUSTAIN_MS).toBe(750);
+    expect(BARGE_LEVEL_MULTIPLE).toBe(3);
+    expect(LEAK_FLOOR).toBe(0.005);
+    expect(TURN_STATUS_PREFIX).toBe("[turn status]");
+  });
+
+  it("keeps the nudge fuse shorter than the first scaffold rung", () => {
+    // 082 makes the two ladders alternatives, and this ordering is what
+    // decides between them in practice: while Morgan owes, his 3 s fuse
+    // always burns down before the candidate-facing ladder's earliest rung
+    // is due, so the nudge is what the room says. The reducer suppresses
+    // stages while he owes as well, which is belt and braces at these
+    // values and the whole guard the day either number moves.
+    expect(TURN_NUDGE_S).toBeLessThan(SILENCE_STAGES[0].at);
+    expect(TURN_NUDGE_S).toBeLessThan(GREETING_STAGES[0].at);
   });
 });
 
@@ -121,6 +192,15 @@ describe("response cancel window and owes-speech ladder", () => {
     }));
     expect(closing.state.closingSeen).toBe(true);
     expect(closing.effects.turnNudge).toBe(false);
+    // The closing line ends without a question on purpose — it is the one
+    // turn 082 exempts. It must not leave an obligation behind that the
+    // linger would then have to outrun.
+    const closed = nextSilenceState(
+      { ...INITIAL_SILENCE_STATE, closingSeen: true },
+      silenceTick({ finishedTranscript: "That is all the time we have." }),
+    );
+    expect(closed.state.morganOwesSpeech).toBe(false);
+    expect(closed.state.quietS).toBe(0);
   });
 
   it("publishes the exact turn note and greeting ladder", () => {
@@ -131,6 +211,110 @@ describe("response cancel window and owes-speech ladder", () => {
       `${SILENCE_STATUS_PREFIX} Still no answer after about fifteen seconds. They may not be hearing you at all. Say you might be having audio trouble and that you will wait for them.`,
       `${SILENCE_STATUS_PREFIX} Still nothing after about thirty seconds. Gently say the room stays open and you are ready whenever they can hear you. Never move on to the interview.`,
     ]);
+  });
+
+  it("starts the fuse when Morgan's audio stops, not when his transcript lands", () => {
+    // response.output_audio_transcript.done fires at GENERATION end. Today's
+    // trail has it 2.1 s into an utterance whose audio ran nine more seconds,
+    // so an owes-speech flag derived there is live while Morgan is still
+    // audibly talking. The quiet accumulator is what keeps the fuse honest:
+    // it does not advance on an audible tick, so the 3 s is measured from
+    // the audio, not from the transcript.
+    let result = nextSilenceState(
+      INITIAL_SILENCE_STATE,
+      silenceTick({ interviewerAudible: true, finishedTranscript: "We will cover three areas." }),
+    );
+    expect(result.state.morganOwesSpeech).toBe(true);
+    expect(result.state.quietS).toBe(0);
+    for (let i = 0; i < 36; i += 1) {
+      result = nextSilenceState(result.state, silenceTick({ interviewerAudible: true }));
+      expect(result.effects.turnNudge).toBe(false);
+    }
+    expect(result.state.quietS).toBe(0);
+    const quietTicksToNudge: number[] = [];
+    for (let i = 1; i <= 16; i += 1) {
+      result = nextSilenceState(result.state, silenceTick());
+      if (result.effects.turnNudge) quietTicksToNudge.push(i);
+    }
+    expect(quietTicksToNudge).toEqual([TURN_NUDGE_S / 0.25]);
+  });
+
+  it("lets a nudge consume a debounce expiring on the same tick", () => {
+    // Reachable: a commit landing while Morgan still owed a question puts the
+    // debounce's expiry and the 3 s fuse on one tick. Both effects mean a
+    // response.create, and the nudge carries its own, so the tick must ask
+    // him to speak exactly once.
+    let result = nextSilenceState(
+      INITIAL_SILENCE_STATE,
+      silenceTick({ interviewerAudible: true, finishedTranscript: "We will look at scoping." }),
+    );
+    let state = { ...result.state, quietS: 2.25 };
+    result = nextSilenceState(state, silenceTick({ commitArrived: true }));
+    expect(result.state.quietS).toBe(2.5);
+    state = result.state;
+    result = nextSilenceState(state, silenceTick());
+    expect(result.effects).toMatchObject({ turnNudge: false, triggerResponse: false });
+    result = nextSilenceState(result.state, silenceTick());
+    expect(result.state.quietS).toBe(3);
+    expect(result.effects.turnNudge).toBe(true);
+    expect(result.effects.triggerResponse).toBe(false);
+    expect(result.effects.stage).toBeNull();
+  });
+
+  it("consumes a debounce still counting down when the nudge fires", () => {
+    // The tick above catches the two effects landing together. This is the
+    // near miss: the commit arrives while Morgan owes, the fuse burns out
+    // first, and the debounce is left mid-count. Left armed it expires two
+    // ticks later and asks him to speak a second time, 500 ms into the
+    // continuation the nudge just requested.
+    let result = nextSilenceState(
+      INITIAL_SILENCE_STATE,
+      silenceTick({ interviewerAudible: true, finishedTranscript: "Three areas, then." }),
+    );
+    result = nextSilenceState({ ...result.state, quietS: TURN_NUDGE_S - 0.25 }, silenceTick({ commitArrived: true }));
+    expect(result.effects.turnNudge).toBe(true);
+    expect(result.state.responseDueInS).toBeNull();
+    const laterTriggers: number[] = [];
+    for (let i = 1; i <= 8; i += 1) {
+      result = nextSilenceState(result.state, silenceTick());
+      if (result.effects.triggerResponse) laterTriggers.push(i);
+    }
+    expect(laterTriggers).toEqual([]);
+  });
+
+  it("does not let the ladder's own reassurance make Morgan owe a turn", () => {
+    // The 8 s rung puts "Take your time." in Morgan's mouth: no question
+    // mark, and every word of it is the room speaking for the candidate's
+    // benefit. Read as a turn it made him owe speech, which nudged him three
+    // seconds later into a candidate who was still thinking, and restarted
+    // the ladder's clock so the next rung's "about fifteen seconds" ran to
+    // roughly twenty-six.
+    let result = nextSilenceState(
+      { ...INITIAL_SILENCE_STATE, candidateCommitSeen: true },
+      silenceTick({ interviewerAudible: true, finishedTranscript: "What did you do next?" }),
+    );
+    const fired: string[] = [];
+    for (let i = 0; i < 32; i += 1) {
+      result = nextSilenceState(result.state, silenceTick());
+      if (result.effects.stage) fired.push(`stage ${result.effects.stage.at} at ${result.state.quietS}`);
+    }
+    expect(fired).toEqual(["stage 8 at 8"]);
+    // The scaffold's transcript, mid-audio and then draining.
+    result = nextSilenceState(
+      result.state,
+      silenceTick({ interviewerAudible: true, finishedTranscript: "Take your time." }),
+    );
+    expect(result.state.morganOwesSpeech).toBe(false);
+    expect(result.state.quietS).toBe(8);
+    for (let i = 0; i < 8; i += 1) {
+      result = nextSilenceState(result.state, silenceTick({ interviewerAudible: true }));
+    }
+    for (let i = 0; i < 32; i += 1) {
+      result = nextSilenceState(result.state, silenceTick());
+      if (result.effects.turnNudge) fired.push(`nudge at ${result.state.quietS}`);
+      if (result.effects.stage) fired.push(`stage ${result.effects.stage.at} at ${result.state.quietS}`);
+    }
+    expect(fired).toEqual(["stage 8 at 8", "stage 15 at 15"]);
   });
 
   it("uses greeting stages until a commit is permanently seen", () => {

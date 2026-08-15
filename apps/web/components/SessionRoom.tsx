@@ -72,7 +72,6 @@ import {
 import {
   CONNECTION_LOST_MESSAGE,
   CLOSING_MARKER,
-  BARGE_SUSTAIN_MS,
   ECHO_OUTLIVE_MS,
   ECHO_START_WINDOW_MS,
   HARD_CUT_S,
@@ -80,11 +79,13 @@ import {
   INITIAL_GATE_STATE,
   INITIAL_GUARD_STATE,
   INITIAL_SILENCE_STATE,
+  LEAK_FLOOR,
   SESSION_BUDGET_S,
   SUSPEND_GAP_S,
   TURN_NUDGE_TEXT,
   assistantOutputItemId,
   bargeCutDecision,
+  medianPeak,
   committedItemId,
   closingArmedAt,
   dueTimeStatus,
@@ -545,6 +546,7 @@ export default function SessionRoom({
     utteranceAudioStartRef.current = 0;
     assistantItemIdRef.current = null;
     bargeActiveRef.current = null;
+    lastBargeCutAtRef.current = 0;
     connectingRef.current = true;
     setError(null);
     setPhase("connecting");
@@ -849,9 +851,12 @@ export default function SessionRoom({
           // audio — an echo dies with its source, a barge-in keeps going.
           // Measured at commit time, which absorbs the 900 ms VAD tail.
           const sinceMorganMs = Date.now() - lastMorganAudibleAtRef.current;
-          // Shadow only (DECISIONS 076): measured beside the timing verdict,
-          // recorded, and never consulted. Computed before the branch so it
-          // lands on BOTH arms, the plain commit and the suppression.
+          // Shadow only on THIS path (DECISIONS 076): measured beside the
+          // timing verdict, recorded, and never consulted — commit
+          // suppression stays timing-owned. DECISIONS 081 granted the module
+          // one narrow authority elsewhere, a veto inside bargeCutDecision on
+          // the barge path, and nothing wider. Computed before the branch so
+          // it lands on BOTH arms, the plain commit and the suppression.
           const commitAtMs = performance.now();
           // No speech_started before this commit means there is no episode to
           // judge. Hand the module a deliberately inverted window, which its
@@ -1025,27 +1030,24 @@ export default function SessionRoom({
       }
       wasMorganAudibleRef.current = interviewerAudible;
 
-      const median = (values: number[]) => {
-        if (values.length === 0) return 0;
-        const sorted = [...values].sort((a, b) => a - b);
-        const middle = Math.floor(sorted.length / 2);
-        return sorted.length % 2 === 0
-          ? (sorted[middle - 1] + sorted[middle]) / 2
-          : sorted[middle];
-      };
       const barge = bargeActiveRef.current;
       if (barge !== null) {
         if (candidateAudibleRef.current && interviewerAudible) {
           barge.micSamples.push(micPeak);
           const corr = echoCorrVerdict(corrRingRef.current, barge.startMs, tickAt);
+          const bargeMicMedian = medianPeak(barge.micSamples);
+          const leakBaselineMedian = medianPeak(leakBaselineRef.current);
+          // Every condition of the cut lives in bargeCutDecision (DECISIONS
+          // 081). Nothing here may re-test one of them: a second copy of the
+          // sustain window drifts from the first the day one of them moves.
           const decision = bargeCutDecision({
             sustainedMs: tickAt - barge.startMs,
-            bargeMicMedian: median(barge.micSamples),
-            leakBaselineMedian: median(leakBaselineRef.current),
+            bargeMicMedian,
+            leakBaselineMedian,
             corr,
           });
           barge.lastReason = decision.reason;
-          if (decision.cut && tickAt - barge.startMs >= BARGE_SUSTAIN_MS && dcRef.current?.readyState === "open") {
+          if (decision.cut && dcRef.current?.readyState === "open") {
             dcRef.current.send(JSON.stringify({ type: "output_audio_buffer.clear" }));
             const itemId = assistantItemIdRef.current;
             if (itemId !== null) {
@@ -1056,8 +1058,8 @@ export default function SessionRoom({
                 audio_end_ms: Math.round(tickAt - utteranceAudioStartRef.current),
               }));
             }
-            const baseline = Math.max(median(leakBaselineRef.current), 0.005);
-            diag("barge-cut", `ratio=${(median(barge.micSamples) / baseline).toFixed(1)} r=${corr.r.toFixed(2)} n=${corr.n}`);
+            const ratio = bargeMicMedian / Math.max(leakBaselineMedian, LEAK_FLOOR);
+            diag("barge-cut", `ratio=${ratio.toFixed(1)} r=${corr.r.toFixed(2)} n=${corr.n}`);
             lastBargeCutAtRef.current = tickAt;
             bargeActiveRef.current = null;
           }

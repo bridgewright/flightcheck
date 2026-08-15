@@ -14,6 +14,7 @@
 
 import {
   CLOSING_LINGER_S,
+  GREETING_STAGES,
   INITIAL_SILENCE_STATE,
   RESPONSE_DEBOUNCE_S,
   SILENCE_STAGES,
@@ -186,7 +187,16 @@ function checkTrace(run: ScenarioRun): Violation[] {
     const kind = classify(t);
     const carriedCommit = t.commitArrived && kind !== "suspend";
 
-    if (t.finishedTranscript !== null && t.finishedTranscript !== undefined) {
+    // A finished interviewer turn restarts the quiet stretch it hands over —
+    // unless the closing has been seen (that stretch is measured separately)
+    // or a scaffold is open, in which case the transcript is the scaffold's
+    // own and the stretch still belongs to the candidate.
+    if (
+      !after.closingSeen &&
+      s.stagesFired === 0 &&
+      t.finishedTranscript !== null &&
+      t.finishedTranscript !== undefined
+    ) {
       s.quietS = 0;
     }
 
@@ -306,6 +316,7 @@ function checkTrace(run: ScenarioRun): Violation[] {
     } else if (
       kind === "quiet" &&
       effects.stage === null &&
+      !effects.turnNudge &&
       s.armedAtIndex !== null &&
       s.quietSinceCommitS >= RESPONSE_DEBOUNCE_S
     ) {
@@ -338,7 +349,9 @@ function checkPerTick(run: ScenarioRun): Violation[] {
     const acted = effects.stage !== null || effects.triggerResponse || effects.turnNudge;
     const what = effects.stage
       ? `stage ${effects.stage.at}`
-      : "triggerResponse";
+      : effects.turnNudge
+        ? "turnNudge"
+        : "triggerResponse";
 
     // I2 — one tick asks Morgan to speak at most once.
     if (effects.stage !== null && effects.triggerResponse) {
@@ -351,13 +364,24 @@ function checkPerTick(run: ScenarioRun): Violation[] {
     if (effects.stage !== null && effects.turnNudge) {
       add("I2", index, "a stage and turn nudge fired on one tick");
     }
+    if (effects.turnNudge && effects.triggerResponse) {
+      add("I2", index, "a turn nudge and a response trigger fired on one tick");
+    }
     if (effects.cancelResponse && (effects.triggerResponse || effects.stage || effects.turnNudge)) {
       add("I2", index, "cancelResponse and a response trigger co-fired");
     }
     if (t.interviewerAudible && after.responseInFlight) {
       add("I4", index, "response remained cancelable after interviewer audio");
     }
-    if (step.before.candidateCommitSeen && effects.stage?.text.includes("audio check")) {
+    // The greeting rungs are addressed to a candidate who has never spoken.
+    // Matched by identity against the whole list, not by a phrase one rung
+    // happens to carry: two of the three never say "audio check", so a
+    // phrase match would have pinned one third of the ladder.
+    if (
+      step.before.candidateCommitSeen &&
+      effects.stage !== null &&
+      GREETING_STAGES.some((stage) => stage.text === effects.stage?.text)
+    ) {
       add("I1", index, "a greeting stage fired after a candidate commit");
     }
     // I3 — never speak over the candidate.
