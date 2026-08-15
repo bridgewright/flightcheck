@@ -216,6 +216,11 @@ describe("owes-speech reads the questions this product actually asks", () => {
       (ask: string) => `Okay, that's fair. So, ${ask[0].toLowerCase()}${ask.slice(1)}`,
       (ask: string) => `Good - the numbers make that land. And ${ask[0].toLowerCase()}${ask.slice(1)}`,
       (ask: string) => `Mm-hm. Right, ${ask[0].toLowerCase()}${ask.slice(1)}`,
+      // The reaction and the ask in ONE sentence, which is the shape a
+      // sentence-head rule cannot reach at all: nothing here opens a
+      // sentence, so only reading the clause behind the marker finds it.
+      (ask: string) => `That's a strong result, so ${ask[0].toLowerCase()}${ask.slice(1)}`,
+      (ask: string) => `I can see why that mattered - now ${ask[0].toLowerCase()}${ask.slice(1)}`,
     ];
     const heard = spoken.flatMap((ask) => transitions.map((shape) => shape(ask)));
     expect(heard.length).toBeGreaterThanOrEqual(200);
@@ -298,6 +303,13 @@ describe("owes-speech reads the questions this product actually asks", () => {
     // above and reopens the defect, so no corpus can catch it: these can.
     expect(transcriptCarriesAsk("That's helpful. Now, describe a decision you made.")).toBe(true);
     expect(transcriptCarriesAsk("Okay. So, tell me about a time you led something.")).toBe(true);
+    // One sentence, reaction first: no sentence here opens with a stem, so
+    // only the clause rule can find the ask. And the ask is not the last
+    // clause - the trailing qualifier is - so only reading the clause the
+    // marker announces can find it.
+    expect(transcriptCarriesAsk("That's a strong result, so tell me about the rollout.")).toBe(true);
+    expect(transcriptCarriesAsk("That's a strong result, so tell me about the rollout, with numbers.")).toBe(true);
+    expect(transcriptCarriesAsk("I can see why that mattered - now walk me through what you did next.")).toBe(true);
     expect(transcriptCarriesAsk("We'll look at scoping, how you land impact, and composure.")).toBe(false);
     expect(transcriptCarriesAsk("Today we'll cover three areas: how you scope, why it mattered, and what you would redo.")).toBe(false);
     // A dimension named for a verb sits in that same list. Read at every

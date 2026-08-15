@@ -378,6 +378,21 @@ function askOpening(fragment: string): string {
   return opening;
 }
 
+/** Does this fragment open with a discourse marker, before any stripping?
+ *
+ * This is what tells an ask hung off a reaction from an item in a list. In
+ * "so tell me about the rollout, with numbers" the ask is a middle clause,
+ * and it announces itself with the marker; in "scoping, design sense, and
+ * composure" the middle clause is a noun phrase with no marker in front of
+ * it. Without the distinction the rule either misses the first or reads the
+ * second as a question about design. */
+function opensWithMarker(fragment: string): boolean {
+  const raw = fragment.toLowerCase().replace(/[‘’]/g, "'").replace(/^[^a-z]+/, "");
+  return ASK_MARKERS.some(
+    (marker) => raw.startsWith(marker) && !/[a-z]/.test(raw.charAt(marker.length)),
+  );
+}
+
 function openingMatches(opening: string, stems: readonly string[]): boolean {
   return stems.some((stem) => {
     if (!opening.startsWith(stem)) return false;
@@ -396,13 +411,19 @@ function openingMatches(opening: string, stems: readonly string[]): boolean {
 function sentenceIsAsk(sentence: string): boolean {
   if (sentence.endsWith("?")) return true;
   if (openingMatches(askOpening(sentence), ASK_STEMS)) return true;
-  // The FINAL clause only. Every clause would read "we'll look at scoping,
-  // design sense, and composure." as an ask on a dimension that happens to be
-  // named for a verb; the last clause is where an interviewer's ask lands
-  // after the reaction the instructions require in front of it.
+  // A clause that is either the sentence's last or announced by a marker.
+  // Every clause instead would read "we'll look at scoping, design sense, and
+  // composure." as an ask about a dimension that happens to be named for a
+  // verb; the last clause alone misses "that's a strong result, so tell me
+  // about the rollout, with numbers", where the ask is in the middle and the
+  // trailing qualifier is not.
   const clauses = sentence.split(/[,;:()—–]|\s-\s/);
-  const last = clauses[clauses.length - 1];
-  return clauses.length > 1 && openingMatches(askOpening(last), DIRECTIVE_ASK_STEMS);
+  return clauses.some(
+    (clause, index) =>
+      (index === clauses.length - 1 || opensWithMarker(clause)) &&
+      index > 0 &&
+      openingMatches(askOpening(clause), DIRECTIVE_ASK_STEMS),
+  );
 }
 
 /**
