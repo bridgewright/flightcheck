@@ -621,17 +621,19 @@ def test_quick_instructions_remain_byte_identical():
     # Moved deliberately once since: DECISIONS 077 (2026-08-15) gave the
     # quick opening the structural audio-check turn stop the live session
     # proved the prose could not deliver. The pin exists against accidental
-    # drift, not against recorded decisions.
+    # drift, not against recorded decisions. Moved again in the same batch's
+    # round-1 review, which added the one clause keeping the new stop from
+    # railroading past a candidate who says they cannot hear.
     named = build_interviewer_instructions(
         plan_quick_session("ACME Labs", "Staff AI Engineer"), None,
         _make_profile(), company="ACME Labs", role="Staff AI Engineer")
     bare = build_interviewer_instructions(
         plan_quick_session(None, None), None, _make_profile())
     assert hashlib.sha256(named.encode()).hexdigest() == (
-        "47b6ef57085a8ad79f61b546603a33bc23cadd80f0812c37b6dad4b03c006cc2"
+        "fea08f1ddf02abd2a431c67d9d7c95f5435f945a946417a2e688fc9a8f409ed6"
     )
     assert hashlib.sha256(bare.encode()).hexdigest() == (
-        "a569943fb23006a247ce8da68f162e87baf8bc068dcefcdb5db1768ac0819b1a"
+        "f7299183a299289042b4abc8cb4fd4810c0a8d0d4a008b67f3534aeb24d251e6"
     )
 
 
@@ -648,9 +650,13 @@ def test_standard_twenty_minute_instructions_remain_byte_identical():
     # Moved a third time by DECISIONS 077 (2026-08-15): the opening's two
     # checks became structural turn stops after the first gated live
     # session showed one 24.5 s response answering both of them itself.
-    # The delta is confined to # OPENING.
+    # Moved a fourth time by that batch's round-1 review, which closed the
+    # self-answer ban over the reply instead of over two observed tokens and
+    # stopped beat 2 railroading past a "no, I can't hear you". Both moves
+    # are confined to # OPENING -- verified by rendering main's planner and
+    # diffing the two documents section by section, not by trusting the diff.
     assert hashlib.sha256(_instructions().encode()).hexdigest() == (
-        "a5c7175a30af5a468e61dc43c061e5b371526f9537dedff9ffc20934fc691ca7"
+        "858d9635a68f460fe95d57299986cd4cbf0c3e898ea9335f76bf59b03a3a238d"
     )
 
 
@@ -972,6 +978,13 @@ def test_opening_checks_are_structural_turn_stops():
     assert "Each beat is a SEPARATE turn of yours, never one speech" in text
     assert "stop speaking there and end your turn" in text
     assert 'no "great", no "all right"' in text
+    # Round 1: the two banned tokens are the two the live session happened to
+    # say. Pinning only those bans the observed transcript, not the behavior --
+    # "Perfect, let's dive in" self-answers the check just as completely. The
+    # rule has to close over the reply, which also scopes the two tokens to
+    # this check rather than reading as a session-wide ban on the words (the
+    # document asks for acknowledgments everywhere else).
+    assert "no reaction of any kind to a reply you have not heard" in text
     assert "the answer belongs to the candidate" in text
     assert "never fill the silence on your own" in text
     # The old prose-only waiting sentence is gone in both spots — leaving
@@ -990,6 +1003,25 @@ def test_quick_opening_check_is_a_structural_turn_stop():
     assert "Never answer the check yourself" in named
     assert "[silence status] note will prompt you" in named
     assert "Once they answer" in named
+
+
+def test_opening_check_does_not_railroad_past_a_no():
+    # Round 1: the stop is what makes a "no, I can't hear you" reachable at
+    # all -- before it, the interviewer answered its own check and never
+    # processed the reply. "Once they have answered: [framing]" read alone
+    # railroads into the framing whatever the answer was, and nothing else in
+    # the document covers bad audio: # RULES' follow-their-thread rule is
+    # about barge-in, and # LANGUAGE's retry is about language. Both renders
+    # forbid the railroad without scripting a fix -- what Morgan does about
+    # it is his judgment, the way a human interviewer handles it.
+    text = _instructions()
+    assert "If they say they cannot hear you well" in text
+    assert "sort that out with them before any framing" in text
+    named = build_interviewer_instructions(
+        plan_quick_session("ACME Labs", "Staff AI Engineer"), None,
+        _make_profile(), company="ACME Labs", role="Staff AI Engineer")
+    assert "If they say they cannot hear you well" in named
+    assert "sort that out with them first" in named
 
 
 def test_rules_include_overlap_yield():
