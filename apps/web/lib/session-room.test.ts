@@ -504,6 +504,13 @@ describe("response cancel window and owes-speech ladder", () => {
 
   it("publishes the exact turn note and greeting ladder", () => {
     expect(TURN_NUDGE_TEXT.startsWith(TURN_STATUS_PREFIX)).toBe(true);
+    // Both branches must survive (082 merge fix): the strand case gets its
+    // ask; the answered-their-question case gets a check-in, never an
+    // ordered question — the instructions forbid tacking one onto an answer.
+    expect(TURN_NUDGE_TEXT).toContain("If you owe them a question, ask it now");
+    expect(TURN_NUDGE_TEXT).toContain("answering a question of theirs");
+    expect(TURN_NUDGE_TEXT).toContain("hand the turn back");
+    expect(TURN_NUDGE_TEXT).not.toContain("end it with your question");
     expect(GREETING_STAGES.map(({ at }) => at)).toEqual(SILENCE_STAGES.map(({ at }) => at));
     expect(GREETING_STAGES.map(({ text }) => text)).toEqual([
       `${SILENCE_STATUS_PREFIX} The candidate has not answered your audio check for about eight seconds. Warmly ask once more whether they can hear you. Check nothing else and do not move on.`,

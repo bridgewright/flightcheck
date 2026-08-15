@@ -290,7 +290,31 @@ export const GREETING_STAGES: SilenceStage[] = [
 
 export const TURN_STATUS_PREFIX = "[turn status]";
 export const TURN_NUDGE_S = 3.0;
-export const TURN_NUDGE_TEXT = `${TURN_STATUS_PREFIX} You stopped without asking the candidate anything. Continue your turn now and end it with your question to them.`;
+/** Phase-honest on purpose (082 merge fix): the client cannot hear WHAT the
+ * candidate said, so after Morgan answers a candidate's own question his
+ * turn legitimately ends on a statement — and the instructions forbid
+ * tacking a question onto an answer just to close a turn. The nudge names
+ * both branches instead of assuming the stranded one.
+ *
+ * "still owe" and not "owe", because the nudge is live through the wrap-up
+ * window: closingSeen only flips at the closing line, so between the
+ * wrap-up note and the closing this note is the last thing Morgan hears
+ * about his turn. The wrap-up note allows at most one short final question,
+ * so the hedge lets him decline one he no longer owes rather than being
+ * ordered into it.
+ *
+ * The second branch ends on a question too, which is what keeps it
+ * compatible with 082's global rule and with the detector above: a check-in
+ * ("Did that answer it?") is a question mark on the wire, so the next
+ * transcript reads as an ask, the candidate owes, and the ladder takes over
+ * from the nudge instead of firing again. What the instructions forbid is
+ * an INTERVIEW question tacked onto an answer, which is the phrase this
+ * names. */
+export const TURN_NUDGE_TEXT =
+  `${TURN_STATUS_PREFIX} Your last turn gave the candidate nothing to ` +
+  `answer. If you still owe them a question, ask it now. If you were ` +
+  `answering a question of theirs, do not add an interview question - ` +
+  `just ask whether that answered it, and wait for them.`;
 
 /** Openings that make a sentence an ask, even without a question mark.
  *
