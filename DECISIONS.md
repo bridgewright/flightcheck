@@ -3863,10 +3863,13 @@ it.)
   forbidden-topic check learns the governed form: a forbidden topic
   matching an `indirect` dimension at or below the weight cap passes
   and is recorded as governed in the report; a match on a `direct`
-  dimension still fails. **(c)** Each fixture earns one recorded
-  second compile attempt on failure — every attempt kept in the
-  report, pass meaning any attempt passed — and the 1.0 baseline does
-  not move.
+  dimension still fails. **(c)** A fixture whose COMPILE fails
+  earns one recorded second attempt — every attempt kept in the
+  report, pass meaning the retried compile passed every check — and
+  the 1.0 baseline does not move. A rubric that compiled but fails
+  the deterministic checks gets no second chance: those checks are
+  the gate doing its job on a real output, and the recorded noise
+  (both flaky runs) was compile-failure class.
 - **Why:** the five-run record in the 078–079 amendments: two of ten
   governed compiles died post-retry to the same citation-less delivery
   dimension (twice literally "composure-clarity"), and the base tree
