@@ -3558,3 +3558,53 @@ isolated at last by Phase 1 removing the acoustics that masked it.
   compounds; the most recent scored session is the live coaching state.
 - **Revisit when:** cross-package coaching continuity (the rest of
   F-09's original framing) is scheduled.
+
+### 078–079 merge amendments (2026-08-15, integration)
+
+- **Review chains, by round.** T1 r1 confirmed three: the family-pair
+  classifier matched across the key/name boundary ("company-mission" +
+  "Alignment with stakeholders" read as peripheral — the exact bare-word
+  combination D2 forbids; caught by independent corpus re-derivation), the
+  evals cap predicate treated an absent governance declaration as False
+  (mutation survivor across 1,288 tests), and no test read a committed
+  stored-shape rubric end-to-end. T1 r2 then caught the one that mattered
+  most: apply_governance enforced only half of D3 — a NON-peripheral
+  dimension the model happened to mark indirect kept the mark, guarded by
+  prompt text alone, which is precisely the prompt-only enforcement 078
+  rejected; fixed by normalizing both directions, plus the six-session
+  simulation committed as a standing test. T2 r1 killed a decoy-call
+  evasion (split-literal copy beside a satisfied source pin — the
+  aliasing class); T2 r2 broke r1's own fix with fragment-per-span DOM
+  smuggling and re-pinned the note as reader-visible text. Round 2 broke
+  round 1's work again; the pattern holds.
+- **Merged-tree gates:** scorer 1,296 passed / 1 skipped + ruff clean;
+  web build + 3,396 tests / 137 files + typecheck 0 + lint 0; built-copy
+  armed 17/17 with the indirect probing note as the eighth canonical
+  sentence.
+- **The eval record, unhedged.** The batch self-imposed one live
+  faithfulness validation (the compiler prompt moved). Five runs today:
+  merged full 2/4 (license misuse on consultant-product-pivot;
+  citation-less composure-clarity on plain-control), merged full again
+  3/4 (citation-less composure-clarity, now on values-boilerplate),
+  two-fixture probes 2/2 on BOTH trees, and the decisive base-tree full
+  run 3/4 — failing values-boilerplate because the OLD compiler minted
+  "responsible-ai-judgment" as a content dimension from values
+  boilerplate: the exact disease this batch exists to fight, on record,
+  on main. Conclusion: the 1.0 baseline is not being met by the live
+  unversioned model on either tree today; the failures move between
+  fixtures and check classes run to run; none of the five runs failed a
+  governance check, and only the base tree produced the forbidden-topic
+  class. This deploy is mid-cycle — the tag-time eval gate stays fully
+  binding, and green-by-rerun was rejected as gate-gaming.
+- **Accepted residuals, named:** (1) /home's focus sentence ("This
+  session focuses there", lib/home.ts) can name an indirect dimension
+  once a governed rubric's indirect dim scores lowest — the planner will
+  not focus there, so the sentence would overstate; registered as
+  follow-up work rather than hot-patched (home.ts is outside every
+  reviewed zone). (2) next_drills may carry an indirect dimension's drill
+  into the carry-over block — accepted as designed: a once-if-natural
+  follow-up probe is exactly what indirect probing means. (3) The
+  recurring citation-less delivery dimension is a compile-robustness gap
+  older than this batch; registered as follow-up (deterministic repair
+  for product-licensed delivery citations, and whether the faithfulness
+  fixtures need a governed-indirect clause).
