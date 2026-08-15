@@ -3885,3 +3885,51 @@ it.)
   model retry.
 - **Revisit when:** the recorded second-attempt rate climbs — the
   report now measures it, so the next conversation reads a number.
+
+### 083 amendment (2026-08-15, review round)
+
+- The review's tie lens found the mirror unfaithful on score ties: the
+  planner breaks them by weight, descending, over the report's stable
+  order, while the sentence's reduce used strict less-than alone — two
+  tied direct dimensions could make /home promise one focus while the
+  planner delivered the other, in both sentence branches. The focus
+  choice now carries the planner's full ordering (score asc, weight
+  desc, report order); the weights ride in from the rubric already in
+  scope; weightless callers are byte-identical. One consequence is a
+  sentence variant this entry did not enumerate — "X 2.4, the lowest of
+  your N dimensions. This session focuses on Y." — which is this
+  entry's own rule applied to the tie case, now pinned by test. The
+  review also killed a false absolute in the eval report's governed
+  note, pinned the governed predicate's weight-cap half (a mutation had
+  survived the full suite), and narrowed the citation repair to
+  absent/null/empty so malformed shapes still reach pydantic.
+
+## 085 — the Google door's name, bought with configuration instead of money (2026-08-15)
+
+- **Decision:** F-93's branding half ships on the FREE path (user
+  directive: no paid custom auth domain). The OAuth consent branding is
+  fully configured — app name `flightcheck`, support email, homepage,
+  privacy and terms links on flightcheck.coach, and flightcheck.coach
+  added as a second authorized domain beside the Supabase callback host,
+  which stays: it is the redirect URI's home. Brand verification
+  submitted the same day.
+- **What happened, unhedged:** the automated check returned two
+  findings — the homepage does not describe the app's purpose, and the
+  OAuth app name does not match the homepage — and the served HTML
+  contradicts both: the title and og:site_name are exactly
+  "flightcheck", the meta description states the purpose, and the name
+  appears 24 times. Both findings were disputed with that evidence, the
+  verification questionnaire answered honestly (production app, basic
+  scopes only; the console itself confirms no data-access verification
+  is required), and the submission accepted. Status at record time:
+  branding under review.
+- **Rejected — the paid Supabase custom auth domain:** $10/mo plus a
+  plan tier for a cosmetic the free path may deliver; the user chose
+  free explicitly. It returns as the fallback only if the review denies
+  the brand.
+- **Rejected — editing the landing to appease the checker:** the page
+  already says what the checker claims is missing; changing true copy to
+  satisfy a false finding is backwards.
+- **Revisit when:** the review resolves. Approved: the chooser reads
+  "flightcheck" and F-93 closes on an empirical chooser screenshot.
+  Denied: the paid path goes back to the user as the remaining option.
