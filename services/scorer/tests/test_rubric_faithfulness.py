@@ -175,6 +175,28 @@ def test_resolved_slice_over_300_chars_is_a_problem():
     assert rubric.dimensions[0].jd_evidence == "platform end to end"
 
 
+def test_citation_less_delivery_dim_is_repaired_without_a_retry():
+    # F-96 (DECISIONS 084): the recurring live failure class -- the model
+    # forgets the delivery dimension's citation -- costs zero model calls
+    # now: the deterministic repair backfills the product methodology
+    # citation before validation, so the compile passes first attempt.
+    from scorer.rubric.repair import PRODUCT_DELIVERY_CITATION
+
+    rubric = _good_rubric()
+    delivery = next(d for d in rubric["dimensions"]
+                    if d["channel"] == "delivery")
+    delivery["citations"] = []
+    fake = FakeGenAI([json.dumps(rubric)])
+
+    compiled = _compile(fake)
+
+    assert len(fake.calls) == 1
+    repaired = next(d for d in compiled.dimensions
+                    if d.channel == "delivery")
+    assert [c.model_dump() for c in repaired.citations] == [
+        PRODUCT_DELIVERY_CITATION]
+
+
 def test_delivery_dim_with_fabricated_evidence_is_silently_nulled():
     dims = _rubric([
         _dim("structured-answers", "content", 0.7, "own growth analytics"),

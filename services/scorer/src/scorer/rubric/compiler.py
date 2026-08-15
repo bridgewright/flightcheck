@@ -20,6 +20,8 @@ model call. Never more than two generate_content calls per compile.
 """
 from __future__ import annotations
 
+import json
+
 from google.genai import types
 from pydantic import ValidationError
 
@@ -28,6 +30,7 @@ from scorer.promptsafe import fence, inline, neutralize_markers
 from scorer.resilience import call_with_retry
 from scorer.rubric.corpus import CorpusDoc
 from scorer.rubric.governance import apply_governance
+from scorer.rubric.repair import repair_delivery_citations
 from scorer.schemas import CandidateProfile, GenAIClientLike, ResearchFindings, Rubric
 from scorer.verbatim import locate_span
 
@@ -295,7 +298,15 @@ def compile_rubric(jd_text: str, profile: CandidateProfile, findings: ResearchFi
             what=what,
         )
         try:
-            rubric = Rubric.model_validate_json(response.text or "")
+            raw = json.loads(response.text or "")
+        except json.JSONDecodeError as error:
+            return None, str(error)
+        # F-96 (DECISIONS 084): the one honest deterministic repair, before
+        # validation -- a citation-less delivery dimension gains the
+        # product's methodology citation instead of burning the model retry.
+        raw = repair_delivery_citations(raw)
+        try:
+            rubric = Rubric.model_validate(raw)
         except ValidationError as error:
             return None, str(error)
         rubric, problems = _check_faithfulness(
