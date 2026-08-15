@@ -310,6 +310,10 @@ describe("owes-speech reads the questions this product actually asks", () => {
     expect(transcriptCarriesAsk("That's a strong result, so tell me about the rollout.")).toBe(true);
     expect(transcriptCarriesAsk("That's a strong result, so tell me about the rollout, with numbers.")).toBe(true);
     expect(transcriptCarriesAsk("I can see why that mattered - now walk me through what you did next.")).toBe(true);
+    // And the ask can close a sentence with no marker in front of it, which
+    // is the other half of the clause rule: a marker-only rule misses these.
+    expect(transcriptCarriesAsk("One more on that topic, describe the decision you made.")).toBe(true);
+    expect(transcriptCarriesAsk("I want to understand the scale here: walk me through the numbers.")).toBe(true);
     expect(transcriptCarriesAsk("We'll look at scoping, how you land impact, and composure.")).toBe(false);
     expect(transcriptCarriesAsk("Today we'll cover three areas: how you scope, why it mattered, and what you would redo.")).toBe(false);
     // A dimension named for a verb sits in that same list. Read at every
