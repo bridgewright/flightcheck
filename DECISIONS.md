@@ -3769,7 +3769,14 @@ it.)
   candidate. Closing excluded, empty transcripts excluded (a
   canceled response is not a turn), and a scaffold stretch
   excluded — the ladder's own reassurance is not a turn the
-  interviewer owes, which is a guard no detector can retire. While the
+  interviewer owes, which is a guard no detector can retire. The
+  detector is deliberately generous toward "ask", because the two
+  failure directions are not priced the same: a false "owes" is a
+  nudge talking over a thinking candidate — the defect this batch
+  exists to remove — while a false "ask" is one missed nudge that
+  the ladder recovers a few seconds later. Review round 2 pruned
+  the stem list by that same asymmetry, measuring each stem
+  against the statements it could wrongly swallow. While the
   INTERVIEWER owes, the candidate-facing ladder is replaced by a
   single short-fuse nudge at 3 seconds of quiet: a `[turn status]`
   system note — you stopped without asking anything; continue your
