@@ -587,8 +587,10 @@ Changes to targets are recorded here with date and reason — never silently.
   the first question, a monologue where a conversation was
   specified. The opening's two checks now become structural turn
   boundaries: the interviewer says the check and ends its turn,
-  never answers for the candidate, and lets the existing silence
-  scaffolding prompt a quiet room. Both openings get the stops —
+  never answers for the candidate, lets the existing silence
+  scaffolding prompt a quiet room — and, if the candidate answers
+  that they cannot hear, sorts that out before any framing rather
+  than reading on. Both openings get the stops —
   the paid session's and the free quick interview's, whose opening
   had no stop at all. If a transcript ever shows the monologue
   again, the recorded next move is splitting the opening across

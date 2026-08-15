@@ -3418,10 +3418,21 @@ isolated at last by Phase 1 removing the acoustics that masked it.
   stop speaking and end the turn; never answer the check yourself;
   the reply arrives as the candidate's turn. The "Sound good?"
   check before the first question gets the same structural stop.
-  The framing content between them is unchanged. Each stop carries
-  an explicit "if they stay silent, a [silence status] note will
-  prompt you — never fill the silence yourself", tying into the
-  scaffold ladder that already exists for exactly that room.
+  The framing content between them is unchanged. The FIRST stop
+  carries an explicit "if they stay silent, a [silence status] note
+  will prompt you; never fill the silence on your own"; the "Sound
+  good?" stop relies on the same ladder without restating it
+  (corrected at merge — this entry first claimed both stops carry
+  the line). And the ladder's own staged texts are written for a
+  candidate stuck mid-question ("where they were heading", "set
+  this question aside — want to try the next one instead?"), which
+  reads wrong at a greeting and at 30 seconds walks the
+  interviewer into offering to skip the audio check: making the
+  opening a place the ladder can fire is NEW in this entry, and
+  the ladder's greeting-time wording is registered open work on
+  the web side (review round 2's finding; the silent candidate —
+  dead mic, heard nothing to answer — is the realistic bad-audio
+  path, and it is the ladder's branch).
 - **Chosen: the quick interview's opening gets the same stops.**
   Its # OPENING has no stop at all, and it is the free funnel's
   first impression. The byte-for-byte pin that froze the quick
@@ -3446,6 +3457,21 @@ isolated at last by Phase 1 removing the acoustics that masked it.
   turn, the framing as its own turn after the candidate's reply —
   and the earphone session (074's still-open other half) can serve
   as exactly that session.
+- **Merge amendment (2026-08-15, from the review rounds):** the
+  stop is what makes a negative answer reachable at all, so both
+  renders also forbid railroading past one — "if they say they
+  cannot hear you well, sort that out with them before any
+  framing". What the interviewer does about it is deliberately
+  unscripted: a hiring manager troubleshoots audio on a video
+  call, and the product's own mic-failure copy already tells
+  users to reload. The silent branch is not covered by this
+  clause and remains the ladder's job (the open item above). The
+  self-answer ban was also generalized in review — the original
+  named only the two tokens the transcript happened to contain
+  ("great", "all right"), the recorded absolute-claim trap; it
+  now closes over the reply itself ("no reaction of any kind to a
+  reply you have not heard"), which simultaneously scopes the
+  named tokens to the check.
 - **Revisit when:** any transcript shows a monologue rolling
   through a structural stop (then the two-response split), or
   field sessions show the stops making the opening feel stilted

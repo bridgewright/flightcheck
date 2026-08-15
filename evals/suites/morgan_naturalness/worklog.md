@@ -180,3 +180,30 @@ discussion happens.
   if onsets read as clipped in Round 1 audio, check the trail for
   onsets swallowed by the gate (cand-start only after vad-restore)
   before blaming the model's pacing.
+
+## 2026-08-15 — instructions lever moved: opening turn stops (B12-T1)
+
+- The instructions lever moves again with F-67's residual fix
+  (DECISIONS 077): the opening's two checks become structural turn
+  stops in BOTH renders — the standard 20-minute and, for the first
+  time since its B7 pin, the quick. The first gated live session
+  produced the whole opening as one 24.5 s response with both checks
+  self-answered; the fix makes each check end the interviewer's
+  turn, bans self-answering by principle (review-generalized beyond
+  the two observed tokens), and forbids railroading past a "cannot
+  hear you".
+- The hash moved twice inside the track (implementation, then review
+  round 1's ban generalization + trouble clauses). Final pinned
+  values: standard `858d9635...`, quick named `fea08f1d...`, quick
+  bare `f7299183...` (test_sessionplan_planner.py holds the full
+  digests). Delta confined to # OPENING in all three renders,
+  verified by document diff in both review rounds.
+- Round 1 has still not run (AVM references pending), so no baseline
+  is poisoned. Opening-turn pacing in future Morgan cases reflects
+  the multi-turn opening; reference AVM cases have no opening
+  contract, so no comparability loss.
+- Known incoherence, registered open: the silence ladder's staged
+  texts assume a mid-question stall and read wrong at a greeting
+  (30 s rung offers to skip the audio check). Web-side fix pending;
+  do not count a ladder firing inside the opening as an interviewer
+  naturalness defect in judging.
