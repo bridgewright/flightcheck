@@ -304,21 +304,44 @@ export const TURN_NUDGE_TEXT = `${TURN_STATUS_PREFIX} You stopped without asking
  * The corpus test drives this list over the planner's own strings and the
  * committed rubric fixture, so it is not a guess about English: it is the
  * cover of an inventory that exists in the repo. */
-export const ASK_STEMS: readonly string[] = [
-  // Interrogatives.
+/** Interrogatives and inversions. These open a QUESTION, so they are read at
+ * the head of a sentence only: mid-sentence they are ordinary subordinators,
+ * and "we'll look at scoping, how you land impact, and composure." is the
+ * exact turn DECISIONS 082 exists to catch. */
+const QUESTION_OPENER_STEMS: readonly string[] = [
   "what", "which", "how", "why", "when", "where", "who", "whose",
-  // Subject-verb inversions, which in English open a question and almost
-  // nothing else.
   "can", "could", "would", "will", "do", "does", "did", "have", "has",
   "are", "is", "was", "were", "should",
-  // Imperative asks. An interviewer uses these as often as interrogatives,
-  // and the planner writes most of its inventory this way.
+];
+
+/** Imperative asks, and the case prompts a JD-derived rubric writes.
+ *
+ * These are read at the head of a sentence AND at the head of a sentence's
+ * final clause, because that is where the instructions put them. The standard
+ * render tells Morgan to "react to what was said, then ask" and never to
+ * announce the question, so a real transition reaches this detector as
+ * "That's helpful. Now, describe a decision that depended on your composure."
+ * — the ask sits after a reaction sentence and a discourse marker, and a
+ * sentence-head-only rule reads the whole turn as owing speech. That is the
+ * 3-second talk-over this batch exists to remove, on every transition of
+ * every session. */
+const DIRECTIVE_ASK_STEMS: readonly string[] = [
   "tell me", "walk me", "talk me", "take me", "describe", "design",
   "give me", "share", "explain", "suppose", "imagine", "outline",
   "propose", "consider", "pick", "play devil", "let's hear", "help me see",
-  // Case prompts from a JD-derived rubric, which state the situation and
-  // leave the work implied.
   "you are given", "you have",
+];
+
+export const ASK_STEMS: readonly string[] = [
+  ...QUESTION_OPENER_STEMS,
+  ...DIRECTIVE_ASK_STEMS,
+];
+
+/** Discourse markers an interviewer hangs an ask on. Stripped before a stem
+ * is read, so "and tell me about your process" is the ask it plainly is. */
+const ASK_MARKERS: readonly string[] = [
+  "and", "so", "but", "then", "now", "okay", "ok", "alright", "right",
+  "well", "also",
 ];
 
 /** Sentences of a spoken turn, split on terminal punctuation. */
@@ -329,17 +352,57 @@ function askSentences(transcript: string): string[] {
     .filter((sentence) => sentence.length > 0);
 }
 
-function sentenceIsAsk(sentence: string): boolean {
-  if (sentence.endsWith("?")) return true;
-  // Leading quotes, dashes and stray punctuation are not part of the stem.
-  const opening = sentence.toLowerCase().replace(/^[^a-z']+/, "");
-  return ASK_STEMS.some((stem) => {
+/**
+ * A fragment reduced to the word a stem would have to match.
+ *
+ * Both apostrophes fold to the ASCII one: a transcript spelling "Let's hear"
+ * with U+2019 is the same ask, and a stem list can only carry one spelling.
+ */
+function askOpening(fragment: string): string {
+  let opening = fragment
+    .toLowerCase()
+    .replace(/[‘’]/g, "'")
+    .replace(/^[^a-z]+/, "");
+  // "Okay so tell me" stacks two of them with no punctuation between, so this
+  // strips rather than peels one. Bounded, because an unbounded walk over a
+  // sentence of nothing but markers is a loop with no reader.
+  for (let peeled = 0; peeled < 3; peeled += 1) {
+    const marker = ASK_MARKERS.find(
+      (candidate) =>
+        opening.startsWith(candidate) &&
+        !/[a-z]/.test(opening.charAt(candidate.length)),
+    );
+    if (marker === undefined) break;
+    opening = opening.slice(marker.length).replace(/^[^a-z]+/, "");
+  }
+  return opening;
+}
+
+function openingMatches(opening: string, stems: readonly string[]): boolean {
+  return stems.some((stem) => {
     if (!opening.startsWith(stem)) return false;
     // "whatever we do next." must not match "what". The stem has to end on
-    // a word boundary to be the sentence's opening word.
+    // a word boundary to be the fragment's opening word.
+    //
+    // An apostrophe IS that boundary: "what's the plan" opens with "what",
+    // and "don't" still cannot match "do" because the letter after it does
+    // the blocking. Counting the apostrophe as a word character instead lost
+    // every contraction an interviewer speaks.
     const after = opening.charAt(stem.length);
-    return after === "" || !/[a-z']/.test(after);
+    return after === "" || !/[a-z]/.test(after);
   });
+}
+
+function sentenceIsAsk(sentence: string): boolean {
+  if (sentence.endsWith("?")) return true;
+  if (openingMatches(askOpening(sentence), ASK_STEMS)) return true;
+  // The FINAL clause only. Every clause would read "we'll look at scoping,
+  // design sense, and composure." as an ask on a dimension that happens to be
+  // named for a verb; the last clause is where an interviewer's ask lands
+  // after the reaction the instructions require in front of it.
+  const clauses = sentence.split(/[,;:()—–]|\s-\s/);
+  const last = clauses[clauses.length - 1];
+  return clauses.length > 1 && openingMatches(askOpening(last), DIRECTIVE_ASK_STEMS);
 }
 
 /**
@@ -354,6 +417,15 @@ function sentenceIsAsk(sentence: string): boolean {
  * ask": the planner appends an interest clause AFTER the question it just
  * asked ("... best shows your composure? I'm especially interested in X."),
  * and a last-sentence rule calls every one of those an unfinished turn.
+ *
+ * Nor "did a SENTENCE open with an ask". The planner's strings are bare
+ * questions, but the instructions forbid Morgan from delivering them bare:
+ * he reacts to the answer first, then asks, so what reaches this function is
+ * "That's helpful. Now, describe a decision that depended on your composure."
+ * A sentence-head rule reads that as owing speech, which is the same
+ * talk-over on every transition of every session. Imperative stems are
+ * therefore read at a sentence's final clause too, and the corpus test drives
+ * the planner's inventory through those transition shapes rather than bare.
  *
  * An empty transcript asserts nothing either way, so it creates no
  * obligation.
@@ -500,11 +572,18 @@ export function nextSilenceState(
   // the 15 s rung announced "about fifteen seconds" some 26 s in.
   // stagesSent is the exact predicate: it is non-zero only while a scaffold
   // stretch is open, and candidate speech past STALL_BLIP_MAX_S clears it.
+  //
+  // An empty transcript is not a turn. finishedTranscriptForEvent hands back
+  // whatever string the event carried, and a response canceled inside 080's
+  // window can complete with nothing in it — which used to restart the
+  // candidate's quiet stretch, the same clock defect as the scaffold's, from a
+  // turn that was never spoken.
   if (
     !closingSeen &&
     stagesSent === 0 &&
     tick.finishedTranscript !== null &&
-    tick.finishedTranscript !== undefined
+    tick.finishedTranscript !== undefined &&
+    tick.finishedTranscript.trim().length > 0
   ) {
     morganOwesSpeech = !transcriptCarriesAsk(tick.finishedTranscript);
     quietS = 0;

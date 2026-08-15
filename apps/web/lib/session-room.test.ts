@@ -181,6 +181,47 @@ describe("owes-speech reads the questions this product actually asks", () => {
     expect(strandedByDetector).toEqual([]);
   });
 
+  it("keeps every block of the corpus stocked, not just the total", () => {
+    // The total above is one number over five blocks, so a block emptied by a
+    // refactor is invisible to it as long as another block grew. The five
+    // anchors are named individually here for the same reason the anchors
+    // throw rather than return nothing: a corpus gate that quietly checks
+    // less is the only way this suite goes green while guarding nothing.
+    const perBlock = SPOKEN_BLOCKS.map(
+      (block) => [block[0].trim(), plannerStrings(planner, block).length] as const,
+    );
+    expect(perBlock).toEqual([
+      ["_PRESSURE_PROBES = (", 12],
+      ["templates = (", 18],
+      ["pivot_open = (", 12],
+      ["fit_probes = [", 6],
+      ["questions = (", 6],
+    ]);
+  });
+
+  it("reads every planner question as an ask in the shape the room hears it", () => {
+    // The corpus above is the planner's bare strings, and Morgan is
+    // instructed never to speak one bare. The standard render tells him to
+    // react to the answer and then ask, never to announce the question, so
+    // what reaches finishedTranscript is a reaction sentence, a discourse
+    // marker, then the ask. A detector that reads stems only at the head of
+    // a SENTENCE calls every one of those an unfinished turn and nudges him
+    // three seconds into the candidate's pause - on every transition of
+    // every session, which is worse than the defect this batch removes.
+    //
+    // These four prefixes are the instruction's own shape, not invented
+    // phrasing: "react to what was said, then ask".
+    const transitions = [
+      (ask: string) => `That's helpful. Now, ${ask[0].toLowerCase()}${ask.slice(1)}`,
+      (ask: string) => `Okay, that's fair. So, ${ask[0].toLowerCase()}${ask.slice(1)}`,
+      (ask: string) => `Good - the numbers make that land. And ${ask[0].toLowerCase()}${ask.slice(1)}`,
+      (ask: string) => `Mm-hm. Right, ${ask[0].toLowerCase()}${ask.slice(1)}`,
+    ];
+    const heard = spoken.flatMap((ask) => transitions.map((shape) => shape(ask)));
+    expect(heard.length).toBeGreaterThanOrEqual(200);
+    expect(heard.filter((text) => !transcriptCarriesAsk(text))).toEqual([]);
+  });
+
   it("reads a dimension question as an ask after the interest clause is appended", () => {
     // _generated_question appends " I'm especially interested in X." to the
     // template it picked, so the sentence the model ends on is a statement
@@ -225,8 +266,43 @@ describe("owes-speech reads the questions this product actually asks", () => {
     expect(transcriptCarriesAsk("Whatever we do next stays on the record.")).toBe(false);
     expect(transcriptCarriesAsk("Island projects like that one rarely scale.")).toBe(false);
     expect(transcriptCarriesAsk("Willing teams ship faster.")).toBe(false);
+    expect(transcriptCarriesAsk("Doing the rollout took six weeks.")).toBe(false);
+    expect(transcriptCarriesAsk("Designs like that rarely survive contact.")).toBe(false);
     // An empty turn asserts nothing, so it creates no obligation.
     expect(transcriptCarriesAsk("   ")).toBe(true);
+  });
+
+  it("hears a contraction, in either apostrophe", () => {
+    // The transcriber's apostrophe is not this repo's choice, and an
+    // interviewer speaks in contractions. Treating the apostrophe as a word
+    // character makes "what's" a word that merely starts with "what", which
+    // silently drops the most ordinary question opening there is.
+    for (const mark of ["'", "’"]) {
+      expect(transcriptCarriesAsk(`What${mark}s the plan.`), mark).toBe(true);
+      expect(transcriptCarriesAsk(`Let${mark}s hear your answer.`), mark).toBe(true);
+      expect(transcriptCarriesAsk(`Who${mark}s the decision maker.`), mark).toBe(true);
+      // The letter after the stem still blocks: these are not asks.
+      expect(transcriptCarriesAsk(`Don${mark}t worry about the time.`), mark).toBe(false);
+      expect(transcriptCarriesAsk(`Isn${mark}t that the whole story.`), mark).toBe(false);
+    }
+  });
+
+  it("reads an imperative at the end of a clause, an interrogative only at the head", () => {
+    // The two stem families are not interchangeable, and this is the whole
+    // reason they are split. An imperative lands after the reaction Morgan is
+    // instructed to give, so it has to be read mid-sentence. An interrogative
+    // mid-sentence is an ordinary subordinator - "how you land impact" is a
+    // topic in a list, not a question - and reading it as an ask is exactly
+    // how the room gets stranded, which is the defect DECISIONS 082 exists to
+    // close. Promoting both families to clause heads passes every corpus test
+    // above and reopens the defect, so no corpus can catch it: these can.
+    expect(transcriptCarriesAsk("That's helpful. Now, describe a decision you made.")).toBe(true);
+    expect(transcriptCarriesAsk("Okay. So, tell me about a time you led something.")).toBe(true);
+    expect(transcriptCarriesAsk("We'll look at scoping, how you land impact, and composure.")).toBe(false);
+    expect(transcriptCarriesAsk("Today we'll cover three areas: how you scope, why it mattered, and what you would redo.")).toBe(false);
+    // A dimension named for a verb sits in that same list. Read at every
+    // clause head rather than the last, "design sense" is an ask.
+    expect(transcriptCarriesAsk("We'll look at scoping, design sense, and composure.")).toBe(false);
   });
 
   it("publishes the stem list the corpus tests drive", () => {
@@ -317,6 +393,14 @@ describe("response cancel window and owes-speech ladder", () => {
       "Give me one concrete example that backs that up.",
       "Describe a decision that depended on your composure.",
       "What is a concrete example that best shows your composure? I'm especially interested in incident response.",
+      // The same asks in the shape the instructions actually produce: the
+      // reaction first, then the question. This is what a real transition
+      // looks like on the wire, and every one of them was nudged at 3 s
+      // while the detector read stems at sentence heads alone.
+      "That's a clear result. Now, tell me about a time you demonstrated composure.",
+      "Okay, that's fair. So, walk me through a project you led end to end.",
+      "Good - the numbers make that land. And give me one concrete example that backs that up.",
+      "Mm-hm. Right, describe a decision that depended on your composure.",
     ];
     for (const transcript of asked) {
       let result = nextSilenceState(
@@ -331,6 +415,26 @@ describe("response cancel window and owes-speech ladder", () => {
       }
       expect(nudges, transcript).toEqual([]);
     }
+  });
+
+  it("treats an empty transcript as no turn at all", () => {
+    // finishedTranscriptForEvent hands back whatever string the event
+    // carried, and a response canceled inside 080's window can finish with
+    // nothing in it. Such an event is not a turn: it must neither create an
+    // obligation nor restart the candidate's quiet stretch, which is the
+    // clock defect the scaffold guard fixed arriving by another door - a
+    // ladder rung announcing "about fifteen seconds" well past fifteen.
+    const midStretch = { ...INITIAL_SILENCE_STATE, quietS: 6.5, candidateCommitSeen: true };
+    for (const transcript of ["", "   "]) {
+      const result = nextSilenceState(midStretch, silenceTick({ finishedTranscript: transcript }));
+      expect(result.state.quietS, JSON.stringify(transcript)).toBe(6.75);
+      expect(result.state.morganOwesSpeech, JSON.stringify(transcript)).toBe(false);
+      expect(result.effects.turnNudge, JSON.stringify(transcript)).toBe(false);
+    }
+    // A real turn in the same position still restarts it.
+    expect(
+      nextSilenceState(midStretch, silenceTick({ finishedTranscript: "Take me through it." })).state.quietS,
+    ).toBe(0.25);
   });
 
   it("never nudges during candidate audio or after the closing marker", () => {
