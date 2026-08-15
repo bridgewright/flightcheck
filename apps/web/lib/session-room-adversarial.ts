@@ -186,6 +186,10 @@ function checkTrace(run: ScenarioRun): Violation[] {
     const kind = classify(t);
     const carriedCommit = t.commitArrived && kind !== "suspend";
 
+    if (t.finishedTranscript !== null && t.finishedTranscript !== undefined) {
+      s.quietS = 0;
+    }
+
     if (after.closingSeen) {
       if (t.candidateAudible || t.interviewerAudible) closingQuietS = 0;
       else if (t.dtS < SUSPEND_GAP_S && !step.before.interviewEnded) {
@@ -256,7 +260,12 @@ function checkTrace(run: ScenarioRun): Violation[] {
         );
       }
       s.stagesFired += 1;
-    } else if (kind === "quiet" && s.stagesFired < SILENCE_STAGES.length) {
+    } else if (
+      kind === "quiet" &&
+      !after.morganOwesSpeech &&
+      !effects.turnNudge &&
+      s.stagesFired < SILENCE_STAGES.length
+    ) {
       const due = SILENCE_STAGES[s.stagesFired];
       if (s.quietS >= due.at) {
         add(
@@ -313,7 +322,7 @@ function checkTrace(run: ScenarioRun): Violation[] {
     // debounce. This runs AFTER the I2 checks on purpose: clearing it first
     // made every tick that fired both effects look like a response with no
     // commit behind it — the checker's own bug, not the clock's.
-    if (effects.stage) s.armedAtIndex = null;
+    if (effects.stage || effects.turnNudge) s.armedAtIndex = null;
   }
 
   return violations;
@@ -326,7 +335,7 @@ function checkPerTick(run: ScenarioRun): Violation[] {
 
   for (const step of run.steps) {
     const { index, tick: t, before, after, effects } = step;
-    const acted = effects.stage !== null || effects.triggerResponse;
+    const acted = effects.stage !== null || effects.triggerResponse || effects.turnNudge;
     const what = effects.stage
       ? `stage ${effects.stage.at}`
       : "triggerResponse";
@@ -338,6 +347,18 @@ function checkPerTick(run: ScenarioRun): Violation[] {
         index,
         `stage ${effects.stage.at} and a response trigger fired on one tick`,
       );
+    }
+    if (effects.stage !== null && effects.turnNudge) {
+      add("I2", index, "a stage and turn nudge fired on one tick");
+    }
+    if (effects.cancelResponse && (effects.triggerResponse || effects.stage || effects.turnNudge)) {
+      add("I2", index, "cancelResponse and a response trigger co-fired");
+    }
+    if (t.interviewerAudible && after.responseInFlight) {
+      add("I4", index, "response remained cancelable after interviewer audio");
+    }
+    if (step.before.candidateCommitSeen && effects.stage?.text.includes("audio check")) {
+      add("I1", index, "a greeting stage fired after a candidate commit");
     }
     // I3 — never speak over the candidate.
     if (t.candidateAudible && acted) {
@@ -489,6 +510,8 @@ const commitFlagNoise: Generator = (rng, length) =>
     tick({
       candidateAudible: rng() < 0.25,
       commitArrived: rng() < 0.1,
+      responseDone: rng() < 0.05,
+      finishedTranscript: rng() < 0.03 ? (rng() < 0.5 ? "Ready?" : "Continuing.") : null,
     }),
   );
 
@@ -530,6 +553,8 @@ const dtSpikes: Generator = (rng, length) =>
       candidateAudible: rng() < 0.2,
       interviewerAudible: rng() < 0.2,
       commitArrived: rng() < 0.05,
+      responseDone: rng() < 0.05,
+      finishedTranscript: rng() < 0.03 ? (rng() < 0.5 ? "Ready?" : "Continuing.") : null,
     }),
   );
 

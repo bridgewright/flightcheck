@@ -2,9 +2,12 @@ import { describe, expect, it } from "vitest";
 
 import {
   INITIAL_GATE_STATE,
+  BARGE_LEVEL_MULTIPLE,
+  BARGE_SUSTAIN_MS,
   CLOSING_LINGER_S,
   CLOSING_MARKER,
   HARD_CUT_S,
+  GREETING_STAGES,
   INITIAL_SILENCE_STATE,
   endedRoomNotice,
   RESPONSE_DEBOUNCE_S,
@@ -14,9 +17,14 @@ import {
   QUICK_SESSION_BUDGET_S,
   PLAYBACK_GATE_HANGOVER_S,
   STALL_BLIP_MAX_S,
+  TURN_NUDGE_S,
+  TURN_NUDGE_TEXT,
+  TURN_STATUS_PREFIX,
   SUSPEND_GAP_S,
   TIME_STATUS_PREFIX,
   committedItemId,
+  assistantOutputItemId,
+  bargeCutDecision,
   dueTimeStatus,
   formatTimer,
   finishedTranscriptForEvent,
@@ -38,6 +46,105 @@ import {
   type SilenceClockState,
   type SilenceTick,
 } from "./session-room";
+
+const silenceTick = (overrides: Partial<SilenceTick> = {}): SilenceTick => ({
+  dtS: 0.25,
+  candidateAudible: false,
+  interviewerAudible: false,
+  commitArrived: false,
+  responseDone: false,
+  ...overrides,
+});
+
+describe("bargeCutDecision", () => {
+  it("requires sustained, adaptive-level speech without an echo veto", () => {
+    expect(bargeCutDecision({ sustainedMs: BARGE_SUSTAIN_MS - 1, bargeMicMedian: 1, leakBaselineMedian: 0, corr: null })).toEqual({ cut: false, reason: "sustain" });
+    expect(bargeCutDecision({ sustainedMs: BARGE_SUSTAIN_MS, bargeMicMedian: 0.014, leakBaselineMedian: 0, corr: null })).toEqual({ cut: false, reason: "level" });
+    expect(bargeCutDecision({ sustainedMs: BARGE_SUSTAIN_MS, bargeMicMedian: BARGE_LEVEL_MULTIPLE * 0.02, leakBaselineMedian: 0.02, corr: { verdict: "echo", r: 1, lagMs: 0, n: 6 } })).toEqual({ cut: false, reason: "corr-echo" });
+    expect(bargeCutDecision({ sustainedMs: BARGE_SUSTAIN_MS, bargeMicMedian: 0.015, leakBaselineMedian: 0, corr: null })).toEqual({ cut: true, reason: "cut" });
+    expect(bargeCutDecision({ sustainedMs: BARGE_SUSTAIN_MS, bargeMicMedian: 0.015, leakBaselineMedian: 0, corr: { verdict: "indeterminate", r: 1, lagMs: 0, n: 2 } })).toEqual({ cut: true, reason: "cut" });
+  });
+});
+
+describe("assistantOutputItemId", () => {
+  it("extracts only assistant output items", () => {
+    expect(assistantOutputItemId(JSON.stringify({ type: "response.output_item.added", item: { role: "assistant", id: "a1" } }))).toBe("a1");
+    expect(assistantOutputItemId(JSON.stringify({ type: "response.output_item.added", item: { role: "user", id: "u1" } }))).toBeNull();
+    expect(assistantOutputItemId("bad json")).toBeNull();
+  });
+});
+
+describe("response cancel window and owes-speech ladder", () => {
+  it("marks triggers in flight, clears on first audio or response.done", () => {
+    const triggered = nextSilenceState(
+      { ...INITIAL_SILENCE_STATE, responseDueInS: 0.1 },
+      silenceTick(),
+    );
+    expect(triggered.effects.triggerResponse).toBe(true);
+    expect(triggered.state.responseInFlight).toBe(true);
+    expect(nextSilenceState(triggered.state, silenceTick({ interviewerAudible: true })).state.responseInFlight).toBe(false);
+    expect(nextSilenceState(triggered.state, silenceTick({ responseDone: true })).state.responseInFlight).toBe(false);
+  });
+
+  it("cancels an in-flight response when the candidate resumes, but not on a gap", () => {
+    const active = { ...INITIAL_SILENCE_STATE, responseInFlight: true };
+    const resumed = nextSilenceState(active, silenceTick({ candidateAudible: true }));
+    expect(resumed.effects.cancelResponse).toBe(true);
+    expect(resumed.effects.triggerResponse).toBe(false);
+    expect(resumed.state.responseInFlight).toBe(false);
+    const gap = nextSilenceState(active, silenceTick({ dtS: SUSPEND_GAP_S }));
+    expect(gap.effects.cancelResponse).toBe(false);
+    expect(gap.state.responseInFlight).toBe(false);
+  });
+
+  it("nudges once after a non-question transcript and suppresses stages", () => {
+    let result = nextSilenceState(INITIAL_SILENCE_STATE, silenceTick({ finishedTranscript: "  Let us cover the role.  " }));
+    expect(result.state.morganOwesSpeech).toBe(true);
+    result = nextSilenceState({ ...result.state, quietS: TURN_NUDGE_S - 0.25 }, silenceTick());
+    expect(result.effects.turnNudge).toBe(true);
+    expect(result.effects.stage).toBeNull();
+    expect(result.state.morganOwesSpeech).toBe(false);
+    expect(result.state.responseInFlight).toBe(true);
+    expect(nextSilenceState(INITIAL_SILENCE_STATE, silenceTick({ finishedTranscript: "Ready?" })).state.morganOwesSpeech).toBe(false);
+  });
+
+  it("never nudges during candidate audio or after the closing marker", () => {
+    const owing = {
+      ...INITIAL_SILENCE_STATE,
+      quietS: TURN_NUDGE_S,
+      morganOwesSpeech: true,
+    };
+    expect(nextSilenceState(owing, silenceTick({ candidateAudible: true })).effects.turnNudge).toBe(false);
+    const closing = nextSilenceState(owing, silenceTick({
+      elapsedS: 1080,
+      finishedTranscript: `And ${CLOSING_MARKER}.`,
+    }));
+    expect(closing.state.closingSeen).toBe(true);
+    expect(closing.effects.turnNudge).toBe(false);
+  });
+
+  it("publishes the exact turn note and greeting ladder", () => {
+    expect(TURN_NUDGE_TEXT.startsWith(TURN_STATUS_PREFIX)).toBe(true);
+    expect(GREETING_STAGES.map(({ at }) => at)).toEqual(SILENCE_STAGES.map(({ at }) => at));
+    expect(GREETING_STAGES.map(({ text }) => text)).toEqual([
+      `${SILENCE_STATUS_PREFIX} The candidate has not answered your audio check for about eight seconds. Warmly ask once more whether they can hear you. Check nothing else and do not move on.`,
+      `${SILENCE_STATUS_PREFIX} Still no answer after about fifteen seconds. They may not be hearing you at all. Say you might be having audio trouble and that you will wait for them.`,
+      `${SILENCE_STATUS_PREFIX} Still nothing after about thirty seconds. Gently say the room stays open and you are ready whenever they can hear you. Never move on to the interview.`,
+    ]);
+  });
+
+  it("uses greeting stages until a commit is permanently seen", () => {
+    const greeting = nextSilenceState({ ...INITIAL_SILENCE_STATE, quietS: 7.75 }, silenceTick());
+    expect(greeting.effects.stage?.text).toContain("audio check");
+    expect(greeting.state.responseInFlight).toBe(true);
+    const committed = nextSilenceState(INITIAL_SILENCE_STATE, silenceTick({ commitArrived: true }));
+    expect(committed.state.candidateCommitSeen).toBe(true);
+    const later = nextSilenceState({ ...committed.state, quietS: 7.75, responseDueInS: null }, silenceTick());
+    expect(later.effects.stage?.text).toBe(SILENCE_STAGES[0].text);
+    const gap = nextSilenceState(later.state, silenceTick({ dtS: SUSPEND_GAP_S }));
+    expect(gap.state.candidateCommitSeen).toBe(true);
+  });
+});
 
 describe("nextGateState", () => {
   it("raises once and refills the hangover while the interviewer is audible", () => {
@@ -383,19 +490,21 @@ const interviewerFor = (s: number) =>
   Array(Math.round(s / 0.25)).fill({ ...QUIET, interviewerAudible: true });
 
 describe("silence clock", () => {
+  const established = { ...INITIAL_SILENCE_STATE, candidateCommitSeen: true };
+
   it("fires stage 1 once at 8s of quiet", () => {
-    const { stages } = runTicks(INITIAL_SILENCE_STATE, quietFor(10));
+    const { stages } = runTicks(established, quietFor(10));
     expect(stages).toEqual([SILENCE_STAGES[0].text]);
     expect(stages[0].startsWith(SILENCE_STATUS_PREFIX)).toBe(true);
   });
 
   it("escalates through stages 2 and 3, then stops", () => {
-    const { stages } = runTicks(INITIAL_SILENCE_STATE, quietFor(45));
+    const { stages } = runTicks(established, quietFor(45));
     expect(stages).toEqual(SILENCE_STAGES.map((s) => s.text));
   });
 
   it("resets on candidate speech of 2s or more", () => {
-    const mid = runTicks(INITIAL_SILENCE_STATE, [
+    const mid = runTicks(established, [
       ...quietFor(6),
       ...candidateFor(STALL_BLIP_MAX_S + 0.5),
     ]);
@@ -405,7 +514,7 @@ describe("silence clock", () => {
   });
 
   it("stall blips pause but do not reset accumulation", () => {
-    const { stages } = runTicks(INITIAL_SILENCE_STATE, [
+    const { stages } = runTicks(established, [
       ...quietFor(6),
       ...candidateFor(1),
       ...quietFor(2.5),
@@ -414,7 +523,7 @@ describe("silence clock", () => {
   });
 
   it("interviewer audio pauses but never resets", () => {
-    const { stages } = runTicks(INITIAL_SILENCE_STATE, [
+    const { stages } = runTicks(established, [
       ...quietFor(5),
       ...interviewerFor(3),
       ...quietFor(3.5),
@@ -433,7 +542,7 @@ describe("silence clock", () => {
   it("candidate sound cancels a pending response", () => {
     const { triggers } = runTicks(INITIAL_SILENCE_STATE, [
       { ...QUIET, commitArrived: true },
-      ...quietFor(0.5),
+      ...quietFor(0.25),
       ...candidateFor(0.5),
       ...quietFor(3),
     ]);

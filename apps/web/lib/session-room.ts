@@ -1,6 +1,8 @@
 // Pure helpers for the session room. No DOM, no network: everything here is
 // unit-testable, and the WebRTC plumbing in SessionRoom.tsx stays thin.
 
+import type { EchoCorrVerdict } from "./echo-correlation";
+
 // --- Session timing -------------------------------------------------------
 //
 // SINGLE SOURCE: services/scorer/config/product.toml, [session]. The client
@@ -184,10 +186,10 @@ export function closingArmedAt(budgetS: number = SESSION_BUDGET_S): number {
 }
 
 /** Quiet seconds between a committed turn and the client-armed
- * response.create. Server VAD retains the 0.9 s acoustic hesitation guard;
- * this 0.6 s client guard still catches a sentence resumed after an early
- * commit, while total required quiet falls from about 2.1 s to 1.5 s. */
-export const RESPONSE_DEBOUNCE_S = 0.6;
+ * response.create. Server VAD retains the 0.9 s acoustic hesitation guard.
+ * DECISIONS 080 makes this shorter guard safe with a cancel window that
+ * remains open until the interviewer's first audio. */
+export const RESPONSE_DEBOUNCE_S = 0.45;
 
 /** A tick longer than this did not measure real silence: the tab was
  * backgrounded, throttled, or the machine slept. */
@@ -280,6 +282,38 @@ export const SILENCE_STAGES: SilenceStage[] = [
   },
 ];
 
+export const GREETING_STAGES: SilenceStage[] = [
+  { at: 8, text: `${SILENCE_STATUS_PREFIX} The candidate has not answered your audio check for about eight seconds. Warmly ask once more whether they can hear you. Check nothing else and do not move on.` },
+  { at: 15, text: `${SILENCE_STATUS_PREFIX} Still no answer after about fifteen seconds. They may not be hearing you at all. Say you might be having audio trouble and that you will wait for them.` },
+  { at: 30, text: `${SILENCE_STATUS_PREFIX} Still nothing after about thirty seconds. Gently say the room stays open and you are ready whenever they can hear you. Never move on to the interview.` },
+];
+
+export const TURN_STATUS_PREFIX = "[turn status]";
+export const TURN_NUDGE_S = 3.0;
+export const TURN_NUDGE_TEXT = `${TURN_STATUS_PREFIX} You stopped without asking the candidate anything. Continue your turn now and end it with your question to them.`;
+
+export const BARGE_SUSTAIN_MS = 750;
+export const BARGE_LEVEL_MULTIPLE = 3;
+export const LEAK_FLOOR = 0.005;
+
+export interface BargeEvidence {
+  sustainedMs: number;
+  bargeMicMedian: number;
+  leakBaselineMedian: number;
+  corr: EchoCorrVerdict | null;
+}
+
+export function bargeCutDecision(
+  e: BargeEvidence,
+): { cut: boolean; reason: string } {
+  if (e.sustainedMs < BARGE_SUSTAIN_MS) return { cut: false, reason: "sustain" };
+  if (e.bargeMicMedian < BARGE_LEVEL_MULTIPLE * Math.max(e.leakBaselineMedian, LEAK_FLOOR)) {
+    return { cut: false, reason: "level" };
+  }
+  if (e.corr?.verdict === "echo") return { cut: false, reason: "corr-echo" };
+  return { cut: true, reason: "cut" };
+}
+
 export interface SilenceClockState {
   /** Accumulated room-quiet seconds (survives stall blips). */
   quietS: number;
@@ -289,6 +323,9 @@ export interface SilenceClockState {
   stagesSent: number;
   /** Seconds until a client-armed response.create, null when none pending. */
   responseDueInS: number | null;
+  responseInFlight: boolean;
+  morganOwesSpeech: boolean;
+  candidateCommitSeen: boolean;
   closingSeen: boolean;
   closingQuietS: number;
   interviewEnded: boolean;
@@ -299,6 +336,9 @@ export const INITIAL_SILENCE_STATE: SilenceClockState = {
   episodeS: 0,
   stagesSent: 0,
   responseDueInS: null,
+  responseInFlight: false,
+  morganOwesSpeech: false,
+  candidateCommitSeen: false,
   closingSeen: false,
   closingQuietS: 0,
   interviewEnded: false,
@@ -310,6 +350,7 @@ export interface SilenceTick {
   interviewerAudible: boolean;
   /** True when an input_audio_buffer.committed arrived since the last tick. */
   commitArrived: boolean;
+  responseDone?: boolean;
   elapsedS?: number;
   finishedTranscript?: string | null;
 }
@@ -319,6 +360,8 @@ export interface SilenceEffects {
   stage: SilenceStage | null;
   /** Send responseTriggerEvent() — the debounced answer to a committed turn. */
   triggerResponse: boolean;
+  cancelResponse: boolean;
+  turnNudge: boolean;
   endInterview: boolean;
 }
 
@@ -335,12 +378,16 @@ export function nextSilenceState(
   tick: SilenceTick,
 ): { state: SilenceClockState; effects: SilenceEffects } {
   let {
-    quietS, episodeS, stagesSent, responseDueInS,
+    quietS, episodeS, stagesSent, responseDueInS, responseInFlight,
+    morganOwesSpeech, candidateCommitSeen,
     closingSeen, closingQuietS, interviewEnded,
   } = state;
   const effects: SilenceEffects = {
-    stage: null, triggerResponse: false, endInterview: false,
+    stage: null, triggerResponse: false, cancelResponse: false,
+    turnNudge: false, endInterview: false,
   };
+
+  if (tick.interviewerAudible || tick.responseDone) responseInFlight = false;
 
   if (
     !closingSeen &&
@@ -348,6 +395,14 @@ export function nextSilenceState(
     tick.finishedTranscript?.toLowerCase().includes(CLOSING_MARKER)
   ) {
     closingSeen = true;
+  }
+  if (
+    !closingSeen &&
+    tick.finishedTranscript !== null &&
+    tick.finishedTranscript !== undefined
+  ) {
+    morganOwesSpeech = !tick.finishedTranscript.trim().endsWith("?");
+    quietS = 0;
   }
 
   if (closingSeen) {
@@ -363,7 +418,8 @@ export function nextSilenceState(
     }
     return {
       state: {
-        quietS, episodeS, stagesSent, responseDueInS,
+        quietS, episodeS, stagesSent, responseDueInS, responseInFlight,
+        morganOwesSpeech, candidateCommitSeen,
         closingSeen, closingQuietS, interviewEnded,
       },
       effects,
@@ -381,6 +437,7 @@ export function nextSilenceState(
     return {
       state: {
         quietS: 0, episodeS: 0, stagesSent: 0, responseDueInS: null,
+        responseInFlight: false, morganOwesSpeech, candidateCommitSeen,
         closingSeen, closingQuietS, interviewEnded,
       },
       effects,
@@ -388,6 +445,7 @@ export function nextSilenceState(
   }
   if (tick.commitArrived) {
     responseDueInS = RESPONSE_DEBOUNCE_S;
+    candidateCommitSeen = true;
   }
   if (tick.interviewerAudible) {
     // Interviewer audibility wins over the mic. In the open-speakers
@@ -399,6 +457,10 @@ export function nextSilenceState(
     // stretch: it outlives Morgan's audio and lands in the branch below.
     episodeS = 0;
   } else if (tick.candidateAudible) {
+    if (responseInFlight) {
+      effects.cancelResponse = true;
+      responseInFlight = false;
+    }
     responseDueInS = null;
     episodeS += tick.dtS;
     if (episodeS >= STALL_BLIP_MAX_S) {
@@ -418,10 +480,23 @@ export function nextSilenceState(
       if (responseDueInS <= 0) {
         responseDueInS = null;
         effects.triggerResponse = true;
+        responseInFlight = true;
       }
     }
-    const next = SILENCE_STAGES[stagesSent];
-    if (next !== undefined && quietS >= next.at) {
+    if (morganOwesSpeech && quietS >= TURN_NUDGE_S) {
+      effects.turnNudge = true;
+      morganOwesSpeech = false;
+      responseInFlight = true;
+      responseDueInS = null;
+    }
+    const stages = candidateCommitSeen ? SILENCE_STAGES : GREETING_STAGES;
+    const next = stages[stagesSent];
+    if (
+      !effects.turnNudge &&
+      !morganOwesSpeech &&
+      next !== undefined &&
+      quietS >= next.at
+    ) {
       // A scaffold speaks for itself (the wiring sends a response.create
       // with it), so it supersedes a debounced response falling on the same
       // tick — otherwise this one tick asks Morgan to speak twice.
@@ -429,11 +504,13 @@ export function nextSilenceState(
       effects.triggerResponse = false;
       stagesSent += 1;
       responseDueInS = null;
+      responseInFlight = true;
     }
   }
   return {
     state: {
-      quietS, episodeS, stagesSent, responseDueInS,
+      quietS, episodeS, stagesSent, responseDueInS, responseInFlight,
+      morganOwesSpeech, candidateCommitSeen,
       closingSeen, closingQuietS, interviewEnded,
     },
     effects,
@@ -533,6 +610,22 @@ export function committedItemId(raw: string): string | null {
     return event.type === "input_audio_buffer.committed" &&
       typeof event.item_id === "string"
       ? event.item_id
+      : null;
+  } catch {
+    return null;
+  }
+}
+
+/** Assistant item id from response.output_item.added, else null. */
+export function assistantOutputItemId(raw: string): string | null {
+  try {
+    const event = JSON.parse(raw) as {
+      type?: unknown;
+      item?: { role?: unknown; id?: unknown };
+    };
+    return event.type === "response.output_item.added" &&
+      event.item?.role === "assistant" && typeof event.item.id === "string"
+      ? event.item.id
       : null;
   } catch {
     return null;

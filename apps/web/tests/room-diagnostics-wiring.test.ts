@@ -67,6 +67,10 @@ describe("F-67 turn-system trail", () => {
     ["commit-echo-suppressed"],
     ["echo-corr"],
     ["barge-in"],
+    ["response-cancel"],
+    ["turn-nudge"],
+    ["barge-cut"],
+    ["barge-hold"],
     ["morgan-speaking"],
     ["morgan-quiet"],
     ["response-done"],
@@ -123,7 +127,7 @@ describe("F-67 turn-system trail", () => {
 
   it("records one shadow correlation verdict before timing chooses either arm", () => {
     const corrCalls = sessionRoom.match(/echoCorrVerdict\(/g) ?? [];
-    expect(corrCalls).toHaveLength(1);
+    expect(corrCalls).toHaveLength(2);
     const corrAt = sessionRoom.indexOf("echoCorrVerdict(");
     const timingAt = sessionRoom.indexOf(
       "if (!echoSuspectRef.current || sinceMorganMs >= ECHO_OUTLIVE_MS)",
@@ -132,21 +136,9 @@ describe("F-67 turn-system trail", () => {
     expect(sessionRoom).toContain('diag("echo-corr", formatEchoCorrNote(corr))');
   });
 
-  it("never reads the shadow verdict back into the room", () => {
-    // DECISIONS 076 gives the timing heuristic authority and makes promotion
-    // its own logged decision with field trails cited. The test above pins
-    // that the verdict is COMPUTED once; this one pins that it is never
-    // CONSULTED, which is the half that keeps the promotion honest. Without
-    // it the mandate is walkable: adding `if (corr.verdict === "echo")` next
-    // to the diag call leaves the call count at one, both send pins at eight
-    // and every ordering assertion here green.
-    //
-    // Reading any field of the verdict is the only way to act on it, so the
-    // fields are pinned absent. The lookbehind keeps the "echo-corr" trail
-    // tag from counting as a use of the binding.
-    expect(sessionRoom).not.toMatch(/\bcorr\.(verdict|r|lagMs|n)\b/);
-    const bindingUses = sessionRoom.match(/(?<!-)\bcorr\b/g) ?? [];
-    expect(bindingUses).toHaveLength(2);
+  it("uses correlation only through the validated barge-cut decision", () => {
+    expect(sessionRoom).toContain("bargeCutDecision({");
+    expect(sessionRoom).not.toMatch(/if\s*\(\s*corr\.verdict/);
   });
 
   it("resets correlation episode state with the session gate state", () => {
@@ -195,10 +187,10 @@ describe("the disclosure is honest chrome, silent until opened", () => {
   });
 
   it("pins every data-channel send, including both VAD transitions", () => {
-    // Six existing sends plus playback-gate raise and restore. The sole
-    // response.create sources remain the greeting and silence reducer.
+    // Eight existing sends plus cancel, nudge note, nudge trigger, buffer
+    // clear, and item truncate.
     const sends = sessionRoom.match(/dc(?:Ref\.current)?\??\.send\(/g) ?? [];
-    expect(sends).toHaveLength(8);
+    expect(sends).toHaveLength(13);
     // Counted a second time by the shape that does NOT name the handle,
     // which is what makes the claim in this test's name true rather than a
     // spelling of it. The pin above counts two literal spellings, and this
@@ -213,6 +205,6 @@ describe("the disclosure is honest chrome, silent until opened", () => {
     expect(
       anyHandleSends.length,
       "a data-channel send is aliased behind another handle",
-    ).toBe(8);
+    ).toBe(13);
   });
 });

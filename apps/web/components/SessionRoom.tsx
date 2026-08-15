@@ -72,6 +72,7 @@ import {
 import {
   CONNECTION_LOST_MESSAGE,
   CLOSING_MARKER,
+  BARGE_SUSTAIN_MS,
   ECHO_OUTLIVE_MS,
   ECHO_START_WINDOW_MS,
   HARD_CUT_S,
@@ -81,6 +82,9 @@ import {
   INITIAL_SILENCE_STATE,
   SESSION_BUDGET_S,
   SUSPEND_GAP_S,
+  TURN_NUDGE_TEXT,
+  assistantOutputItemId,
+  bargeCutDecision,
   committedItemId,
   closingArmedAt,
   dueTimeStatus,
@@ -236,6 +240,12 @@ export default function SessionRoom({
   const echoSuspectRef = useRef(false);
   const candStartAtMsRef = useRef(0);
   const corrRingRef = useRef<LevelSample[]>([]);
+  const leakBaselineRef = useRef<number[]>([]);
+  const wasMorganAudibleRef = useRef(false);
+  const utteranceAudioStartRef = useRef(0);
+  const assistantItemIdRef = useRef<string | null>(null);
+  const bargeActiveRef = useRef<{ startMs: number; micSamples: number[]; lastReason: string } | null>(null);
+  const lastBargeCutAtRef = useRef(0);
   const micAnalyserRef = useRef<AnalyserNode | null>(null);
   const micLevelDataRef = useRef<Uint8Array<ArrayBuffer> | null>(null);
   const silenceStateRef = useRef(INITIAL_SILENCE_STATE);
@@ -530,6 +540,11 @@ export default function SessionRoom({
     gateStateRef.current = INITIAL_GATE_STATE;
     corrRingRef.current = [];
     candStartAtMsRef.current = 0;
+    leakBaselineRef.current = [];
+    wasMorganAudibleRef.current = false;
+    utteranceAudioStartRef.current = 0;
+    assistantItemIdRef.current = null;
+    bargeActiveRef.current = null;
     connectingRef.current = true;
     setError(null);
     setPhase("connecting");
@@ -786,13 +801,16 @@ export default function SessionRoom({
       });
       dc.addEventListener("message", (ev) => {
         messageArrivedRef.current = true;
+        const rawEvent = String(ev.data);
         try {
           const event = JSON.parse(String(ev.data)) as { type?: unknown };
           if (event.type === "session.updated") diag("vad-ack");
         } catch {
           // Existing event helpers ignore malformed frames too.
         }
-        const finishedTranscript = finishedTranscriptForEvent(String(ev.data));
+        const outputItemId = assistantOutputItemId(rawEvent);
+        if (outputItemId !== null) assistantItemIdRef.current = outputItemId;
+        const finishedTranscript = finishedTranscriptForEvent(rawEvent);
         if (
           finishedTranscript !== null &&
           !finishedTranscriptRef.current
@@ -801,13 +819,20 @@ export default function SessionRoom({
         ) {
           finishedTranscriptRef.current = finishedTranscript;
         }
-        const speech = speechStateForEvent(String(ev.data));
+        const speech = speechStateForEvent(rawEvent);
         if (speech !== null) console.debug("[silence] cand-ev", speech);
         if (speech === "started") {
           candStartAtMsRef.current = performance.now();
           diag(
             morganEventAudibleRef.current ? "barge-in" : "cand-start",
           );
+          if (morganEventAudibleRef.current) {
+            bargeActiveRef.current = {
+              startMs: candStartAtMsRef.current,
+              micSamples: [],
+              lastReason: "sustain",
+            };
+          }
           candidateAudibleRef.current = true;
           // Echo physics (2026-08-01, speakers-first requirement): leaked
           // interviewer audio can only START while Morgan is (nearly)
@@ -857,22 +882,26 @@ export default function SessionRoom({
             }
           }
         }
-        if (String(ev.data).includes('"type":"error"')) {
+        if (rawEvent.includes('"type":"error"')) {
           diag("server-error");
           console.debug("[silence] server-error", String(ev.data).slice(0, 300));
         }
-        // Truncation visibility: if these ever reappear, Morgan's audio is
-        // being cut server-side again (interrupt_response must stay false).
-        if (String(ev.data).includes("output_audio_buffer.cleared")) {
-          console.debug("[silence] morgan-audio-cleared");
+        // A clear close to our own barge cut is expected. One without that
+        // adjacency means server-side truncation has reappeared even though
+        // interrupt_response remains false.
+        if (rawEvent.includes("output_audio_buffer.cleared")) {
+          const clientCut =
+            lastBargeCutAtRef.current > 0 &&
+            performance.now() - lastBargeCutAtRef.current <= 1000;
+          console.debug("[silence] morgan-audio-cleared", clientCut ? "client-barge-cut" : "unexpected-server-cut");
         }
-        if (String(ev.data).includes('"conversation.item.truncated"')) {
+        if (rawEvent.includes('"conversation.item.truncated"')) {
           console.debug("[silence] morgan-item-truncated");
         }
         // Morgan's audio lifecycle from server events — the analyser is the
         // fallback, not the sole source; response_done also opens the
         // clock's activation gate.
-        const morgan = interviewerStateForEvent(String(ev.data));
+        const morgan = interviewerStateForEvent(rawEvent);
         if (morgan !== null) console.debug("[silence] morgan-ev", morgan);
         if (morgan === "speaking") {
           diag("morgan-speaking");
@@ -987,6 +1016,56 @@ export default function SessionRoom({
       // transport keeps the clock honest (2026-08-01 live failure).
       interviewerAudible = interviewerAudible || morganEventAudibleRef.current;
       if (interviewerAudible) lastMorganAudibleAtRef.current = Date.now();
+      if (interviewerAudible && !wasMorganAudibleRef.current) {
+        leakBaselineRef.current = [];
+        utteranceAudioStartRef.current = tickAt;
+      }
+      if (interviewerAudible && !candidateAudibleRef.current) {
+        leakBaselineRef.current.push(micPeak);
+      }
+      wasMorganAudibleRef.current = interviewerAudible;
+
+      const median = (values: number[]) => {
+        if (values.length === 0) return 0;
+        const sorted = [...values].sort((a, b) => a - b);
+        const middle = Math.floor(sorted.length / 2);
+        return sorted.length % 2 === 0
+          ? (sorted[middle - 1] + sorted[middle]) / 2
+          : sorted[middle];
+      };
+      const barge = bargeActiveRef.current;
+      if (barge !== null) {
+        if (candidateAudibleRef.current && interviewerAudible) {
+          barge.micSamples.push(micPeak);
+          const corr = echoCorrVerdict(corrRingRef.current, barge.startMs, tickAt);
+          const decision = bargeCutDecision({
+            sustainedMs: tickAt - barge.startMs,
+            bargeMicMedian: median(barge.micSamples),
+            leakBaselineMedian: median(leakBaselineRef.current),
+            corr,
+          });
+          barge.lastReason = decision.reason;
+          if (decision.cut && tickAt - barge.startMs >= BARGE_SUSTAIN_MS && dcRef.current?.readyState === "open") {
+            dcRef.current.send(JSON.stringify({ type: "output_audio_buffer.clear" }));
+            const itemId = assistantItemIdRef.current;
+            if (itemId !== null) {
+              dcRef.current.send(JSON.stringify({
+                type: "conversation.item.truncate",
+                item_id: itemId,
+                content_index: 0,
+                audio_end_ms: Math.round(tickAt - utteranceAudioStartRef.current),
+              }));
+            }
+            const baseline = Math.max(median(leakBaselineRef.current), 0.005);
+            diag("barge-cut", `ratio=${(median(barge.micSamples) / baseline).toFixed(1)} r=${corr.r.toFixed(2)} n=${corr.n}`);
+            lastBargeCutAtRef.current = tickAt;
+            bargeActiveRef.current = null;
+          }
+        } else {
+          diag("barge-hold", barge.lastReason);
+          bargeActiveRef.current = null;
+        }
+      }
       if (dcRef.current?.readyState === "open") {
         // playbackGate, not gate: the console line a few lines below already
         // prints `gate` for heardMorganRef (the greeting gate), and one word
@@ -1032,6 +1111,7 @@ export default function SessionRoom({
           candidateAudible: candidateAudibleRef.current,
           interviewerAudible,
           commitArrived,
+          responseDone: responseDoneRef.current,
           elapsedS: elapsed,
           finishedTranscript: finishedTranscriptRef.current,
         });
@@ -1041,13 +1121,21 @@ export default function SessionRoom({
           const fromWrapUpS = elapsed - closingArmedAt(budgetS);
           diag("closing-detected", `${fromWrapUpS >= 0 ? "+" : ""}${fromWrapUpS}s vs wrap-up`);
         }
-        if (!due) {
+        if (effects.cancelResponse) {
+          dcRef.current.send(JSON.stringify({ type: "response.cancel" }));
+          diag("response-cancel");
+        } else if (!due) {
           if (effects.stage) {
             diag("response-trigger", "stage");
             console.debug("[silence] stage fired", effects.stage.at);
             dcRef.current.send(silenceStatusEvent(effects.stage.text));
             responseRequestedRef.current = true;
             dcRef.current.send(responseTriggerEvent());
+          } else if (effects.turnNudge) {
+            dcRef.current.send(timeStatusEvent(TURN_NUDGE_TEXT));
+            responseRequestedRef.current = true;
+            dcRef.current.send(responseTriggerEvent());
+            diag("turn-nudge");
           } else if (effects.triggerResponse) {
             diag("response-trigger", "debounce");
             console.debug("[silence] response trigger");

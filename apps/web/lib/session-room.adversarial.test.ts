@@ -186,6 +186,8 @@ describe("seed ③: background-tab throttling burst", () => {
     expect(gap.effects).toEqual({
       stage: null,
       triggerResponse: false,
+      cancelResponse: false,
+      turnNudge: false,
       endInterview: false,
     });
     expect(gap.after).toEqual({
@@ -193,6 +195,9 @@ describe("seed ③: background-tab throttling burst", () => {
       episodeS: 0,
       stagesSent: 0,
       responseDueInS: null,
+      responseInFlight: false,
+      morganOwesSpeech: false,
+      candidateCommitSeen: false,
       closingSeen: false,
       closingQuietS: 0,
       interviewEnded: false,
@@ -511,12 +516,12 @@ describe("round finding: one tick, one thing to say", () => {
     const run = runScenario(
       [commitTick(), ...quietTicks(0.75)],
       // Production-dt ticks (0.25), far from any float boundary: commit
-      // brings quietS to 7.30 with the debounce at 0.60; three quiet
+      // brings quietS to 7.55 with the debounce at 0.45; two quiet
       // ticks later quietS is 8.05 (stage due) on the same tick the
-      // debounce reaches -0.15 (trigger due). Fine-grained 0.05 ticks
+      // debounce reaches -0.05 (trigger due). Fine-grained 0.05 ticks
       // left the debounce at +1.4e-17 on the closing tick - never zero,
       // so the collision this test exists for never happened.
-      { ...INITIAL_SILENCE_STATE, quietS: 7.05 },
+      { ...INITIAL_SILENCE_STATE, quietS: 7.30 },
     );
     const both = run.steps.filter(
       (s) => s.effects.stage !== null && s.effects.triggerResponse,
