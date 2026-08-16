@@ -3933,3 +3933,29 @@ it.)
 - **Revisit when:** the review resolves. Approved: the chooser reads
   "flightcheck" and F-93 closes on an empirical chooser screenshot.
   Denied: the paid path goes back to the user as the remaining option.
+
+## 086 — the funnel's first instrument: cookieless visit counting (2026-08-16)
+
+- **Context:** the CBT invites went out 2026-08-15 with zero redemptions in
+  the first day, and the database alone cannot tell the two explanations
+  apart: nobody clicked, or people clicked and left before signing in.
+  Everything server-side starts at sign-in; the gap before it was
+  uninstrumented.
+- **Decision:** Vercel Web Analytics — the platform's cookieless pageview
+  beacon, enabled on the project (`vercel project web-analytics`) plus the
+  `@vercel/analytics` component in the root layout. First-party script, no
+  cookies, no cross-site identity, so no consent banner enters the product
+  the week real users arrive. It answers exactly the open question: did
+  anyone visit, which pages, from where.
+- **Rejected — staying DB-only:** free and already running, but it reads
+  only the signed-in half of the funnel; the CBT question of the day lives
+  in the anonymous half.
+- **Rejected — GA4:** answers the same question at this scale while
+  costing a consent banner, a third-party script, and configuration depth
+  a 30-cap beta cannot use.
+- **Deferred, not rejected — product analytics (PostHog or similar):**
+  identified funnels (sign-in → code → JD → session), retention cohorts,
+  and session replay are a different instrument class and the likely next
+  step. Revisit when the funnel question shifts from "did anyone come" to
+  "where exactly do users drop", or when CBT feedback names a UX confusion
+  a trail cannot explain.
